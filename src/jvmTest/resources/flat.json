@@ -1,0 +1,28 @@
+{
+  "iss": "https://example.com",
+  "jti": "http://example.com/credentials/3732",
+  "nbf": 1541493724,
+  "iat": 1541493724,
+  "cnf": {
+    "jwk": {
+      "kty": "RSA",
+      "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMst\n        n64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_F\n        DW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n9\n        1CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+      "e": "AQAB"
+    }
+  },
+  "type": "IdentityCredential",
+  "credentialSubject": {
+    "_sd": [
+      "k9t-gsOxsQcb94-F_e0JXqCMLmD1YTh-WISanqTlQoK56kiF53cxzKt2elKyEmo_z9g3v-cYVvAeqEwanVcJ8A",
+      "pRm7wm-tWIsEhB9NneKqId9dTEg0jre9MDgeuMoZGpPG0UllI2qNmVnR6uThktAvr_vPNFB1ZKV8Vb0Aj61EjA",
+      "OAFXtjfMcfS71S7LJY9psfDkdd335TSpEUBpD1v7FYNhXahd8f8ArNdjz3iBfX2kFtJb6snfoGTvZMEsyMnsHg",
+      "lHbMwFRz3znSsTIweyhyKF_63rtkmbO0gmc48PcjGPUjGX3xYVBES8rBdYdHPjr_MU6d2kWOKgCg59mcovZ9fg",
+      "b4eqVpCwFbLvnhsye-FkG1ou1HDs1wyEht9yT5RuoyhM_bjY2sUKhAh5pwRCiGFKkbC-JnViUwAsLEj2xzP82w",
+      "Gy-qF-pnoVoSETXsY6ycIpkKrZkhimbv6nA5p5QV9GkEsoxYO4G9yj2O2Iyykmn1FxYlRC9R4xcPaNelt3ALLQ",
+      "d2r3x9_AQFo5kPsBIdQnX_7agfuKncLP7PYF6FyAxgoWLFsx8OAz7ggFLoGbtAd8zYJU8vjgOdUKys_CweKUIg",
+      "qHpA-7_aO-XuvJB0dUdx_oeIwUJtgs_HjXa4rd1GrPLrgyg1n60Nw5N63T_5Tz4DZeAIJtvU-l34GXQVY_xZhA",
+      "BwFNpgp_HgouOjRWiDwK-Qo_OahLjTyt8nr45VQdmyWA7ZnvOPXsWOI7LGeLcvZ2XA1uNvVw-QtfklRfUuJKgg"
+    ]
+  },
+  "_sd_alg": "sha3-512"
+}
