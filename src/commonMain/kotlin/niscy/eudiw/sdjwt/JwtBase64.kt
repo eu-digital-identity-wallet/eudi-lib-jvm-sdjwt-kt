@@ -8,20 +8,14 @@ interface Base64UrlCodec {
     fun decode(value: String): ByteArray
 }
 
-interface Base64Codec {
-    fun decode(value: ByteArray): ByteArray
-    fun decode(value: String): ByteArray
-}
-
-
 
 object JwtBase64 {
 
-    val base64UrlCodec: Base64UrlCodec = base64UrlCodec()
-    val base64Codec: Base64Codec = base64Codec()
+    private val base64UrlCodec: Base64UrlCodec = base64UrlCodec()
+
 
     fun encode(value: ByteArray): ByteArray = base64UrlCodec.encode(value)
-    fun decode(value: ByteArray):ByteArray  = base64UrlCodec.decode(value)
+    fun decode(value: ByteArray): ByteArray = base64UrlCodec.decode(value)
 
     fun encode(value: String): ByteArray = encode(value.encodeToByteArray())
     fun decode(value: String): ByteArray = base64UrlCodec.decode(value)
@@ -34,6 +28,4 @@ object JwtBase64 {
     fun encodeString(value: String): String = encodeString(value.encodeToByteArray())
     fun decodeString(value: String): String = decodeString(value.encodeToByteArray())
 
-    fun decodeNonSafe(value: ByteArray): ByteArray = base64Codec.decode(value)
-    fun decodeNonSafe(value: String): ByteArray = base64Codec.decode(value)
 }

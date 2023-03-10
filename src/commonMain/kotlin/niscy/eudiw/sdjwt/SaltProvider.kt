@@ -8,7 +8,7 @@ fun interface SaltProvider {
 
     companion object {
 
-        val Default : SaltProvider by lazy {  randomSaltProvider(16) }
+        val Default: SaltProvider by lazy { randomSaltProvider(16) }
 
         private val secureRandom: Random = Random.Default
 

@@ -22,8 +22,13 @@ value class Disclosure private constructor(val value: String) {
 
         /**
          * Directly wraps a string representing into a [Disclosure]
+         * Validates the given string is a base64-url encoded json array that contains
+         * a json string (salt)
+         * a json string (claim name)
+         * a json element (claim value)
          */
         internal fun wrap(s: String): Result<Disclosure> = decode(s).map { Disclosure(s) }
+
 
         /**
          * Encodes a [Claim] into [Disclosure] using the provided [saltProvider]
@@ -78,5 +83,10 @@ value class Disclosure private constructor(val value: String) {
             val claimValue = array[2]
             salt to (claimName to claimValue)
         }
+
+        fun concat(ds: Iterable<Disclosure>): String =
+            ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" }
     }
 }
+
+fun Iterable<Disclosure>.concat(): String = Disclosure.concat(this)

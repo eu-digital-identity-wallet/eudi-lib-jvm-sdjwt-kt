@@ -11,7 +11,7 @@ repositories {
 }
 
 val kotlinxSerializationVersion = "1.5.0"
-val uriKmpVersion= "0.0.11"
+val uriKmpVersion = "0.0.11"
 val nimbusJoseJwtVersion = "9.31"
 
 kotlin {
@@ -36,7 +36,7 @@ kotlin {
             }
         }
         val jvmMain by getting {
-            dependencies{
+            dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:$nimbusJoseJwtVersion")
             }
         }

@@ -1,10 +1,10 @@
+import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.*
 import niscy.eudiw.sdjwt.*
 import java.util.*
 
@@ -43,15 +43,14 @@ val jwt_vc_payload = "{\n" +
         "}"
 
 
-val format = Json { prettyPrint=true }
-
+val format = Json { prettyPrint = true }
 
 
 fun sdJwtForVC(jwtVcJson: JsonObject, rsaKey: RSAKey): Result<CombinedIssuanceSdJwt> = runCatching {
     val credentialSubjectJson = jwtVcJson["credentialSubject"]!!.jsonObject
-    val plainJwtAttributes = JsonObject( jwtVcJson.minus("credentialSubject"))
+    val plainJwtAttributes = JsonObject(jwtVcJson.minus("credentialSubject"))
 
-    SdJwtOps.flatDiscloseAndEncode(
+    flatDiscloseAndEncode(
         signer = com.nimbusds.jose.crypto.RSASSASigner(rsaKey),
         algorithm = com.nimbusds.jose.JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
@@ -61,25 +60,39 @@ fun sdJwtForVC(jwtVcJson: JsonObject, rsaKey: RSAKey): Result<CombinedIssuanceSd
 
 }
 
-fun genRSAKeyPair() : RSAKey  =
+fun genRSAKeyPair(): RSAKey =
     RSAKeyGenerator(2048)
         .keyUse(KeyUse.SIGNATURE) // indicate the intended use of the key (optional)
         .keyID(UUID.randomUUID().toString()) // give the key a unique ID (optional)
         .issueTime(Date()) // issued-at timestamp (optional)
         .generate()
 
-
+fun extractVerifiableCredentialsClaim(json: JsonObject): Pair<JsonObject, JsonObject> {
+    val credentialSubjectJson = json["credentialSubject"]!!.jsonObject
+    val plainJwtAttributes = JsonObject(json.minus("credentialSubject"))
+    return plainJwtAttributes to credentialSubjectJson
+}
 
 
 fun main() {
 
+    // this is the json we want to include in the JWT (not disclosed)
+    val jwtVcJson: JsonObject = format.parseToJsonElement(jwt_vc_payload).jsonObject
+    val (jwtClaims, vcClaim) = extractVerifiableCredentialsClaim(jwtVcJson)
 
-    val jwtVcJson : JsonObject = format.parseToJsonElement(jwt_vc_payload).jsonObject
 
+    // Generate an RSA key pair
     val rsaJWK = genRSAKeyPair()
+    val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
+    val sdJwt: CombinedIssuanceSdJwt = flatDiscloseAndEncode(
+        signer = com.nimbusds.jose.crypto.RSASSASigner(rsaJWK),
+        algorithm = com.nimbusds.jose.JWSAlgorithm.RS256,
+        hashAlgorithm = HashAlgorithm.SHA3_512,
+        jwtClaims = jwtClaims,
+        claimToBeDisclosed = "credentialSubject" to vcClaim
+    ).getOrThrow()
 
-    val sdJwt : CombinedIssuanceSdJwt = sdJwtForVC(jwtVcJson, rsaJWK).getOrThrow()
 
     val (jwt, disclosures) = sdJwt.split().getOrThrow()
 
@@ -87,22 +100,43 @@ fun main() {
     println(jwt_vc_payload)
     println("\nVC as sd-jwt\n================")
     println(sdJwt)
-    println("\nSD-JWT-VC\n================")
+    println("\nJwt\n================")
     println(jwt)
     println("\nDisclosures\n================")
     disclosures.forEach { println(it.claim()) }
 
 
-    val claimSet = com.nimbusds.jwt.SignedJWT.parse(jwt).run {
-        val rsaPublicJWK = rsaJWK.toPublicJWK().also{jwk-> println("\npublic key\n" +
-                "================\n$jwk") }
-        val verifier =  com.nimbusds.jose.crypto.RSASSAVerifier(rsaPublicJWK)
-        require( verify(verifier))
-        jwtClaimsSet.toString(false)
-    }!!
+    val claimSet = verify(jwt, disclosures, RSASSAVerifier(rsaPublicJWK)).getOrThrow()
+
     println("\nVerified Claim Set \n================")
-    format.parseToJsonElement(claimSet).also { println(format.encodeToString(it)) }
-
-
+    println(format.encodeToString(claimSet))
 }
 
+fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifier): Result<JsonObject> =
+    runCatching {
+        val signedJwt = SignedJWT.parse(jwt)
+        check(signedJwt.verify(verifier)) { "Signature verification failed" }
+        val sdAlg = signedJwt.jwtClaimsSet.getStringClaim("_sd_alg")
+            ?: throw IllegalArgumentException("Missing _sd_alg attribute")
+        val hashAlg = HashAlgorithm.fromString(sdAlg) ?: throw IllegalArgumentException("Unsupported hash alg $sdAlg")
+        val calculatedHashes = ds.associateBy { HashedDisclosure.create(hashAlg, it).getOrThrow() }
+
+        val str = signedJwt.jwtClaimsSet.toString(false)
+        val claimSet = format.parseToJsonElement(str).jsonObject
+        val ehds: List<HashedDisclosure> = extractDisclosureHashes(claimSet).getOrThrow()
+        if (calculatedHashes.keys.any { !ehds.contains(it) }) throw IllegalArgumentException("Hash mismatch")
+
+        claimSet
+
+
+    }
+
+fun extractDisclosureHashes(j: JsonObject): Result<List<HashedDisclosure>> = runCatching {
+    val hds: List<HashedDisclosure> = j["_sd"]?.jsonArray?.map {
+        check(it.jsonPrimitive.isString)
+        HashedDisclosure.wrap(it.jsonPrimitive.content).getOrThrow()
+    } ?: emptyList()
+
+
+    hds + j.values.filterIsInstance<JsonObject>().flatMap { extractDisclosureHashes(it).getOrThrow() }
+}

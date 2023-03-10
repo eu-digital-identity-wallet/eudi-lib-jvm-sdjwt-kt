@@ -10,20 +10,33 @@ data class DisclosedJsonObject(val disclosures: List<Disclosure>, val json: Json
 
 object DislosureOps {
 
+    private val format: Json by lazy { Json }
+    fun flatDisclose(
+        hashAlgorithm: HashAlgorithm,
+        saltProvider: SaltProvider,
+        target: String?,
+        claimToBeDisclosed: Pair<String, String>
+    ): Result<DisclosedJsonObject> = runCatching{
+        fun parseToObject(s: String): JsonObject = format.parseToJsonElement(s).jsonObject
+        val targetJson = target?.let { parseToObject(it) } ?: JsonObject(emptyMap())
+        val claimsToBeDisclosedJson =claimToBeDisclosed.first to parseToObject(claimToBeDisclosed.second)
+        flatDisclose(hashAlgorithm, saltProvider, targetJson, claimsToBeDisclosedJson).getOrThrow()
+    }
 
-    fun flatDisclose( hashAlgorithm: HashAlgorithm,
-                      saltProvider: SaltProvider,
-                      target: JsonObject = JsonObject(emptyMap()),
-                      claimToBeDisclosed: Pair<String, JsonObject>) : Result<DisclosedJsonObject> = runCatching{
 
+    fun flatDisclose(
+        hashAlgorithm: HashAlgorithm,
+        saltProvider: SaltProvider,
+        target: JsonObject = JsonObject(emptyMap()),
+        claimToBeDisclosed: Pair<String, JsonObject>
+    ): Result<DisclosedJsonObject> = runCatching {
 
         val resultJson = target.toMutableMap()
-
         val flatJson = mutableMapOf<String, JsonElement>()
         val resultDs = mutableListOf<Disclosure>()
 
         val (cN, cJson) = claimToBeDisclosed
-        for ((k,v)in cJson) {
+        for ((k, v) in cJson) {
             val d = Disclosure.encode(saltProvider, k to v).getOrThrow()
             val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
             flatJson.addHashedDisclosures(setOf(h))
@@ -86,7 +99,7 @@ object DislosureOps {
         }
 
         for ((name, json) in claimsToBeDisclosed) {
-           handle(name,json)
+            handle(name, json)
         }
 
         DisclosedJsonObject(resultDs, JsonObject(resultJson))
