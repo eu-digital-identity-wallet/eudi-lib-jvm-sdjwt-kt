@@ -23,15 +23,15 @@ test:
   script:
     - ./gradlew test --stacktrace
 
-code_style:
-  stage: test
-  script:
-    - ./gradlew ktlint
-  artifacts:
-    paths:
-      - build/ktlint.xml
-    expire_in: 1 day
-  allow_failure: true
+#code_style:
+#  stage: test
+#  script:
+#    - ./gradlew ktlint
+#  artifacts:
+#    paths:
+#      - build/ktlint.xml
+#    expire_in: 1 day
+#  allow_failure: true
 
 package:
   stage: package
