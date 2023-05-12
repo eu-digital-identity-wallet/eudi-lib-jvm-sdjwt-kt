@@ -22,7 +22,7 @@ fun flatDiscloseAndEncode(
     claimToBeDisclosed: Pair<String, JsonObject>
 ): Result<CombinedIssuanceSdJwt> = runCatching {
 
-    val (disclosures, jwtClaimSet) = DislosureOps.flatDisclose(
+    val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
         hashAlgorithm,
         saltProvider,
         jwtClaims,
@@ -49,7 +49,7 @@ fun flatDiscloseAndEncode(
     claimToBeDisclosed: Pair<String, Map<String, Any>>
 ): Result<CombinedIssuanceSdJwt> = runCatching {
 
-    val (disclosures, jwtClaimSet) = DislosureOps.flatDisclose(
+    val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
         hashAlgorithm = hashAlgorithm,
         saltProvider = saltProvider,
         target = jwtClaims?.toString(),

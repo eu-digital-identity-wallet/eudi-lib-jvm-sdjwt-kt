@@ -8,7 +8,7 @@ import kotlinx.serialization.json.*
 data class DisclosedJsonObject(val disclosures: List<Disclosure>, val json: JsonObject)
 
 
-object DislosureOps {
+object DisclosureOps {
 
     private val format: Json by lazy { Json }
     fun flatDisclose(

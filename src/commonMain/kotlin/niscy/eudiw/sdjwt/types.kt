@@ -45,8 +45,8 @@ typealias Jwt = String
 fun CombinedIssuanceSdJwt.split(): Result<Pair<Jwt, List<Disclosure>>> = runCatching {
     val list = split("~")
     require(list.size > 1) { "Neither JWT nor disclosures were found" }
-    list[0] to Disclosure.runCatching {
+    list[0] to Disclosure.run {
         list.takeLast(list.size - 1).map { wrap(it).getOrThrow() }
-    }.getOrThrow()
+    }
 }
 

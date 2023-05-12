@@ -13,7 +13,6 @@ object JwtBase64 {
 
     private val base64UrlCodec: Base64UrlCodec = base64UrlCodec()
 
-
     fun encode(value: ByteArray): ByteArray = base64UrlCodec.encode(value)
     fun decode(value: ByteArray): ByteArray = base64UrlCodec.decode(value)
 
