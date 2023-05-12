@@ -1,6 +1,6 @@
 plugins {
-    kotlin("multiplatform") version "1.8.0"
-    kotlin("plugin.serialization") version "1.8.0"
+    kotlin("multiplatform") version "1.8.21"
+    kotlin("plugin.serialization") version "1.8.21"
 }
 
 group = "niscy.eudiw"
@@ -10,7 +10,7 @@ repositories {
     mavenCentral()
 }
 
-val kotlinxSerializationVersion = "1.5.0"
+val kotlinxSerializationVersion = "1.5.1"
 val uriKmpVersion = "0.0.11"
 val nimbusJoseJwtVersion = "9.31"
 
