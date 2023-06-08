@@ -11,54 +11,40 @@ import java.util.*
 
 val hmacKey = "111111111111111111111111111111111111111111"
 
-val jwt_vc_payload = "{\n" +
-        "  \"iss\": \"https://example.com\",\n" +
-        "  \"jti\": \"http://example.com/credentials/3732\",\n" +
-        "  \"nbf\": 1541493724,\n" +
-        "  \"iat\": 1541493724,\n" +
-        "  \"cnf\": {\n" +
-        "    \"jwk\": {\n" +
-        "      \"kty\": \"RSA\",\n" +
-        "      \"n\": \"0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw\",\n" +
-        "      \"e\": \"AQAB\"\n" +
-        "    }\n" +
-        "  },\n" +
-        "  \"type\": \"IdentityCredential\",\n" +
-        "  \"credentialSubject\": {\n" +
-        "    \"given_name\": \"John\",\n" +
-        "    \"family_name\": \"Doe\",\n" +
-        "    \"email\": \"johndoe@example.com\",\n" +
-        "    \"phone_number\": \"+1-202-555-0101\",\n" +
-        "    \"address\": {\n" +
-        "      \"street_address\": \"123 Main St\",\n" +
-        "      \"locality\": \"Anytown\",\n" +
-        "      \"region\": \"Anystate\",\n" +
-        "      \"country\": \"US\"\n" +
-        "    },\n" +
-        "    \"birthdate\": \"1940-01-01\",\n" +
-        "    \"is_over_18\": true,\n" +
-        "    \"is_over_21\": true,\n" +
-        "    \"is_over_65\": true\n" +
-        "  }\n" +
-        "}"
+val jwtVcPayload = """{
+  "iss": "https://example.com",
+  "jti": "http://example.com/credentials/3732",
+  "nbf": 1541493724,
+  "iat": 1541493724,
+  "cnf": {
+    "jwk": {
+      "kty": "RSA",
+      "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+      "e": "AQAB"
+    }
+  },
+  "type": "IdentityCredential",
+  "credentialSubject": {
+    "given_name": "John",
+    "family_name": "Doe",
+    "email": "johndoe@example.com",
+    "phone_number": "+1-202-555-0101",
+    "address": {
+      "street_address": "123 Main St",
+      "locality": "Anytown",
+      "region": "Anystate",
+      "country": "US"
+    },
+    "birthdate": "1940-01-01",
+    "is_over_18": true,
+    "is_over_21": true,
+    "is_over_65": true
+  }
+}"""
 
 
 val format = Json { prettyPrint = true }
 
-
-fun sdJwtForVC(jwtVcJson: JsonObject, rsaKey: RSAKey): Result<CombinedIssuanceSdJwt> = runCatching {
-    val credentialSubjectJson = jwtVcJson["credentialSubject"]!!.jsonObject
-    val plainJwtAttributes = JsonObject(jwtVcJson.minus("credentialSubject"))
-
-    flatDiscloseAndEncode(
-        signer = com.nimbusds.jose.crypto.RSASSASigner(rsaKey),
-        algorithm = com.nimbusds.jose.JWSAlgorithm.RS256,
-        hashAlgorithm = HashAlgorithm.SHA3_512,
-        jwtClaims = plainJwtAttributes,
-        claimToBeDisclosed = "credentialSubject" to credentialSubjectJson
-    ).getOrThrow()
-
-}
 
 fun genRSAKeyPair(): RSAKey =
     RSAKeyGenerator(2048)
@@ -77,7 +63,7 @@ fun extractVerifiableCredentialsClaim(json: JsonObject): Pair<JsonObject, JsonOb
 fun main() {
 
     // this is the json we want to include in the JWT (not disclosed)
-    val jwtVcJson: JsonObject = format.parseToJsonElement(jwt_vc_payload).jsonObject
+    val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
     val (jwtClaims, vcClaim) = extractVerifiableCredentialsClaim(jwtVcJson)
 
 
@@ -97,7 +83,7 @@ fun main() {
     val (jwt, disclosures) = sdJwt.split().getOrThrow()
 
     println("\nJWT-VC payload\n================")
-    println(jwt_vc_payload)
+    println(jwtVcPayload)
     println("\nVC as sd-jwt\n================")
     println(sdJwt)
     println("\nJwt\n================")

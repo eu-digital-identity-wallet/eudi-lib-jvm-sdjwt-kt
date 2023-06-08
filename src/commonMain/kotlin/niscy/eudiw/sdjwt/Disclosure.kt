@@ -1,19 +1,21 @@
 package niscy.eudiw.sdjwt
 
 
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 
 
 /**
- * A disclosure
- * @see <a href="https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-02.html#name-selectively-disclosable-cla">Selectively Disclosable Claims</a>
+ * A combination of a salt, a cleartext claim name, and a cleartext claim value,
+ * all of which are used to calculate a digest for the respective claim.
+ *
+ * @param value a string as defined in [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 @JvmInline
 value class Disclosure private constructor(val value: String) {
 
     /**
-     * The disclosed claim
+     * Decodes and extracts the disclosed claim
+     * @return the disclosed claim
      */
     fun claim(): Claim =
         decode(value).getOrThrow().second
@@ -32,8 +34,12 @@ value class Disclosure private constructor(val value: String) {
 
         /**
          * Encodes a [Claim] into [Disclosure] using the provided [saltProvider]
+         * according to [SD-JWT spec][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
+         *
+         * @param saltProvider the [SaltProvider] to be used. Defaults to [SaltProvider.Default]
+         * @param claim the claim to be disclosed
          */
-        internal fun encode(
+        fun encode(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim
         ): Result<Disclosure> {
@@ -50,11 +56,13 @@ value class Disclosure private constructor(val value: String) {
                     is JsonObject -> json.entries.all { isValidAttributeName(it.key) && isValidJsonElement(it.value) }
                 }
             return runCatching {
+
                 if (!isValidAttributeName(claim.name())) {
                     throw IllegalArgumentException("Given claim should not contain an attribute named _sd")
                 }
+
                 if (!isValidJsonElement(claim.value())) {
-                    throw IllegalArgumentException("Claim should not contain an attribute named _sd")
+                    throw IllegalArgumentException("Claim should not contain a null value or an JSON object with attribute named _sd")
                 }
                 // Create a Json Array [salt, claimName, claimValue]
                 val jsonArray = buildJsonArray {
@@ -71,6 +79,9 @@ value class Disclosure private constructor(val value: String) {
 
         /**
          * Decodes the given [string][disclosure]  into a pair of [salt][Salt] and [claim][Claim]
+         *
+         * @param disclosure the disclosure value
+         * @return the [Salt] and the [Claim] of the disclosure, if the provided input is a disclosure.
          */
         fun decode(disclosure: String): Result<Pair<Salt, Claim>> = runCatching {
             val base64Decoded = JwtBase64.decodeString(disclosure)
@@ -84,6 +95,10 @@ value class Disclosure private constructor(val value: String) {
             salt to (claimName to claimValue)
         }
 
+        /**
+         * Concatenates the given disclosures into a single string, separated by
+         * "~". The string also starts with "~".
+         */
         fun concat(ds: Iterable<Disclosure>): String =
             ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" }
     }

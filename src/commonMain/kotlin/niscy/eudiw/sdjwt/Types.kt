@@ -4,24 +4,37 @@ import kotlinx.serialization.json.JsonElement
 
 /**
  * A claim is an attribute of an entity.
- * It consists of a name (of the attribute) and its value.
+ * The claim name, or key, as it would be used in a regular JWT body.
+ * The claim value, as it would be used in a regular JWT body.
+ * The value MAY be of any type that is allowed in
+ * JSON, including numbers, strings, booleans, arrays, and objects
  *
- * There is set of well-defined, yet optional, claims defined by JWT, which are
- * collectively named as <em>registered claims</em>
  */
 typealias Claim = Pair<String, JsonElement>
 
+/**
+ * The claim name, or key, as it would be used in a regular JWT body
+ * @return the name of the claim
+ */
 fun Claim.name(): String = first
+
+/**
+ * The claim value, as it would be used in a regular JWT body.
+ *  The value MAY be of any type that is allowed in JSON
+ * @return the value of the claim
+ */
 fun Claim.value(): JsonElement = second
 
 
 /**
  * Salt to be included in a [Disclosure] claim.
- * It is defined in <a href="https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-02.html#name-selectively-disclosable-cla">Selectively Disclosable Claims</a>
+ * Check [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 typealias Salt = String
 
-
+/**
+ * Hashing algorithms, used to produce the [HashedDisclosure] of a [Disclosure]
+ */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),
     SHA_384("sha-384"),
@@ -31,6 +44,12 @@ enum class HashAlgorithm(val alias: String) {
     SHA3_512("sha3-512");
 
     companion object {
+
+        /**
+         * Gets the [HashAlgorithm] by its alias
+         * @param s a string with the alias of the algorithm
+         * @return either a matching [HashAlgorithm] or null
+         */
         fun fromString(s: String): HashAlgorithm? = values().find { it.alias == s }
     }
 }

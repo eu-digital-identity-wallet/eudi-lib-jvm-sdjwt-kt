@@ -1,8 +1,8 @@
 package niscy.eudiw.sdjwt
 
 /**
- * The hash of a disclosure
- * @see <a href="https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-02.html#name-hashing-disclosures">Hashing Disclosures</a>
+ * The hash of a [disclosure][Disclosure]
+ *
  */
 @JvmInline
 value class HashedDisclosure private constructor(val value: String) {
@@ -11,6 +11,9 @@ value class HashedDisclosure private constructor(val value: String) {
         /**
          * Wraps the given [string][s] into [HashedDisclosure]
          * It expects that the given input is base64-url encoded. If not an exception is thrown
+         *
+         * @param s the value to wrap
+         * @return the [HashedDisclosure] if the given input represents a valid base64 encoded string
          */
         fun wrap(s: String): Result<HashedDisclosure> = runCatching {
             JwtBase64.decode(s)
@@ -19,6 +22,11 @@ value class HashedDisclosure private constructor(val value: String) {
 
         /**
          * Calculates the hash of the given [disclosure][d] using the specified [hashing algorithm][hashingAlgorithm]
+         *
+         * @param hashingAlgorithm the hashing algorithm to use
+         * @param d the disclosure to hash
+         *
+         * @return the [HashedDisclosure] of the given [disclosure][d]
          */
         fun create(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<HashedDisclosure> = runCatching {
             fun base64UrlEncodedDigestOf(): String {

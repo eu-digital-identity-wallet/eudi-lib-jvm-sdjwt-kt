@@ -1,18 +1,25 @@
 package niscy.eudiw.sdjwt
 
-import com.nimbusds.jose.util.JSONObjectUtils as MimbusJSONObjectUtils
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
 import com.nimbusds.jose.JWSObject as NimbusJWSObject
 import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
 import com.nimbusds.jose.Payload as NimbusPayload
+import com.nimbusds.jose.util.JSONObjectUtils as MimbusJSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimSet
-
 
 
 private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 
+/**
+ * @param signer the signer that will be used to sign the SD-JWT
+ * @param algorithm
+ * @param hashAlgorithm
+ * @param saltProvider
+ * @param jwtClaims
+ * @param claimToBeDisclosed
+ */
 fun flatDiscloseAndEncode(
     signer: NimbusJWSSigner,
     algorithm: NimbusJWSAlgorithm,
@@ -53,7 +60,9 @@ fun flatDiscloseAndEncode(
         hashAlgorithm = hashAlgorithm,
         saltProvider = saltProvider,
         target = jwtClaims?.toString(),
-        claimToBeDisclosed = claimToBeDisclosed.first to claimToBeDisclosed.second.let { MimbusJSONObjectUtils.toJSONString(it) }
+        claimToBeDisclosed = claimToBeDisclosed.first to claimToBeDisclosed.second.let {
+            MimbusJSONObjectUtils.toJSONString(it)
+        }
     ).getOrThrow()
 
     val header = NimbusJWSHeader(algorithm)

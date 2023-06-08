@@ -4,6 +4,9 @@ import kotlinx.serialization.json.*
 
 /**
  * Represent a selectively disclosed Json object and the calculated disclosures
+ *
+ * @param disclosures the disclosures calculated
+ * @param json the JSON object that contains the hashed disclosures
  */
 data class DisclosedJsonObject(val disclosures: List<Disclosure>, val json: JsonObject)
 
