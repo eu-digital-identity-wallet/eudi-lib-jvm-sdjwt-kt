@@ -15,8 +15,8 @@ private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 /**
  * @param signer the signer that will be used to sign the SD-JWT
  * @param algorithm
- * @param hashAlgorithm
- * @param saltProvider
+*  @param hashAlgorithm the algorithm to be used for hashing disclosures
+ * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
  * @param jwtClaims
  * @param claimToBeDisclosed
  */
@@ -47,6 +47,10 @@ fun flatDiscloseAndEncode(
     jwt + disclosures.concat()
 }
 
+/**
+ * @param hashAlgorithm the algorithm to be used for hashing disclosures
+ * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+ */
 fun flatDiscloseAndEncode(
     signer: NimbusJWSSigner,
     algorithm: NimbusJWSAlgorithm,
@@ -59,7 +63,7 @@ fun flatDiscloseAndEncode(
     val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
         hashAlgorithm = hashAlgorithm,
         saltProvider = saltProvider,
-        target = jwtClaims?.toString(),
+        otherJwtClaims = jwtClaims?.toString(),
         claimToBeDisclosed = claimToBeDisclosed.first to claimToBeDisclosed.second.let {
             MimbusJSONObjectUtils.toJSONString(it)
         }

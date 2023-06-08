@@ -6,54 +6,69 @@ import kotlinx.serialization.json.*
  * Represent a selectively disclosed Json object and the calculated disclosures
  *
  * @param disclosures the disclosures calculated
- * @param json the JSON object that contains the hashed disclosures
+ * @param jwtClaimSet the JSON object that contains the hashed disclosures
  */
-data class DisclosedJsonObject(val disclosures: List<Disclosure>, val json: JsonObject)
+data class DisclosedJsonObject(val disclosures: List<Disclosure>, val jwtClaimSet: JsonObject)
 
 
 object DisclosureOps {
 
     private val format: Json by lazy { Json }
+
+    /**
+     * @param hashAlgorithm the algorithm to be used for []hashing disclosures][HashedDisclosure]
+     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+     * @param otherJwtClaims
+     * @param claimToBeDisclosed
+     */
     fun flatDisclose(
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
-        target: String?,
+        otherJwtClaims: String?,
         claimToBeDisclosed: Pair<String, String>
-    ): Result<DisclosedJsonObject> = runCatching{
+    ): Result<DisclosedJsonObject> = runCatching {
         fun parseToObject(s: String): JsonObject = format.parseToJsonElement(s).jsonObject
-        val targetJson = target?.let { parseToObject(it) } ?: JsonObject(emptyMap())
-        val claimsToBeDisclosedJson =claimToBeDisclosed.first to parseToObject(claimToBeDisclosed.second)
-        flatDisclose(hashAlgorithm, saltProvider, targetJson, claimsToBeDisclosedJson).getOrThrow()
+        val otherJwtClaimsJson = otherJwtClaims?.let { parseToObject(it) } ?: JsonObject(emptyMap())
+        val claimsToBeDisclosedJson = claimToBeDisclosed.first to parseToObject(claimToBeDisclosed.second)
+        flatDisclose(hashAlgorithm, saltProvider, otherJwtClaimsJson, claimsToBeDisclosedJson).getOrThrow()
     }
 
 
+    /**
+     * @param hashAlgorithm the algorithm to be used for hashing disclosures
+     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+     * @param otherJwtClaims
+     * @param claimToBeDisclosed
+     */
     fun flatDisclose(
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
-        target: JsonObject = JsonObject(emptyMap()),
+        otherJwtClaims: JsonObject = JsonObject(emptyMap()),
         claimToBeDisclosed: Pair<String, JsonObject>
     ): Result<DisclosedJsonObject> = runCatching {
 
-        val resultJson = target.toMutableMap()
-        val flatJson = mutableMapOf<String, JsonElement>()
-        val resultDs = mutableListOf<Disclosure>()
+        val jwtClaimSet = otherJwtClaims.toMutableMap()
+        val hashedDisclosures = mutableSetOf<HashedDisclosure>()
+        val disclosures = mutableListOf<Disclosure>()
 
-        val (cN, cJson) = claimToBeDisclosed
-        for ((k, v) in cJson) {
+        val (_, disclosedClaimValue) = claimToBeDisclosed
+        for ((k, v) in disclosedClaimValue) {
             val d = Disclosure.encode(saltProvider, k to v).getOrThrow()
             val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-            flatJson.addHashedDisclosures(setOf(h))
-            resultDs.add(d)
+            hashedDisclosures.add(h)
+            disclosures.add(d)
         }
-        resultJson[cN] = JsonObject(flatJson)
-        if (resultDs.isNotEmpty()) {
-            resultJson.addHashingAlgorithm(hashAlgorithm)
+        if (disclosures.isNotEmpty()) {
+            jwtClaimSet.addHashedDisclosures(hashedDisclosures)
+            jwtClaimSet.addHashingAlgorithm(hashAlgorithm)
         }
-
-
-        DisclosedJsonObject(resultDs, JsonObject(resultJson))
+        DisclosedJsonObject(disclosures, JsonObject(jwtClaimSet))
     }
 
+    /**
+     * @param hashAlgorithm the algorithm to be used for hashing disclosures
+     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+     */
     fun structureDisclose(
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
@@ -80,6 +95,8 @@ object DisclosureOps {
      * and returns the list of disclosures and a new [JsonObject] which contains the hashed disclosures (instead
      * of the claims)
      *
+     * @param hashAlgorithm the algorithm to be used for hashing disclosures
+     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
      */
     fun structureDisclose(
         hashAlgorithm: HashAlgorithm,
