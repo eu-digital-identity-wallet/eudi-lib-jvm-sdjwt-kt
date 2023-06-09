@@ -64,7 +64,7 @@ fun main() {
 
     // this is the json we want to include in the JWT (not disclosed)
     val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
-    val (jwtClaims, vcClaim) = extractVerifiableCredentialsClaim(jwtVcJson)
+    val (jwtClaims, vcClaim) = jwtVcJson.extractClaim("credentialSubject")
 
 
     // Generate an RSA key pair
@@ -76,7 +76,8 @@ fun main() {
         algorithm = com.nimbusds.jose.JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
         jwtClaims = jwtClaims,
-        claimToBeDisclosed = "credentialSubject" to vcClaim
+        claimToBeDisclosed = vcClaim!!,
+        numOfDecoys = 0
     ).getOrThrow()
 
 

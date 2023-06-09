@@ -34,6 +34,7 @@ value class HashedDisclosure private constructor(val value: String) {
                 val digest = hashFunction(d.value.encodeToByteArray())
                 return JwtBase64.encodeString(digest)
             }
+
             val value = base64UrlEncodedDigestOf()
             HashedDisclosure(value)
         }

@@ -26,14 +26,16 @@ fun flatDiscloseAndEncode(
     hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     saltProvider: SaltProvider = SaltProvider.Default,
     jwtClaims: JsonObject = JsonObject(emptyMap()),
-    claimToBeDisclosed: Pair<String, JsonObject>
+    claimToBeDisclosed: Claim,
+    numOfDecoys: Int
 ): Result<CombinedIssuanceSdJwt> = runCatching {
 
     val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
         hashAlgorithm,
         saltProvider,
         jwtClaims,
-        claimToBeDisclosed
+        claimToBeDisclosed,
+        numOfDecoys
     ).getOrThrow()
 
     val header = NimbusJWSHeader(algorithm)
@@ -57,7 +59,8 @@ fun flatDiscloseAndEncode(
     hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     saltProvider: SaltProvider = SaltProvider.Default,
     jwtClaims: NimbusJWTClaimSet?,
-    claimToBeDisclosed: Pair<String, Map<String, Any>>
+    claimToBeDisclosed: Pair<String, Map<String, Any>>,
+    numOfDecoys: Int
 ): Result<CombinedIssuanceSdJwt> = runCatching {
 
     val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
@@ -66,7 +69,8 @@ fun flatDiscloseAndEncode(
         otherJwtClaims = jwtClaims?.toString(),
         claimToBeDisclosed = claimToBeDisclosed.first to claimToBeDisclosed.second.let {
             MimbusJSONObjectUtils.toJSONString(it)
-        }
+        },
+        numOfDecoys = numOfDecoys
     ).getOrThrow()
 
     val header = NimbusJWSHeader(algorithm)
