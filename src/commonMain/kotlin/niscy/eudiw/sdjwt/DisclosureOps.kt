@@ -8,7 +8,7 @@ import kotlinx.serialization.json.*
  * @param disclosures the disclosures calculated
  * @param jwtClaimSet the JSON object that contains the hashed disclosures
  */
-data class DisclosedJsonObject(val disclosures: List<Disclosure>, val jwtClaimSet: JsonObject)
+data class DisclosedJsonObject(val disclosures: Set<Disclosure>, val jwtClaimSet: JsonObject)
 
 
 object DisclosureOps {
@@ -49,37 +49,27 @@ object DisclosureOps {
         numOfDecoys: Int
     ): Result<DisclosedJsonObject> = runCatching {
 
-        val jwtClaimSet = otherJwtClaims.toMutableMap()
-        val hashedDisclosures = mutableSetOf<HashedDisclosure>()
-        val disclosures = mutableListOf<Disclosure>()
 
-
-        val (_, disclosedClaimValue) = claimToBeDisclosed
-        when (disclosedClaimValue) {
-            is JsonObject ->
-                for ((k, v) in disclosedClaimValue) {
-                    val d = Disclosure.encode(saltProvider, k to v).getOrThrow()
-                    val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-                    hashedDisclosures.add(h)
-                    disclosures.add(d)
-                }
-
-            else -> {
-                val d = Disclosure.encode(saltProvider, claimToBeDisclosed).getOrThrow()
-                val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-                hashedDisclosures.add(h)
-                disclosures.add(d)
+        val subClaimsToBeDisclosed =
+            when (val disclosedClaimValue = claimToBeDisclosed.value()) {
+                is JsonObject -> disclosedClaimValue.entries.map { it.key to it.value }
+                else -> setOf(claimToBeDisclosed)
             }
 
+        val disclosuresAnHashes = subClaimsToBeDisclosed.associate { claim ->
+            val d = Disclosure.encode(saltProvider, claim).getOrThrow()
+            val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
+            d to h
         }
 
-        if (disclosures.isNotEmpty()) {
-            val decoys = DecoyGen.Default.gen(hashAlgorithm, numOfDecoys)
-            hashedDisclosures.addAll(decoys)
-            jwtClaimSet.addHashedDisclosures(hashedDisclosures)
-            jwtClaimSet.addHashingAlgorithm(hashAlgorithm)
-        }
+        val decoys = DecoyGen.Default.gen(hashAlgorithm, numOfDecoys)
+        val hashes = disclosuresAnHashes.values + decoys
+        val disclosures = disclosuresAnHashes.keys
+        val jwtClaimSet = otherJwtClaims.toMutableMap()
+        jwtClaimSet.addHashedDisclosuresClaim(hashes)
+        jwtClaimSet.addHashingAlgorithmClaim(hashAlgorithm)
         DisclosedJsonObject(disclosures, JsonObject(jwtClaimSet))
+
     }
 
     /**
@@ -130,8 +120,8 @@ object DisclosureOps {
             resultDs.addAll(ds)
             resultJson[name] = dJson
             if (hds.isNotEmpty()) {
-                resultJson.addHashedDisclosures(hds)
-                resultJson.addHashingAlgorithm(hashAlgorithm)
+                resultJson.addHashedDisclosuresClaim(hds)
+                resultJson.addHashingAlgorithmClaim(hashAlgorithm)
             }
         }
 
@@ -139,7 +129,7 @@ object DisclosureOps {
             handle(name, json)
         }
 
-        DisclosedJsonObject(resultDs, JsonObject(resultJson))
+        DisclosedJsonObject(resultDs.toSet(), JsonObject(resultJson))
     }
 
 
@@ -171,7 +161,7 @@ object DisclosureOps {
                 else -> {
                     val d = Disclosure.encode(saltProvider, name to json).getOrThrow()
                     val hd = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-                    resultJson.addHashedDisclosures(setOf(hd))
+                    resultJson.addHashedDisclosuresClaim(setOf(hd))
                     resultDs.add(d)
                     resultHds.add(hd)
                 }
@@ -190,7 +180,7 @@ object DisclosureOps {
     // Helper methods for JSON
     //
 
-    private fun MutableMap<String, JsonElement>.addHashedDisclosures(hds: Collection<HashedDisclosure>) {
+    private fun MutableMap<String, JsonElement>.addHashedDisclosuresClaim(hds: Collection<HashedDisclosure>) {
 
         if (hds.isNotEmpty()) {
             val existingSds = this["_sd"]?.jsonArray ?: JsonArray(emptyList())
@@ -199,7 +189,7 @@ object DisclosureOps {
         }
     }
 
-    private fun MutableMap<String, JsonElement>.addHashingAlgorithm(hashAlgorithm: HashAlgorithm) {
+    private fun MutableMap<String, JsonElement>.addHashingAlgorithmClaim(hashAlgorithm: HashAlgorithm) {
         if (this["_sd_alg"] == null) this["_sd_alg"] = hashAlgorithm.toJson()
     }
 

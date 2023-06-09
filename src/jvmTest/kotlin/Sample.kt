@@ -40,7 +40,7 @@ val jwtVcPayload = """{
     "is_over_21": true,
     "is_over_65": true
   }
-}"""
+}""".trimIndent()
 
 
 val format = Json { prettyPrint = true }
