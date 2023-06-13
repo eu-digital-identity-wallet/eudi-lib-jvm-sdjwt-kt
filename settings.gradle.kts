@@ -1,1 +1,1 @@
-rootProject.name = "niscky-sdjwt"
+rootProject.name = "eudi-lib-kmp-sd-jwt-kt"

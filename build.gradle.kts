@@ -4,9 +4,6 @@ plugins {
     id("com.diffplug.spotless") version "6.19.0"
 }
 
-group = "eudi-lib-kmp-sd-jwt-kt"
-version = "0.1.0-SNAPSHOT"
-
 repositories {
     mavenCentral()
 }
@@ -17,7 +14,7 @@ val nimbusJoseJwtVersion = "9.31"
 
 kotlin {
     jvm {
-        jvmToolchain(8)
+        jvmToolchain(17)
         withJava()
         testRuns["test"].executionTask.configure {
             useJUnitPlatform()
