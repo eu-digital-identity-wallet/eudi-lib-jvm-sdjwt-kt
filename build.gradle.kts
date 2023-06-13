@@ -1,9 +1,10 @@
 plugins {
     kotlin("multiplatform") version "1.8.21"
     kotlin("plugin.serialization") version "1.8.21"
+    id("com.diffplug.spotless") version "6.19.0"
 }
 
-group = "niscy.eudiw"
+group = "eudi-lib-kmp-sd-jwt-kt"
 version = "0.1.0-SNAPSHOT"
 
 repositories {
@@ -27,7 +28,6 @@ kotlin {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
                 implementation("com.eygraber:uri-kmp:$uriKmpVersion")
-
             }
         }
         val commonTest by getting {
@@ -41,5 +41,16 @@ kotlin {
             }
         }
         val jvmTest by getting
+    }
+}
+
+val ktlintVersion = "0.49.1"
+spotless {
+    kotlin {
+        ktlint(ktlintVersion)
+        licenseHeaderFile("FileHeader.txt")
+    }
+    kotlinGradle {
+        ktlint(ktlintVersion)
     }
 }

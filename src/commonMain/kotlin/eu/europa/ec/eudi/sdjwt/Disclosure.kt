@@ -1,4 +1,4 @@
-package niscy.eudiw.sdjwt
+package eu.europa.ec.eudi.sdjwt
 
 
 import kotlinx.serialization.json.*

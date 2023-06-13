@@ -1,8 +1,6 @@
+package eu.europa.ec.eudi.sdjwt
+
 import kotlinx.serialization.json.JsonPrimitive
-import niscy.eudiw.sdjwt.Claim
-import niscy.eudiw.sdjwt.Disclosure
-import niscy.eudiw.sdjwt.Salt
-import niscy.eudiw.sdjwt.SaltProvider
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 

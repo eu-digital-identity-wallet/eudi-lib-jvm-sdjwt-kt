@@ -1,4 +1,4 @@
-package niscy.eudiw.sdjwt
+package eu.europa.ec.eudi.sdjwt
 
 import kotlin.random.Random
 
@@ -13,16 +13,9 @@ fun interface DecoyGen {
     companion object {
         val Default: DecoyGen by lazy {
             DecoyGen { hashingAlgorithm ->
-
-                fun base64UrlEncodedDigestOf(random: String): String {
-                    val hashFunction = hashing().of(hashingAlgorithm)
-                    val digest = hashFunction(random.encodeToByteArray())
-                    return JwtBase64.encodeString(digest)
-                }
-
                 val saltProvider = SaltProvider.randomSaltProvider(Random.nextInt(12, 24))
                 val random = saltProvider.salt()
-                val value = base64UrlEncodedDigestOf(random)
+                val value = HashedDisclosure.base64UrlEncodedDigestOf(hashingAlgorithm, random)
                 HashedDisclosure.wrap(value).getOrThrow()
             }
         }

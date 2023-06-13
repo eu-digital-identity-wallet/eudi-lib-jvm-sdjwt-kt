@@ -1,4 +1,4 @@
-package niscy.eudiw.sdjwt
+package eu.europa.ec.eudi.sdjwt
 
 /**
  * The hash of a [disclosure][Disclosure]
@@ -15,7 +15,7 @@ value class HashedDisclosure private constructor(val value: String) {
          * @param s the value to wrap
          * @return the [HashedDisclosure] if the given input represents a valid base64 encoded string
          */
-        fun wrap(s: String): Result<HashedDisclosure> = runCatching {
+        internal fun wrap(s: String): Result<HashedDisclosure> = runCatching {
             JwtBase64.decode(s)
             HashedDisclosure(s)
         }
@@ -29,14 +29,14 @@ value class HashedDisclosure private constructor(val value: String) {
          * @return the [HashedDisclosure] of the given [disclosure][d]
          */
         fun create(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<HashedDisclosure> = runCatching {
-            fun base64UrlEncodedDigestOf(): String {
-                val hashFunction = hashing().of(hashingAlgorithm)
-                val digest = hashFunction(d.value.encodeToByteArray())
-                return JwtBase64.encodeString(digest)
-            }
-
-            val value = base64UrlEncodedDigestOf()
+            val value = base64UrlEncodedDigestOf(hashingAlgorithm, d.value)
             HashedDisclosure(value)
+        }
+
+        internal fun base64UrlEncodedDigestOf(hashingAlgorithm: HashAlgorithm, disclosureValue: String): String {
+            val hashFunction = hashing().of(hashingAlgorithm)
+            val digest = hashFunction(disclosureValue.encodeToByteArray())
+            return JwtBase64.encodeString(digest)
         }
     }
 }

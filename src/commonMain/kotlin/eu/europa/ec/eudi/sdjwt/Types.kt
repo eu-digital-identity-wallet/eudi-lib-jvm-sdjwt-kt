@@ -1,4 +1,4 @@
-package niscy.eudiw.sdjwt
+package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
 
@@ -61,7 +61,7 @@ enum class HashAlgorithm(val alias: String) {
 typealias CombinedIssuanceSdJwt = String
 typealias Jwt = String
 
-fun CombinedIssuanceSdJwt.split(): Result<Pair<Jwt, List<Disclosure>>> = runCatching {
+fun CombinedIssuanceSdJwt.decompose(): Result<Pair<Jwt, List<Disclosure>>> = runCatching {
     val list = split("~")
     require(list.size > 1) { "Neither JWT nor disclosures were found" }
     list[0] to Disclosure.run {

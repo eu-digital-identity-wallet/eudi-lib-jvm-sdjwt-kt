@@ -1,12 +1,18 @@
+package eu.europa.ec.eudi.sdjwt
+
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import niscy.eudiw.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.*
 import java.util.*
+import kotlin.text.split
 
 
 val hmacKey = "111111111111111111111111111111111111111111"
@@ -72,8 +78,8 @@ fun main() {
     val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
     val sdJwt: CombinedIssuanceSdJwt = flatDiscloseAndEncode(
-        signer = com.nimbusds.jose.crypto.RSASSASigner(rsaJWK),
-        algorithm = com.nimbusds.jose.JWSAlgorithm.RS256,
+        signer = RSASSASigner(rsaJWK),
+        algorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
         jwtClaims = jwtClaims,
         claimToBeDisclosed = vcClaim!!,
@@ -81,7 +87,7 @@ fun main() {
     ).getOrThrow()
 
 
-    val (jwt, disclosures) = sdJwt.split().getOrThrow()
+    val (jwt, disclosures) = sdJwt.decompose().getOrThrow()
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)

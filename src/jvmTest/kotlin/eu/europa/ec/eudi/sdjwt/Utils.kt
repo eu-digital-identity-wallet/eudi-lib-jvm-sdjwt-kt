@@ -1,5 +1,6 @@
+package eu.europa.ec.eudi.sdjwt
+
 import kotlinx.serialization.json.JsonObject
-import niscy.eudiw.sdjwt.Claim
 
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, Claim?> {

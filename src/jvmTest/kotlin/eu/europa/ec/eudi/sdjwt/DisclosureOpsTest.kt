@@ -1,6 +1,8 @@
+package eu.europa.ec.eudi.sdjwt
+
+import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
-import niscy.eudiw.sdjwt.*
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -147,30 +149,6 @@ class DisclosureOpsTest {
             }
 
 
-            /**
-             * Verifies that all plain claims should be present in jwt claim set
-             */
-            fun assertContainsPlainClaims() {
-                for ((k, v) in otherClaims) {
-                    assertEquals(v, jwtClaimSet[k], "Make sure that non selectively disclosable elements are present")
-                }
-            }
-
-            fun assertHashFunctionClaimIsPresentIfDisclosures() {
-                val sdAlgValue = jwtClaimSet["_sd_alg"]
-                val expectedSdAlgValue = if (disclosures.isNotEmpty()) JsonPrimitive(hashAlgorithm.alias)
-                else null
-                assertEquals(expectedSdAlgValue, sdAlgValue)
-            }
-
-
-            fun assertHashedDisclosures() {
-                val hashes = jwtClaimSet["_sd"]?.jsonArray
-                // Hashes can be more than disclosures due to decoy
-                if (disclosures.isNotEmpty()) assertTrue { (hashes?.size ?: 0) >= disclosures.size }
-                else assertTrue(hashes.isNullOrEmpty())
-            }
-
             fun assertDisclosures() {
 
                 val claimValue = claimToBeDisclosed.value()
@@ -206,12 +184,113 @@ class DisclosureOpsTest {
             }
 
             assertJwtClaimSetSize()
-            assertContainsPlainClaims()
-            assertHashFunctionClaimIsPresentIfDisclosures()
+            assertContainsPlainClaims(jwtClaimSet, otherClaims)
+            assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
             assertDisclosures()
-            assertHashedDisclosures()
+            assertHashesNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
             return disclosedJsonObject
 
         }
     }
+
+    @DisplayName("Structured Disclosure")
+    @Nested
+    class StructuredDisclosure {
+
+        @Test
+        fun basic() {
+            val otherClaims = buildJsonObject {
+                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                put("iss", "sample issuer")
+            }
+            val claimToBeDisclosed = buildJsonObject {
+                putJsonObject("address") {
+                    put("street_address", "Schulstr. 12")
+                    put("locality", "Schulpforta")
+                    put("region", "Sachsen-Anhalt")
+                    put("country", "DE")
+                }
+            }
+
+            testStructured(otherClaims, claimToBeDisclosed)
+        }
+
+        private fun testStructured(
+            otherClaims: JsonObject,
+            claimToBeDisclosed: JsonObject
+        ) {
+
+            val hashAlgorithm = HashAlgorithm.SHA_256
+            val disclosedJsonObject = DisclosureOps.structureDisclose(
+                hashAlgorithm,
+                SaltProvider.Default,
+                otherClaims,
+                claimToBeDisclosed,
+                3
+            ).getOrThrow()
+
+            val (disclosures, jwtClaimSet) = disclosedJsonObject
+
+            /**
+             * Verifies the expected size of the jwt claim set
+             */
+            fun assertJwtClaimSetSize() {
+                // otherClaims size +  "_sd_alg" + "_sd"
+                val expectedJwtClaimSetSize = otherClaims.size + 1 + claimToBeDisclosed.size
+                assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
+            }
+
+            assertJwtClaimSetSize()
+            assertContainsPlainClaims(jwtClaimSet, otherClaims)
+            assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
+            assertHashesNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+
+        }
+
+    }
+
+    companion object {
+
+        fun assertContainsPlainClaims(sdEncoded: JsonObject, plainClaims: JsonObject) {
+            for ((k, v) in plainClaims) {
+                assertEquals(v, sdEncoded[k], "Make sure that non selectively disclosable elements are present")
+            }
+        }
+
+        fun assertHashFunctionClaimIsPresentIfDisclosures(
+            jwtClaimSet: JsonObject,
+            hashAlgorithm: HashAlgorithm,
+            disclosures: Collection<Disclosure>
+        ) {
+            val sdAlgValue = jwtClaimSet["_sd_alg"]
+            val expectedSdAlgValue = if (disclosures.isNotEmpty()) JsonPrimitive(hashAlgorithm.alias)
+            else null
+            assertEquals(expectedSdAlgValue, sdAlgValue)
+        }
+
+        fun assertHashesNumberGreaterOrEqualToDisclosures(
+            sdEncoded: JsonObject,
+            disclosures: Collection<Disclosure>) {
+
+            val hashes = sdEncoded.collectHashedDisclosures()
+            // Hashes can be more than disclosures due to decoy
+            if (disclosures.isNotEmpty()) assertTrue { hashes.size >= disclosures.size }
+            else assertTrue(hashes.isEmpty())
+        }
+
+        private fun JsonObject.collectHashedDisclosures(): List<HashedDisclosure> =
+            map { (attr, value) ->
+                when {
+                    attr == "_sd" && value is JsonArray -> value.jsonArray.map { v ->
+                        HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
+                    }
+
+                    value is JsonObject -> value.collectHashedDisclosures()
+                    else -> emptyList()
+                }
+            }.flatten()
+
+
+    }
+
 }

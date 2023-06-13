@@ -1,6 +1,5 @@
-import niscy.eudiw.sdjwt.Disclosure
-import niscy.eudiw.sdjwt.HashAlgorithm
-import niscy.eudiw.sdjwt.HashedDisclosure
+package eu.europa.ec.eudi.sdjwt
+
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 

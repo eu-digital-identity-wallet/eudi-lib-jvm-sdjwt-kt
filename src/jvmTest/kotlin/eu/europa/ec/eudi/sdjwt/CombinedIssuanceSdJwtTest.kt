@@ -1,4 +1,5 @@
-import niscy.eudiw.sdjwt.split
+package eu.europa.ec.eudi.sdjwt
+
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -37,7 +38,7 @@ class CombinedIssuanceSdJwtTest {
         """.trimIndent().trim()
 
 
-        val (jwt, disclosures) =  sdjwt.split().getOrThrow()
+        val (jwt, disclosures) =  sdjwt.decompose().getOrThrow()
 
     }
 }
