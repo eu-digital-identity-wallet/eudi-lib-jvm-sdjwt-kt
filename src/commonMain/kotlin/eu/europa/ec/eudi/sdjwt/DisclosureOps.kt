@@ -1,5 +1,6 @@
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
 /**
@@ -9,52 +10,85 @@ import kotlinx.serialization.json.*
  * @param jwtClaimSet the JSON object that contains the hashed disclosures
  */
 data class DisclosedJsonObject(val disclosures: Set<Disclosure>, val jwtClaimSet: JsonObject) {
-    companion object  {
-        val Empty : DisclosedJsonObject = DisclosedJsonObject(emptySet(), JsonObject(emptyMap()))
+    companion object {
+        val Empty: DisclosedJsonObject = DisclosedJsonObject(emptySet(), JsonObject(emptyMap()))
         fun plain(plainClaims: JsonObject = JsonObject(mapOf())): DisclosedJsonObject =
             DisclosedJsonObject(emptySet(), plainClaims)
+
+        fun combine(a: DisclosedJsonObject, b: DisclosedJsonObject): DisclosedJsonObject {
+            val ds = a.disclosures + b.disclosures
+            val set = a.jwtClaimSet + b.jwtClaimSet
+            return DisclosedJsonObject(ds, JsonObject(set))
+        }
     }
 }
 
-fun DisclosedJsonObject.combine(that: DisclosedJsonObject): DisclosedJsonObject {
-    val ds = this.disclosures + that.disclosures
-    val set = this.jwtClaimSet + that.jwtClaimSet
-    return DisclosedJsonObject(ds, JsonObject(set))
+private data class FlatDisclosed(val disclosures: Set<Disclosure>, val hashes: Set<HashedDisclosure>) {
+
+
+
+    companion object {
+
+        fun combine(a: FlatDisclosed, b: FlatDisclosed): FlatDisclosed {
+            val ds = a.disclosures + b.disclosures
+            val set = a.hashes + b.hashes
+            return FlatDisclosed(ds, set)
+        }
+        private fun make(
+            hashAlgorithm: HashAlgorithm,
+            saltProvider: SaltProvider,
+            claimsToBeDisclosed: Claim
+        ): FlatDisclosed {
+            val d = Disclosure.encode(saltProvider, claimsToBeDisclosed).getOrThrow()
+            val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
+            return FlatDisclosed(setOf(d), setOf(h))
+        }
+
+        fun make(
+            hashAlgorithm: HashAlgorithm,
+            saltProvider: SaltProvider,
+            claimsToBeDisclosed: JsonObject,
+            numOfDecoys: Int
+        ): FlatDisclosed {
+            val decoys: Set<HashedDisclosure> = DecoyGen.Default.gen(hashAlgorithm, numOfDecoys).toSet()
+            val initial = FlatDisclosed(emptySet(), decoys)
+            return claimsToBeDisclosed.map { (k,v)->
+                make(hashAlgorithm, saltProvider, k to v )
+            }.fold(initial){ acc,x -> combine(acc, x) }
+
+        }
+    }
 }
-
-
 
 object DisclosureOps {
 
     private val format: Json by lazy { Json }
 
+
+
     /**
-     * @param hashAlgorithm the algorithm to be used for []hashing disclosures][HashedDisclosure]
+     * @param hashAlgorithm the algorithm to be used for hashing disclosures
      * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
      * @param otherJwtClaims
-     * @param claimToBeDisclosed
+     * @param claimsToBeDisclosed
      */
+    @OptIn(ExperimentalSerializationApi::class)
     fun flatDisclose(
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
-        otherJwtClaims: String?,
-        claimToBeDisclosed: Pair<String, String>,
+        otherJwtClaims: JsonObject = JsonObject(emptyMap()),
+        claimsToBeDisclosed: JsonObject,
         numOfDecoys: Int,
-        includeHashFunctionClaim: Boolean = true
     ): Result<DisclosedJsonObject> = runCatching {
-        fun parseToObject(s: String): JsonObject = format.parseToJsonElement(s).jsonObject
-        val otherJwtClaimsJson = otherJwtClaims?.let { parseToObject(it) } ?: JsonObject(emptyMap())
-        val claimsToBeDisclosedJson = claimToBeDisclosed.first to parseToObject(claimToBeDisclosed.second)
-        flatDisclose(
-            hashAlgorithm,
-            saltProvider,
-            otherJwtClaimsJson,
-            claimsToBeDisclosedJson,
-            numOfDecoys,
-            includeHashFunctionClaim
-        ).getOrThrow()
-    }
 
+        val plainClaims = DisclosedJsonObject.plain(otherJwtClaims)
+        val flatDisclosed = FlatDisclosed.make(hashAlgorithm, saltProvider, claimsToBeDisclosed, numOfDecoys)
+        val flatDisclosedClaims = DisclosedJsonObject(flatDisclosed.disclosures, buildJsonObject {
+            put("_sd_alg", hashAlgorithm.toJson())
+            putJsonArray("_sd"){  addAll(flatDisclosed.hashes.map { it.toJson() }) }
+        })
+        DisclosedJsonObject.combine(plainClaims,flatDisclosedClaims)
+    }
 
     /**
      * @param hashAlgorithm the algorithm to be used for hashing disclosures
@@ -62,7 +96,7 @@ object DisclosureOps {
      * @param otherJwtClaims
      * @param claimToBeDisclosed
      */
-    fun flatDisclose(
+    private fun flatDisclose2(
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
         otherJwtClaims: JsonObject = JsonObject(emptyMap()),
@@ -97,32 +131,6 @@ object DisclosureOps {
 
     }
 
-//    /**
-//     * @param hashAlgorithm the algorithm to be used for hashing disclosures
-//     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
-//     */
-//    fun structureDisclose(
-//        hashAlgorithm: HashAlgorithm,
-//        saltProvider: SaltProvider,
-//        otherJwtClaims: JsonObject = JsonObject(emptyMap()),
-//        claimsToBeDisclosed: JsonObject,
-//        numOfDecoys: Int
-//    ): Result<DisclosedJsonObject> = runCatching {
-//
-//        val (disclosures, tmpJson) = structureDisclose(
-//            hashAlgorithm,
-//            saltProvider,
-//            otherJwtClaims,
-//            mapOf("tmp" to claimsToBeDisclosed),
-//            numOfDecoys
-//        ).getOrThrow()
-//
-//        val resultJson = tmpJson.toMutableMap()
-//        resultJson.remove("tmp")?.let { resultJson.putAll(it.jsonObject) }
-//
-//        DisclosedJsonObject(disclosures, JsonObject(resultJson))
-//    }
-
     /**
      *
      * Method accepts one or more [claimsToBeDisclosed], calculates the related disclosures
@@ -149,7 +157,7 @@ object DisclosureOps {
 
         claimsToBeDisclosed.map { (claimName, claimValue) ->
 
-           claimName to flatDisclose(
+            val disclosedClaimValue = flatDisclose2(
                 hashAlgorithm = hashAlgorithm,
                 saltProvider = saltProvider,
                 claimToBeDisclosed = claimName to claimValue,
@@ -157,12 +165,9 @@ object DisclosureOps {
                 includeHashFunctionClaim = false,
             ).getOrThrow()
 
-        }.fold(plain){ acc, (claimName, disclosedClaimValue) ->
-            val d2 = disclosedClaimValue.copy(jwtClaimSet = JsonObject(mapOf(claimName to disclosedClaimValue.jwtClaimSet)))
-            acc.combine(d2)
-        }
+            disclosedClaimValue.copy(jwtClaimSet = JsonObject(mapOf(claimName to disclosedClaimValue.jwtClaimSet)))
 
-
+        }.fold(plain, DisclosedJsonObject::combine)
     }
 
 
@@ -226,10 +231,8 @@ object DisclosureOps {
         if (this["_sd_alg"] == null) this["_sd_alg"] = hashAlgorithm.toJson()
     }
 
-
     private fun HashedDisclosure.toJson() = JsonPrimitive(value)
     private fun Disclosure.toJson() = JsonPrimitive(value)
-
     private fun HashAlgorithm.toClaim() = "_sd_alg" to toJson()
     private fun HashAlgorithm.toJson() = JsonPrimitive(alias)
 

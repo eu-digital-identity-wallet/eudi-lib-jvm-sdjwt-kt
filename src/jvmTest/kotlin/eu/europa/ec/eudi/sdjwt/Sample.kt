@@ -7,12 +7,9 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import eu.europa.ec.eudi.sdjwt.*
 import java.util.*
-import kotlin.text.split
 
 
 val hmacKey = "111111111111111111111111111111111111111111"
@@ -59,12 +56,6 @@ fun genRSAKeyPair(): RSAKey =
         .issueTime(Date()) // issued-at timestamp (optional)
         .generate()
 
-fun extractVerifiableCredentialsClaim(json: JsonObject): Pair<JsonObject, JsonObject> {
-    val credentialSubjectJson = json["credentialSubject"]!!.jsonObject
-    val plainJwtAttributes = JsonObject(json.minus("credentialSubject"))
-    return plainJwtAttributes to credentialSubjectJson
-}
-
 
 fun main() {
 
@@ -82,7 +73,7 @@ fun main() {
         algorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
         jwtClaims = jwtClaims,
-        claimToBeDisclosed = vcClaim!!,
+        claimsToBeDisclosed = JsonObject(mapOf(vcClaim!!)),
         numOfDecoys = 0
     ).getOrThrow()
 

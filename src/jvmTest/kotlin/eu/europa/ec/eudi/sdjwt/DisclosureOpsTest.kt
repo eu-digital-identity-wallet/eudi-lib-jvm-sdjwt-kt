@@ -37,13 +37,12 @@ class DisclosureOpsTest {
                 val result = DisclosureOps.flatDisclose(
                     hashAlgorithm = hashAlgorithm,
                     saltProvider = SaltProvider.Default,
-                    claimToBeDisclosed = claimToBeDisclosed,
+                    claimsToBeDisclosed = JsonObject(mapOf(claimToBeDisclosed)),
                     numOfDecoys = 0
                 )
                 assertFalse { result.isSuccess }
             }
         }
-
 
         @Test
         fun flatDisclosureOfJsonObjectClaim() {
@@ -51,12 +50,15 @@ class DisclosureOpsTest {
                 put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 put("iss", "sample issuer")
             }
-            val claimToBeDisclosed = "address" to buildJsonObject {
-                put("street_address", "Schulstr. 12")
-                put("locality", "Schulpforta")
-                put("region", "Sachsen-Anhalt")
-                put("country", "DE")
-            }
+            val claimToBeDisclosed =
+                buildJsonObject {
+                    putJsonObject("address") {
+                        put("street_address", "Schulstr. 12")
+                        put("locality", "Schulpforta")
+                        put("region", "Sachsen-Anhalt")
+                        put("country", "DE")
+                    }
+                }
             testFlatDisclosure(otherClaims, claimToBeDisclosed)
         }
 
@@ -66,7 +68,10 @@ class DisclosureOpsTest {
                 put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 put("iss", "sample issuer")
             }
-            val claimToBeDisclosed = "street_address" to JsonPrimitive("Schulstr. 12")
+            val claimToBeDisclosed =
+                buildJsonObject {
+                    put("street_address", "Schulstr. 12")
+                }
             testFlatDisclosure(otherClaims, claimToBeDisclosed)
         }
 
@@ -77,7 +82,12 @@ class DisclosureOpsTest {
                 put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 put("iss", "sample issuer")
             }
-            val claimToBeDisclosed = "countries" to buildJsonArray { addAll(listOf("GR", "DE")) }
+            val claimToBeDisclosed =
+                buildJsonObject {
+                    putJsonArray("countries") {
+                        addAll(listOf("GR", "DE"))
+                    }
+                }
             testFlatDisclosure(otherClaims, claimToBeDisclosed)
         }
 
@@ -119,13 +129,13 @@ class DisclosureOpsTest {
             val (otherClaims, claimToBeDisclosed) =
                 jwtVcPayloadJson.extractClaim("credentialSubject")
 
-            testFlatDisclosure(otherClaims, claimToBeDisclosed!!)
+            testFlatDisclosure(otherClaims, JsonObject(mapOf(claimToBeDisclosed!!)))
         }
 
 
         private fun testFlatDisclosure(
             otherClaims: JsonObject,
-            claimToBeDisclosed: Claim
+            claimsToBeDisclosed: JsonObject
         ): DisclosedJsonObject {
 
             val hashAlgorithm = HashAlgorithm.SHA_256
@@ -133,7 +143,7 @@ class DisclosureOpsTest {
                 hashAlgorithm,
                 SaltProvider.Default,
                 otherClaims,
-                claimToBeDisclosed,
+                claimsToBeDisclosed,
                 4
             ).getOrThrow()
 
@@ -151,13 +161,7 @@ class DisclosureOpsTest {
 
             fun assertDisclosures() {
 
-                val claimValue = claimToBeDisclosed.value()
-                val expectedSize = when (claimValue) {
-                    is JsonObject -> claimValue.size
-                    is JsonArray -> 1
-                    is JsonPrimitive -> 1
-                    JsonNull -> 0
-                }
+                val expectedSize = claimsToBeDisclosed.size
 
                 assertEquals(
                     expectedSize,
@@ -165,22 +169,16 @@ class DisclosureOpsTest {
                     "Make sure the size of disclosures is equal to the number of address attributes"
                 )
 
-                fun assertSingle() {
-                    println("Found disclosure for ${claimToBeDisclosed.name()} -> ${claimToBeDisclosed.value()}")
-                    assertEquals(claimToBeDisclosed, disclosures.first().claim())
+
+
+
+                disclosures.forEach { d ->
+                    val (claimName, claimValue) = d.claim()
+                    println("Found disclosure for $claimName -> $claimValue")
+                    assertEquals(claimsToBeDisclosed[claimName], claimValue)
                 }
 
-                when (claimValue) {
-                    is JsonObject -> disclosures.forEach {
-                        val (k, v) = it.claim()
-                        println("Found disclosure for $k -> $v")
-                        assertEquals(claimValue[k], v)
-                    }
 
-                    is JsonArray -> assertSingle()
-                    is JsonPrimitive -> assertSingle()
-
-                }
             }
 
             assertJwtClaimSetSize()
@@ -270,7 +268,8 @@ class DisclosureOpsTest {
 
         fun assertHashesNumberGreaterOrEqualToDisclosures(
             sdEncoded: JsonObject,
-            disclosures: Collection<Disclosure>) {
+            disclosures: Collection<Disclosure>
+        ) {
 
             val hashes = sdEncoded.collectHashedDisclosures()
             // Hashes can be more than disclosures due to decoy
