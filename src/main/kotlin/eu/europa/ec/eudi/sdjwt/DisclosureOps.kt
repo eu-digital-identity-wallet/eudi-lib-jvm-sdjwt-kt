@@ -37,12 +37,28 @@ data class DisclosedJsonObject(val disclosures: Set<Disclosure>, val jwtClaimSet
     }
 }
 
+/**
+ * A helper class for implementing flat disclosure
+ * It represents the outcome of disclosing the contents of a [JsonObject]
+ *
+ * @param disclosures the disclosures of the attributes of the [JsonObject]
+ * @param hashes the hashes of the disclosures. These hashes are calculated from the disclosures and optionally there
+ * can be decoys
+ * @param hashAlgorithm the algorithm used to calculate the hashes
+ */
 private data class FlatDisclosed(
     val disclosures: Set<Disclosure>,
     val hashes: Set<HashedDisclosure>,
     val hashAlgorithm: HashAlgorithm,
 ) {
 
+    /**
+     * Creates a [DisclosedJsonObject] from a [FlatDisclosed]
+     *
+     * @param includeHashAlgClaim whether to include the _sd_alg claim
+     * @return the  [JsonObject] that contains the _sd claim and optionally the _sd_alg claim together with the
+     * set of [Disclosure]
+     */
     @OptIn(ExperimentalSerializationApi::class)
     fun asDisclosedJsonObject(includeHashAlgClaim: Boolean): DisclosedJsonObject {
         val json =
@@ -62,6 +78,15 @@ private data class FlatDisclosed(
 
     companion object {
 
+        /**
+         * Combines two [FlatDisclosed] into a new [FlatDisclosed], provided
+         * that they share the same [FlatDisclosed.hashAlgorithm]
+         *
+         *
+         * @param a the first [FlatDisclosed]
+         * @param b the second [FlatDisclosed]
+         * @return a [FlatDisclosed] that contains the combined disclosures and hashes
+         */
         fun combine(a: FlatDisclosed, b: FlatDisclosed): FlatDisclosed {
             require(a.hashAlgorithm == b.hashAlgorithm)
             val ds = a.disclosures + b.disclosures
@@ -69,6 +94,18 @@ private data class FlatDisclosed(
             return FlatDisclosed(ds, set, a.hashAlgorithm)
         }
 
+        /**
+         * Factory method for calculating a [FlatDisclosed] for an input [claimsToBeDisclosed]
+         * Method calculates the disclosures and the hashes for every attribute of the [claimsToBeDisclosed]
+         * and then [combines][combine] them into a single [FlatDisclosed]
+         *
+         * @param hashAlgorithm the algorithm to be used for hashing disclosures
+         * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+         * @param claimsToBeDisclosed the claims to be selectively disclosed
+         * @param numOfDecoys the number of decoys
+         *
+         * @return the [FlatDisclosed] for the [claimsToBeDisclosed]
+         */
         fun make(
             hashAlgorithm: HashAlgorithm,
             saltProvider: SaltProvider,
