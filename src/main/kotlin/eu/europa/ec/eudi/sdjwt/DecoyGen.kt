@@ -22,13 +22,27 @@ import kotlin.random.Random
  */
 fun interface DecoyGen {
 
+    /**
+     * Given a [hashingAlgorithm] method produces a decoy [HashedDisclosure]
+     * @param hashingAlgorithm the algorithm to be used for producing the decoy
+     * @return a decoy [HashedDisclosure]
+     */
     fun gen(hashingAlgorithm: HashAlgorithm): HashedDisclosure
 
+    /**
+     * Produces a series of decoy [HashedDisclosure]
+     * @param hashingAlgorithm the algorithm to be used for producing the decoy
+     * @param numOfDecoys the number of decoys to produce
+     * @return a series of decoy [HashedDisclosure]
+     */
     fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Collection<HashedDisclosure> {
         return (1..numOfDecoys).map { gen(hashingAlgorithm) }
     }
 
     companion object {
+        /**
+         * Default implementation of [DecoyGen] which produces random decoy [HashedDisclosure]
+         */
         val Default: DecoyGen by lazy {
             DecoyGen { hashingAlgorithm ->
                 val saltProvider = SaltProvider.randomSaltProvider(Random.nextInt(12, 24))
