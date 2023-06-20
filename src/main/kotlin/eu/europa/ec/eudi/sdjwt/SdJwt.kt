@@ -24,42 +24,44 @@ import com.nimbusds.jose.Payload as NimbusPayload
 
 private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 
-/**
- * @param signer the signer that will be used to sign the SD-JWT
- * @param algorithm
-*  @param hashAlgorithm the algorithm to be used for hashing disclosures
- * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
- * @param jwtClaims
- * @param claimToBeDisclosed
- */
-public fun flatDiscloseAndEncode(
-    signer: NimbusJWSSigner,
-    algorithm: NimbusJWSAlgorithm,
-    hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-    saltProvider: SaltProvider = SaltProvider.Default,
-    jwtClaims: JsonObject = JsonObject(emptyMap()),
-    claimsToBeDisclosed: JsonObject,
-    numOfDecoys: Int,
-): Result<CombinedIssuanceSdJwt> = runCatching {
-    val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
-        hashAlgorithm,
-        saltProvider,
-        jwtClaims,
-        claimsToBeDisclosed,
-        numOfDecoys,
-    ).getOrThrow()
+object SdJwt {
+    /**
+     * @param signer the signer that will be used to sign the SD-JWT
+     * @param algorithm
+     * @param hashAlgorithm the algorithm to be used for hashing disclosures
+     * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
+     * @param jwtClaims
+     * @param claimsToBeDisclosed
+     */
+    fun flatDiscloseAndEncode(
+        signer: NimbusJWSSigner,
+        algorithm: NimbusJWSAlgorithm,
+        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+        saltProvider: SaltProvider = SaltProvider.Default,
+        jwtClaims: JsonObject = JsonObject(emptyMap()),
+        claimsToBeDisclosed: JsonObject,
+        numOfDecoys: Int,
+    ): Result<CombinedIssuanceSdJwt> = runCatching {
+        val (disclosures, jwtClaimSet) = DisclosureOps.flatDisclose(
+            hashAlgorithm,
+            saltProvider,
+            jwtClaims,
+            claimsToBeDisclosed,
+            numOfDecoys,
+        ).getOrThrow()
 
-    val header = NimbusJWSHeader(algorithm)
-    val payload = NimbusPayload(jwtClaimSet.asBytes())
+        val header = NimbusJWSHeader(algorithm)
+        val payload = NimbusPayload(jwtClaimSet.asBytes())
 
-    val jwt: Jwt = with(NimbusJWSObject(header, payload)) {
-        sign(signer)
-        serialize()
+        val jwt: Jwt = with(NimbusJWSObject(header, payload)) {
+            sign(signer)
+            serialize()
+        }
+
+        jwt + disclosures.concat()
     }
 
-    jwt + disclosures.concat()
-}
-//
+    //
 // /**
 // * @param hashAlgorithm the algorithm to be used for hashing disclosures
 // * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
@@ -94,3 +96,4 @@ public fun flatDiscloseAndEncode(
 //
 //    jwt + disclosures.concat()
 // }
+}
