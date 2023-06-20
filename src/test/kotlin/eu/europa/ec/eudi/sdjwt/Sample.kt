@@ -78,7 +78,7 @@ fun main() {
     val rsaJWK = genRSAKeyPair()
     val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = flatDiscloseAndEncode(
+    val sdJwt: CombinedIssuanceSdJwt = SdJwt.flatDiscloseAndEncode(
         signer = RSASSASigner(rsaJWK),
         algorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
