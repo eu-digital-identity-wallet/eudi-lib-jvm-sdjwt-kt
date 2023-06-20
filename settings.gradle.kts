@@ -1,1 +1,1 @@
-rootProject.name = "eudi-lib-kmp-sd-jwt-kt"
+rootProject.name = "eudi-lib-jvm-sdjwt-kt"
