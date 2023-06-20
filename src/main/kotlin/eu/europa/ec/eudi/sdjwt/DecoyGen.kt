@@ -17,6 +17,9 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlin.random.Random
 
+/**
+ * Generates decoy [HashedDisclosure]
+ */
 fun interface DecoyGen {
 
     fun gen(hashingAlgorithm: HashAlgorithm): HashedDisclosure
