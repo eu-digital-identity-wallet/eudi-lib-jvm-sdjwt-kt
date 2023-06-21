@@ -24,7 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class DisclosureOpsTest {
+class DisclosedClaimSetTest {
 
     @Nested
     @DisplayName("Flat disclosure test")
@@ -50,7 +50,7 @@ class DisclosureOpsTest {
             val hashAlgorithm = HashAlgorithm.SHA_256
 
             invalidClaims.forEach { claimToBeDisclosed ->
-                val result = DisclosureOps.flatDisclose(
+                val result = DisclosedClaimSet.flat(
                     hashAlgorithm = hashAlgorithm,
                     saltProvider = SaltProvider.Default,
                     claimsToBeDisclosed = JsonObject(mapOf(claimToBeDisclosed)),
@@ -152,9 +152,9 @@ class DisclosureOpsTest {
         private fun testFlatDisclosure(
             otherClaims: JsonObject,
             claimsToBeDisclosed: JsonObject,
-        ): DisclosedJsonObject {
+        ): DisclosedClaimSet {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val disclosedJsonObject = DisclosureOps.flatDisclose(
+            val disclosedJsonObject = DisclosedClaimSet.flat(
                 hashAlgorithm,
                 SaltProvider.Default,
                 otherClaims,
@@ -225,12 +225,13 @@ class DisclosureOpsTest {
             claimToBeDisclosed: JsonObject,
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val disclosedJsonObject = DisclosureOps.structureDisclose(
+            val disclosedJsonObject = DisclosedClaimSet.structured(
                 hashAlgorithm,
                 SaltProvider.Default,
                 otherClaims,
                 claimToBeDisclosed,
                 3,
+                includeHashAlgClaim = true,
             ).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
