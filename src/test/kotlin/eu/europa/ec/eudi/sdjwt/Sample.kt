@@ -104,8 +104,16 @@ fun main() {
     println(format.encodeToString(claimSet))
 }
 
-fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifier): Result<JsonObject> =
-    runCatching {
+fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifier): Result<JsonObject> {
+    fun extractDisclosureHashes(j: JsonObject): Result<List<HashedDisclosure>> = runCatching {
+        val hds: List<HashedDisclosure> = j["_sd"]?.jsonArray?.map {
+            check(it.jsonPrimitive.isString)
+            HashedDisclosure.wrap(it.jsonPrimitive.content).getOrThrow()
+        } ?: emptyList()
+
+        hds + j.values.filterIsInstance<JsonObject>().flatMap { extractDisclosureHashes(it).getOrThrow() }
+    }
+    return runCatching {
         val signedJwt = SignedJWT.parse(jwt)
         check(signedJwt.verify(verifier)) { "Signature verification failed" }
         val sdAlg = signedJwt.jwtClaimsSet.getStringClaim("_sd_alg")
@@ -120,12 +128,4 @@ fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifi
 
         claimSet
     }
-
-fun extractDisclosureHashes(j: JsonObject): Result<List<HashedDisclosure>> = runCatching {
-    val hds: List<HashedDisclosure> = j["_sd"]?.jsonArray?.map {
-        check(it.jsonPrimitive.isString)
-        HashedDisclosure.wrap(it.jsonPrimitive.content).getOrThrow()
-    } ?: emptyList()
-
-    hds + j.values.filterIsInstance<JsonObject>().flatMap { extractDisclosureHashes(it).getOrThrow() }
 }

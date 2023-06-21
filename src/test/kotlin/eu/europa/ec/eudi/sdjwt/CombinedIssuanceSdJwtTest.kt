@@ -15,40 +15,37 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 
 class CombinedIssuanceSdJwtTest {
 
-    @Disabled
     @Test
     fun testSplit() {
-        val sdjwt = """
-            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIjVuWHkwWjNRaUViYTFWMWxKemVLaEFPR
-            1FYRmxLTElXQ0xsaGZfTy1jbW8iLCAiOWdaaEhBaFY3TFpuT0ZacV9xN0ZoOHJ6ZHFyc
-            k5NLWhSV3NWT2xXM251dyIsICJTLUpQQlNrdnFsaUZ2MV9fdGh1WHQzSXpYNUJfWlhtN
-            FcycXM0Qm9ORnJBIiwgImJ2aXc3cFdBa2J6STA3OFpOVmFfZU1admswdGRQYTV3Mm85U
-            jNaeWNqbzQiLCAiby1MQkNEckZGNnRDOWV3MXZBbFVtdzZZMzBDSFpGNWpPVUZocHg1b
-            W9nSSIsICJwemtISU05c3Y3b1pINllLRHNScU5nRkdMcEVLSWozYzVHNlVLYVRzQWpRI
-            iwgInJuQXpDVDZEVHk0VHNYOVFDRHYyd3dBRTRaZTIwdVJpZ3RWTlFrQTUyWDAiXSwgI
-            mlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL2lzc3VlciIsICJpYXQiOiAxNTE2MjM5M
-            DIyLCAiZXhwIjogMTczNTY4OTY2MSwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiO
-            iB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSM
-            TladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV
-            1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ.D7zXHQgMee
-            BXNTiCmfq1SVRkixyj4mpZoxCLcuibWxa_eixmr5B-g-DPAY93k2rs1-PqSD5aKrqwHs
-            rg_p2lRw~WyJyU0x1em5oaUxQQkRSWkUxQ1o4OEtRIiwgInN1YiIsICJqb2huX2RvZV8
-            0MiJd~WyJhYTFPYmdlUkJnODJudnpMYnRQTklRIiwgImdpdmVuX25hbWUiLCAiSm9obi
-            Jd~WyI2VWhsZU5HUmJtc0xDOFRndTh2OFdnIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~
-            WyJ2S0t6alFSOWtsbFh2OWVkNUJ1ZHZRIiwgImVtYWlsIiwgImpvaG5kb2VAZXhhbXBs
-            ZS5jb20iXQ~WyJVZEVmXzY0SEN0T1BpZDRFZmhPQWNRIiwgInBob25lX251bWJlciIsI
-            CIrMS0yMDItNTU1LTAxMDEiXQ~WyJOYTNWb0ZGblZ3MjhqT0FyazdJTlZnIiwgImFkZH
-            Jlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5Ij
-            ogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV
-            0~WyJkQW9mNHNlZTFGdDBXR2dHanVjZ2pRIiwgImJpcnRoZGF0ZSIsICIxOTQwLTAxLT
-            AxIl0
-        """.trimIndent().trim()
+        val jwt = """
+            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkZwaEZGcGoxdnRyMHJwWUstMTRmaWNrR
+            0tNZzN6ZjFmSXBKWHhUSzhQQUUiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL
+            2lzc3VlciIsICJpYXQiOiAxNTE2MjM5MDIyLCAiZXhwIjogMTczNTY4OTY2MSwgInN1Y
+            iI6ICI2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCAiX3NkX2FsZ
+            yI6ICJzaGEtMjU2In0.tqqCvNdrZ8ILN82t3g-T8LQJp3ykVf8tVPfAr8ijqhG9uc0Kl
+            wYeE4ISu3DQkOk7VeaMMYB73Hsdyjal6e9FS
+        """.trimIndent().removeNewLine()
 
-        val (jwt, disclosures) = sdjwt.decompose().getOrThrow()
+        val d1 = """
+            WyJpbVFmR2oxX00wRWw3NmtkdmY3RG
+            F3IiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIlNjaHVsc3RyLiAxMiIsIC
+            Jsb2NhbGl0eSI6ICJTY2h1bHBmb3J0YSIsICJyZWdpb24iOiAiU2FjaHNlbi1BbmhhbH
+            QiLCAiY291bnRyeSI6ICJERSJ9XQ
+        """.trimIndent().removeNewLine()
+        val sdjwt = "$jwt~$d1"
+
+        val (actualJwt, disclosures) = sdjwt.decompose().getOrThrow()
+
+        assertEquals(jwt, actualJwt)
+        assertEquals(1, disclosures.size)
+        assertEquals(d1, disclosures[0].value)
+        disclosures.forEach { println(it.claim()) }
     }
+
+    private fun String.removeNewLine(): String = replace("\n", "")
 }
