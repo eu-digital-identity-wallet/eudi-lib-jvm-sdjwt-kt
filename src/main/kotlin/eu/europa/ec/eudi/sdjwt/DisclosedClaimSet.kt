@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
+import java.util.*
 
 /**
  * Represent a selectively disclosed Json object and the calculated disclosures
@@ -30,7 +31,18 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
 
     companion object {
 
-        val Empty: DisclosedClaimSet = DisclosedClaimSet(emptySet(), JsonObject(emptyMap()))
+        /**
+         * An empty claim set with no disclosures
+         */
+        val Empty: DisclosedClaimSet = plain(JsonObject(emptyMap()))
+
+        /**
+         * Creates a [DisclosedClaimSet] with no disclosures
+         *
+         * @param plainClaims the claims to be included plainly
+         *
+         * @return a [DisclosedClaimSet] with no disclosures
+         */
         fun plain(plainClaims: JsonObject = JsonObject(mapOf())): DisclosedClaimSet =
             DisclosedClaimSet(emptySet(), plainClaims)
 
@@ -51,9 +63,10 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
         ): Result<DisclosedClaimSet> = runCatching {
             val disclosuresAndHashes =
                 DisclosuresAndHashes.make(hashAlgorithm, saltProvider, claimsToBeDisclosed, numOfDecoys)
-            val flatDisclosedClaims = disclosuresAndHashes.toFlatDisclosedClaimSet(true)
+            val disclosedClaims = disclosuresAndHashes.toFlatDisclosedClaimSet(true)
             val plainClaims = plain(otherClaims)
-            combine(plainClaims, flatDisclosedClaims)
+
+            plainClaims + disclosedClaims
         }
 
         /**
@@ -75,11 +88,11 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
         ): Result<DisclosedClaimSet> = runCatching {
             fun structuredDisclosed(claimName: String, claimValue: JsonElement): DisclosedClaimSet {
                 val disclosuresAndHashes = when (claimValue) {
-                    is JsonObject -> claimValue.map {
+                    is JsonObject -> claimValue.map { subClaim ->
                         DisclosuresAndHashes.make(
                             hashAlgorithm,
                             saltProvider,
-                            JsonObject(mapOf(it.toPair())),
+                            JsonObject(mapOf(subClaim.toPair())),
                             numOfDecoys,
                         )
                     }.fold(DisclosuresAndHashes.empty(hashAlgorithm), DisclosuresAndHashes::combine)
@@ -129,6 +142,9 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
     }
 }
 
+operator fun DisclosedClaimSet.plus(that: DisclosedClaimSet): DisclosedClaimSet =
+    DisclosedClaimSet.combine(this, that)
+
 /**
  * A helper class for implementing flat disclosure
  * It represents the outcome of disclosing the contents of a [JsonObject]
@@ -140,9 +156,16 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
  */
 private class DisclosuresAndHashes private constructor(
     val disclosures: Set<Disclosure>,
-    val hashes: Set<HashedDisclosure>,
+    val hashes: SortedSet<HashedDisclosure>,
     val hashAlgorithm: HashAlgorithm,
 ) {
+
+    private constructor(
+        disclosures: Set<Disclosure>,
+        unsortedHashes: Set<HashedDisclosure>,
+        hashAlgorithm: HashAlgorithm,
+    ) : this(disclosures, unsortedHashes.toSortedSet(kotlin.Comparator.comparing { it.value }), hashAlgorithm)
+
     init {
         require(hashes.size >= disclosures.size) {
             "Hashes should be at least as disclosures"
@@ -151,8 +174,20 @@ private class DisclosuresAndHashes private constructor(
 
     companion object {
 
+        /**
+         * Creates an [DisclosuresAndHashes] with no disclosures or hashes
+         */
         fun empty(hashAlgorithm: HashAlgorithm): DisclosuresAndHashes =
             DisclosuresAndHashes(emptySet(), emptySet(), hashAlgorithm)
+
+        fun decoys(
+            hashAlgorithm: HashAlgorithm,
+            decoyGen: DecoyGen = DecoyGen.Default,
+            numOfDecoys: Int,
+        ): DisclosuresAndHashes {
+            val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys).toSortedSet(Comparator.comparing { it.value })
+            return DisclosuresAndHashes(emptySet(), decoys, hashAlgorithm)
+        }
 
         /**
          * Combines two [DisclosuresAndHashes] into a new [DisclosuresAndHashes], provided
@@ -175,7 +210,7 @@ private class DisclosuresAndHashes private constructor(
             }
             return DisclosuresAndHashes(
                 disclosures = a.disclosures + b.disclosures,
-                hashes = a.hashes + b.hashes,
+                unsortedHashes = a.hashes + b.hashes,
                 hashAlgorithm = a.hashAlgorithm,
             )
         }
@@ -198,19 +233,19 @@ private class DisclosuresAndHashes private constructor(
             claimsToBeDisclosed: JsonObject,
             numOfDecoys: Int,
         ): DisclosuresAndHashes {
-            val decoys: Set<HashedDisclosure> = DecoyGen.Default.gen(hashAlgorithm, numOfDecoys).toSet()
-            val initial = DisclosuresAndHashes(emptySet(), decoys, hashAlgorithm)
+            val decoys = decoys(hashAlgorithm = hashAlgorithm, numOfDecoys = numOfDecoys)
             return claimsToBeDisclosed.map { (k, v) ->
                 val d = Disclosure.encode(saltProvider, k to v).getOrThrow()
                 val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
                 DisclosuresAndHashes(setOf(d), setOf(h), hashAlgorithm)
-            }.fold(initial, DisclosuresAndHashes::combine)
+            }.fold(decoys, DisclosuresAndHashes::combine)
         }
     }
 }
 
 /**
- * Creates a [DisclosedClaimSet] from a [DisclosuresAndHashes]
+ * Creates a [DisclosedClaimSet] from a [DisclosuresAndHashes] where
+ * the hashes are embedded tp the claim set with flat disclosure.
  *
  * @param includeHashAlgClaim whether to include the _sd_alg claim
  * @return the  [JsonObject] that contains the _sd claim and optionally the _sd_alg claim together with the
@@ -229,6 +264,14 @@ private fun DisclosuresAndHashes.toFlatDisclosedClaimSet(includeHashAlgClaim: Bo
     else DisclosedClaimSet.Empty
 }
 
+/**
+ * Creates a [DisclosedClaimSet] from a [DisclosuresAndHashes] where
+ * the hashes are embedded tp the claim set with structure disclosure.
+ *
+ * @param claimName the name of the claim
+ * @return a  [JsonObject] that contains the _sd claim nested under the given [claimName] with the
+ *  set of [Disclosure]
+ */
 private fun DisclosuresAndHashes.toStructureDisclosedClaimSet(claimName: String): DisclosedClaimSet {
     val json = buildJsonObject {
         put(claimName, toFlatDisclosedClaimSet(false).claimSet)
@@ -289,15 +332,11 @@ object DisclosureOps {
                 JsonArray((existingSds + hds.map { it.toJson() }).shuffled())
         }
     }
-
-    private fun MutableMap<String, JsonElement>.addHashingAlgorithmClaim(hashAlgorithm: HashAlgorithm) {
-        if (this["_sd_alg"] == null) this["_sd_alg"] = hashAlgorithm.toJson()
-    }
 }
 
 private fun HashedDisclosure.toJson() = JsonPrimitive(value)
 private fun HashAlgorithm.toClaim() = "_sd_alg" to toJson()
 private fun HashAlgorithm.toJson() = JsonPrimitive(alias)
 private fun <T> assertNoCommonElements(a: Iterable<T>, b: Iterable<T>, lazyMessage: () -> Any) {
-    require(a.intersect(b).isEmpty(), lazyMessage)
+    require(a.intersect(b.toSet()).isEmpty(), lazyMessage)
 }
