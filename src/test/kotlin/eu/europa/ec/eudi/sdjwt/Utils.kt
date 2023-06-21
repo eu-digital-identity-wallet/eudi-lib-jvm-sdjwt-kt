@@ -17,14 +17,14 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonObject
 
-fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, Claim?> {
+fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
     val otherClaims = JsonObject(filterKeys { it != attributeName })
-    val claimToBeDisclosed: Claim? = firstNotNullOfOrNull {
+    val claimToBeDisclosed: JsonObject = firstNotNullOfOrNull {
         if (it.key == attributeName) {
             it.value
         } else {
             null
         }
-    }?.let { attributeName to it }
+    }?.let { JsonObject(mapOf(attributeName to it)) } ?: JsonObject(emptyMap())
     return otherClaims to claimToBeDisclosed
 }

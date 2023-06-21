@@ -83,7 +83,7 @@ fun main() {
         algorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
         jwtClaims = jwtClaims,
-        claimsToBeDisclosed = JsonObject(mapOf(vcClaim!!)),
+        claimsToBeDisclosed = vcClaim,
         numOfDecoys = 0,
     ).getOrThrow()
 
