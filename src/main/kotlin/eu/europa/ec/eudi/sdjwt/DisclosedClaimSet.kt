@@ -74,12 +74,23 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
             includeHashAlgClaim: Boolean = true,
         ): Result<DisclosedClaimSet> = runCatching {
             fun structuredDisclosed(claimName: String, claimValue: JsonElement): DisclosedClaimSet {
-                val disclosuresAndHashes = DisclosuresAndHashes.make(
-                    hashAlgorithm,
-                    saltProvider,
-                    JsonObject(mapOf(claimName to claimValue)),
-                    numOfDecoys,
-                )
+                val disclosuresAndHashes = when (claimValue) {
+                    is JsonObject -> claimValue.map {
+                        DisclosuresAndHashes.make(
+                            hashAlgorithm,
+                            saltProvider,
+                            JsonObject(mapOf(it.toPair())),
+                            numOfDecoys,
+                        )
+                    }.fold(DisclosuresAndHashes.empty(hashAlgorithm), DisclosuresAndHashes::combine)
+
+                    else -> DisclosuresAndHashes.make(
+                        hashAlgorithm,
+                        saltProvider,
+                        JsonObject(mapOf(claimName to claimValue)),
+                        numOfDecoys,
+                    )
+                }
                 return disclosuresAndHashes.toStructureDisclosedClaimSet(claimName)
             }
 
@@ -139,6 +150,9 @@ private class DisclosuresAndHashes private constructor(
     }
 
     companion object {
+
+        fun empty(hashAlgorithm: HashAlgorithm): DisclosuresAndHashes =
+            DisclosuresAndHashes(emptySet(), emptySet(), hashAlgorithm)
 
         /**
          * Combines two [DisclosuresAndHashes] into a new [DisclosuresAndHashes], provided

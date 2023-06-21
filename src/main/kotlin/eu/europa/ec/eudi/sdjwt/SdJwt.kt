@@ -56,7 +56,7 @@ object SdJwt {
         numOfDecoys: Int,
     ): Result<CombinedIssuanceSdJwt> =
         encode(signer, algorithm) {
-            DisclosedClaimSet.structured(hashAlgorithm, saltProvider, jwtClaims, claimsToBeDisclosed, numOfDecoys)
+            DisclosedClaimSet.structured(hashAlgorithm, saltProvider, jwtClaims, claimsToBeDisclosed, numOfDecoys, true)
         }
 
     private fun encode(
