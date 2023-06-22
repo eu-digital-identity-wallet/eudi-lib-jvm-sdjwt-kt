@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
@@ -24,48 +25,74 @@ import com.nimbusds.jose.Payload as NimbusPayload
 
 private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 
+/**
+ *
+ */
 object SdJwt {
 
     /**
      * @param signer the signer that will be used to sign the SD-JWT
-     * @param algorithm
+     * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+     * It MUST NOT use none or an identifier for a symmetric algorithm (MAC).
      * @param hashAlgorithm the algorithm to be used for hashing disclosures
      * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
-     * @param jwtClaims
+     * @param plainClaims Claims that are not selectively disclosable are included in the SD-JWT in plaintext
+     * just as they would be in any other JWT
      * @param claimsToBeDisclosed
      */
     fun flatDiscloseAndEncode(
         signer: NimbusJWSSigner,
-        algorithm: NimbusJWSAlgorithm,
+        signAlgorithm: NimbusJWSAlgorithm,
         hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
         saltProvider: SaltProvider = SaltProvider.Default,
-        jwtClaims: JsonObject = JsonObject(emptyMap()),
+        plainClaims: JsonObject = JsonObject(emptyMap()),
         claimsToBeDisclosed: JsonObject,
         numOfDecoys: Int,
     ): Result<CombinedIssuanceSdJwt> =
-        encode(signer, algorithm) {
-            DisclosedClaimSet.flat(hashAlgorithm, saltProvider, jwtClaims, claimsToBeDisclosed, numOfDecoys)
-        }
-    fun structureDiscloseAndEncode(
-        signer: NimbusJWSSigner,
-        algorithm: NimbusJWSAlgorithm,
-        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-        saltProvider: SaltProvider = SaltProvider.Default,
-        jwtClaims: JsonObject = JsonObject(emptyMap()),
-        claimsToBeDisclosed: JsonObject,
-        numOfDecoys: Int,
-    ): Result<CombinedIssuanceSdJwt> =
-        encode(signer, algorithm) {
-            DisclosedClaimSet.structured(hashAlgorithm, saltProvider, jwtClaims, claimsToBeDisclosed, numOfDecoys, true)
+        encode(signer, signAlgorithm) {
+            DisclosedClaimSet.flat(hashAlgorithm, saltProvider, plainClaims, claimsToBeDisclosed, numOfDecoys)
         }
 
+    /**
+     * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+     * It MUST NOT use none or an identifier for a symmetric algorithm (MAC).
+     * @param plainClaims Claims that are not selectively disclosable are included in the SD-JWT in plaintext
+     * just as they would be in any other JWT
+     */
+    fun structureDiscloseAndEncode(
+        signer: NimbusJWSSigner,
+        signAlgorithm: NimbusJWSAlgorithm,
+        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+        saltProvider: SaltProvider = SaltProvider.Default,
+        plainClaims: JsonObject = JsonObject(emptyMap()),
+        claimsToBeDisclosed: JsonObject,
+        numOfDecoys: Int,
+    ): Result<CombinedIssuanceSdJwt> =
+        encode(signer, signAlgorithm) {
+            DisclosedClaimSet.structured(
+                hashAlgorithm,
+                saltProvider,
+                plainClaims,
+                claimsToBeDisclosed,
+                numOfDecoys,
+                true
+            )
+        }
+
+    /**
+     * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+     * It MUST NOT use none or an identifier for a symmetric algorithm (MAC).
+     */
     private fun encode(
         signer: NimbusJWSSigner,
-        algorithm: NimbusJWSAlgorithm,
+        signAlgorithm: NimbusJWSAlgorithm,
         disclosedClaimSet: () -> Result<DisclosedClaimSet>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
+
+        require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
+
         val (disclosures, jwtClaimSet) = disclosedClaimSet().getOrThrow()
-        val header = NimbusJWSHeader(algorithm)
+        val header = NimbusJWSHeader(signAlgorithm)
         val payload = NimbusPayload(jwtClaimSet.asBytes())
 
         val jwt: Jwt = with(NimbusJWSObject(header, payload)) {
@@ -75,4 +102,11 @@ object SdJwt {
 
         jwt + disclosures.concat()
     }
+
+    /**
+     * Indicates whether an [NimbusJWSAlgorithm] is asymmetric
+     */
+    private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
+
+
 }

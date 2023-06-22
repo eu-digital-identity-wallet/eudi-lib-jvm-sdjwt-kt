@@ -49,7 +49,7 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
         /**
          * @param hashAlgorithm the algorithm to be used for hashing disclosures
          * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
-         * @param otherClaims claims that will be included as plain claims
+         * @param plainClaims Claims that are not selectively disclosable are included  in plaintext
          * @param claimsToBeDisclosed claims to be selectively disclosed
          * @param numOfDecoys the number of decoys
          * @return
@@ -57,16 +57,15 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
         fun flat(
             hashAlgorithm: HashAlgorithm,
             saltProvider: SaltProvider = SaltProvider.Default,
-            otherClaims: JsonObject = JsonObject(emptyMap()),
+            plainClaims: JsonObject = JsonObject(emptyMap()),
             claimsToBeDisclosed: JsonObject,
             numOfDecoys: Int = 0,
         ): Result<DisclosedClaimSet> = runCatching {
             val disclosuresAndHashes =
                 DisclosuresAndHashes.make(hashAlgorithm, saltProvider, claimsToBeDisclosed, numOfDecoys)
             val disclosedClaims = disclosuresAndHashes.toFlatDisclosedClaimSet(true)
-            val plainClaims = plain(otherClaims)
 
-            plainClaims + disclosedClaims
+            plain(plainClaims) + disclosedClaims
         }
 
         /**
@@ -81,7 +80,7 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
         fun structured(
             hashAlgorithm: HashAlgorithm,
             saltProvider: SaltProvider = SaltProvider.Default,
-            otherJwtClaims: JsonObject = JsonObject(emptyMap()),
+            plainClaims: JsonObject = JsonObject(emptyMap()),
             claimsToBeDisclosed: JsonObject,
             numOfDecoys: Int = 0,
             includeHashAlgClaim: Boolean = true,
@@ -107,17 +106,17 @@ class DisclosedClaimSet(val disclosures: Set<Disclosure>, val claimSet: JsonObje
                 return disclosuresAndHashes.toStructureDisclosedClaimSet(claimName)
             }
 
-            val plainClaims = plain(
+            val initial = plain(
                 JsonObject(
-                    otherJwtClaims +
-                        if (claimsToBeDisclosed.isNotEmpty() && includeHashAlgClaim) mapOf(hashAlgorithm.toClaim())
-                        else emptyMap(),
+                    plainClaims +
+                            if (claimsToBeDisclosed.isNotEmpty() && includeHashAlgClaim) mapOf(hashAlgorithm.toClaim())
+                            else emptyMap(),
                 ),
             )
 
             claimsToBeDisclosed
                 .map { (claimName, claimValue) -> structuredDisclosed(claimName, claimValue) }
-                .fold(plainClaims, DisclosedClaimSet::combine)
+                .fold(initial, DisclosedClaimSet::combine)
         }
 
         /**
@@ -220,6 +219,8 @@ private class DisclosuresAndHashes private constructor(
          * Method calculates the disclosures and the hashes for every attribute of the [claimsToBeDisclosed]
          * and then [combines][combine] them into a single [DisclosuresAndHashes]
          *
+         * Each claim of [claimsToBeDisclosed] is treated as a block that can either be disclosed completely or not at all.
+         *
          * @param hashAlgorithm the algorithm to be used for hashing disclosures
          * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
          * @param claimsToBeDisclosed the claims to be selectively disclosed
@@ -234,11 +235,19 @@ private class DisclosuresAndHashes private constructor(
             numOfDecoys: Int,
         ): DisclosuresAndHashes {
             val decoys = decoys(hashAlgorithm = hashAlgorithm, numOfDecoys = numOfDecoys)
-            return claimsToBeDisclosed.map { (k, v) ->
-                val d = Disclosure.encode(saltProvider, k to v).getOrThrow()
-                val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-                DisclosuresAndHashes(setOf(d), setOf(h), hashAlgorithm)
-            }.fold(decoys, DisclosuresAndHashes::combine)
+            return claimsToBeDisclosed
+                .map { claim -> make(hashAlgorithm, saltProvider, claim.toPair()) }
+                .fold(decoys, DisclosuresAndHashes::combine)
+        }
+
+        fun make(
+            hashAlgorithm: HashAlgorithm,
+            saltProvider: SaltProvider,
+            claimToBeDisclosed: Claim
+        ): DisclosuresAndHashes {
+            val d = Disclosure.encode(saltProvider, claimToBeDisclosed).getOrThrow()
+            val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
+            return DisclosuresAndHashes(setOf(d), setOf(h), hashAlgorithm)
         }
     }
 }

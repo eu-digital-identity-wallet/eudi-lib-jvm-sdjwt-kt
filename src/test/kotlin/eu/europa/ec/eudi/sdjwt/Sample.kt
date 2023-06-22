@@ -80,9 +80,9 @@ fun main() {
 
     val sdJwt: CombinedIssuanceSdJwt = SdJwt.structureDiscloseAndEncode(
         signer = RSASSASigner(rsaJWK),
-        algorithm = JWSAlgorithm.RS256,
+        signAlgorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
-        jwtClaims = jwtClaims,
+        plainClaims = jwtClaims,
         claimsToBeDisclosed = vcClaim,
         numOfDecoys = 0,
     ).getOrThrow()
