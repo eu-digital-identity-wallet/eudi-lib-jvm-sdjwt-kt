@@ -36,7 +36,8 @@ fun interface DecoyGen {
      * @return a series of decoy [HashedDisclosure]
      */
     fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Collection<HashedDisclosure> {
-        return (1..numOfDecoys).map { gen(hashingAlgorithm) }
+        return if (numOfDecoys < 1) emptyList()
+        else (1..Random.nextInt(1, numOfDecoys)).map { gen(hashingAlgorithm) }
     }
 
     companion object {

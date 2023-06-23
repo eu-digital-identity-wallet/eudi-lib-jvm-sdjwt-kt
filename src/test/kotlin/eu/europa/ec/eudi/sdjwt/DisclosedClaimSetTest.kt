@@ -28,33 +28,41 @@ class DisclosedClaimSetTest {
 
     @Nested
     @DisplayName("Flat disclosure test")
-    class FlatDisclosure {
+    inner class FlatDisclosure {
 
         @Test
         fun `no sd-jwt with illegal attribute names`() {
             val invalidClaims = listOf(
-                "_sd" to JsonPrimitive("foo"), // invalid because claim name
-                "foo" to buildJsonObject {
-                    put("_sd", "bar")
+                sdJwt {
+                    flat { put("_sd", "foo") }
                 },
 
-                "foo" to buildJsonArray {
-                    add(
-                        buildJsonObject {
+                sdJwt {
+                    flat {
+                        putJsonObject("foo") {
                             put("_sd", "bar")
-                        },
-                    )
+                        }
+                    }
                 },
+                sdJwt {
+                    flat {
+                        putJsonArray("foo") {
+                            add(buildJsonObject { put("_sd", "bar") })
+                        }
+                    }
+                },
+
             )
 
             val hashAlgorithm = HashAlgorithm.SHA_256
 
-            invalidClaims.forEach { claimToBeDisclosed ->
-                val result = DisclosedClaimSet.flat(
+            invalidClaims.forEach { dsl ->
+                val result = DisclosedClaimSet.disclose(
                     hashAlgorithm = hashAlgorithm,
                     saltProvider = SaltProvider.Default,
-                    claimsToBeDisclosed = JsonObject(mapOf(claimToBeDisclosed)),
+
                     numOfDecoys = 0,
+                    dsl = dsl,
                 )
                 assertFalse { result.isSuccess }
             }
@@ -109,56 +117,23 @@ class DisclosedClaimSetTest {
 
         @Test
         fun flatDisclosure() {
-            val jwtVcPayload = """{
-          "iss": "https://example.com",
-          "jti": "http://example.com/credentials/3732",
-          "nbf": 1541493724,
-          "iat": 1541493724,
-          "cnf": {
-            "jwk": {
-              "kty": "RSA",
-              "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-              "e": "AQAB"
-            }
-          },
-          "type": "IdentityCredential",
-          "credentialSubject": {
-            "given_name": "John",
-            "family_name": "Doe",
-            "email": "johndoe@example.com",
-            "phone_number": "+1-202-555-0101",
-            "address": {
-              "street_address": "123 Main St",
-              "locality": "Anytown",
-              "region": "Anystate",
-              "country": "US"
-            },
-            "birthdate": "1940-01-01",
-            "is_over_18": true,
-            "is_over_21": true,
-            "is_over_65": true
-       }
-      }
-            """.trimIndent()
-
             val jwtVcPayloadJson = Json.parseToJsonElement(jwtVcPayload).jsonObject
-            val (otherClaims, claimsToBeDisclosed) =
-                jwtVcPayloadJson.extractClaim("credentialSubject")
-
+            val otherClaims = jwtVcPayloadJson.filterNot { it.key == "credentialSubject" }
+            val claimsToBeDisclosed = jwtVcPayloadJson["credentialSubject"]!!.jsonObject
             testFlatDisclosure(otherClaims, claimsToBeDisclosed)
         }
 
         private fun testFlatDisclosure(
-            plainClaims: JsonObject,
-            claimsToBeDisclosed: JsonObject,
+            plainClaims: Map<String, JsonElement>,
+            claimsToBeDisclosed: Map<String, JsonElement>,
         ): DisclosedClaimSet {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val disclosedJsonObject = DisclosedClaimSet.flat(
+            val dsl = SdJwtDsl.allFlat(plainClaims, claimsToBeDisclosed)
+            val disclosedJsonObject = DisclosedClaimSet.disclose(
                 hashAlgorithm,
                 SaltProvider.Default,
-                plainClaims,
-                claimsToBeDisclosed,
                 4,
+                dsl,
             ).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
@@ -199,7 +174,7 @@ class DisclosedClaimSetTest {
 
     @DisplayName("Structured Disclosure")
     @Nested
-    class StructuredDisclosure {
+    inner class StructuredDisclosure {
 
         @Test
         fun basic() {
@@ -221,38 +196,6 @@ class DisclosedClaimSetTest {
 
         @Test
         fun advanced() {
-            val jwtVcPayload = """{
-                  "iss": "https://example.com",
-                  "jti": "http://example.com/credentials/3732",
-                  "nbf": 1541493724,
-                  "iat": 1541493724,
-                  "cnf": {
-                    "jwk": {
-                      "kty": "RSA",
-                      "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-                      "e": "AQAB"
-                    }
-                  },
-                  "type": "IdentityCredential",
-                  "credentialSubject": {
-                    "given_name": "John",
-                    "family_name": "Doe",
-                    "email": "johndoe@example.com",
-                    "phone_number": "+1-202-555-0101",
-                    "address": {
-                      "street_address": "123 Main St",
-                      "locality": "Anytown",
-                      "region": "Anystate",
-                      "country": "US"
-                    },
-                    "birthdate": "1940-01-01",
-                    "is_over_18": true,
-                    "is_over_21": true,
-                    "is_over_65": true
-                  }
-                }
-            """.trimIndent()
-
             // this is the json we want to include in the JWT (not disclosed)
             val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
             val (plainClaims, claimsToBeDisclosed) = jwtVcJson.extractClaim("credentialSubject")
@@ -261,17 +204,23 @@ class DisclosedClaimSetTest {
         }
 
         private fun testStructured(
-            plainClaims: JsonObject,
-            claimsToBeDisclosed: JsonObject,
+            plainClaims: Map<String, JsonElement>,
+            claimsToBeDisclosed: Map<String, JsonElement>,
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val disclosedJsonObject = DisclosedClaimSet.structured(
+            val dsl = sdJwt {
+                plain(plainClaims)
+                claimsToBeDisclosed.forEach { c ->
+                    structured(c.key) {
+                        flat(c.value.jsonObject)
+                    }
+                }
+            }
+            val disclosedJsonObject = DisclosedClaimSet.disclose(
                 hashAlgorithm,
                 SaltProvider.Default,
-                plainClaims,
-                claimsToBeDisclosed,
                 3,
-                includeHashAlgClaim = true,
+                dsl,
             ).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
@@ -294,7 +243,7 @@ class DisclosedClaimSetTest {
 
     companion object {
 
-        fun assertContainsPlainClaims(sdEncoded: JsonObject, plainClaims: JsonObject) {
+        fun assertContainsPlainClaims(sdEncoded: Map<String, JsonElement>, plainClaims: Map<String, JsonElement>) {
             for ((k, v) in plainClaims) {
                 assertEquals(v, sdEncoded[k], "Make sure that non selectively disclosable elements are present")
             }
