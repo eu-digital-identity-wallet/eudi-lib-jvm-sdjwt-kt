@@ -48,9 +48,9 @@ fun FooClaim.usingDsl(
     fun Address.disclose(claimName: String, plainClaims: (Claim) -> Boolean = { false }) =
         SdJwtDsl.structured(claimName, json.encodeToJsonElement<Address>(this).jsonObject, plainClaims)
 
-    val dsl = SdJwtDsl.TopLevel(
-        plain = SdJwtDsl.plain(plainClaims),
-        structured = setOf(
+    val dsl = SdJwtDsl.SdJwt(
+        plainClaims = SdJwtDsl.plain(plainClaims),
+        structuredClaims = setOf(
             homeAddress.disclose("home_address"),
             workAddress.disclose("work_address") { it.name() == "country" },
         ),
@@ -62,6 +62,7 @@ fun FooClaim.usingDsl(
 fun FooClaim.usignBuilder(
     hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA3_256,
     saltProvider: SaltProvider = SaltProvider.Default,
+    numOfDecoys: Int = 0,
 ): DisclosedClaimSet {
     val jsonObject = json.encodeToJsonElement(this).jsonObject
 
@@ -82,7 +83,7 @@ fun FooClaim.usignBuilder(
             }
         }
     }
-    return DisclosedClaimSet.disclose(HashAlgorithm.SHA3_256, SaltProvider.Default, 0, sdJwtDsl).getOrThrow()
+    return DisclosedClaimSet.disclose(hashAlgorithm, saltProvider, numOfDecoys, sdJwtDsl).getOrThrow()
 }
 
 private val json = Json { prettyPrint = true }
@@ -99,17 +100,152 @@ fun main() {
         workAddress = workAddress,
     )
 
-    println("Advanced  example. Using DSL")
-    println("All attributes of both work and home address are selectively disclosable")
-    println("For work address country is plain")
-    fooClaim.usingDsl().also { it.print() }
+//    println("Advanced  example. Using DSL")
+//    println("All attributes of both work and home address are selectively disclosable")
+//    println("For work address country is plain")
+//    fooClaim.usingDsl().also { it.print() }
+//
+//    println("Advanced  example. Using builder")
+//
+//    fooClaim.usignBuilder().also { it.print() }
 
-    println("Advanced  example. Using builder")
-
-    fooClaim.usignBuilder().also { it.print() }
+    complexExample().disclose()
 }
+
+private fun SdJwtDsl.SdJwt.disclose() =
+    DisclosedClaimSet.disclose(HashAlgorithm.SHA_256, SaltProvider.Default, 0, this).getOrThrow().also {
+        it.print()
+    }
 
 fun DisclosedClaimSet.print() {
     disclosures.forEach { println(it.claim()) }
     claimSet.also { println(json.encodeToString(it)) }
 }
+
+fun flatDisclosureExample() =
+    sdJwt {
+        plain {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "https://example.com/issuer")
+            put("iat", 1516239022)
+            put("exp", 1735689661)
+        }
+        flat {
+            putJsonObject("address") {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
+            }
+        }
+    }
+
+fun structuredDisclosureExample() =
+    sdJwt {
+        plain {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "https://example.com/issuer")
+            put("iat", 1516239022)
+            put("exp", 1735689661)
+        }
+        structured("address") {
+            flat {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
+            }
+        }
+    }
+
+fun complexExample() =
+    sdJwt {
+        plain {
+            put("iss", "https://example.com/issuer")
+            put("iat", 1516239022)
+            put("exp", 1735689661)
+        }
+        flat {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("given_name", "太郎")
+            put("family_name", "山田")
+            put("email", "\"unusual email address\"@example.jp")
+            put("phone_number", "+81-80-1234-5678")
+            putJsonObject("address") {
+                put("street_address", "東京都港区芝公園４丁目２−８")
+                put("locality", "東京都")
+                put("region", "港区")
+                put("country", "JP")
+            }
+            put("birthdate", "1940-01-01")
+        }
+    }
+
+val foo = """
+{
+  "verified_claims": {
+    "verification": {
+      "trust_framework": "de_aml",
+      "time": "2012-04-23T18:25Z",
+      "verification_process": "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7",
+      "evidence": [
+        {
+          "type": "document",
+          "method": "pipp",
+          "time": "2012-04-22T11:30Z",
+          "document": {
+            "type": "idcard",
+            "issuer": {
+              "name": "Stadt Augsburg",
+              "country": "DE"
+            },
+            "number": "53554554",
+            "date_of_issuance": "2010-03-23",
+            "date_of_expiry": "2020-03-22"
+          }
+        }
+      ]
+    },
+    "claims": {
+      "given_name": "Max",
+      "family_name": "Müller",
+      "nationalities": [
+        "DE"
+      ],
+      "birthdate": "1956-01-28",
+      "place_of_birth": {
+        "country": "IS",
+        "locality": "Þykkvabæjarklaustur"
+      },
+      "address": {
+        "locality": "Maxstadt",
+        "postal_code": "12344",
+        "country": "DE",
+        "street_address": "Weidenstraße 22"
+      }
+    }
+  },
+  "birth_middle_name": "Timotheus",
+  "salutation": "Dr.",
+  "msisdn": "49123456789"
+}
+""".trimIndent()
+fun foo() =
+    sdJwt {
+        plain {
+            put("iss", "https://example.com/issuer")
+            put("iat", 1516239022)
+            put("exp", 1735689661)
+        }
+        flat {
+            put("birth_middle_name", "Timotheus")
+            put("salutation", "Dr.")
+            put("msisdn", "49123456789")
+        }
+
+        structured("verified_claims") {
+        }
+
+        structured("claim") {
+        }
+    }

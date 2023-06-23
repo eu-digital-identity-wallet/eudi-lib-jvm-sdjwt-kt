@@ -128,7 +128,7 @@ class DisclosedClaimSetTest {
             claimsToBeDisclosed: Map<String, JsonElement>,
         ): DisclosedClaimSet {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val dsl = SdJwtDsl.allFlat(plainClaims, claimsToBeDisclosed)
+            val dsl = SdJwtDsl.sdJwtAllFlat(plainClaims, claimsToBeDisclosed)
             val disclosedJsonObject = DisclosedClaimSet.disclose(
                 hashAlgorithm,
                 SaltProvider.Default,
