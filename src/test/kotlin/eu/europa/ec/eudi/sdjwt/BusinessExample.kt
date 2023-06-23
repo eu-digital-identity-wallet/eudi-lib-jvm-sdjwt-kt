@@ -109,13 +109,19 @@ fun main() {
 //
 //    fooClaim.usignBuilder().also { it.print() }
 
-    complexExample().disclose()
+    foo().disclose()
 }
 
-private fun SdJwtDsl.SdJwt.disclose() =
-    DisclosedClaimSet.disclose(HashAlgorithm.SHA_256, SaltProvider.Default, 0, this).getOrThrow().also {
-        it.print()
-    }
+private fun SdJwtDsl.SdJwt.disclose() {
+    val result = DisclosedClaimSet.disclose(
+        HashAlgorithm.SHA_256,
+        SaltProvider.Default,
+        0,
+        this,
+    )
+    val succes = result.getOrThrow()
+    succes.print()
+}
 
 fun DisclosedClaimSet.print() {
     disclosures.forEach { println(it.claim()) }
@@ -230,6 +236,7 @@ val foo = """
   "msisdn": "49123456789"
 }
 """.trimIndent()
+
 fun foo() =
     sdJwt {
         plain {
@@ -242,10 +249,35 @@ fun foo() =
             put("salutation", "Dr.")
             put("msisdn", "49123456789")
         }
-
         structured("verified_claims") {
-        }
-
-        structured("claim") {
+            structured("verification") {
+                plain {
+                    put("trust_framework", "de_aml")
+                }
+                flat {
+                    put("time", "2012-04-23T18:25Z")
+                    put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
+                }
+            }
+            structured("claim") {
+                flat {
+                    put("given_name", "Max")
+                    put("family_name", "Müller")
+                    putJsonArray("nationalities") {
+                        add("DE")
+                    }
+                    put("birthdate", "1956-01-28")
+                    putJsonObject("place_of_birth") {
+                        put("country", "IS")
+                        put("locality", "Þykkvabæjarklaustur")
+                    }
+                    putJsonObject("address") {
+                        put("locality", "Maxstadt")
+                        put("postal_code", "12344")
+                        put("country", "DE")
+                        put("street_address", "Weidenstraße 22")
+                    }
+                }
+            }
         }
     }

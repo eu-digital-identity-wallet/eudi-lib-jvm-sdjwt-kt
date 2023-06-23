@@ -84,9 +84,10 @@ class DisclosedClaimSet private constructor(val disclosures: Set<Disclosure>, va
                 }
                 is SdJwtDsl.Structured -> {
                     val flatSubClaims = doDisclose(x.flatSubClaims)
-                    val combined = JsonObject(flatSubClaims.claimSet + x.plainSubClaims.claims)
+                    val structuredSubClaims = x.structuredSubClaims.map { doDisclose(it) }.fold(Empty, DisclosedClaimSet::combine)
+                    val combined = JsonObject(flatSubClaims.claimSet + x.plainSubClaims.claims + structuredSubClaims.claimSet)
                     val repackaged = buildJsonObject { put(x.claimName, combined) }
-                    DisclosedClaimSet(flatSubClaims.disclosures, repackaged)
+                    DisclosedClaimSet(flatSubClaims.disclosures + structuredSubClaims.disclosures, repackaged)
                 }
                 is SdJwtDsl.SdJwt -> {
                     val plainClaims = doDisclose(x.plainClaims)

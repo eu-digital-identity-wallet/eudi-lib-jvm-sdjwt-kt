@@ -34,6 +34,7 @@ sealed interface SdJwtDsl {
         val claimName: String,
         val plainSubClaims: Plain = Empty,
         val flatSubClaims: Flat,
+        val structuredSubClaims: Set<Structured>,
     ) : SdJwtDsl
 
     class SdJwt internal constructor(
@@ -51,8 +52,9 @@ sealed interface SdJwtDsl {
             claimName: String,
             plainSubClaims: Map<String, JsonElement>,
             flatSubClaims: Map<String, JsonElement>,
+            structuredSubClaims: Set<Structured>,
         ): Structured =
-            Structured(claimName, plain(plainSubClaims), flat(flatSubClaims))
+            Structured(claimName, plain(plainSubClaims), flat(flatSubClaims), structuredSubClaims)
 
         fun structured(
             claimName: String,
@@ -61,7 +63,7 @@ sealed interface SdJwtDsl {
         ): Structured {
             val plainSubClaims = subClaims.filter { plainClaimsFilter(it.toPair()) }
             val subClaimsToBeDisclosed = subClaims - plainSubClaims.keys
-            return structured(claimName, plainSubClaims, subClaimsToBeDisclosed)
+            return structured(claimName, plainSubClaims, subClaimsToBeDisclosed, emptySet())
         }
 
         fun sdJwtAllFlat(plain: Map<String, JsonElement> = emptyMap(), flat: Map<String, JsonElement>): SdJwt =
@@ -72,6 +74,7 @@ sealed interface SdJwtDsl {
 private interface CmnBuilder {
     val plainClaims: MutableMap<String, JsonElement>
     val flatClaims: MutableMap<String, JsonElement>
+    val structuredClaims: MutableSet<SdJwtDsl.Structured>
 
     //
     // Basic operations
@@ -82,6 +85,28 @@ private interface CmnBuilder {
 
     fun flat(c: Map<String, JsonElement>) {
         if (c.isNotEmpty()) flatClaims.putAll(c)
+    }
+
+    fun structured(
+        claimName: String,
+        plainSubClaims: Map<String, JsonElement> = emptyMap(),
+        flatSubClaims: Map<String, JsonElement>,
+        structuredSubClaims: Set<SdJwtDsl.Structured> = emptySet(),
+    ) {
+        structuredClaims.add(SdJwtDsl.structured(claimName, plainSubClaims, flatSubClaims, structuredSubClaims))
+    }
+
+    //
+    // Derived operators
+    //
+
+    fun structured(claimName: String, subClaims: Map<String, JsonElement>, plaintFilter: (Claim) -> Boolean) {
+        val plainSubClaims = subClaims.filter { plaintFilter(it.toPair()) }
+        val subClaimsToBeDisclosed = subClaims - plainSubClaims.keys
+        structured(claimName) {
+            if (plainSubClaims.isNotEmpty()) plain(plainSubClaims)
+            if (subClaimsToBeDisclosed.isNotEmpty()) flat(subClaimsToBeDisclosed)
+        }
     }
 
     //
@@ -101,6 +126,10 @@ private interface CmnBuilder {
     fun flat(builderAction: JsonObjectBuilder.() -> Unit) {
         flat(buildJsonObject(builderAction))
     }
+
+    fun structured(claimName: String, builderAction: StructuredBuilder.() -> Unit) {
+        structuredClaims.add(buildStructured(claimName, builderAction))
+    }
 }
 
 class SdJwtBuilder
@@ -108,32 +137,7 @@ class SdJwtBuilder
     internal constructor() : CmnBuilder {
         override val plainClaims: MutableMap<String, JsonElement> = mutableMapOf()
         override val flatClaims: MutableMap<String, JsonElement> = mutableMapOf()
-        private val structuredClaims: MutableSet<SdJwtDsl.Structured> = mutableSetOf()
-
-        fun structured(
-            claimName: String,
-            plainSubClaims: Map<String, JsonElement> = emptyMap(),
-            flatSubClaims: Map<String, JsonElement>,
-        ) {
-            structuredClaims.add(SdJwtDsl.structured(claimName, plainSubClaims, flatSubClaims))
-        }
-
-        fun structured(claimName: String, builderAction: StructuredBuilder.() -> Unit) {
-            structuredClaims.add(buildStructured(claimName, builderAction))
-        }
-
-        //
-        // Derived operators
-        //
-
-        fun structured(claimName: String, subClaims: Map<String, JsonElement>, plaintFilter: (Claim) -> Boolean) {
-            val plainSubClaims = subClaims.filter { plaintFilter(it.toPair()) }
-            val subClaimsToBeDisclosed = subClaims - plainSubClaims.keys
-            structured(claimName) {
-                if (plainSubClaims.isNotEmpty()) plain(plainSubClaims)
-                if (subClaimsToBeDisclosed.isNotEmpty()) flat(subClaimsToBeDisclosed)
-            }
-        }
+        override val structuredClaims: MutableSet<SdJwtDsl.Structured> = mutableSetOf()
 
         fun build(): SdJwtDsl.SdJwt =
             SdJwtDsl.SdJwt(
@@ -148,9 +152,10 @@ class StructuredBuilder
     internal constructor() : CmnBuilder {
         override val plainClaims: MutableMap<String, JsonElement> = mutableMapOf()
         override val flatClaims: MutableMap<String, JsonElement> = mutableMapOf()
+        override val structuredClaims: MutableSet<SdJwtDsl.Structured> = mutableSetOf()
 
         fun build(claimName: String): SdJwtDsl.Structured =
-            SdJwtDsl.structured(claimName, plainClaims, flatClaims)
+            SdJwtDsl.structured(claimName, plainClaims, flatClaims, structuredClaims)
     }
 
 @OptIn(ExperimentalContracts::class)
