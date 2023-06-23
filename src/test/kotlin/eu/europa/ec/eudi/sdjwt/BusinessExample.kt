@@ -115,11 +115,12 @@ fun main() {
 private fun SdJwtDsl.SdJwt.disclose() {
     val result = DisclosedClaimSet.disclose(
         HashAlgorithm.SHA_256,
-        SaltProvider.Default, 0, this
+        SaltProvider.Default,
+        0,
+        this,
     )
     val succes = result.getOrThrow()
     succes.print()
-
 }
 
 fun DisclosedClaimSet.print() {
@@ -280,6 +281,3 @@ fun foo() =
             }
         }
     }
-
-
-
