@@ -72,19 +72,23 @@ fun genRSAKeyPair(): RSAKey =
 fun main() {
     // this is the json we want to include in the JWT (not disclosed)
     val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
-    val (jwtClaims, vcClaim) = jwtVcJson.extractClaim("credentialSubject")
+    val jwtClaims = jwtVcJson.filterNot { it.key == "credentialSubject" }
+    val vcClaim = jwtVcJson["credentialSubject"]!!.jsonObject
 
     // Generate an RSA key pair
     val rsaJWK = genRSAKeyPair()
     val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = SdJwt.structureDiscloseAndEncode(
+    val sdJwt: CombinedIssuanceSdJwt = SdJwt.encode(
         signer = RSASSASigner(rsaJWK),
-        algorithm = JWSAlgorithm.RS256,
+        signAlgorithm = JWSAlgorithm.RS256,
         hashAlgorithm = HashAlgorithm.SHA3_512,
-        jwtClaims = jwtClaims,
-        claimsToBeDisclosed = vcClaim,
+        saltProvider = SaltProvider.Default,
         numOfDecoys = 0,
+        sdJwtDsl = sdJwt {
+            plain(jwtClaims)
+            structured("credentialSubject", vcClaim)
+        },
     ).getOrThrow()
 
     val (jwt, disclosures) = sdJwt.decompose().getOrThrow()
