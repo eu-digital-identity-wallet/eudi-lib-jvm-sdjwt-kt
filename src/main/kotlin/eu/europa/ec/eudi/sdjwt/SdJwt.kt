@@ -39,7 +39,7 @@ object SdJwt {
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
         numOfDecoys: Int,
-        sdJwtDsl: SdJwtDsl,
+        sdJwtDsl: SdJwtDsl.SdJwt,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 

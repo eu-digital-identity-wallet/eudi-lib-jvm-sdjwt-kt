@@ -87,7 +87,7 @@ fun main() {
         numOfDecoys = 0,
         sdJwtDsl = sdJwt {
             plain(jwtClaims)
-            structured("credentialSubject", vcClaim)
+            structured(claimName = "credentialSubject", flatSubClaims = vcClaim)
         },
     ).getOrThrow()
 
