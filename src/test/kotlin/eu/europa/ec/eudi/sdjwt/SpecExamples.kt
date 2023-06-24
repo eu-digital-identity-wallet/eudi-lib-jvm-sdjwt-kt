@@ -21,9 +21,9 @@ import kotlinx.serialization.json.*
 fun main() {
     listOf(
         option1FlatSdJwt(),
-         option2StructuredSdJwt(),
-         example2A(),
-         reallyComplex(),
+        option2StructuredSdJwt(),
+        example2A(),
+        reallyComplex(),
     ).forEach { it.disclose() }
 }
 
