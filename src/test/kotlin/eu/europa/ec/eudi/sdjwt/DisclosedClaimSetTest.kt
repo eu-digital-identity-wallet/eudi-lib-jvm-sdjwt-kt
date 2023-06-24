@@ -56,13 +56,13 @@ class DisclosedClaimSetTest {
 
             val hashAlgorithm = HashAlgorithm.SHA_256
 
-            invalidClaims.forEach { dsl ->
-                val result = DisclosedClaimSet.disclose(
+            invalidClaims.forEach { sdJwt ->
+                val result = SdJwtDiscloser.disclose(
                     hashAlgorithm = hashAlgorithm,
                     saltProvider = SaltProvider.Default,
 
                     numOfDecoys = 0,
-                    dsl = dsl,
+                    sdJwt = sdJwt,
                 )
                 assertFalse { result.isSuccess }
             }
@@ -126,14 +126,18 @@ class DisclosedClaimSetTest {
         private fun testFlatDisclosure(
             plainClaims: Map<String, JsonElement>,
             claimsToBeDisclosed: Map<String, JsonElement>,
-        ): DisclosedClaimSet {
+        ): DisclosedClaims<JsonObject> {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val dsl = SdJwtDsl.sdJwtAllFlat(plainClaims, claimsToBeDisclosed)
-            val disclosedJsonObject = DisclosedClaimSet.disclose(
+            val sdJwtElements = sdJwt {
+                plain(plainClaims)
+                flat(claimsToBeDisclosed)
+            }
+
+            val disclosedJsonObject = SdJwtDiscloser.disclose(
                 hashAlgorithm,
                 SaltProvider.Default,
                 4,
-                dsl,
+                sdJwtElements,
             ).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
@@ -208,19 +212,15 @@ class DisclosedClaimSetTest {
             claimsToBeDisclosed: Map<String, JsonElement>,
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val dsl = sdJwt {
+            val sdJwtElements = sdJwt {
                 plain(plainClaims)
-                claimsToBeDisclosed.forEach { c ->
-                    structured(c.key) {
-                        flat(c.value.jsonObject)
-                    }
-                }
+                claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
             }
-            val disclosedJsonObject = DisclosedClaimSet.disclose(
+            val disclosedJsonObject = SdJwtDiscloser.disclose(
                 hashAlgorithm,
                 SaltProvider.Default,
                 3,
-                dsl,
+                sdJwtElements,
             ).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
@@ -277,15 +277,31 @@ class DisclosedClaimSetTest {
         }
 
         private fun JsonObject.collectHashedDisclosures(): List<HashedDisclosure> =
-            map { (attr, value) ->
+            map { (attr, json) ->
                 when {
-                    attr == "_sd" && value is JsonArray -> value.jsonArray.map { v ->
+                    attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
                         HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
                     }
 
-                    value is JsonObject -> value.collectHashedDisclosures()
+                    json is JsonObject -> json.collectHashedDisclosures()
+                    json is JsonArray -> TODO()
                     else -> emptyList()
                 }
             }.flatten()
+
+        private fun JsonElement.collectHashes(): List<HashedDisclosure> {
+            return when (this) {
+                is JsonObject -> map { (attr, json) ->
+                    when {
+                        attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
+                            HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
+                        }
+                        else -> json.collectHashes()
+                    }
+                }.flatten()
+                is JsonArray -> map { json -> json.collectHashes() }.flatten()
+                else -> emptyList()
+            }
+        }
     }
 }

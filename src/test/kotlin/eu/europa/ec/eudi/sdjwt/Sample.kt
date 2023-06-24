@@ -85,9 +85,9 @@ fun main() {
         hashAlgorithm = HashAlgorithm.SHA3_512,
         saltProvider = SaltProvider.Default,
         numOfDecoys = 0,
-        sdJwtDsl = sdJwt {
+        sdJwtElements = sdJwt {
             plain(jwtClaims)
-            structured(claimName = "credentialSubject", flatSubClaims = vcClaim)
+            structuredWithFlatClaims("credentialSubject", vcClaim)
         },
     ).getOrThrow()
 

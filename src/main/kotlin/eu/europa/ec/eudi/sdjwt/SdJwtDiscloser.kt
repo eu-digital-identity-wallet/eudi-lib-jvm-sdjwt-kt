@@ -18,113 +18,100 @@ package eu.europa.ec.eudi.sdjwt
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import java.util.*
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
-/**
- * Represent a selectively disclosed Json object and the calculated disclosures
- *
- * @param disclosures the disclosures calculated
- * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
- */
-class DisclosedClaimSet private constructor(val disclosures: Set<Disclosure>, val claimSet: JsonObject) {
-    operator fun component1(): Set<Disclosure> = disclosures
-    operator fun component2(): JsonObject = claimSet
+typealias SdJwtElements = Set<SdJwtElement<JsonElement>>
+private typealias HashClaims = (Claims<JsonElement>) -> Pair<Set<Disclosure>, Set<HashedDisclosure>>
 
-    companion object {
+object SdJwtDiscloser {
 
-        /**
-         * An empty claim set with no disclosures
-         */
-        private val Empty: DisclosedClaimSet = DisclosedClaimSet(emptySet(), JsonObject(emptyMap()))
+    @OptIn(ExperimentalSerializationApi::class)
+    private fun elementDiscloser(hashClaims: HashClaims): SdJwtElementDiscloser<JsonElement, JsonObject> =
+        SdJwtElementDiscloser(
+            additionOfClaims = object : Addition<JsonObject> {
+                override val zero: JsonObject = JsonObject(emptyMap())
+                override fun invoke(a: JsonObject, b: JsonObject): JsonObject = JsonObject(a + b)
+            },
+            createObjectFromClaims = { JsonObject(it) },
+            nestClaims = { claimName, jsonObject -> buildJsonObject { put(claimName, jsonObject) } },
+            hashClaims = hashClaims,
+            createObjectsFromHashes = { hs -> buildJsonObject { putJsonArray("_sd") { addAll(hs.map { it.value }) } } },
+        )
 
-        /**
-         * Creates a [DisclosedClaimSet] with no disclosures
-         *
-         * @param plainClaims the claims to be included plainly
-         *
-         * @return a [DisclosedClaimSet] with no disclosures
-         */
-        private fun plain(plainClaims: JsonObject = JsonObject(mapOf())): DisclosedClaimSet =
-            DisclosedClaimSet(emptySet(), plainClaims)
+    private fun DisclosedClaims<JsonObject>.addHashAlg(h: HashAlgorithm) =
+        if (disclosures.isEmpty()) this
+        else copy(claimSet = JsonObject(claimSet + ("_sd_alg" to JsonPrimitive(h.alias))))
 
-        private fun hashClaim(a: HashAlgorithm): DisclosedClaimSet =
-            DisclosedClaimSet(emptySet(), JsonObject(mapOf(a.toClaim())))
-
-        /**
-         * @param hashAlgorithm the algorithm to be used for hashing disclosures
-         * @param saltProvider provides [Salt] for the creation of [disclosures][Disclosure]
-         * @param dsl The SD-JWT structure
-         * @param numOfDecoys the number of decoys
-         * @return
-         */
-        @OptIn(ExperimentalSerializationApi::class)
-        fun disclose(
-            hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA3_256,
-            saltProvider: SaltProvider = SaltProvider.Default,
-            numOfDecoys: Int = 0,
-            dsl: SdJwtDsl.SdJwt,
-        ): Result<DisclosedClaimSet> = runCatching {
-            fun doDisclose(x: SdJwtDsl): DisclosedClaimSet = when (x) {
-                is SdJwtDsl.Plain -> {
-                    DisclosedClaimSet(emptySet(), JsonObject(x.claims))
-                }
-                is SdJwtDsl.Flat -> {
-                    val dh =
-                        DisclosuresAndHashes.make(hashAlgorithm, saltProvider, JsonObject(x.claims), numOfDecoys)
-
-                    dh.run {
-                        if (hashes.isEmpty()) Empty
-                        else
-                            DisclosedClaimSet(
-                                disclosures,
-                                buildJsonObject {
-                                    putJsonArray("_sd") { addAll(hashes.map { it.toJson() }) }
-                                },
-                            )
-                    }
-                }
-                is SdJwtDsl.Structured -> {
-                    val flatSubClaims = doDisclose(x.flatSubClaims)
-                    val structuredSubClaims = x.structuredSubClaims.map { doDisclose(it) }.fold(Empty, DisclosedClaimSet::combine)
-                    val combined = JsonObject(flatSubClaims.claimSet + x.plainSubClaims.claims + structuredSubClaims.claimSet)
-                    val repackaged = buildJsonObject { put(x.claimName, combined) }
-                    DisclosedClaimSet(flatSubClaims.disclosures + structuredSubClaims.disclosures, repackaged)
-                }
-                is SdJwtDsl.SdJwt -> {
-                    val plainClaims = doDisclose(x.plainClaims)
-                    val flatClaims = x.flatClaims?.let { doDisclose(it) } ?: Empty
-                    val structuredClaims = x.structuredClaims.map { doDisclose(it) }
-                    val disclosableClaims = structuredClaims + flatClaims
-                    val hashClaim =
-                        if (disclosableClaims.any { it.claimSet.isNotEmpty() }) hashClaim(hashAlgorithm)
-                        else Empty
-                    val all = disclosableClaims + plainClaims + hashClaim
-                    all.fold(Empty, DisclosedClaimSet::combine)
-                }
-            }
-            doDisclose(dsl)
-        }
-
-        /**
-         * Combines two [DisclosedClaimSet]
-         *
-         * @return a new [DisclosedClaimSet] which contains the combined set of [DisclosedClaimSet.claimSet] and the
-         * combined [DisclosedClaimSet.claimSet]
-         */
-        private fun combine(a: DisclosedClaimSet, b: DisclosedClaimSet): DisclosedClaimSet {
-            assertNoCommonElements(a.disclosures, b.disclosures) {
-                "Cannot combine DisclosedClaimSet with common disclosures"
-            }
-            assertNoCommonElements(a.claimSet.keys, b.claimSet.keys) {
-                "Cannot combine DisclosedClaimSet with common claims"
+    fun disclose(
+        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+        saltProvider: SaltProvider = SaltProvider.Default,
+        numOfDecoys: Int = 0,
+        sdJwt: SdJwtElements,
+    ): Result<DisclosedClaims<JsonObject>> {
+        fun hashClaims(cs: Claims<JsonElement>): Pair<Set<Disclosure>, Set<HashedDisclosure>> =
+            DisclosuresAndHashes.make(hashAlgorithm, saltProvider, cs, numOfDecoys).run {
+                disclosures to hashes
             }
 
-            return DisclosedClaimSet(
-                disclosures = a.disclosures + b.disclosures,
-                claimSet = JsonObject(a.claimSet + b.claimSet),
-            )
-        }
+        return elementDiscloser { hashClaims(it) }.disclose(sdJwt).map { claims -> claims.addHashAlg(hashAlgorithm) }
     }
 }
+
+@OptIn(ExperimentalContracts::class)
+inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): Set<SdJwtElement<JsonElement>> {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val v = SdJwtElementsBuilder()
+    v.builderAction()
+    return v.build()
+}
+
+/**
+ * Builder for conveniently assembling
+ * a set of [SdJwtElement]
+ */
+class SdJwtElementsBuilder
+    @PublishedApi
+    internal constructor() {
+
+        private val plainClaims = mutableMapOf<String, JsonElement>()
+        private val flatClaims = mutableMapOf<String, JsonElement>()
+        private val structuredClaims = mutableSetOf<SdJwtElement.StructuredDisclosed<JsonElement>>()
+
+        fun plain(cs: Claims<JsonElement>) {
+            plainClaims.putAll(cs)
+        }
+
+        fun plain(usage: JsonObjectBuilder.() -> Unit) {
+            plain(buildJsonObject(usage))
+        }
+
+        fun flat(cs: Claims<JsonElement>) {
+            flatClaims.putAll(cs)
+        }
+
+        fun flat(usage: JsonObjectBuilder.() -> Unit) {
+            flat(buildJsonObject(usage))
+        }
+
+        fun structuredWithFlatClaims(claimName: String, claims: Claims<JsonElement>) {
+            val element = SdJwtElement.StructuredDisclosed(claimName, setOf(SdJwtElement.FlatDisclosed(claims)))
+            structuredClaims.add(element)
+        }
+
+        fun structured(claimName: String, action: SdJwtElementsBuilder.() -> Unit) {
+            val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(action))
+            structuredClaims.add(element)
+        }
+
+        fun build(): Set<SdJwtElement<JsonElement>> =
+            buildSet {
+                add(SdJwtElement.Plain(plainClaims))
+                add(SdJwtElement.FlatDisclosed(flatClaims))
+                addAll(structuredClaims)
+            }
+    }
 
 /**
  * A helper class for implementing flat disclosure
@@ -207,7 +194,7 @@ private data class DisclosuresAndHashes(
         fun make(
             hashAlgorithm: HashAlgorithm,
             saltProvider: SaltProvider,
-            claimsToBeDisclosed: JsonObject,
+            claimsToBeDisclosed: Map<String, JsonElement>,
             numOfDecoys: Int,
         ): DisclosuresAndHashes {
             val decoys = decoys(hashAlgorithm = hashAlgorithm, numOfDecoys = numOfDecoys)
@@ -228,10 +215,6 @@ private data class DisclosuresAndHashes(
     }
 }
 
-private fun HashedDisclosure.toJson() = JsonPrimitive(value)
-
-private fun HashAlgorithm.toClaim() = "_sd_alg" to toJson()
-private fun HashAlgorithm.toJson() = JsonPrimitive(alias)
 private fun <T> assertNoCommonElements(a: Iterable<T>, b: Iterable<T>, lazyMessage: () -> Any) {
     require(a.intersect(b.toSet()).isEmpty(), lazyMessage)
 }
