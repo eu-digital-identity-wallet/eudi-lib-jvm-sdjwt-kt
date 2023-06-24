@@ -18,30 +18,26 @@ package eu.europa.ec.eudi.sdjwt
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
-
 fun main() {
-
     listOf(
         option1FlatSdJwt(),
-        option2StructuredSdJwt(),
-        example2A(),
-        reallyComplex()
+         option2StructuredSdJwt(),
+         example2A(),
+         reallyComplex(),
     ).forEach { it.disclose() }
-
 }
 
-private fun SdJwtDsl.SdJwt.disclose() {
-    DisclosedClaimSet.disclose(
+private fun Set<SdJwtElement<JsonElement>>.disclose() {
+    SdJwtDiscloser.disclose(
         HashAlgorithm.SHA_256,
         SaltProvider.Default,
         0,
         this,
     ).getOrThrow().also { it.print() }
-
 }
 
 val json = Json { prettyPrint = true }
-fun DisclosedClaimSet.print() {
+fun DisclosedClaims<JsonObject>.print() {
     disclosures.forEach { println(it.claim()) }
     claimSet.also { println(json.encodeToString(it)) }
 }

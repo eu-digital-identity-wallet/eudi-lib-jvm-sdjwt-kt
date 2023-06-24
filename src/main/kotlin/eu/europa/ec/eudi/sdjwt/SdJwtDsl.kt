@@ -15,161 +15,103 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
+import eu.europa.ec.eudi.sdjwt.SdJwtElement.*
+
+/**
+ * Representations of multiple claims
+ *
+ * @param JE type representing a JSON element (object, array, primitive etc)
+ */
+typealias Claims<JE> = Map<String, JE>
 
 /**
  * A domain specific language for describing the payload of an SD-JWT
- *
+ * @param JE type representing a JSON element (object, array, primitive etc)
  */
-sealed interface SdJwtDsl {
-    class Plain internal constructor(val claims: Map<String, JsonElement>) : SdJwtDsl
-    class Flat internal constructor(val claims: Map<String, JsonElement>) : SdJwtDsl
-    class Structured internal constructor(
-        val claimName: String,
-        val plainSubClaims: Plain = Empty,
-        val flatSubClaims: Flat,
-        val structuredSubClaims: Set<Structured>,
-    ) : SdJwtDsl
+sealed interface SdJwtElement<JE> {
+    data class Plain<JE>(val claims: Claims<JE>) : SdJwtElement<JE>
+    data class FlatDisclosed<JE>(val claims: Claims<JE>) : SdJwtElement<JE>
+    data class StructuredDisclosed<JE>(val claimName: String, val elements: Set<SdJwtElement<JE>>) : SdJwtElement<JE>
+}
 
-    class SdJwt internal constructor(
-        val plainClaims: Plain = Empty,
-        val flatClaims: Flat? = null,
-        val structuredClaims: Set<Structured> = emptySet(),
-    ) : SdJwtDsl
+/**
+ * Represent a selectively disclosed Json object and the calculated disclosures
+ *
+ * @param disclosures the disclosures calculated
+ * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
+ */
+data class DisclosedClaims<JO>(val disclosures: Set<Disclosure>, val claimSet: JO) {
+
+    fun <JO2> mapClaims(f: (JO) -> JO2): DisclosedClaims<JO2> = DisclosedClaims(disclosures, f(claimSet))
 
     companion object {
-        val Empty: Plain = Plain(emptyMap())
 
-        fun plain(claim: Map<String, JsonElement>): Plain = Plain(claim)
-        fun flat(claims: Map<String, JsonElement>): Flat = Flat(claims)
-        fun structured(
-            claimName: String,
-            plainSubClaims: Map<String, JsonElement>,
-            flatSubClaims: Map<String, JsonElement>,
-            structuredSubClaims: Set<Structured>,
-        ): Structured =
-            Structured(claimName, plain(plainSubClaims), flat(flatSubClaims), structuredSubClaims)
+        fun <JO> addition(claimAddition: Addition<JO>): Addition<DisclosedClaims<JO>> =
+            object : Addition<DisclosedClaims<JO>> {
+                override val zero: DisclosedClaims<JO> =
+                    DisclosedClaims(emptySet(), claimAddition.zero)
 
-        fun structured(
-            claimName: String,
-            subClaims: Map<String, JsonElement>,
-            plainClaimsFilter: (Claim) -> Boolean,
-        ): Structured {
-            val plainSubClaims = subClaims.filter { plainClaimsFilter(it.toPair()) }
-            val subClaimsToBeDisclosed = subClaims - plainSubClaims.keys
-            return structured(claimName, plainSubClaims, subClaimsToBeDisclosed, emptySet())
-        }
-
-        fun sdJwtAllFlat(plain: Map<String, JsonElement> = emptyMap(), flat: Map<String, JsonElement>): SdJwt =
-            SdJwt(plain(plain), flat(flat), emptySet())
+                override fun invoke(
+                    a: DisclosedClaims<JO>,
+                    b: DisclosedClaims<JO>,
+                ): DisclosedClaims<JO> =
+                    DisclosedClaims(a.disclosures + b.disclosures, claimAddition(a.claimSet, b.claimSet))
+            }
     }
 }
 
-private interface CmnBuilder {
-    val plainClaims: MutableMap<String, JsonElement>
-    val flatClaims: MutableMap<String, JsonElement>
-    val structuredClaims: MutableSet<SdJwtDsl.Structured>
+interface Addition<V> : (V, V) -> V {
+    val zero: V
+    override operator fun invoke(a: V, b: V): V
+}
 
-    //
-    // Basic operations
-    //
-    fun plain(c: Map<String, JsonElement>) {
-        if (c.isNotEmpty()) plainClaims.putAll(c)
-    }
+class SdJwtElementDiscloser<JE, JO>(
+    additionOfClaims: Addition<JO>,
+    private val createObjectFromClaims: (Claims<JE>) -> JO,
+    private val nestClaims: (String, JO) -> JO,
+    private val hashClaims: (Claims<JE>) -> Pair<Set<Disclosure>, Set<HashedDisclosure>>,
+    private val createObjectsFromHashes: (Set<HashedDisclosure>) -> JO,
+) {
 
-    fun flat(c: Map<String, JsonElement>) {
-        if (c.isNotEmpty()) flatClaims.putAll(c)
-    }
+    private val additionOfDisclosedClaims: Addition<DisclosedClaims<JO>> =
+        DisclosedClaims.addition(additionOfClaims)
 
-    fun structured(
-        claimName: String,
-        plainSubClaims: Map<String, JsonElement> = emptyMap(),
-        flatSubClaims: Map<String, JsonElement>,
-        structuredSubClaims: Set<SdJwtDsl.Structured> = emptySet(),
-    ) {
-        structuredClaims.add(SdJwtDsl.structured(claimName, plainSubClaims, flatSubClaims, structuredSubClaims))
-    }
+    private fun discloseElement(element: SdJwtElement<JE>): DisclosedClaims<JO> {
+        fun plain(cs: Claims<JE>): DisclosedClaims<JO> {
+            val claimSet = createObjectFromClaims(cs)
+            return additionOfDisclosedClaims.zero.copy(claimSet = claimSet)
+        }
 
-    //
-    // Derived operators
-    //
+        fun flat(cs: Claims<JE>): DisclosedClaims<JO> =
+            if (cs.isEmpty()) additionOfDisclosedClaims.zero
+            else {
+                val (ds, hs) = hashClaims(cs)
+                DisclosedClaims(ds, createObjectsFromHashes(hs))
+            }
 
-    fun structured(claimName: String, subClaims: Map<String, JsonElement>, plaintFilter: (Claim) -> Boolean) {
-        val plainSubClaims = subClaims.filter { plaintFilter(it.toPair()) }
-        val subClaimsToBeDisclosed = subClaims - plainSubClaims.keys
-        structured(claimName) {
-            if (plainSubClaims.isNotEmpty()) plain(plainSubClaims)
-            if (subClaimsToBeDisclosed.isNotEmpty()) flat(subClaimsToBeDisclosed)
+        fun structured(claimName: String, es: Set<SdJwtElement<JE>>): DisclosedClaims<JO> =
+            disclose(es).getOrThrow().mapClaims { claims -> nestClaims(claimName, claims) }
+
+        return when (element) {
+            is Plain -> plain(element.claims)
+            is FlatDisclosed -> flat(element.claims)
+            is StructuredDisclosed -> structured(element.claimName, element.elements)
         }
     }
 
-    //
-    // Derived operators
-    //
-    fun flat(c: Claim) {
-        flat(mapOf(c))
+    fun disclose(sdJwtElements: Set<SdJwtElement<JE>>): Result<DisclosedClaims<JO>> = runCatching {
+        tailrec fun discloseAccumulating(
+            es: Set<SdJwtElement<JE>>,
+            acc: DisclosedClaims<JO>,
+        ): DisclosedClaims<JO> =
+            if (es.isEmpty()) acc
+            else {
+                val e = es.first()
+                val disclosedClaims = discloseElement(e)
+                val newAcc = additionOfDisclosedClaims(acc, disclosedClaims)
+                discloseAccumulating(es - e, newAcc)
+            }
+
+        discloseAccumulating(sdJwtElements, additionOfDisclosedClaims.zero)
     }
-
-    //
-    // Kotlinx Serialization operators
-    //
-    fun plain(builderAction: JsonObjectBuilder.() -> Unit) {
-        plain(buildJsonObject(builderAction))
-    }
-
-    fun flat(builderAction: JsonObjectBuilder.() -> Unit) {
-        flat(buildJsonObject(builderAction))
-    }
-
-    fun structured(claimName: String, builderAction: StructuredBuilder.() -> Unit) {
-        structuredClaims.add(buildStructured(claimName, builderAction))
-    }
-}
-
-class SdJwtBuilder
-    @PublishedApi
-    internal constructor() : CmnBuilder {
-        override val plainClaims: MutableMap<String, JsonElement> = mutableMapOf()
-        override val flatClaims: MutableMap<String, JsonElement> = mutableMapOf()
-        override val structuredClaims: MutableSet<SdJwtDsl.Structured> = mutableSetOf()
-
-        fun build(): SdJwtDsl.SdJwt =
-            SdJwtDsl.SdJwt(
-                plainClaims = SdJwtDsl.Plain(JsonObject(plainClaims)),
-                flatClaims = if (flatClaims.isEmpty()) null else SdJwtDsl.Flat(flatClaims),
-                structuredClaims = structuredClaims,
-            )
-    }
-
-class StructuredBuilder
-    @PublishedApi
-    internal constructor() : CmnBuilder {
-        override val plainClaims: MutableMap<String, JsonElement> = mutableMapOf()
-        override val flatClaims: MutableMap<String, JsonElement> = mutableMapOf()
-        override val structuredClaims: MutableSet<SdJwtDsl.Structured> = mutableSetOf()
-
-        fun build(claimName: String): SdJwtDsl.Structured =
-            SdJwtDsl.structured(claimName, plainClaims, flatClaims, structuredClaims)
-    }
-
-@OptIn(ExperimentalContracts::class)
-inline fun sdJwt(builderAction: SdJwtBuilder.() -> Unit): SdJwtDsl.SdJwt {
-    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
-    val b = SdJwtBuilder()
-    b.builderAction()
-    return b.build()
-}
-
-@OptIn(ExperimentalContracts::class)
-inline fun buildStructured(claimName: String, builderAction: StructuredBuilder.() -> Unit): SdJwtDsl.Structured {
-    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
-    val b = StructuredBuilder()
-    b.builderAction()
-    return b.build(claimName)
 }

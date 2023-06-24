@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
@@ -39,13 +40,13 @@ object SdJwt {
         hashAlgorithm: HashAlgorithm,
         saltProvider: SaltProvider,
         numOfDecoys: Int,
-        sdJwtDsl: SdJwtDsl.SdJwt,
+        sdJwtElements: Set<SdJwtElement<JsonElement>>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 
-        val (disclosures, jwtClaimSet) = DisclosedClaimSet.disclose(hashAlgorithm, saltProvider, numOfDecoys, sdJwtDsl).getOrThrow()
+        val (disclosures, claims) = SdJwtDiscloser.disclose(hashAlgorithm, saltProvider, numOfDecoys, sdJwtElements).getOrThrow()
         val header = NimbusJWSHeader(signAlgorithm)
-        val payload = NimbusPayload(jwtClaimSet.asBytes())
+        val payload = NimbusPayload(claims.asBytes())
 
         val jwt: Jwt = with(NimbusJWSObject(header, payload)) {
             sign(signer)
