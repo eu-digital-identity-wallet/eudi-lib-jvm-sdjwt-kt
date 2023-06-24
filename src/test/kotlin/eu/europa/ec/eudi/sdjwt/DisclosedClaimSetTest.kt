@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.Companion.collectHashedDisclosures
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.DisplayName
@@ -210,11 +211,7 @@ class DisclosedClaimSetTest {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val dsl = sdJwt {
                 plain(plainClaims)
-                claimsToBeDisclosed.forEach { c ->
-                    structured(c.key) {
-                        flat(c.value.jsonObject)
-                    }
-                }
+                claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
             }
             val disclosedJsonObject = DisclosedClaimSet.disclose(
                 hashAlgorithm,
@@ -277,15 +274,32 @@ class DisclosedClaimSetTest {
         }
 
         private fun JsonObject.collectHashedDisclosures(): List<HashedDisclosure> =
-            map { (attr, value) ->
+            map { (attr, json) ->
                 when {
-                    attr == "_sd" && value is JsonArray -> value.jsonArray.map { v ->
+                    attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
                         HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
                     }
 
-                    value is JsonObject -> value.collectHashedDisclosures()
+                    json is JsonObject -> json.collectHashedDisclosures()
+                    json is JsonArray -> TODO()
                     else -> emptyList()
                 }
             }.flatten()
+
+
+        private fun JsonElement.collectHashes(): List<HashedDisclosure> {
+            return when(this) {
+                is JsonObject -> map {(attr, json) ->
+                    when{
+                        attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
+                            HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
+                        }
+                        else -> json.collectHashes()
+                     }
+                }.flatten()
+                is JsonArray -> map {json-> json.collectHashes() }.flatten()
+                else -> emptyList()
+            }
+        }
     }
 }
