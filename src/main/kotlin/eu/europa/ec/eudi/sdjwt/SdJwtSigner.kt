@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
@@ -30,8 +29,7 @@ private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
  */
 object SdJwtSigner {
 
-    private val Default: DisclosuresCreator<JsonElement, JsonObject> =
-        DefaultDisclosuresCreatorFactory.create(numOfDecoys = 4)
+    private val Default: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 4)
 
     /**
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
@@ -40,8 +38,8 @@ object SdJwtSigner {
     fun sign(
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
-        disclosuresCreator: DisclosuresCreator<JsonElement, JsonObject> = Default,
-        sdJwtElements: Set<SdJwtElement<JsonElement>>,
+        disclosuresCreator: DisclosuresCreator = Default,
+        sdJwtElements: Set<SdJwtElement>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 

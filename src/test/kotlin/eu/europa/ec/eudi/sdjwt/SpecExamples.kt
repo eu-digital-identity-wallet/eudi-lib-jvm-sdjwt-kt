@@ -27,16 +27,12 @@ fun main() {
     ).forEach { it.disclose() }
 }
 
-private fun Set<SdJwtElement<JsonElement>>.disclose() {
-    DefaultDisclosuresCreatorFactory.create(
-        HashAlgorithm.SHA_256,
-        SaltProvider.Default,
-        0,
-    ).discloseSdJwt(this).getOrThrow().also { it.print() }
+private fun Set<SdJwtElement>.disclose() {
+    DisclosuresCreator().discloseSdJwt(this).getOrThrow().also { it.print() }
 }
 
 val json = Json { prettyPrint = true }
-fun DisclosedClaims<JsonObject>.print() {
+fun DisclosedClaims.print() {
     disclosures.forEach { println(it.claim()) }
     claimSet.also { println(json.encodeToString(it)) }
 }
