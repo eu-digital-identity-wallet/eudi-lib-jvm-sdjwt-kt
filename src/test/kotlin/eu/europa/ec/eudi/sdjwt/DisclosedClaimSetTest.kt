@@ -54,16 +54,9 @@ class DisclosedClaimSetTest {
 
             )
 
-            val hashAlgorithm = HashAlgorithm.SHA_256
-
+            val disclosuresCreator = DisclosuresCreator(numOfDecoys = 0)
             invalidClaims.forEach { sdJwt ->
-                val result = SdJwtDiscloser.disclose(
-                    hashAlgorithm = hashAlgorithm,
-                    saltProvider = SaltProvider.Default,
-
-                    numOfDecoys = 0,
-                    sdJwt = sdJwt,
-                )
+                val result = disclosuresCreator.discloseSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
             }
         }
@@ -126,19 +119,18 @@ class DisclosedClaimSetTest {
         private fun testFlatDisclosure(
             plainClaims: Map<String, JsonElement>,
             claimsToBeDisclosed: Map<String, JsonElement>,
-        ): DisclosedClaims<JsonObject> {
+        ): DisclosedClaims {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
                 plain(plainClaims)
                 flat(claimsToBeDisclosed)
             }
 
-            val disclosedJsonObject = SdJwtDiscloser.disclose(
+            val disclosedJsonObject = DisclosuresCreator(
                 hashAlgorithm,
                 SaltProvider.Default,
                 4,
-                sdJwtElements,
-            ).getOrThrow()
+            ).discloseSdJwt(sdJwtElements).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
 
@@ -216,12 +208,12 @@ class DisclosedClaimSetTest {
                 plain(plainClaims)
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
             }
-            val disclosedJsonObject = SdJwtDiscloser.disclose(
+            val disclosedJsonObject = DisclosuresCreator(
                 hashAlgorithm,
                 SaltProvider.Default,
                 3,
-                sdJwtElements,
-            ).getOrThrow()
+
+            ).discloseSdJwt(sdJwtElements).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
 
@@ -296,9 +288,11 @@ class DisclosedClaimSetTest {
                         attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
                             HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
                         }
+
                         else -> json.collectHashes()
                     }
                 }.flatten()
+
                 is JsonArray -> map { json -> json.collectHashes() }.flatten()
                 else -> emptyList()
             }

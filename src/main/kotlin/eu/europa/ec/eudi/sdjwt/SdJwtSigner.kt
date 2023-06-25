@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
@@ -28,23 +27,23 @@ private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 /**
  *
  */
-object SdJwt {
+object SdJwtSigner {
+
+    private val Default: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 4)
 
     /**
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
      * It MUST NOT use none or an identifier for a symmetric algorithm (MAC).
      */
-    fun encode(
+    fun sign(
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
-        hashAlgorithm: HashAlgorithm,
-        saltProvider: SaltProvider,
-        numOfDecoys: Int,
-        sdJwtElements: Set<SdJwtElement<JsonElement>>,
+        disclosuresCreator: DisclosuresCreator = Default,
+        sdJwtElements: Set<SdJwtElement>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 
-        val (disclosures, claims) = SdJwtDiscloser.disclose(hashAlgorithm, saltProvider, numOfDecoys, sdJwtElements).getOrThrow()
+        val (disclosures, claims) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
         val header = NimbusJWSHeader(signAlgorithm)
         val payload = NimbusPayload(claims.asBytes())
 

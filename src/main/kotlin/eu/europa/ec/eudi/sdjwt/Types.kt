@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * A claim is an attribute of an entity.
@@ -39,6 +40,12 @@ fun Claim.name(): String = first
  * @return the value of the claim
  */
 fun Claim.value(): JsonElement = second
+
+/**
+ * Representations of multiple claims
+ *
+ */
+typealias Claims = Map<String, JsonElement>
 
 /**
  * Salt to be included in a [Disclosure] claim.
@@ -68,6 +75,39 @@ enum class HashAlgorithm(val alias: String) {
         fun fromString(s: String): HashAlgorithm? = values().find { it.alias == s }
     }
 }
+
+/**
+ * A domain specific language for describing the payload of an SD-JWT
+ */
+sealed interface SdJwtElement {
+    data class Plain(val claims: Claims) : SdJwtElement
+    data class FlatDisclosed(val claims: Claims) : SdJwtElement
+    data class StructuredDisclosed(val claimName: String, val elements: Set<SdJwtElement>) : SdJwtElement
+}
+
+/**
+ * Represent a selectively disclosed Json object and the calculated disclosures
+ *
+ * @param disclosures the disclosures calculated
+ * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
+ */
+data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonObject) {
+
+    fun mapClaims(f: (JsonObject) -> JsonObject): DisclosedClaims = DisclosedClaims(disclosures, f(claimSet))
+
+    companion object {
+
+        val Empty: DisclosedClaims = DisclosedClaims(emptySet(), JsonObject(emptyMap()))
+
+        fun add(a: DisclosedClaims, b: DisclosedClaims): DisclosedClaims {
+            val disclosures = a.disclosures + b.disclosures
+            val claimSet = JsonObject(a.claimSet + b.claimSet)
+            return DisclosedClaims(disclosures, claimSet)
+        }
+    }
+}
+
+operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = DisclosedClaims.add(this, that)
 
 /**
  * Combined form for issuance
