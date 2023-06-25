@@ -79,12 +79,14 @@ fun main() {
     val rsaJWK = genRSAKeyPair()
     val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = SdJwt.encode(
+    val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.sign(
         signer = RSASSASigner(rsaJWK),
         signAlgorithm = JWSAlgorithm.RS256,
-        hashAlgorithm = HashAlgorithm.SHA3_512,
-        saltProvider = SaltProvider.Default,
-        numOfDecoys = 0,
+        sdJwtDiscloser = SdJwtElementDiscloserFactory.create(
+            hashAlgorithm = HashAlgorithm.SHA3_512,
+            saltProvider = SaltProvider.Default,
+            numOfDecoys = 0,
+        ),
         sdJwtElements = sdJwt {
             plain(jwtClaims)
             structuredWithFlatClaims("credentialSubject", vcClaim)

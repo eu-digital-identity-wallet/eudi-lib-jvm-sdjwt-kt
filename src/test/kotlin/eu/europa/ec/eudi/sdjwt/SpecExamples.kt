@@ -28,12 +28,11 @@ fun main() {
 }
 
 private fun Set<SdJwtElement<JsonElement>>.disclose() {
-    SdJwtDiscloser.disclose(
+    SdJwtElementDiscloserFactory.create(
         HashAlgorithm.SHA_256,
         SaltProvider.Default,
         0,
-        this,
-    ).getOrThrow().also { it.print() }
+    ).discloseSdJwt(this).getOrThrow().also { it.print() }
 }
 
 val json = Json { prettyPrint = true }

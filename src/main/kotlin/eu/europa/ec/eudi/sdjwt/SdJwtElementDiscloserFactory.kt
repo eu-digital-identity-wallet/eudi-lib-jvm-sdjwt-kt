@@ -22,43 +22,68 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-typealias SdJwtElements = Set<SdJwtElement<JsonElement>>
-private typealias HashClaims = (Claims<JsonElement>) -> Pair<Set<Disclosure>, Set<HashedDisclosure>>
+/**
+ */
+object SdJwtElementDiscloserFactory {
 
-object SdJwtDiscloser {
+    /**
+     *  @param hashAlgorithm the hash algorithm to be used for hashing disclosures
+     *  @param saltProvider the [Salt] generator used to the calculation of [Disclosure]
+     *  @param numOfDecoys an upper limit of the decoys to be used
+     */
+    fun create(
+        hashAlgorithm: HashAlgorithm = DefaultHashClaims.hashAlgorithm,
+        saltProvider: SaltProvider = SaltProvider.Default,
+        numOfDecoys: Int = 0,
+    ): SdJwtElementDiscloser<JsonElement, JsonObject> =
+        create(hashClaims(hashAlgorithm, saltProvider, numOfDecoys))
 
+    /**
+     * Create a [SdJwtElementDiscloser] combatible with KotlinX Serialization
+     * @param hashClaims A function for making [disclosures][Disclosure] & [hashes][HashedDisclosure], possibly
+     * including decoys
+     * @return a [SdJwtElementDiscloser] combatible with KotlinX Serialization
+     */
     @OptIn(ExperimentalSerializationApi::class)
-    private fun elementDiscloser(hashClaims: HashClaims): SdJwtElementDiscloser<JsonElement, JsonObject> =
+    fun create(hashClaims: HashClaims<JsonElement>): SdJwtElementDiscloser<JsonElement, JsonObject> =
         SdJwtElementDiscloser(
-            additionOfClaims = object : Addition<JsonObject> {
-                override val zero: JsonObject = JsonObject(emptyMap())
-                override fun invoke(a: JsonObject, b: JsonObject): JsonObject = JsonObject(a + b)
-            },
+            additionOfClaims = AdditionOfClaims,
             createObjectFromClaims = { JsonObject(it) },
             nestClaims = { claimName, jsonObject -> buildJsonObject { put(claimName, jsonObject) } },
             hashClaims = hashClaims,
-            createObjectsFromHashes = { hs -> buildJsonObject { putJsonArray("_sd") { addAll(hs.map { it.value }) } } },
+            createHashClaim = { hs -> buildJsonObject { putJsonArray("_sd") { addAll(hs.map { it.value }) } } },
+            createHashAlgClaim = { h -> buildJsonObject { put("_sd_alg", JsonPrimitive(h.alias)) } },
         )
 
-    private fun DisclosedClaims<JsonObject>.addHashAlg(h: HashAlgorithm) =
-        if (disclosures.isEmpty()) this
-        else copy(claimSet = JsonObject(claimSet + ("_sd_alg" to JsonPrimitive(h.alias))))
+    private fun hashClaims(
+        hashAlgorithm: HashAlgorithm,
+        saltProvider: SaltProvider,
+        numOfDecoys: Int,
+    ): HashClaims<JsonElement> = object : HashClaims<JsonElement> {
+        override val hashAlgorithm: HashAlgorithm
+            get() = hashAlgorithm
 
-    fun disclose(
-        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-        saltProvider: SaltProvider = SaltProvider.Default,
-        numOfDecoys: Int = 0,
-        sdJwt: SdJwtElements,
-    ): Result<DisclosedClaims<JsonObject>> {
-        fun hashClaims(cs: Claims<JsonElement>): Pair<Set<Disclosure>, Set<HashedDisclosure>> =
-            DisclosuresAndHashes.make(hashAlgorithm, saltProvider, cs, numOfDecoys).run {
+        override fun invoke(claims: Claims<JsonElement>): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+            return DisclosuresAndHashes.make(hashAlgorithm, saltProvider, claims, numOfDecoys).run {
                 disclosures to hashes
             }
-
-        return elementDiscloser { hashClaims(it) }.disclose(sdJwt).map { claims -> claims.addHashAlg(hashAlgorithm) }
+        }
     }
+
+    private val AdditionOfClaims = object : Addition<JsonObject> {
+        override val zero: JsonObject = JsonObject(emptyMap())
+        override fun invoke(a: JsonObject, b: JsonObject): JsonObject = JsonObject(a + b)
+    }
+
+    private val DefaultHashClaims: HashClaims<JsonElement> =
+        hashClaims(HashAlgorithm.SHA_256, SaltProvider.Default, 4)
 }
 
+/**
+ * Allows the convenient use of [SdJwtElementsBuilder]
+ * @param builderAction the usage of the builder
+ * @return the set of [SD-JWT elements][SdJwtElement]
+ */
 @OptIn(ExperimentalContracts::class)
 inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): Set<SdJwtElement<JsonElement>> {
     contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
@@ -69,39 +94,69 @@ inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): Set<SdJwtEleme
 
 /**
  * Builder for conveniently assembling
- * a set of [SdJwtElement]
+ * a set of [SD-JWT elements][SdJwtElement]
  */
 class SdJwtElementsBuilder
     @PublishedApi
     internal constructor() {
 
+        /**
+         * Accumulates plain claims
+         */
         private val plainClaims = mutableMapOf<String, JsonElement>()
+
+        /**
+         * Accumulates claims to be disclosed in flat manner
+         */
         private val flatClaims = mutableMapOf<String, JsonElement>()
+
+        /**
+         * Accumulates claims to be disclosed in structured manner
+         */
         private val structuredClaims = mutableSetOf<SdJwtElement.StructuredDisclosed<JsonElement>>()
 
+        /**
+         * Adds plain claims
+         * @param cs claims to add
+         */
         fun plain(cs: Claims<JsonElement>) {
             plainClaims.putAll(cs)
         }
 
-        fun plain(usage: JsonObjectBuilder.() -> Unit) {
-            plain(buildJsonObject(usage))
+        /**
+         * Adds plain claims
+         * @param builderAction a usage of a json builder
+         */
+        fun plain(builderAction: JsonObjectBuilder.() -> Unit) {
+            plain(buildJsonObject(builderAction))
         }
 
         fun flat(cs: Claims<JsonElement>) {
             flatClaims.putAll(cs)
         }
 
-        fun flat(usage: JsonObjectBuilder.() -> Unit) {
-            flat(buildJsonObject(usage))
+        fun flat(builderAction: JsonObjectBuilder.() -> Unit) {
+            flat(buildJsonObject(builderAction))
         }
 
-        fun structuredWithFlatClaims(claimName: String, claims: Claims<JsonElement>) {
-            val element = SdJwtElement.StructuredDisclosed(claimName, setOf(SdJwtElement.FlatDisclosed(claims)))
+        /**
+         * Adds a structured claim where the given [flatSubClaims] will be flat disclosed.
+         * That is the structured claim won't contain neither plain nor structured subclaims
+         * @param claimName the name of the structured claim
+         * @param flatSubClaims the usage of the builder
+         */
+        fun structuredWithFlatClaims(claimName: String, flatSubClaims: Claims<JsonElement>) {
+            val element = SdJwtElement.StructuredDisclosed(claimName, setOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
             structuredClaims.add(element)
         }
 
-        fun structured(claimName: String, action: SdJwtElementsBuilder.() -> Unit) {
-            val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(action))
+        /**
+         * Adds a structured claim using, recursively, the builder
+         * @param claimName the name of the structured claim
+         * @param builderAction the usage of the builder
+         */
+        fun structured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
+            val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
             structuredClaims.add(element)
         }
 
@@ -142,7 +197,7 @@ private data class DisclosuresAndHashes(
 
     companion object {
 
-        fun decoys(
+        private fun decoys(
             hashAlgorithm: HashAlgorithm,
             decoyGen: DecoyGen = DecoyGen.Default,
             numOfDecoys: Int,
