@@ -30,8 +30,8 @@ private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
  */
 object SdJwtSigner {
 
-    private val Default: SdJwtElementDiscloser<JsonElement, JsonObject> =
-        SdJwtElementDiscloserFactory.create(numOfDecoys = 4)
+    private val Default: DisclosuresCreator<JsonElement, JsonObject> =
+        DefaultDisclosuresCreatorFactory.create(numOfDecoys = 4)
 
     /**
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
@@ -40,12 +40,12 @@ object SdJwtSigner {
     fun sign(
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
-        sdJwtDiscloser: SdJwtElementDiscloser<JsonElement, JsonObject> = Default,
+        disclosuresCreator: DisclosuresCreator<JsonElement, JsonObject> = Default,
         sdJwtElements: Set<SdJwtElement<JsonElement>>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 
-        val (disclosures, claims) = sdJwtDiscloser.discloseSdJwt(sdJwtElements).getOrThrow()
+        val (disclosures, claims) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
         val header = NimbusJWSHeader(signAlgorithm)
         val payload = NimbusPayload(claims.asBytes())
 

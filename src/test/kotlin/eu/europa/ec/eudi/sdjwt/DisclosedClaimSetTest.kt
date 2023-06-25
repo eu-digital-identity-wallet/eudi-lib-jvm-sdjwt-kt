@@ -55,7 +55,7 @@ class DisclosedClaimSetTest {
             )
 
             val hashAlgorithm = HashAlgorithm.SHA_256
-            val discloser = SdJwtElementDiscloserFactory.create()
+            val discloser = DefaultDisclosuresCreatorFactory.create(numOfDecoys = 0)
             invalidClaims.forEach { sdJwt ->
                 val result = discloser.discloseSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
@@ -127,7 +127,7 @@ class DisclosedClaimSetTest {
                 flat(claimsToBeDisclosed)
             }
 
-            val disclosedJsonObject = SdJwtElementDiscloserFactory.create(
+            val disclosedJsonObject = DefaultDisclosuresCreatorFactory.create(
                 hashAlgorithm,
                 SaltProvider.Default,
                 4,
@@ -209,7 +209,7 @@ class DisclosedClaimSetTest {
                 plain(plainClaims)
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
             }
-            val disclosedJsonObject = SdJwtElementDiscloserFactory.create(
+            val disclosedJsonObject = DefaultDisclosuresCreatorFactory.create(
                 hashAlgorithm,
                 SaltProvider.Default,
                 3,

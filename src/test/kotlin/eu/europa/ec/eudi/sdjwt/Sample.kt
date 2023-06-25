@@ -82,7 +82,7 @@ fun main() {
     val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.sign(
         signer = RSASSASigner(rsaJWK),
         signAlgorithm = JWSAlgorithm.RS256,
-        sdJwtDiscloser = SdJwtElementDiscloserFactory.create(
+        disclosuresCreator = DefaultDisclosuresCreatorFactory.create(
             hashAlgorithm = HashAlgorithm.SHA3_512,
             saltProvider = SaltProvider.Default,
             numOfDecoys = 0,

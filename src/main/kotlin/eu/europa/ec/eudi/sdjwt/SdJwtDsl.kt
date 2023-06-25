@@ -58,11 +58,11 @@ data class DisclosedClaims<JO>(val disclosures: Set<Disclosure>, val claimSet: J
                 override val zero: DisclosedClaims<JO> =
                     DisclosedClaims(emptySet(), claimAddition.zero)
 
-                override fun invoke(
+                override fun add(
                     a: DisclosedClaims<JO>,
                     b: DisclosedClaims<JO>,
                 ): DisclosedClaims<JO> =
-                    DisclosedClaims(a.disclosures + b.disclosures, claimAddition(a.claimSet, b.claimSet))
+                    DisclosedClaims(a.disclosures + b.disclosures, claimAddition.add(a.claimSet, b.claimSet))
             }
     }
 }
@@ -72,45 +72,100 @@ data class DisclosedClaims<JO>(val disclosures: Set<Disclosure>, val claimSet: J
  *
  * @param V the type for which addition is defined
  */
-interface Addition<V> : (V, V) -> V {
+interface Addition<V> {
     val zero: V
-    override operator fun invoke(a: V, b: V): V
+    fun add(a: V, b: V): V
+}
+
+interface JsonOperations<JE, JO> : Addition<JO> {
+    fun createObjectFromClaims(cs: Claims<JE>): JO
+    fun nestClaims(claimName: String, claims: JO): JO
+    fun createArrayOfStrings(ss: Collection<String>): JE
+    fun stringElement(s: String): JE
 }
 
 /**
  * A function for making [disclosures][Disclosure] & [hashes][HashedDisclosure], possibly
  * including decoys
  */
-interface HashClaims<JE> {
+interface HashedDisclosureCreator<JE> {
     val hashAlgorithm: HashAlgorithm
-    operator fun invoke(claims: Claims<JE>): Pair<Set<Disclosure>, Set<HashedDisclosure>>
+    fun create(claims: Claims<JE>): Pair<Set<Disclosure>, Set<HashedDisclosure>>
+
+    companion object {
+        fun <JE> withDecoys(creator: HashedDisclosureCreator<JE>, numOfDecoys: Int): HashedDisclosureCreator<JE> =
+            if (numOfDecoys >= 0) {
+                object : HashedDisclosureCreator<JE> {
+                    override val hashAlgorithm: HashAlgorithm = creator.hashAlgorithm
+
+                    override fun create(claims: Claims<JE>): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+                        val (ds, hs) = creator.create(claims)
+                        val decoys = DecoyGen.Default.gen(creator.hashAlgorithm)
+                        val hashesWithDecoys = (hs + decoys).toSortedSet(Comparator.comparing { it.value })
+                        return ds to hashesWithDecoys
+                    }
+                }
+            } else creator
+    }
+}
+
+fun interface DisclosureCreator<JE> {
+    fun encode(saltProvider: SaltProvider, claim: Pair<String, JE>): Result<Disclosure>
+}
+
+class HashedDisclosureCreatorImpl<JE>(
+    override val hashAlgorithm: HashAlgorithm,
+    private val saltProvider: SaltProvider,
+    private val disclosureCreator: DisclosureCreator<JE>,
+) : HashedDisclosureCreator<JE> {
+
+    override fun create(claims: Claims<JE>): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+        fun make(claim: Pair<String, JE>): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+            val d = disclosureCreator.encode(saltProvider, claim).getOrThrow()
+            val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
+            return setOf(d) to setOf(h)
+        }
+
+        fun initial() = emptySet<Disclosure>() to emptySet<HashedDisclosure>()
+        return claims
+            .map { claim -> make(claim.toPair()) }
+            .fold(initial()) { acc, pair -> combine(acc, pair) }
+    }
+
+    private fun combine(
+        a: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
+        b: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
+    ): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+        fun <T> assertNoCommonElements(a: Iterable<T>, b: Iterable<T>, lazyMessage: () -> Any) {
+            require(a.intersect(b.toSet()).isEmpty(), lazyMessage)
+        }
+
+        assertNoCommonElements(a.first, b.first) {
+            "Cannot combine DisclosuresAndHashes with common disclosures"
+        }
+        assertNoCommonElements(a.second, b.second) {
+            "Cannot combine DisclosuresAndHashes with common hashes"
+        }
+
+        return (a.first + b.first) to (a.second + b.second)
+    }
 }
 
 /**
  *
  *
- * @param additionOfClaims an addition for the [JO]
- * @param createObjectFromClaims a method for creating a [JO] given a [set of claims][Claims]
- * @param nestClaims
- * @param hashClaims
- * @param createHashClaim a method for creating the hash claim ( an array of [HashedDisclosure] with the attibuted _sd)
+ * @param numOfDecoys the number of decoys
  * @param JE the type representing a JSON element (object, array, primitive, etc)
  * @param JO the type representing a JSON object
  */
-class SdJwtElementDiscloser<JE, JO>(
-    private val additionOfClaims: Addition<JO>,
-    private val createObjectFromClaims: (Claims<JE>) -> JO,
-    private val nestClaims: (String, JO) -> JO,
-    private val hashClaims: HashClaims<JE>,
-    private val createHashClaim: (Set<HashedDisclosure>) -> JO,
-    private val createHashAlgClaim: (HashAlgorithm) -> JO,
+class DisclosuresCreator<JE, JO>(
+    private val jsonOperations: JsonOperations<JE, JO>,
+    hashedDisclosureCreator: HashedDisclosureCreator<JE>,
+    numOfDecoys: Int = 0,
 ) {
 
-    /**
-     * The addition of [DisclosedClaims]
-     */
-    private val additionOfDisclosedClaims: Addition<DisclosedClaims<JO>> =
-        DisclosedClaims.addition(additionOfClaims)
+    private val hashedDisclosureCreator: HashedDisclosureCreator<JE> =
+        HashedDisclosureCreator.withDecoys(hashedDisclosureCreator, numOfDecoys)
 
     /**
      * Discloses a single [element]
@@ -121,19 +176,22 @@ class SdJwtElementDiscloser<JE, JO>(
         fun plain(cs: Claims<JE>): DisclosedClaims<JO> =
             if (cs.isEmpty()) additionOfDisclosedClaims.zero
             else {
-                val claimSet = createObjectFromClaims(cs)
+                val claimSet = jsonOperations.createObjectFromClaims(cs)
                 additionOfDisclosedClaims.zero.copy(claimSet = claimSet)
             }
 
         fun flat(cs: Claims<JE>): DisclosedClaims<JO> =
             if (cs.isEmpty()) additionOfDisclosedClaims.zero
             else {
-                val (ds, hs) = hashClaims(cs)
-                DisclosedClaims(ds, createHashClaim(hs))
+                val (ds, hs) = hashedDisclosureCreator.create(cs)
+                val hashClaims: JO = with(jsonOperations) {
+                    createObjectFromClaims(mapOf("_sd" to createArrayOfStrings(hs.map { it.value })))
+                }
+                DisclosedClaims(ds, hashClaims)
             }
 
         fun structured(claimName: String, es: Set<SdJwtElement<JE>>): DisclosedClaims<JO> =
-            disclose(es).getOrThrow().mapClaims { claims -> nestClaims(claimName, claims) }
+            disclose(es).mapClaims { claims -> jsonOperations.nestClaims(claimName, claims) }
 
         return when (element) {
             is Plain -> plain(element.claims)
@@ -142,7 +200,7 @@ class SdJwtElementDiscloser<JE, JO>(
         }
     }
 
-    private fun disclose(sdJwtElements: Set<SdJwtElement<JE>>): Result<DisclosedClaims<JO>> = runCatching {
+    private fun disclose(sdJwtElements: Set<SdJwtElement<JE>>): DisclosedClaims<JO> {
         tailrec fun discloseAccumulating(
             es: Set<SdJwtElement<JE>>,
             acc: DisclosedClaims<JO>,
@@ -151,24 +209,11 @@ class SdJwtElementDiscloser<JE, JO>(
             else {
                 val e = es.first()
                 val disclosedClaims = discloseElement(e)
-                val newAcc = additionOfDisclosedClaims(acc, disclosedClaims)
+                val newAcc = additionOfDisclosedClaims.add(acc, disclosedClaims)
                 discloseAccumulating(es - e, newAcc)
             }
 
-        discloseAccumulating(sdJwtElements, additionOfDisclosedClaims.zero)
-    }
-
-    /**
-     * Adds the hash algorithm claim if disclosures are present
-     * @param h the hashing algorithm used for calculating hashes
-     * @return a new [DisclosedClaims] with an updated [DisclosedClaims.claimSet] to
-     * contain the hash algorithm claim, if disclosures are present
-     */
-    private fun DisclosedClaims<JO>.addHashAlgClaim(h: HashAlgorithm): DisclosedClaims<JO> {
-        return if (disclosures.isEmpty()) this
-        else mapClaims {
-            additionOfClaims(it, createHashAlgClaim(hashClaims.hashAlgorithm))
-        }
+        return discloseAccumulating(sdJwtElements, additionOfDisclosedClaims.zero)
     }
 
     /**
@@ -177,7 +222,27 @@ class SdJwtElementDiscloser<JE, JO>(
      * @param sdJwtElements the contents of the SD-JWT
      * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
      */
-    fun discloseSdJwt(sdJwtElements: Set<SdJwtElement<JE>>): Result<DisclosedClaims<JO>> =
-        disclose(sdJwtElements)
-            .map { disclosedClaims -> disclosedClaims.addHashAlgClaim(hashClaims.hashAlgorithm) }
+    fun discloseSdJwt(sdJwtElements: Set<SdJwtElement<JE>>): Result<DisclosedClaims<JO>> = runCatching {
+        disclose(sdJwtElements).addHashAlgClaim(hashedDisclosureCreator.hashAlgorithm)
+    }
+
+    /**
+     * Adds the hash algorithm claim if disclosures are present
+     * @param h the hashing algorithm used for calculating hashes
+     * @return a new [DisclosedClaims] with an updated [DisclosedClaims.claimSet] to
+     * contain the hash algorithm claim, if disclosures are present
+     */
+    private fun DisclosedClaims<JO>.addHashAlgClaim(h: HashAlgorithm): DisclosedClaims<JO> =
+        if (disclosures.isEmpty()) this
+        else mapClaims { claims ->
+            with(jsonOperations) {
+                val hashAlgClaim = createObjectFromClaims(mapOf("_sd_alg" to stringElement(h.alias)))
+                add(claims, hashAlgClaim)
+            }
+        }
+
+    /**
+     * The addition of [DisclosedClaims]
+     */
+    private val additionOfDisclosedClaims: Addition<DisclosedClaims<JO>> = DisclosedClaims.addition(jsonOperations)
 }

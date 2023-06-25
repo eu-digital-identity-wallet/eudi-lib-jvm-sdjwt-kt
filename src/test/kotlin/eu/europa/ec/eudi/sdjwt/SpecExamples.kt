@@ -28,7 +28,7 @@ fun main() {
 }
 
 private fun Set<SdJwtElement<JsonElement>>.disclose() {
-    SdJwtElementDiscloserFactory.create(
+    DefaultDisclosuresCreatorFactory.create(
         HashAlgorithm.SHA_256,
         SaltProvider.Default,
         0,
