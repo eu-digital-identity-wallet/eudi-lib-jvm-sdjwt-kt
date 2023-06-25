@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import java.security.MessageDigest
+
 /**
  * The hash of a [disclosure][Disclosure]
  *
@@ -49,8 +51,8 @@ value class HashedDisclosure private constructor(val value: String) {
         }
 
         internal fun base64UrlEncodedDigestOf(hashingAlgorithm: HashAlgorithm, disclosureValue: String): String {
-            val hashFunction = hashing().of(hashingAlgorithm)
-            val digest = hashFunction(disclosureValue.encodeToByteArray())
+            val hashFunction = MessageDigest.getInstance(hashingAlgorithm.alias.uppercase())
+            val digest = hashFunction.digest(disclosureValue.encodeToByteArray())
             return JwtBase64.encodeString(digest)
         }
     }
