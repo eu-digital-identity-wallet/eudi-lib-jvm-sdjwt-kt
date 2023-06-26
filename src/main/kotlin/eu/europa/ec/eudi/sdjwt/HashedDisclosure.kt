@@ -19,7 +19,6 @@ import java.security.MessageDigest
 
 /**
  * The hash of a [disclosure][Disclosure]
- *
  */
 @JvmInline
 value class HashedDisclosure private constructor(val value: String) {
@@ -45,15 +44,21 @@ value class HashedDisclosure private constructor(val value: String) {
          *
          * @return the [HashedDisclosure] of the given [disclosure][d]
          */
-        fun create(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<HashedDisclosure> = runCatching {
-            val value = base64UrlEncodedDigestOf(hashingAlgorithm, d.value)
-            HashedDisclosure(value)
-        }
+        fun create(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<HashedDisclosure> =
+            create(hashingAlgorithm, d.value)
 
-        internal fun base64UrlEncodedDigestOf(hashingAlgorithm: HashAlgorithm, disclosureValue: String): String {
+        /**
+         * Calculates the hash of the given [value] using the specified [hashing algorithm][hashingAlgorithm]
+         *
+         * @param hashingAlgorithm the hashing algorithm to use
+         * @param value the value for which to calculate the hash
+         *
+         * @return the [HashedDisclosure] of the given [value]
+         */
+        fun create(hashingAlgorithm: HashAlgorithm, value: String): Result<HashedDisclosure> = runCatching {
             val hashFunction = MessageDigest.getInstance(hashingAlgorithm.alias.uppercase())
-            val digest = hashFunction.digest(disclosureValue.encodeToByteArray())
-            return JwtBase64.encodeString(digest)
+            val digest = hashFunction.digest(value.encodeToByteArray())
+            HashedDisclosure(JwtBase64.encodeString(digest))
         }
     }
 }

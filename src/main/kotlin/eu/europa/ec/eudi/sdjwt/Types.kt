@@ -97,8 +97,18 @@ data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonO
 
     companion object {
 
+        /**
+         * A []DisclosedClaims] with no disclosures adn with an empty claim set
+         */
         val Empty: DisclosedClaims = DisclosedClaims(emptySet(), JsonObject(emptyMap()))
 
+        /**
+         * Adds two [DisclosedClaims] producing a new [DisclosedClaims] which contains
+         * the combined set of disclosures and claim sets
+         * @param a the first  [DisclosedClaims]
+         * @param b the second  [DisclosedClaims]
+         * @return a new [DisclosedClaims] which contains the combined set of disclosures and claim sets
+         */
         fun add(a: DisclosedClaims, b: DisclosedClaims): DisclosedClaims {
             val disclosures = a.disclosures + b.disclosures
             val claimSet = JsonObject(a.claimSet + b.claimSet)
