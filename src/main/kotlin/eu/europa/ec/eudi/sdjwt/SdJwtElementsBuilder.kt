@@ -39,6 +39,7 @@ inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): List<SdJwtElem
  * Builder for conveniently assembling
  * a set of [SD-JWT elements][SdJwtElement]
  */
+@SdJwtElementDsl
 class SdJwtElementsBuilder
     @PublishedApi
     internal constructor() {
@@ -54,69 +55,95 @@ class SdJwtElementsBuilder
         private val flatClaims = mutableMapOf<String, JsonElement>()
 
         /**
-         * Accumulates claims to be disclosed in structured manner
+         * Claims to be disclosed in structured manner
          */
         private val structuredClaims = mutableListOf<SdJwtElement.StructuredDisclosed>()
 
-        private val recursivelyClaims = mutableMapOf<String, Claims>()
+        /**
+         * Claims to be disclosed recursively
+         */
+        private val recursivelyClaims = mutableListOf<SdJwtElement.RecursivelyDisclosed>()
 
         /**
          * Adds plain claims
          * @param cs claims to add
          */
         fun plain(cs: Claims) {
-            plainClaims.putAll(cs)
-        }
-
-        /**
-         * Adds plain claims
-         * @param builderAction a usage of a json builder
-         */
-        fun plain(builderAction: JsonObjectBuilder.() -> Unit) {
-            plain(buildJsonObject(builderAction))
+            plainClaims += cs
         }
 
         fun flat(cs: Claims) {
-            flatClaims.putAll(cs)
+            flatClaims += cs
         }
 
-        fun flat(builderAction: JsonObjectBuilder.() -> Unit) {
-            flat(buildJsonObject(builderAction))
+        internal fun structured(s: SdJwtElement.StructuredDisclosed) {
+            structuredClaims += s
         }
 
-        /**
-         * Adds a structured claim where the given [flatSubClaims] will be flat disclosed.
-         * That is the structured claim won't contain neither plain nor structured subclaims
-         * @param claimName the name of the structured claim
-         * @param flatSubClaims the usage of the builder
-         */
-        fun structuredWithFlatClaims(claimName: String, flatSubClaims: Claims) {
-            val element = SdJwtElement.StructuredDisclosed(claimName, listOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
-            structuredClaims.add(element)
+        internal fun recursively(r: SdJwtElement.RecursivelyDisclosed) {
+            recursivelyClaims += r
         }
 
-        /**
-         * Adds a structured claim using, recursively, the builder
-         * @param claimName the name of the structured claim
-         * @param builderAction the usage of the builder
-         */
-        fun structured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
-            val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
-            structuredClaims.add(element)
-        }
-
-        fun recursively(claimName: String, cs: Claims) {
-            recursivelyClaims[claimName] = cs
-        }
-
-        fun recursively(claimName: String, builderAction: JsonObjectBuilder.() -> Unit) =
-            recursively(claimName, buildJsonObject(builderAction))
-
-        fun build(): List<SdJwtElement> =
+        @PublishedApi
+        internal fun build(): List<SdJwtElement> =
             buildList {
                 add(SdJwtElement.Plain(plainClaims))
                 add(SdJwtElement.FlatDisclosed(flatClaims))
                 addAll(structuredClaims)
-                addAll(recursivelyClaims.map { SdJwtElement.RecursivelyDisclosed(it.key, it.value) })
+                addAll(recursivelyClaims)
             }
     }
+
+/**
+ * Adds plain claims, using [JsonObjectBuilder]
+ * @param builderAction a usage of [JsonObjectBuilder]
+ */
+fun SdJwtElementsBuilder.plain(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    plain(buildJsonObject(builderAction))
+}
+
+/**
+ * Adds flat claims, using [JsonObjectBuilder]
+ * @param builderAction a usage of [JsonObjectBuilder]
+ */
+fun SdJwtElementsBuilder.flat(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    flat(buildJsonObject(builderAction))
+}
+
+/**
+ * Adds a structured claim using, recursively, the builder
+ * @param claimName the name of the structured claim
+ * @param builderAction the usage of the builder
+ */
+fun SdJwtElementsBuilder.structured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
+    val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
+    structured(element)
+}
+
+/**
+ * Adds a structured claim where the given [flatSubClaims] will be flat disclosed.
+ * That is the structured claim won't contain neither plain nor structured subclaims
+ * @param claimName the name of the structured claim
+ * @param flatSubClaims the usage of the builder
+ */
+fun SdJwtElementsBuilder.structuredWithFlatClaims(claimName: String, flatSubClaims: Claims) {
+    val element = SdJwtElement.StructuredDisclosed(claimName, listOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
+    structured(element)
+}
+
+/**
+ * Adds recursively claims
+ * @param claimName the name of the top-level claim
+ * @param builderAction a usage of [JsonObjectBuilder]
+ */
+fun SdJwtElementsBuilder.recursively(
+    claimName: String,
+    builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit,
+) {
+    val element = SdJwtElement.RecursivelyDisclosed(claimName, buildJsonObject(builderAction))
+    recursively(element)
+}
+
+@DslMarker
+@Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
+internal annotation class SdJwtElementDsl
