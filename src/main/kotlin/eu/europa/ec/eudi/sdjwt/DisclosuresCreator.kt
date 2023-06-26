@@ -20,7 +20,10 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
 /**
- *
+ * A class for [disclosing][disclose] a set of [SD-JWT elements][SdJwtElement].
+ * In this context, [outcome][DisclosedClaims] of the disclosure is the calculation
+ * of a set of [disclosures][DisclosedClaims.disclosures] and a [set of claims][DisclosedClaims.claimSet]
+ * to be included in the payload of the SD-JWT.
  *
  * @param hashAlgorithm the algorithm to calculate the [HashedDisclosure]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
