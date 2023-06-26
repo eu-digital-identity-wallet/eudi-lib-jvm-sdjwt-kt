@@ -22,15 +22,13 @@ object JwtBase64 {
     private val encoder: Base64.Encoder by lazy { Base64.getUrlEncoder() }
     private val decoder: Base64.Decoder by lazy { Base64.getUrlDecoder() }
 
-    fun decode(value: String): ByteArray =
-        decoder.decode(value)
+    fun decode(value: String): ByteArray = decoder.decode(value)
 
     // Since the complement character "=" is optional,
     // we can remove it to save some bits in the HTTP header
     fun encodeString(value: ByteArray): String =
         encoder.encodeToString(value).replace("=", "")
-    private fun decodeString(value: ByteArray): String = decoder.decode(value).decodeToString()
 
     fun encodeString(value: String): String = encodeString(value.encodeToByteArray())
-    fun decodeString(value: String): String = decodeString(value.encodeToByteArray())
+    fun decodeString(value: String): String = decoder.decode(value.encodeToByteArray()).decodeToString()
 }

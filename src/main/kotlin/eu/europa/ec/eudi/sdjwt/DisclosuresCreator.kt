@@ -20,23 +20,25 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
 /**
+ *
+ *
+ * @param hashAlgorithm the algorithm to calculate the [HashedDisclosure]
+ * @param saltProvider provides [Salt] for the calculation of [Disclosure]
+ * @param numOfDecoysLimit the upper limit of the decoys to generate
  */
 class DisclosuresCreator(
     hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     saltProvider: SaltProvider = SaltProvider.Default,
-    numOfDecoys: Int = 0,
+    numOfDecoysLimit: Int = 0,
 ) {
 
-    private val hashedDisclosureCreator: HashedDisclosureCreator =
-        HashedDisclosureCreator(hashAlgorithm, saltProvider, numOfDecoys)
-
     /**
-     * Discloses a single [element]
-     * @param element the element to disclose
-     * @return the [DisclosedClaims] for the given [element]
+     * Discloses a single [sdJwtElement]
+     * @param sdJwtElement the element to disclose
+     * @return the [DisclosedClaims] for the given [sdJwtElement]
      */
     @OptIn(ExperimentalSerializationApi::class)
-    private fun discloseElement(element: SdJwtElement): DisclosedClaims {
+    private fun discloseElement(sdJwtElement: SdJwtElement): DisclosedClaims {
         fun plain(cs: Claims): DisclosedClaims =
             if (cs.isEmpty()) DisclosedClaims.Empty
             else DisclosedClaims(emptySet(), JsonObject(cs))
@@ -52,30 +54,35 @@ class DisclosuresCreator(
         fun structured(claimName: String, es: Set<SdJwtElement>): DisclosedClaims =
             disclose(es).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
 
-        return when (element) {
-            is Plain -> plain(element.claims)
-            is FlatDisclosed -> flat(element.claims)
-            is StructuredDisclosed -> structured(element.claimName, element.elements)
+        return when (sdJwtElement) {
+            is Plain -> plain(sdJwtElement.claims)
+            is FlatDisclosed -> flat(sdJwtElement.claims)
+            is StructuredDisclosed -> structured(sdJwtElement.claimName, sdJwtElement.elements)
         }
     }
 
+    /**
+     * Discloses a set of  [SD-JWT element][sdJwtElements]
+     * @param sdJwtElements the set of elements to disclose
+     * @return the [DisclosedClaims]
+     */
     private fun disclose(sdJwtElements: Set<SdJwtElement>): DisclosedClaims {
         tailrec fun discloseAccumulating(
-            es: Set<SdJwtElement>,
-            acc: DisclosedClaims,
+            elements: Set<SdJwtElement>,
+            accumulated: DisclosedClaims,
         ): DisclosedClaims =
-            if (es.isEmpty()) acc
+            if (elements.isEmpty()) accumulated
             else {
-                val e = es.first()
-                val disclosedClaims = discloseElement(e)
-                discloseAccumulating(es - e, acc + disclosedClaims)
+                val element = elements.first()
+                val disclosedClaims = discloseElement(element)
+                discloseAccumulating(elements - element, accumulated + disclosedClaims)
             }
 
         return discloseAccumulating(sdJwtElements, DisclosedClaims.Empty)
     }
 
     /**
-     * Calculates a [DisclosedClaims] for a given [SD-JWT element][sdJwtElements]
+     * Calculates a [DisclosedClaims] for a given [SD-JWT element][sdJwtElements].
      *
      * @param sdJwtElements the contents of the SD-JWT
      * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
@@ -96,24 +103,40 @@ class DisclosuresCreator(
             val hashAlgClaim = JsonObject(mapOf("_sd_alg" to JsonPrimitive(h.alias)))
             JsonObject(claims + hashAlgClaim)
         }
+
+    /**
+     * []Disclosure] and [HashedDisclosure] creator
+     */
+    private val hashedDisclosureCreator: HashedDisclosureCreator by lazy {
+        HashedDisclosureCreator(hashAlgorithm, saltProvider, numOfDecoysLimit)
+    }
 }
 
 /**
- * A function for making [disclosures][Disclosure] & [hashes][HashedDisclosure], possibly
+ * A class for [creating][create] [disclosures][Disclosure] and [hashes][HashedDisclosure], possibly
  * including decoys
+ *
+ * @param hashAlgorithm the algorithm to calculate the [HashedDisclosure]
+ * @param saltProvider provides [Salt] for the calculation of [Disclosure]
+ * @param numOfDecoysLimit the upper limit of the decoys to generate
  */
 private class HashedDisclosureCreator(
     val hashAlgorithm: HashAlgorithm,
     private val saltProvider: SaltProvider,
-    private val numOfDecoys: Int,
+    private val numOfDecoysLimit: Int,
 ) {
 
+    /**
+     * Creates [disclosures][Disclosure] & [hashes][HashedDisclosure], possibly including decoys
+     *
+     * @param claims the claims for which to calculate [Disclosure] and [HashedDisclosure]
+     * @return disclosures and hashes, possibly including decoys
+     * */
     fun create(claims: Claims): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
-        val initial =
-            emptySet<Disclosure>() to DecoyGen.Default.gen(hashAlgorithm, numOfDecoys).toSet()
+        val decoys = emptySet<Disclosure>() to DecoyGen.Default.genUpTo(hashAlgorithm, numOfDecoysLimit)
         val (ds, hs) = claims
             .map { claim -> make(claim.toPair()) }
-            .fold(initial) { acc, pair -> combine(acc, pair) }
+            .fold(decoys, this::combine)
         return ds to hs.toSortedSet(Comparator.comparing { it.value })
     }
 
@@ -123,14 +146,17 @@ private class HashedDisclosureCreator(
         return setOf(d) to setOf(h)
     }
 
+    /**
+     * Combines two pair of sets of disclosures & hashes into a new pair
+     * @param a the first pair to combine
+     * @param b the second pair to combine
+     * @return the combines pair
+     * @throws IllegalArgumentException in case the provided sets have common elements
+     */
     private fun combine(
         a: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
         b: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
     ): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
-        fun <T> assertNoCommonElements(a: Iterable<T>, b: Iterable<T>, lazyMessage: () -> Any) {
-            require(a.intersect(b.toSet()).isEmpty(), lazyMessage)
-        }
-
         assertNoCommonElements(a.first, b.first) {
             "Cannot combine DisclosuresAndHashes with common disclosures"
         }
@@ -139,5 +165,9 @@ private class HashedDisclosureCreator(
         }
 
         return (a.first + b.first) to (a.second + b.second)
+    }
+
+    private fun <T> assertNoCommonElements(a: Iterable<T>, b: Iterable<T>, lazyMessage: () -> Any) {
+        require(a.intersect(b.toSet()).isEmpty(), lazyMessage)
     }
 }

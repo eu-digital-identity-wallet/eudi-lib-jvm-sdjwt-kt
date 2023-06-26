@@ -35,10 +35,21 @@ fun interface DecoyGen {
      * @param numOfDecoys the number of decoys to produce
      * @return a series of decoy [HashedDisclosure]
      */
-    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Collection<HashedDisclosure> {
-        return if (numOfDecoys < 1) emptyList()
-        else (1..Random.nextInt(1, numOfDecoys)).map { gen(hashingAlgorithm) }
+    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<HashedDisclosure> {
+        return if (numOfDecoys < 1) emptySet()
+        else (1..numOfDecoys).map { gen(hashingAlgorithm) }.toSet()
     }
+
+    /**
+     * Produces a set of decoy [HashedDisclosure]
+     * The number of decoys is random up to [numOfDecoysLimit]
+     *
+     * @param hashingAlgorithm the algorithm to be used for producing the decoy
+     * @param numOfDecoysLimit the upper limit of the decoys to generate
+     * @return a series of decoy [HashedDisclosure]
+     */
+    fun genUpTo(hashingAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): Set<HashedDisclosure> =
+        gen(hashingAlgorithm, Random.nextInt(1, numOfDecoysLimit))
 
     companion object {
         /**
@@ -48,8 +59,7 @@ fun interface DecoyGen {
             DecoyGen { hashingAlgorithm ->
                 val saltProvider = SaltProvider.randomSaltProvider(Random.nextInt(12, 24))
                 val random = saltProvider.salt()
-                val value = HashedDisclosure.base64UrlEncodedDigestOf(hashingAlgorithm, random)
-                HashedDisclosure.wrap(value).getOrThrow()
+                HashedDisclosure.create(hashingAlgorithm, random).getOrThrow()
             }
         }
     }

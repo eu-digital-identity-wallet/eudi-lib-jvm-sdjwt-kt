@@ -54,7 +54,7 @@ class DisclosedClaimSetTest {
 
             )
 
-            val disclosuresCreator = DisclosuresCreator(numOfDecoys = 0)
+            val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = 0)
             invalidClaims.forEach { sdJwt ->
                 val result = disclosuresCreator.discloseSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
