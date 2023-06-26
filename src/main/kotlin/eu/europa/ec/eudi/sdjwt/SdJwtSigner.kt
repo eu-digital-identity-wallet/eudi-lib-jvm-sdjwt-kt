@@ -39,7 +39,7 @@ object SdJwtSigner {
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         disclosuresCreator: DisclosuresCreator = Default,
-        sdJwtElements: Set<SdJwtElement>,
+        sdJwtElements: List<SdJwtElement>,
     ): Result<CombinedIssuanceSdJwt> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 

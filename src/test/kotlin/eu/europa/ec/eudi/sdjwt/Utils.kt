@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
@@ -27,4 +29,13 @@ fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject>
         }
     }?.let { JsonObject(mapOf(attributeName to it)) } ?: JsonObject(emptyMap())
     return otherClaims to claimToBeDisclosed
+}
+
+val json = Json { prettyPrint = true }
+fun DisclosedClaims.print() {
+    println("Found ${disclosures.size} disclosures")
+    disclosures.forEach { d ->
+        println("\t - ${d.claim()}")
+    }
+    claimSet.also { println(json.encodeToString(it)) }
 }

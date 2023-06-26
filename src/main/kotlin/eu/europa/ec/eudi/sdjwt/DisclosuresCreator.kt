@@ -51,7 +51,7 @@ class DisclosuresCreator(
                 DisclosedClaims(ds, hashClaims)
             }
 
-        fun structured(claimName: String, es: Set<SdJwtElement>): DisclosedClaims =
+        fun structured(claimName: String, es: List<SdJwtElement>): DisclosedClaims =
             disclose(es).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
 
         return when (sdJwtElement) {
@@ -66,9 +66,9 @@ class DisclosuresCreator(
      * @param sdJwtElements the set of elements to disclose
      * @return the [DisclosedClaims]
      */
-    private fun disclose(sdJwtElements: Set<SdJwtElement>): DisclosedClaims {
+    private fun disclose(sdJwtElements: List<SdJwtElement>): DisclosedClaims {
         tailrec fun discloseAccumulating(
-            elements: Set<SdJwtElement>,
+            elements: List<SdJwtElement>,
             accumulated: DisclosedClaims,
         ): DisclosedClaims =
             if (elements.isEmpty()) accumulated
@@ -87,7 +87,7 @@ class DisclosuresCreator(
      * @param sdJwtElements the contents of the SD-JWT
      * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
      */
-    fun discloseSdJwt(sdJwtElements: Set<SdJwtElement>): Result<DisclosedClaims> = runCatching {
+    fun discloseSdJwt(sdJwtElements: List<SdJwtElement>): Result<DisclosedClaims> = runCatching {
         disclose(sdJwtElements).addHashAlgClaim(hashedDisclosureCreator.hashAlgorithm)
     }
 
