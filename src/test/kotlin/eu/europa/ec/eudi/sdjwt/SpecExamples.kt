@@ -15,26 +15,20 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 fun main() {
-    listOf(
-        option1FlatSdJwt(),
-        option2StructuredSdJwt(),
-        example2A(),
-        reallyComplex(),
-    ).forEach { it.disclose() }
-}
-
-private fun Set<SdJwtElement>.disclose() {
-    DisclosuresCreator().discloseSdJwt(this).getOrThrow().also { it.print() }
-}
-
-val json = Json { prettyPrint = true }
-fun DisclosedClaims.print() {
-    disclosures.forEach { println(it.claim()) }
-    claimSet.also { println(json.encodeToString(it)) }
+    val disclosuresCreator = DisclosuresCreator()
+    mapOf(
+        "Option 1 Flat SD-JWT" to option1FlatSdJwt(),
+        "Option 2 Structured SD-JWT" to option2StructuredSdJwt(),
+        "Example 2a" to example2A(),
+        "Complex example" to reallyComplex(),
+    ).forEach { (descr, sdJwtElements) ->
+        println(descr)
+        disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow().run { print() }
+        println("=====================================")
+    }
 }
 
 fun option1FlatSdJwt() =

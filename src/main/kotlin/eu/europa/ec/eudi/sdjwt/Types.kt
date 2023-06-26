@@ -82,7 +82,7 @@ enum class HashAlgorithm(val alias: String) {
 sealed interface SdJwtElement {
     data class Plain(val claims: Claims) : SdJwtElement
     data class FlatDisclosed(val claims: Claims) : SdJwtElement
-    data class StructuredDisclosed(val claimName: String, val elements: Set<SdJwtElement>) : SdJwtElement
+    data class StructuredDisclosed(val claimName: String, val elements: List<SdJwtElement>) : SdJwtElement
 }
 
 /**

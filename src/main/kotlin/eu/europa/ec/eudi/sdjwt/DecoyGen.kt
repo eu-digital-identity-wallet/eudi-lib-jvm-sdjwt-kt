@@ -49,7 +49,7 @@ fun interface DecoyGen {
      * @return a series of decoy [HashedDisclosure]
      */
     fun genUpTo(hashingAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): Set<HashedDisclosure> =
-        gen(hashingAlgorithm, Random.nextInt(1, numOfDecoysLimit))
+        gen(hashingAlgorithm, if (numOfDecoysLimit >= 1) Random.nextInt(1, numOfDecoysLimit) else 0)
 
     companion object {
         /**

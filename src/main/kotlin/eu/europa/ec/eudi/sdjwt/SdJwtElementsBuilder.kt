@@ -28,7 +28,7 @@ import kotlin.contracts.contract
  * @return the set of [SD-JWT elements][SdJwtElement]
  */
 @OptIn(ExperimentalContracts::class)
-inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): Set<SdJwtElement> {
+inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): List<SdJwtElement> {
     contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
     val v = SdJwtElementsBuilder()
     v.builderAction()
@@ -56,7 +56,7 @@ class SdJwtElementsBuilder
         /**
          * Accumulates claims to be disclosed in structured manner
          */
-        private val structuredClaims = mutableSetOf<SdJwtElement.StructuredDisclosed>()
+        private val structuredClaims = mutableListOf<SdJwtElement.StructuredDisclosed>()
 
         /**
          * Adds plain claims
@@ -89,7 +89,7 @@ class SdJwtElementsBuilder
          * @param flatSubClaims the usage of the builder
          */
         fun structuredWithFlatClaims(claimName: String, flatSubClaims: Claims) {
-            val element = SdJwtElement.StructuredDisclosed(claimName, setOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
+            val element = SdJwtElement.StructuredDisclosed(claimName, listOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
             structuredClaims.add(element)
         }
 
@@ -103,8 +103,8 @@ class SdJwtElementsBuilder
             structuredClaims.add(element)
         }
 
-        fun build(): Set<SdJwtElement> =
-            buildSet {
+        fun build(): List<SdJwtElement> =
+            buildList {
                 add(SdJwtElement.Plain(plainClaims))
                 add(SdJwtElement.FlatDisclosed(flatClaims))
                 addAll(structuredClaims)
