@@ -46,10 +46,10 @@ class DisclosuresCreator(
             if (cs.isEmpty()) DisclosedClaims.Empty
             else DisclosedClaims(emptySet(), JsonObject(cs))
 
-        fun flat(cs: Claims): DisclosedClaims =
+        fun flat(cs: Claims, allowNestedHashClaim: Boolean = false): DisclosedClaims =
             if (cs.isEmpty()) DisclosedClaims.Empty
             else {
-                val (ds, hs) = hashedDisclosureCreator.create(cs)
+                val (ds, hs) = hashedDisclosureCreator.create(cs, allowNestedHashClaim)
                 val hashClaims = JsonObject(mapOf("_sd" to buildJsonArray { addAll(hs.map { it.value }) }))
                 DisclosedClaims(ds, hashClaims)
             }
@@ -59,7 +59,7 @@ class DisclosuresCreator(
 
         fun recursively(claimName: String, cs: Claims): DisclosedClaims {
             val (ds1, claimSet1) = flat(cs)
-            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1))
+            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1), true)
             return DisclosedClaims(ds1 + ds2, claimSet2)
         }
 
@@ -142,16 +142,16 @@ private class HashedDisclosureCreator(
      * @param claims the claims for which to calculate [Disclosure] and [HashedDisclosure]
      * @return disclosures and hashes, possibly including decoys
      * */
-    fun create(claims: Claims): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+    fun create(claims: Claims, allowNestedHashClaim: Boolean): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
         val decoys = emptySet<Disclosure>() to DecoyGen.Default.genUpTo(hashAlgorithm, numOfDecoysLimit)
         val (ds, hs) = claims
-            .map { claim -> make(claim.toPair()) }
+            .map { claim -> make(claim.toPair(), allowNestedHashClaim) }
             .fold(decoys, this::combine)
         return ds to hs.toSortedSet(Comparator.comparing { it.value })
     }
 
-    private fun make(claim: Claim): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
-        val d = Disclosure.encode(saltProvider, claim).getOrThrow()
+    private fun make(claim: Claim, allowNestedHashClaim: Boolean): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+        val d = Disclosure.encode(saltProvider, claim, allowNestedHashClaim).getOrThrow()
         val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
         return setOf(d) to setOf(h)
     }
