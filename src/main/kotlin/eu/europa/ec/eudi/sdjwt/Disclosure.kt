@@ -50,10 +50,12 @@ value class Disclosure private constructor(val value: String) {
          *
          * @param saltProvider the [SaltProvider] to be used. Defaults to [SaltProvider.Default]
          * @param claim the claim to be disclosed
+         * @param allowNestedHashClaim whether to allow the presence of nested hash claim (_sd)
          */
         fun encode(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
+            allowNestedHashClaim: Boolean = false,
         ): Result<Disclosure> {
             // Make sure that claim name is not _sd
             fun isValidAttributeName(attribute: String): Boolean = attribute != "_sd"
@@ -64,7 +66,9 @@ value class Disclosure private constructor(val value: String) {
                 when (json) {
                     is JsonPrimitive -> json !is JsonNull
                     is JsonArray -> json.all { isValidJsonElement(it) }
-                    is JsonObject -> json.entries.all { isValidAttributeName(it.key) && isValidJsonElement(it.value) }
+                    is JsonObject -> json.entries.all {
+                        (isValidAttributeName(it.key) || allowNestedHashClaim) && isValidJsonElement(it.value)
+                    }
                 }
             return runCatching {
                 if (!isValidAttributeName(claim.name())) {
@@ -74,6 +78,7 @@ value class Disclosure private constructor(val value: String) {
                 if (!isValidJsonElement(claim.value())) {
                     throw IllegalArgumentException("Claim should not contain a null value or an JSON object with attribute named _sd")
                 }
+
                 // Create a Json Array [salt, claimName, claimValue]
                 val jsonArray = buildJsonArray {
                     add(JsonPrimitive(saltProvider.salt())) // salt

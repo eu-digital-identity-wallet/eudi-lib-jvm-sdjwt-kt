@@ -83,6 +83,7 @@ sealed interface SdJwtElement {
     data class Plain(val claims: Claims) : SdJwtElement
     data class FlatDisclosed(val claims: Claims) : SdJwtElement
     data class StructuredDisclosed(val claimName: String, val elements: List<SdJwtElement>) : SdJwtElement
+    data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
 }
 
 /**
