@@ -59,7 +59,7 @@ class DisclosuresCreator(
 
         fun recursively(claimName: String, cs: Claims): DisclosedClaims {
             val (ds1, claimSet1) = flat(cs)
-            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1), true)
+            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1), allowNestedHashClaim = true)
             return DisclosedClaims(ds1 + ds2, claimSet2)
         }
 
