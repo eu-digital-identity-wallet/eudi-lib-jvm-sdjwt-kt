@@ -15,13 +15,17 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 fun main() {
     val disclosuresCreator = DisclosuresCreator()
     mapOf(
         "Option 1 Flat SD-JWT" to option1FlatSdJwt(),
         "Option 2 Structured SD-JWT" to option2StructuredSdJwt(),
+        "Option 3 Recursively SD-JWT" to option3RecursivelySdJwt(),
         "Example 2a" to example2A(),
         "Complex example" to reallyComplex(),
     ).forEach { (descr, sdJwtElements) ->
@@ -64,6 +68,22 @@ fun option2StructuredSdJwt() =
                 put("region", "Sachsen-Anhalt")
                 put("country", "DE")
             }
+        }
+    }
+
+fun option3RecursivelySdJwt() =
+    sdJwt {
+        plain {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "https://example.com/issuer")
+            put("iat", 1516239022)
+            put("exp", 1735689661)
+        }
+        recursively("address") {
+            put("street_address", "Schulstr. 12")
+            put("locality", "Schulpforta")
+            put("region", "Sachsen-Anhalt")
+            put("country", "DE")
         }
     }
 

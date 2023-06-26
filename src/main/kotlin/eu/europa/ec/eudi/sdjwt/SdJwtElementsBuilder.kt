@@ -58,6 +58,8 @@ class SdJwtElementsBuilder
          */
         private val structuredClaims = mutableListOf<SdJwtElement.StructuredDisclosed>()
 
+        private val recursivelyClaims = mutableMapOf<String, Claims>()
+
         /**
          * Adds plain claims
          * @param cs claims to add
@@ -103,10 +105,18 @@ class SdJwtElementsBuilder
             structuredClaims.add(element)
         }
 
+        fun recursively(claimName: String, cs: Claims) {
+            recursivelyClaims[claimName] = cs
+        }
+
+        fun recursively(claimName: String, builderAction: JsonObjectBuilder.() -> Unit) =
+            recursively(claimName, buildJsonObject(builderAction))
+
         fun build(): List<SdJwtElement> =
             buildList {
                 add(SdJwtElement.Plain(plainClaims))
                 add(SdJwtElement.FlatDisclosed(flatClaims))
                 addAll(structuredClaims)
+                addAll(recursivelyClaims.map { SdJwtElement.RecursivelyDisclosed(it.key, it.value) })
             }
     }

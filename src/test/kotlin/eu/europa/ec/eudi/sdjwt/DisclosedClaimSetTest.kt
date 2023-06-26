@@ -36,22 +36,6 @@ class DisclosedClaimSetTest {
                 sdJwt {
                     flat { put("_sd", "foo") }
                 },
-
-                sdJwt {
-                    flat {
-                        putJsonObject("foo") {
-                            put("_sd", "bar")
-                        }
-                    }
-                },
-                sdJwt {
-                    flat {
-                        putJsonArray("foo") {
-                            add(buildJsonObject { put("_sd", "bar") })
-                        }
-                    }
-                },
-
             )
 
             val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = 0)

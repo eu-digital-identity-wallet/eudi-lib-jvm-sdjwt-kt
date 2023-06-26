@@ -64,7 +64,7 @@ value class Disclosure private constructor(val value: String) {
                 when (json) {
                     is JsonPrimitive -> json !is JsonNull
                     is JsonArray -> json.all { isValidJsonElement(it) }
-                    is JsonObject -> json.entries.all { isValidAttributeName(it.key) && isValidJsonElement(it.value) }
+                    is JsonObject -> json.entries.all { isValidJsonElement(it.value) }
                 }
             return runCatching {
                 if (!isValidAttributeName(claim.name())) {
@@ -72,8 +72,9 @@ value class Disclosure private constructor(val value: String) {
                 }
 
                 if (!isValidJsonElement(claim.value())) {
-                    throw IllegalArgumentException("Claim should not contain a null value or an JSON object with attribute named _sd")
+                    throw IllegalArgumentException("Claim should not contain a null value claims")
                 }
+
                 // Create a Json Array [salt, claimName, claimValue]
                 val jsonArray = buildJsonArray {
                     add(JsonPrimitive(saltProvider.salt())) // salt

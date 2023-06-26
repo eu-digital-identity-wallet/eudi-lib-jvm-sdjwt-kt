@@ -54,10 +54,17 @@ class DisclosuresCreator(
         fun structured(claimName: String, es: List<SdJwtElement>): DisclosedClaims =
             disclose(es).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
 
+        fun recursively(claimName: String, cs: Claims): DisclosedClaims {
+            val (ds1, claimSet1) = flat(cs)
+            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1))
+            return DisclosedClaims(ds1 + ds2, claimSet2)
+        }
+
         return when (sdJwtElement) {
             is Plain -> plain(sdJwtElement.claims)
             is FlatDisclosed -> flat(sdJwtElement.claims)
             is StructuredDisclosed -> structured(sdJwtElement.claimName, sdJwtElement.elements)
+            is RecursivelyDisclosed -> recursively(sdJwtElement.claimName, sdJwtElement.claims)
         }
     }
 
