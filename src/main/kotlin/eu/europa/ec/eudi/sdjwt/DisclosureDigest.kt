@@ -21,19 +21,19 @@ import java.security.MessageDigest
  * The hash of a [disclosure][Disclosure]
  */
 @JvmInline
-value class HashedDisclosure private constructor(val value: String) {
+value class DisclosureDigest private constructor(val value: String) {
     companion object {
 
         /**
-         * Wraps the given [string][s] into [HashedDisclosure]
+         * Wraps the given [string][s] into [DisclosureDigest]
          * It expects that the given input is base64-url encoded. If not an exception is thrown
          *
          * @param s the value to wrap
-         * @return the [HashedDisclosure] if the given input represents a valid base64 encoded string
+         * @return the [DisclosureDigest] if the given input represents a valid base64 encoded string
          */
-        internal fun wrap(s: String): Result<HashedDisclosure> = runCatching {
+        internal fun wrap(s: String): Result<DisclosureDigest> = runCatching {
             JwtBase64.decode(s)
-            HashedDisclosure(s)
+            DisclosureDigest(s)
         }
 
         /**
@@ -42,10 +42,10 @@ value class HashedDisclosure private constructor(val value: String) {
          * @param hashingAlgorithm the hashing algorithm to use
          * @param d the disclosure to hash
          *
-         * @return the [HashedDisclosure] of the given [disclosure][d]
+         * @return the [DisclosureDigest] of the given [disclosure][d]
          */
-        fun create(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<HashedDisclosure> =
-            create(hashingAlgorithm, d.value)
+        fun digest(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<DisclosureDigest> =
+            digest(hashingAlgorithm, d.value)
 
         /**
          * Calculates the hash of the given [value] using the specified [hashing algorithm][hashingAlgorithm]
@@ -53,12 +53,12 @@ value class HashedDisclosure private constructor(val value: String) {
          * @param hashingAlgorithm the hashing algorithm to use
          * @param value the value for which to calculate the hash
          *
-         * @return the [HashedDisclosure] of the given [value]
+         * @return the [DisclosureDigest] of the given [value]
          */
-        fun create(hashingAlgorithm: HashAlgorithm, value: String): Result<HashedDisclosure> = runCatching {
+        fun digest(hashingAlgorithm: HashAlgorithm, value: String): Result<DisclosureDigest> = runCatching {
             val hashFunction = MessageDigest.getInstance(hashingAlgorithm.alias.uppercase())
             val digest = hashFunction.digest(value.encodeToByteArray())
-            HashedDisclosure(JwtBase64.encodeString(digest))
+            DisclosureDigest(JwtBase64.encodeString(digest))
         }
     }
 }

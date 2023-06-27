@@ -252,11 +252,11 @@ class DisclosedClaimSetTest {
             }
         }
 
-        private fun JsonObject.collectHashedDisclosures(): List<HashedDisclosure> =
+        private fun JsonObject.collectHashedDisclosures(): List<DisclosureDigest> =
             map { (attr, json) ->
                 when {
                     attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
-                        HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
+                        DisclosureDigest.wrap(v.jsonPrimitive.content).getOrThrow()
                     }
 
                     json is JsonObject -> json.collectHashedDisclosures()
@@ -265,12 +265,12 @@ class DisclosedClaimSetTest {
                 }
             }.flatten()
 
-        private fun JsonElement.collectHashes(): List<HashedDisclosure> {
+        private fun JsonElement.collectHashes(): List<DisclosureDigest> {
             return when (this) {
                 is JsonObject -> map { (attr, json) ->
                     when {
                         attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
-                            HashedDisclosure.wrap(v.jsonPrimitive.content).getOrThrow()
+                            DisclosureDigest.wrap(v.jsonPrimitive.content).getOrThrow()
                         }
 
                         else -> json.collectHashes()

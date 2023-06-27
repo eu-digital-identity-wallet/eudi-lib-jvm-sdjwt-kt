@@ -18,48 +18,48 @@ package eu.europa.ec.eudi.sdjwt
 import kotlin.random.Random
 
 /**
- * Generates decoy [HashedDisclosure]
+ * Generates decoy [DisclosureDigest]
  */
 fun interface DecoyGen {
 
     /**
-     * Given a [hashingAlgorithm] method produces a decoy [HashedDisclosure]
+     * Given a [hashingAlgorithm] method produces a decoy [DisclosureDigest]
      * @param hashingAlgorithm the algorithm to be used for producing the decoy
-     * @return a decoy [HashedDisclosure]
+     * @return a decoy [DisclosureDigest]
      */
-    fun gen(hashingAlgorithm: HashAlgorithm): HashedDisclosure
+    fun gen(hashingAlgorithm: HashAlgorithm): DisclosureDigest
 
     /**
-     * Produces a series of decoy [HashedDisclosure]
+     * Produces a series of decoy [DisclosureDigest]
      * @param hashingAlgorithm the algorithm to be used for producing the decoy
      * @param numOfDecoys the number of decoys to produce
-     * @return a series of decoy [HashedDisclosure]
+     * @return a series of decoy [DisclosureDigest]
      */
-    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<HashedDisclosure> {
+    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<DisclosureDigest> {
         return if (numOfDecoys < 1) emptySet()
         else (1..numOfDecoys).map { gen(hashingAlgorithm) }.toSet()
     }
 
     /**
-     * Produces a set of decoy [HashedDisclosure]
+     * Produces a set of decoy [DisclosureDigest]
      * The number of decoys is random up to [numOfDecoysLimit]
      *
      * @param hashingAlgorithm the algorithm to be used for producing the decoy
      * @param numOfDecoysLimit the upper limit of the decoys to generate
-     * @return a series of decoy [HashedDisclosure]
+     * @return a series of decoy [DisclosureDigest]
      */
-    fun genUpTo(hashingAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): Set<HashedDisclosure> =
+    fun genUpTo(hashingAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): Set<DisclosureDigest> =
         gen(hashingAlgorithm, if (numOfDecoysLimit >= 1) Random.nextInt(1, numOfDecoysLimit) else 0)
 
     companion object {
         /**
-         * Default implementation of [DecoyGen] which produces random decoy [HashedDisclosure]
+         * Default implementation of [DecoyGen] which produces random decoy [DisclosureDigest]
          */
         val Default: DecoyGen by lazy {
             DecoyGen { hashingAlgorithm ->
                 val saltProvider = SaltProvider.randomSaltProvider(Random.nextInt(12, 24))
                 val random = saltProvider.salt()
-                HashedDisclosure.create(hashingAlgorithm, random).getOrThrow()
+                DisclosureDigest.digest(hashingAlgorithm, random).getOrThrow()
             }
         }
     }
