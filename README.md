@@ -45,12 +45,11 @@ import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.json.*
 
 sdJwt {
-    plain { 
-        put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        put("iss", "https://example.com/issuer")
-        put("iat", 1516239022)
-        put("exp", 1735689661)
-    }
+    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
     flat {
         putJsonObject("address") {
             put("street_address", "Schulstr. 12")
@@ -99,12 +98,11 @@ to produce a SD-JWT which contains claim `sub` plain and `address` claim content
 
 ```kotlin
 sdJwt {
-    plain {
-        put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        put("iss", "https://example.com/issuer")
-        put("iat", 1516239022)
-        put("exp", 1735689661)
-    }
+    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
     structured("address") {
         flat {
             put("street_address", "Schulstr. 12")
@@ -163,12 +161,11 @@ Check [specification Option 3: SD-JWT with Recursive Disclosures](https://datatr
 
 ```kotlin
 sdJwt {
-    plain {
-        put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        put("iss", "https://example.com/issuer")
-        put("iat", 1516239022)
-        put("exp", 1735689661)
-    }
+    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
     recursively("address") {
         put("street_address", "Schulstr. 12")
         put("locality", "Schulpforta")
@@ -248,13 +245,14 @@ Description of the example in the [specification Example 2a: Handling Structured
   "birthdate": "1940-01-01"
 }
 ```
+
 ```kotlin
 sdJwt {
-    plain {
-        put("iss", "https://example.com/issuer")
-        put("iat", 1516239022)
-        put("exp", 1735689661)
-    }
+
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
     flat {
         put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
         put("given_name", "太郎")
