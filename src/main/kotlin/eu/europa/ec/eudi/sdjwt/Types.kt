@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
 
 /**
  * A claim is an attribute of an entity.
@@ -93,6 +95,11 @@ sealed interface SdJwtElement {
  * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
  */
 data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonObject) {
+
+    constructor(disclosures: Set<Disclosure>, buildAction: JsonObjectBuilder.() -> Unit) : this(
+        disclosures,
+        buildJsonObject(buildAction),
+    )
 
     fun mapClaims(f: (JsonObject) -> JsonObject): DisclosedClaims = DisclosedClaims(disclosures, f(claimSet))
 
