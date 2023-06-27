@@ -54,7 +54,7 @@ typealias Claims = Map<String, JsonElement>
 typealias Salt = String
 
 /**
- * Hashing algorithms, used to produce the [HashedDisclosure] of a [Disclosure]
+ * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
  */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),

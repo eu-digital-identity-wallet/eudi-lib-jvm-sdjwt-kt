@@ -25,7 +25,7 @@ import kotlinx.serialization.json.*
  * of a set of [disclosures][DisclosedClaims.disclosures] and a [set of claims][DisclosedClaims.claimSet]
  * to be included in the payload of the SD-JWT.
  *
- * @param hashAlgorithm the algorithm to calculate the [HashedDisclosure]
+ * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
  * @param numOfDecoysLimit the upper limit of the decoys to generate
  */
@@ -49,18 +49,18 @@ class DisclosuresCreator(
         fun flat(cs: Claims, allowNestedHashClaim: Boolean = false): DisclosedClaims =
             if (cs.isEmpty()) DisclosedClaims.Empty
             else {
-                val (ds, hs) = hashedDisclosureCreator.create(cs, allowNestedHashClaim)
-                val hashClaims = JsonObject(mapOf("_sd" to buildJsonArray { addAll(hs.map { it.value }) }))
-                DisclosedClaims(ds, hashClaims)
+                val (disclosures, digests) = digestsCreator.disclosuresAndDigests(cs, allowNestedHashClaim)
+                val hashClaims = JsonObject(mapOf("_sd" to buildJsonArray { addAll(digests.map { it.value }) }))
+                DisclosedClaims(disclosures, hashClaims)
             }
 
         fun structured(claimName: String, es: List<SdJwtElement>): DisclosedClaims =
             disclose(es).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
 
         fun recursively(claimName: String, cs: Claims): DisclosedClaims {
-            val (ds1, claimSet1) = flat(cs)
+            val (disclosure, claimSet1) = flat(cs)
             val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1), allowNestedHashClaim = true)
-            return DisclosedClaims(ds1 + ds2, claimSet2)
+            return DisclosedClaims(disclosure + ds2, claimSet2)
         }
 
         return when (sdJwtElement) {
@@ -98,7 +98,7 @@ class DisclosuresCreator(
      * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
      */
     fun discloseSdJwt(sdJwtElements: List<SdJwtElement>): Result<DisclosedClaims> = runCatching {
-        disclose(sdJwtElements).addHashAlgClaim(hashedDisclosureCreator.hashAlgorithm)
+        disclose(sdJwtElements).addHashAlgClaim(digestsCreator.hashAlgorithm)
     }
 
     /**
@@ -115,45 +115,46 @@ class DisclosuresCreator(
         }
 
     /**
-     * []Disclosure] and [HashedDisclosure] creator
+     * []Disclosure] and [DisclosureDigest] creator
      */
-    private val hashedDisclosureCreator: HashedDisclosureCreator by lazy {
-        HashedDisclosureCreator(hashAlgorithm, saltProvider, numOfDecoysLimit)
+    private val digestsCreator: DigestsCreator by lazy {
+        DigestsCreator(hashAlgorithm, saltProvider, numOfDecoysLimit)
     }
 }
 
 /**
- * A class for [creating][create] [disclosures][Disclosure] and [hashes][HashedDisclosure], possibly
+ * A class for [creating][disclosuresAndDigests] [disclosures][Disclosure] and [hashes][DisclosureDigest], possibly
  * including decoys
  *
- * @param hashAlgorithm the algorithm to calculate the [HashedDisclosure]
+ * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
  * @param numOfDecoysLimit the upper limit of the decoys to generate
  */
-private class HashedDisclosureCreator(
+private class DigestsCreator(
     val hashAlgorithm: HashAlgorithm,
     private val saltProvider: SaltProvider,
     private val numOfDecoysLimit: Int,
 ) {
 
     /**
-     * Creates [disclosures][Disclosure] & [hashes][HashedDisclosure], possibly including decoys
+     * Creates [disclosures][Disclosure] & [hashes][DisclosureDigest], possibly including decoys
      *
-     * @param claims the claims for which to calculate [Disclosure] and [HashedDisclosure]
+     * @param claims the claims for which to calculate [Disclosure] and [DisclosureDigest]
+     *
      * @return disclosures and hashes, possibly including decoys
      * */
-    fun create(claims: Claims, allowNestedHashClaim: Boolean): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+    fun disclosuresAndDigests(claims: Claims, allowNestedHashClaim: Boolean): Pair<Set<Disclosure>, Set<DisclosureDigest>> {
+        fun processClaim(claim: Claim): Pair<Set<Disclosure>, Set<DisclosureDigest>> {
+            val d = Disclosure.encode(saltProvider, claim, allowNestedHashClaim).getOrThrow()
+            val h = DisclosureDigest.digest(hashAlgorithm, d).getOrThrow()
+            return setOf(d) to setOf(h)
+        }
+
         val decoys = emptySet<Disclosure>() to DecoyGen.Default.genUpTo(hashAlgorithm, numOfDecoysLimit)
         val (ds, hs) = claims
-            .map { claim -> make(claim.toPair(), allowNestedHashClaim) }
+            .map { claim -> processClaim(claim.toPair()) }
             .fold(decoys, this::combine)
         return ds to hs.toSortedSet(Comparator.comparing { it.value })
-    }
-
-    private fun make(claim: Claim, allowNestedHashClaim: Boolean): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
-        val d = Disclosure.encode(saltProvider, claim, allowNestedHashClaim).getOrThrow()
-        val h = HashedDisclosure.create(hashAlgorithm, d).getOrThrow()
-        return setOf(d) to setOf(h)
     }
 
     /**
@@ -164,9 +165,9 @@ private class HashedDisclosureCreator(
      * @throws IllegalArgumentException in case the provided sets have common elements
      */
     private fun combine(
-        a: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
-        b: Pair<Set<Disclosure>, Set<HashedDisclosure>>,
-    ): Pair<Set<Disclosure>, Set<HashedDisclosure>> {
+        a: Pair<Set<Disclosure>, Set<DisclosureDigest>>,
+        b: Pair<Set<Disclosure>, Set<DisclosureDigest>>,
+    ): Pair<Set<Disclosure>, Set<DisclosureDigest>> {
         assertNoCommonElements(a.first, b.first) {
             "Cannot combine DisclosuresAndHashes with common disclosures"
         }
