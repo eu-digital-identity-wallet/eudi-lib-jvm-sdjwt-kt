@@ -15,9 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.*
+import java.time.Instant
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -146,6 +146,91 @@ fun SdJwtElementsBuilder.recursively(
 ) {
     val element = SdJwtElement.RecursivelyDisclosed(claimName, buildJsonObject(builderAction))
     recursively(element)
+}
+
+/**
+ * Adds the JWT publicly registered JTI claim, in plain
+ */
+fun SdJwtElementsBuilder.jti(jti: String) {
+    plain(buildJsonObject { put("jti", jti) })
+}
+
+/**
+ * Adds the JWT publicly registered ISS claim (Issuer), in plain
+ */
+fun SdJwtElementsBuilder.iss(issuer: String) {
+    plain(buildJsonObject { put("iss", issuer) })
+}
+
+/**
+ * Adds the JWT publicly registered SUB claim (Subject), in plain
+ */
+fun SdJwtElementsBuilder.sub(subject: String) {
+    plain(buildJsonObject { put("sub", subject) })
+}
+
+/**
+ *  Adds the JWT publicly registered NBE claim (Not before), in plain
+ */
+fun SdJwtElementsBuilder.nbe(nbe: Instant) {
+    nbe(nbe.epochSecond)
+}
+
+/**
+ *  Adds the JWT publicly registered NBE claim (Not before), in plain
+ */
+fun SdJwtElementsBuilder.nbe(nbe: Long) {
+    plain(buildJsonObject { put("nbe", nbe) })
+}
+
+/**
+ *  Adds the JWT publicly registered IAT claim (Issued At), in plain
+ */
+fun SdJwtElementsBuilder.iat(iat: Instant) {
+    iat(iat.toEpochMilli())
+}
+
+/**
+ *  Adds the JWT publicly registered IAT claim (Issued At), in plain
+ */
+fun SdJwtElementsBuilder.iat(iat: Long) {
+    plain(buildJsonObject { put("iat", iat) })
+}
+
+/**
+ *  Adds the JWT publicly registered EXP claim (Expires), in plain
+ */
+fun SdJwtElementsBuilder.exp(exp: Instant) {
+    exp(exp.toEpochMilli())
+}
+
+/**
+ *  Adds the JWT publicly registered EXP claim (Expires), in plain
+ */
+fun SdJwtElementsBuilder.exp(exp: Long) {
+    plain(buildJsonObject { put("exp", exp) })
+}
+
+/**
+ * Adds the JWT publicly registered AUD claim (single Audience), in plain
+ */
+fun SdJwtElementsBuilder.aud(aud: String) {
+    plain(buildJsonObject { put("aud", aud) })
+}
+
+/**
+ * Adds the JWT publicly registered AUD claim (multiple Audience), in plain
+ */
+@OptIn(ExperimentalSerializationApi::class)
+fun SdJwtElementsBuilder.aud(aud: Collection<String>) {
+    when {
+        aud.size == 1 -> aud(aud.first())
+        aud.size > 1 -> plain {
+            buildJsonObject {
+                putJsonArray("aud") { buildJsonArray { addAll(aud) } }
+            }
+        }
+    }
 }
 
 @DslMarker

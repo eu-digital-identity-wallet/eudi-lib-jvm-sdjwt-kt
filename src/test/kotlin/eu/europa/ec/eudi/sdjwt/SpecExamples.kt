@@ -30,12 +30,11 @@ class SpecExamples {
     @Test
     fun `Option 1 Flat SD-JWT`() = test("Option 1 Flat SD-JWT", 1) {
         sdJwt {
-            plain {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "https://example.com/issuer")
-                put("iat", 1516239022)
-                put("exp", 1735689661)
-            }
+            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            iss("https://example.com/issuer")
+            iat(1516239022)
+            exp(1735689661)
+
             flat {
                 putJsonObject("address") {
                     put("street_address", "Schulstr. 12")
@@ -50,12 +49,11 @@ class SpecExamples {
     @Test
     fun `Option 2 Structured SD-JWT`() = test("Option 2 Structured SD-JWT", 4) {
         sdJwt {
-            plain {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "https://example.com/issuer")
-                put("iat", 1516239022)
-                put("exp", 1735689661)
-            }
+            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            iss("https://example.com/issuer")
+            iat(1516239022)
+            exp(1735689661)
+
             structured("address") {
                 flat {
                     put("street_address", "Schulstr. 12")
@@ -70,12 +68,11 @@ class SpecExamples {
     @Test
     fun `Option 3 Recursively SD-JWT`() = test("Option 3 Recursively SD-JWT", 5) {
         sdJwt {
-            plain {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "https://example.com/issuer")
-                put("iat", 1516239022)
-                put("exp", 1735689661)
-            }
+            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            iss("https://example.com/issuer")
+            iat(1516239022)
+            exp(1735689661)
+
             recursively("address") {
                 put("street_address", "Schulstr. 12")
                 put("locality", "Schulpforta")
@@ -88,11 +85,10 @@ class SpecExamples {
     @Test
     fun `Example 2a`() = test("Example 2a", 7) {
         sdJwt {
-            plain {
-                put("iss", "https://example.com/issuer")
-                put("iat", 1516239022)
-                put("exp", 1735689661)
-            }
+            iss("https://example.com/issuer")
+            iat(1516239022)
+            exp(1735689661)
+
             flat {
                 put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 put("given_name", "太郎")
@@ -113,11 +109,10 @@ class SpecExamples {
     @Test
     fun `Complex example`() = test("Complex example", 11) {
         sdJwt {
-            plain {
-                put("iss", "https://example.com/issuer")
-                put("iat", 1516239022)
-                put("exp", 1735689661)
-            }
+            iss("https://example.com/issuer")
+            iat(1516239022)
+            exp(1735689661)
+
             flat {
                 put("birth_middle_name", "Timotheus")
                 put("salutation", "Dr.")
