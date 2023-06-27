@@ -80,6 +80,10 @@ class SdJwtElementsBuilder
             structuredClaims += s
         }
 
+        fun recursively(claimName: String, cs: Claims) {
+            recursively(SdJwtElement.RecursivelyDisclosed(claimName, cs))
+        }
+
         internal fun recursively(r: SdJwtElement.RecursivelyDisclosed) {
             recursivelyClaims += r
         }

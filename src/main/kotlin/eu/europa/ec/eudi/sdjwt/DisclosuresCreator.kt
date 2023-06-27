@@ -85,7 +85,7 @@ class DisclosuresCreator(
             else {
                 val element = elements.first()
                 val disclosedClaims = discloseElement(element)
-                discloseAccumulating(elements - element, accumulated + disclosedClaims)
+                discloseAccumulating(elements.drop(1), accumulated + disclosedClaims)
             }
 
         return discloseAccumulating(sdJwtElements, DisclosedClaims.Empty)

@@ -1,11 +1,18 @@
 # eudi-lib-jvm-sdjwt-kt
 
+This is library offering a DSL (domain specific language)
+for defining how a set of claims should be made selectively
+disclosable.
 
+Library implements [SD-JWT draft4](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-04.html)
+is implemented in Kotlin, targeting JVM.
 
+Library's SD-JWT DSL leverages the the DSL provided by 
+[KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements 
 
 ## DSL Examples
 
-All examples assume that we have claim set
+All examples assume that we have the following claim set
 
 ```json
 {
@@ -18,9 +25,16 @@ All examples assume that we have claim set
   }
 }
 ```
-### Flat SD-JWT mixing SD-JWT DSL and Kotlinx Serialization DSL
 
-Check [Option 1: Flat SD-JWT](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-1-flat-sd-jwt)
+- [Option 1: Flat SD-JWT](#option-1-flat-sd-jwt)
+- [Option 2: Structured SD-JWT](#option-2-structured-sd-jwt)
+- [Option 3: SD-JWT with Recursive Disclosures](#option-3-sd-jwt-with-recursive-disclosures)
+- [Example 2a: Handling Structured Claims](#example-2a-handling-structured-claims)
+
+
+### Option 1: Flat SD-JWT
+
+Check [specification Option 1: Flat SD-JWT](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-1-flat-sd-jwt)
 
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` is selectively disclosed as a whole.
@@ -63,7 +77,7 @@ Produces
 }
 ```
 
-and the following disclosures:
+and the following disclosures (salt omitted):
 
 ```json
 {
@@ -76,9 +90,9 @@ and the following disclosures:
 }
 ```
 
-### Structured SD-JWT mixing SD-JWT DSL and Kotlinx Serialization DSL
+### Option 2: Structured SD-JWT
 
-Check [Option 2: Structured SD-JWT](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-2-structured-sd-jwt)
+Check [specification Option 2: Structured SD-JWT](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-2-structured-sd-jwt)
 
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
@@ -120,7 +134,7 @@ Produces
     "_sd_alg": "sha-256"
 }
 ```
-and the following disclosures :
+and the following disclosures (salt omitted):
 
 ```json 
 { 
@@ -140,13 +154,83 @@ and the following disclosures :
 ```
 ```json 
 {
-  "country : "DE"
+  "country" : "DE"
+}
+```
+### Option 3: SD-JWT with Recursive Disclosures
+
+Check [specification Option 3: SD-JWT with Recursive Disclosures](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-3-sd-jwt-with-recurs)
+
+```kotlin
+sdJwt {
+    plain {
+        put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        put("iss", "https://example.com/issuer")
+        put("iat", 1516239022)
+        put("exp", 1735689661)
+    }
+    recursively("address") {
+        put("street_address", "Schulstr. 12")
+        put("locality", "Schulpforta")
+        put("region", "Sachsen-Anhalt")
+        put("country", "DE")
+    }
+}
+```
+
+Produces
+
+```json
+{
+    "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
+    "iss": "https://example.com/issuer",
+    "iat": 1516239022,
+    "exp": 1735689661,
+    "_sd": [
+        "hV3ODWPnOhf2NoKDu7P95l0_hYHtEgiyNFDfnp7keK4"
+    ],
+    "_sd_alg": "sha-256"
+}
+```
+and the following disclosures (salt omitted):
+
+```json 
+{ 
+  "street_address " : "Schulstr. 12"
+}
+```
+
+```json 
+{
+  "locality" : "Schulpforta"
+}
+```
+```json 
+{
+  "region" : "Sachsen-Anhalt"
+}
+```
+```json 
+{
+  "country" : "DE"
+}
+```
+```json 
+{
+  "address": {
+    "_sd": [
+      "0VIpwaAlklovZ9ZqoVNaqwsVJ0F1yq0dUackLiRHI34",
+      "LFYT0w3_i6EcSoxKW1rS8FwZ__yl98LH3txq47iRGPc",
+      "iARv_ADQxrdgM4rsQ7DClrEXyTReBw_DU3rRLohb6iA",
+      "z8xX_wFl-4gDAwHX-yGAEPu0OgPUE1LT5TJwSPMJZh4"
+    ]
+  }
 }
 ```
 
 ### Example 2a: Handling Structured Claims
 
-Description of the example in the [Example 2a: Handling Structured Claims](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-example-2a-handling-structu)
+Description of the example in the [specification Example 2a: Handling Structured Claims](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-example-2a-handling-structu)
 
 ```json
 {
@@ -207,7 +291,7 @@ Produces
 }
 ```
 
-and the following disclosures
+and the following disclosures (salt omitted):
 
 ```json 
 {
@@ -222,6 +306,7 @@ and the following disclosures
 ```json
 {"family_name" : "山田"}
 ```
+
 ```json
 {"email" : "\"unusual email address\"@example.jp"}
 ```                        
@@ -230,89 +315,22 @@ and the following disclosures
 {"phone_number" : "+81-80-1234-5678"}
 ```
 
-
 ```json
-{"address" : {"street_address":"東京都港区芝公園４丁目２−８","locality":"東京都","region":"港区","country":"JP"}}
+{
+  "address": {
+    "street_address": "東京都港区芝公園４丁目２−８",
+    "locality": "東京都",
+    "region": "港区",
+    "country": "JP"
+  }
+}
 ```
 
 ```json
   {"birthdate" : "1940-01-01"}
 
 ```
- 
- 
 
 
-
-### Recursive SD-JWT mixing SD-JWT DSL and Kotlinx Serialization DSL
-
-Check [Option 3: SD-JWT with Recursive Disclosures](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-3-sd-jwt-with-recurs)
-
-```kotlin
-sdJwt {
-    plain {
-        put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        put("iss", "https://example.com/issuer")
-        put("iat", 1516239022)
-        put("exp", 1735689661)
-    }
-    recursively("address") {
-        put("street_address", "Schulstr. 12")
-        put("locality", "Schulpforta")
-        put("region", "Sachsen-Anhalt")
-        put("country", "DE")
-    }
-}
-```
-
-Produces 
-
-```json
-{
-    "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
-    "iss": "https://example.com/issuer",
-    "iat": 1516239022,
-    "exp": 1735689661,
-    "_sd": [
-        "hV3ODWPnOhf2NoKDu7P95l0_hYHtEgiyNFDfnp7keK4"
-    ],
-    "_sd_alg": "sha-256"
-}
-```
-and the following disclosures :
-  
-```json 
-{ 
-  "street_address " : "Schulstr. 12"
-}
-```
-   
-```json 
-{
-  "locality" : "Schulpforta"
-}
-```
-```json 
-{
-  "region" : "Sachsen-Anhalt"
-}
-```
-```json 
-{
-  "country : "DE"
-}
-```
-```json 
-{
-  "address": {
-    "_sd": [
-      "0VIpwaAlklovZ9ZqoVNaqwsVJ0F1yq0dUackLiRHI34",
-      "LFYT0w3_i6EcSoxKW1rS8FwZ__yl98LH3txq47iRGPc",
-      "iARv_ADQxrdgM4rsQ7DClrEXyTReBw_DU3rRLohb6iA",
-      "z8xX_wFl-4gDAwHX-yGAEPu0OgPUE1LT5TJwSPMJZh4"
-    ]
-  }
-}
-```
 
 
