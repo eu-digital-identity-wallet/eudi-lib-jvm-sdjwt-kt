@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
@@ -100,7 +99,7 @@ fun main() {
             println("\nDisclosures\n================")
             verification.disclosures.forEach { println(it.claim()) }
             println("\nVerified Claim Set \n================")
-            println(format.encodeToString(verification.jwtPayload))
+            println(format.encodeToString(verification.jwt))
         }
         else -> println(verification)
     }
