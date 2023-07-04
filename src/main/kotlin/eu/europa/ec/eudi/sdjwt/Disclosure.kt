@@ -115,7 +115,7 @@ value class Disclosure private constructor(val value: String) {
          * "~". The string also starts with "~".
          */
         fun concat(ds: Iterable<Disclosure>): String =
-            ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" }
+            ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" } + "~"
     }
 }
 

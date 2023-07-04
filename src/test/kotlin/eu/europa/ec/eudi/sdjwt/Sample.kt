@@ -16,12 +16,12 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
-import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.util.*
@@ -89,45 +89,23 @@ fun main() {
         },
     ).getOrThrow()
 
-    val (jwt, disclosures) = sdJwt.decompose().getOrThrow()
+    val verification = verify(sdJwt, RSASSAVerifier(rsaPublicJWK))
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)
     println("\nVC as sd-jwt\n================")
     println(sdJwt)
-    println("\nJwt\n================")
-    println(jwt)
-    println("\nDisclosures\n================")
-    disclosures.forEach { println(it.claim()) }
-
-    val claimSet = verify(jwt, disclosures, RSASSAVerifier(rsaPublicJWK)).getOrThrow()
-
-    println("\nVerified Claim Set \n================")
-    println(format.encodeToString(claimSet))
+    when (verification) {
+        is Verification.Valid -> {
+            println("\nDisclosures\n================")
+            verification.disclosures.forEach { println(it.claim()) }
+            println("\nVerified Claim Set \n================")
+            println(format.encodeToString(verification.jwtPayload))
+        }
+        else -> println(verification)
+    }
 }
 
-fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifier): Result<JsonObject> {
-    fun extractDisclosureHashes(j: JsonObject): Result<List<DisclosureDigest>> = runCatching {
-        val hds: List<DisclosureDigest> = j["_sd"]?.jsonArray?.map {
-            check(it.jsonPrimitive.isString)
-            DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow()
-        } ?: emptyList()
-
-        hds + j.values.filterIsInstance<JsonObject>().flatMap { extractDisclosureHashes(it).getOrThrow() }
-    }
-    return runCatching {
-        val signedJwt = SignedJWT.parse(jwt)
-        check(signedJwt.verify(verifier)) { "Signature verification failed" }
-        val sdAlg = signedJwt.jwtClaimsSet.getStringClaim("_sd_alg")
-            ?: throw IllegalArgumentException("Missing _sd_alg attribute")
-        val hashAlg = HashAlgorithm.fromString(sdAlg) ?: throw IllegalArgumentException("Unsupported hash alg $sdAlg")
-        val calculatedHashes = ds.associateBy { DisclosureDigest.digest(hashAlg, it).getOrThrow() }
-
-        val str = signedJwt.jwtClaimsSet.toString(false)
-        val claimSet = format.parseToJsonElement(str).jsonObject
-        val ehds: List<DisclosureDigest> = extractDisclosureHashes(claimSet).getOrThrow()
-        if (calculatedHashes.keys.any { !ehds.contains(it) }) throw IllegalArgumentException("Hash mismatch")
-
-        claimSet
-    }
+fun verify(sdJwt: String, verifier: com.nimbusds.jose.JWSVerifier): Verification {
+    return SdJwtVerifier(jwtVerifier = verifier.asJwtVerifier()).verify(sdJwt)
 }

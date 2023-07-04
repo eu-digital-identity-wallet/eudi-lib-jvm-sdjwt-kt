@@ -133,11 +133,3 @@ operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = Disc
  */
 typealias CombinedIssuanceSdJwt = String
 typealias Jwt = String
-
-fun CombinedIssuanceSdJwt.decompose(): Result<Pair<Jwt, List<Disclosure>>> = runCatching {
-    val list = split("~")
-    require(list.size > 1) { "Neither JWT nor disclosures were found" }
-    list[0] to Disclosure.run {
-        list.takeLast(list.size - 1).map { wrap(it).getOrThrow() }
-    }
-}
