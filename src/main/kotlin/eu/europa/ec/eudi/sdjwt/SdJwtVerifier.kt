@@ -15,11 +15,11 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import com.nimbusds.jose.JOSEException
 import eu.europa.ec.eudi.sdjwt.Verification.Invalid.*
 import eu.europa.ec.eudi.sdjwt.Verification.Invalid.HolderBindingError.*
 import kotlinx.serialization.json.*
 import java.text.ParseException
+import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JWSVerifier as NimbusJWSVerifier
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
@@ -175,7 +175,7 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtVerifier = JwtVerifier { jwt ->
         else signedJwt.jwtClaimsSet.asClaims()
     } catch (e: ParseException) {
         null
-    } catch (e: JOSEException) {
+    } catch (e: NimbusJOSEException) {
         null
     }
 }
