@@ -30,10 +30,10 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val iss = "Issuer"
 val issuerKeyPair: RSAKey
-val sdJwt = SdJwtSigner.signAndSerialize(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+val sdJwt =sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
     iss(iss)
     flat { put("foo", "bar") }
-}.getOrThrow()
+}.serialize()
 
 
 ```

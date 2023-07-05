@@ -27,8 +27,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.util.*
 
-val hmacKey = "111111111111111111111111111111111111111111"
-
 val jwtVcPayload = """{
   "iss": "https://example.com",
   "jti": "http://example.com/credentials/3732",
