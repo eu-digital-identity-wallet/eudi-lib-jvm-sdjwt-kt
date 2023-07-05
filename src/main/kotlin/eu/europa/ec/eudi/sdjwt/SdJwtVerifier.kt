@@ -23,6 +23,7 @@ import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JWSVerifier as NimbusJWSVerifier
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
+import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 
 /**
  * Invalid SD-JWT
@@ -124,6 +125,10 @@ fun VerificationError.asException(): SdJwtVerificationException = SdJwtVerificat
 fun interface JwtVerifier {
     operator fun invoke(jwt: String): Claims?
 
+    fun and(other: (Claims) -> Boolean): JwtVerifier {
+        return JwtVerifier { jwt -> this(jwt)?.let { if (other(it)) it else null } }
+    }
+
     companion object {
         val NoSignatureValidation: JwtVerifier = JwtVerifier { jwt ->
             try {
@@ -148,7 +153,11 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtVerifier = JwtVerifier { jwt ->
     }
 }
 
-private fun NimbusJWTClaimsSet.asClaims(): Claims =
+fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtVerifier = JwtVerifier { jwt ->
+    process(jwt, null).asClaims()
+}
+
+fun NimbusJWTClaimsSet.asClaims(): Claims =
     toPayload().toBytes().run {
         val s: String = this.decodeToString()
         Json.parseToJsonElement(s).jsonObject
