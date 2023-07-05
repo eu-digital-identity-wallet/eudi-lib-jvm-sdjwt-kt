@@ -68,7 +68,6 @@ object SdJwtSigner {
         NimbusSdJwt(jwt, disclosures, holderBindingJwt)
     }
 
-
     /**
      * Indicates whether an [NimbusJWSAlgorithm] is asymmetric
      * @receiver the algorithm to check
@@ -77,22 +76,20 @@ object SdJwtSigner {
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
 
-
 fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): CombinedIssuanceSdJwt =
     serialize({ it.serialize() }, { it.serialize() })
-
 
 inline fun sdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     disclosuresCreator: DisclosuresCreator = SdJwtSigner.Default,
     holderBindingJwt: NimbusJWT? = null,
-    builderAction: SdJwtElementsBuilder.() -> Unit
+    builderAction: SdJwtElementsBuilder.() -> Unit,
 ): NimbusSdJwt =
     SdJwtSigner.sign(
         signer,
         signAlgorithm,
         disclosuresCreator,
         holderBindingJwt,
-        sdJwt(builderAction)
+        sdJwt(builderAction),
     ).getOrThrow()
