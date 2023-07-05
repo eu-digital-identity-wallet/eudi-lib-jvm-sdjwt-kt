@@ -78,7 +78,7 @@ fun main() {
     val rsaJWK = genRSAKeyPair()
     val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.sign(
+    val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.signAndSerialize(
         signer = RSASSASigner(rsaJWK),
         signAlgorithm = JWSAlgorithm.RS256,
         disclosuresCreator = DisclosuresCreator(hashAlgorithm = HashAlgorithm.SHA3_512),
@@ -97,9 +97,9 @@ fun main() {
     when (verification) {
         is Verification.Valid -> {
             println("\nDisclosures\n================")
-            verification.disclosures.forEach { println(it.claim()) }
+            verification.sdJwt.disclosures.forEach { println(it.claim()) }
             println("\nVerified Claim Set \n================")
-            println(format.encodeToString(verification.jwt))
+            println(format.encodeToString(verification.sdJwt.jwt.second))
         }
         else -> println(verification)
     }

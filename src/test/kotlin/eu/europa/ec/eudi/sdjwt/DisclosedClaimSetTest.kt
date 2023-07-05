@@ -251,6 +251,5 @@ class DisclosedClaimSetTest {
                 assertTrue(hashes.isEmpty())
             }
         }
-
     }
 }

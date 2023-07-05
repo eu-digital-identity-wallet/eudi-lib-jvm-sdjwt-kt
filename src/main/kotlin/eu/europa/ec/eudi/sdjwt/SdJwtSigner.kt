@@ -15,12 +15,14 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jwt.JWTClaimsSet
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
-import com.nimbusds.jose.JWSObject as NimbusJWSObject
 import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
 import com.nimbusds.jose.Payload as NimbusPayload
+import com.nimbusds.jwt.JWT as NimbusJWT
+import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 
@@ -29,7 +31,7 @@ private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
  */
 object SdJwtSigner {
 
-    private val Default: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 4)
+    internal val Default: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 4)
 
     /**
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
@@ -40,23 +42,47 @@ object SdJwtSigner {
         signAlgorithm: NimbusJWSAlgorithm,
         disclosuresCreator: DisclosuresCreator = Default,
         sdJwtElements: List<SdJwtElement>,
-    ): Result<CombinedIssuanceSdJwt> = runCatching {
+        holderBindingJwt: NimbusJWT? = null,
+    ): Result<SdJwt<NimbusSignedJWT, NimbusJWT>> = runCatching {
         require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 
         val (disclosures, claims) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
         val header = NimbusJWSHeader(signAlgorithm)
         val payload = NimbusPayload(claims.asBytes())
 
-        val jwt: Jwt = with(NimbusJWSObject(header, payload)) {
-            sign(signer)
-            serialize()
-        }
+        val jwt = NimbusSignedJWT(header, JWTClaimsSet.parse(payload.toJSONObject())).also { it.sign(signer) }
 
-        jwt + disclosures.concat()
+        SdJwt(jwt, disclosures, holderBindingJwt)
     }
+
+    fun signAndSerialize(
+        signer: NimbusJWSSigner,
+        signAlgorithm: NimbusJWSAlgorithm,
+        disclosuresCreator: DisclosuresCreator = Default,
+        sdJwtElements: List<SdJwtElement>,
+        holderBindingJwt: NimbusJWT? = null,
+    ): Result<CombinedIssuanceSdJwt> =
+        sign(signer, signAlgorithm, disclosuresCreator, sdJwtElements, holderBindingJwt)
+            .map { sdjwt -> sdjwt.serialize({ it.serialize() }, { it.serialize() }) }
 
     /**
      * Indicates whether an [NimbusJWSAlgorithm] is asymmetric
      */
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
+
+fun List<SdJwtElement>.sign(
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    disclosuresCreator: DisclosuresCreator = SdJwtSigner.Default,
+    holderBindingJwt: NimbusJWT? = null,
+): Result<SdJwt<NimbusSignedJWT, NimbusJWT>> =
+    SdJwtSigner.sign(signer, signAlgorithm, disclosuresCreator, this, holderBindingJwt)
+
+fun List<SdJwtElement>.signAndSerialize(
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    disclosuresCreator: DisclosuresCreator = SdJwtSigner.Default,
+    holderBindingJwt: NimbusJWT? = null,
+): Result<CombinedIssuanceSdJwt> =
+    SdJwtSigner.signAndSerialize(signer, signAlgorithm, disclosuresCreator, this, holderBindingJwt)

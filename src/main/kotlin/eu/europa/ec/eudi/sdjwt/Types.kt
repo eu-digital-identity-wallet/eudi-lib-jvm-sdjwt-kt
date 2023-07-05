@@ -133,3 +133,11 @@ operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = Disc
  */
 typealias CombinedIssuanceSdJwt = String
 typealias Jwt = String
+
+data class SdJwt<JWT, HB_JWT>(val jwt: JWT, val disclosures: Set<Disclosure>, val holderBindingJwt: HB_JWT?)
+
+fun <JWT, HB_JWT> SdJwt<JWT, HB_JWT>.serialize(
+    serializeJwt: (JWT) -> String,
+    serializeHolderBindingJwt: (HB_JWT) -> String,
+): CombinedIssuanceSdJwt =
+    "${serializeJwt(jwt)}${disclosures.concat()}${holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""}"

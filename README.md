@@ -20,6 +20,33 @@ is implemented in Kotlin, targeting JVM.
 Library's SD-JWT DSL leverages the the DSL provided by 
 [KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements 
 
+## Issuance
+
+```kotlin
+
+import com.nimbusds.jose.crypto.RSASigner
+import com.nimbusds.jose.jwk.RSAKey
+import eu.europa.ec.eudi.sdjwt.*
+
+val iss = "Issuer"
+val issuerKeyPair: RSAKey
+val disclosureCreator = DisclosuresCreator(hashAlgorithm = HashAlgorithm.SHA3_512, numOfDecoysLimit = 5)
+val sdJwt = sdJwt {
+    iss(iss)
+    flat { put("foo", "bar") }
+}.signAndSerialize(
+    signer = RSASigner(issuerKeyPair),
+    signAlgorithm = JWSAlgorithm.RS256,
+    disclosuresCreator = disclosuresCreator,
+).getOrThrow()
+
+
+```
+
+## Verification
+
+TBD
+
 ## DSL Examples
 
 All examples assume that we have the following claim set
