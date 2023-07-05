@@ -81,10 +81,10 @@ fun main() {
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
     val sdJwt: CombinedIssuanceSdJwt =
-        SdJwtSigner.signAndSerialize(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+        sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
             structuredWithFlatClaims("credentialSubject", vcClaim)
-        }.getOrThrow()
+        }.serialize()
 
     val verification = verify(sdJwt, issuerPubKey)
 
