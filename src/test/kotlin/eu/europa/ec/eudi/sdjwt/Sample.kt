@@ -97,7 +97,7 @@ fun main() {
             println("\nDisclosures\n================")
             issuanceSdJwt.disclosures.forEach { println(it.claim()) }
             println("\nVerified Claim Set \n================")
-            println(format.encodeToString(issuanceSdJwt.jwt.second))
+            println(format.encodeToString(issuanceSdJwt.jwt))
         },
         onFailure = {
             println("Error: $it")
@@ -106,7 +106,7 @@ fun main() {
     )
 }
 
-fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> {
+fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<Claims>> {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
     return SdJwtIssuanceVerifier(jwtVer).verify(sdJwt)
 }

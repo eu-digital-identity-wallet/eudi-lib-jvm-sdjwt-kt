@@ -108,6 +108,19 @@ sealed interface VerificationError {
     data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
 }
 
+/**
+ * An exception carrying a [verification error][reason]
+ */
+data class SdJwtVerificationException(val reason: VerificationError) : Exception()
+
+/**
+ * Creates a [SdJwtVerificationException] for the given error
+ *
+ * @receiver the error to be wrapped into the exception
+ * @return an exception with the given error
+ */
+fun VerificationError.asException(): SdJwtVerificationException = SdJwtVerificationException(this)
+
 fun interface JwtVerifier {
     operator fun invoke(jwt: String): Claims?
 
@@ -122,6 +135,24 @@ fun interface JwtVerifier {
         }
     }
 }
+
+fun NimbusJWSVerifier.asJwtVerifier(): JwtVerifier = JwtVerifier { jwt ->
+    try {
+        val signedJwt = NimbusSignedJWT.parse(jwt)
+        if (!signedJwt.verify(this)) null
+        else signedJwt.jwtClaimsSet.asClaims()
+    } catch (e: ParseException) {
+        null
+    } catch (e: NimbusJOSEException) {
+        null
+    }
+}
+
+private fun NimbusJWTClaimsSet.asClaims(): Claims =
+    toPayload().toBytes().run {
+        val s: String = this.decodeToString()
+        Json.parseToJsonElement(s).jsonObject
+    }
 
 /**
  *
@@ -152,45 +183,50 @@ sealed interface HolderBindingVerifier {
     }
 }
 
-fun NimbusJWSVerifier.asJwtVerifier(): JwtVerifier = JwtVerifier { jwt ->
-    try {
-        val signedJwt = NimbusSignedJWT.parse(jwt)
-        if (!signedJwt.verify(this)) null
-        else signedJwt.jwtClaimsSet.asClaims()
-    } catch (e: ParseException) {
-        null
-    } catch (e: NimbusJOSEException) {
-        null
-    }
+object SdJwtVerifier {
+
+    fun verifyIssuance(
+        jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
+        sdJwt: String,
+    ): Result<SdJwt.Issuance<Claims>> =
+        SdJwtIssuanceVerifier(jwtVerifier).verify(sdJwt)
+
+    fun verifyPresentation(
+        jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
+        holderBindingVerifier: HolderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
+        sdJwt: String,
+    ): Result<SdJwt.Presentation<Claims, Jwt>> =
+        SdJwtPresentationVerifier(jwtVerifier, holderBindingVerifier).verify(sdJwt)
 }
 
-private fun NimbusJWTClaimsSet.asClaims(): Claims =
-    toPayload().toBytes().run {
-        val s: String = this.decodeToString()
-        Json.parseToJsonElement(s).jsonObject
-    }
-
-class SdJwtIssuanceVerifier(
+internal class SdJwtIssuanceVerifier(
     private val jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
-
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> = runCatching {
+    fun verify(sdJwt: String): Result<SdJwt.Issuance<Claims>> = runCatching {
         // Parse
         val (jwt, rawDisclosures) = parseIssuance(sdJwt).getOrThrow()
         // Check JWT
         val jwtClaims = jwtVerifier.verifyJwt(jwt).getOrThrow()
         val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        SdJwt.Issuance(jwt to jwtClaims, disclosures)
+        SdJwt.Issuance(jwtClaims, disclosures)
+    }
+
+    private fun parseIssuance(sdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
+        val list = sdJwt.split('~')
+        if (list.size <= 1) throw ParsingError.asException()
+        val jwt = list[0]
+        val ds = list.drop(1).filter { it.isNotBlank() }
+        jwt to ds
     }
 }
 
-class SdJwtPresentationVerifier(
+internal class SdJwtPresentationVerifier(
     private val jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
     private val holderBindingVerifier: HolderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Presentation<Pair<Jwt, Claims>, Jwt>> = runCatching {
+    fun verify(sdJwt: String): Result<SdJwt.Presentation<Claims, Jwt>> = runCatching {
         // Parse
         val (jwt, rawDisclosures, holderBindingJwt) = parsePresentation(sdJwt).getOrThrow()
         // Check JWT
@@ -198,31 +234,23 @@ class SdJwtPresentationVerifier(
         // Check Holder binding
         checkHolderBindingJwt(jwtClaims, holderBindingJwt).getOrThrow()
         val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        SdJwt.Presentation(jwt to jwtClaims, disclosures, holderBindingJwt)
+        SdJwt.Presentation(jwtClaims, disclosures, holderBindingJwt)
+    }
+
+    private fun parsePresentation(sdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {
+        val list = sdJwt.split('~')
+        if (list.size <= 1) throw ParsingError.asException()
+        val jwt = list[0]
+        val containsHolderBinding = !sdJwt.endsWith('~')
+        val ds = list.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
+        val hbJwt = if (containsHolderBinding) list.last() else null
+        Triple(jwt, ds, hbJwt)
     }
 
     private fun checkHolderBindingJwt(jwtClaims: Claims, holderBindingJwt: Jwt?): Result<Unit> = runCatching {
         val hbError = holderBindingVerifier.verify(jwtClaims, holderBindingJwt)
         if (hbError != null) throw hbError.asException()
     }
-}
-
-private fun parseIssuance(sdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
-    val list = sdJwt.split('~')
-    if (list.size <= 1) throw ParsingError.asException()
-    val jwt = list[0]
-    val ds = list.drop(1).filter { it.isNotBlank() }
-    jwt to ds
-}
-
-private fun parsePresentation(sdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {
-    val list = sdJwt.split('~')
-    if (list.size <= 1) throw ParsingError.asException()
-    val jwt = list[0]
-    val containsHolderBinding = !sdJwt.endsWith('~')
-    val ds = list.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
-    val hbJwt = if (containsHolderBinding) list.last() else null
-    Triple(jwt, ds, hbJwt)
 }
 
 private fun JwtVerifier.verifyJwt(jwt: String): Result<Claims> = runCatching {
@@ -307,7 +335,3 @@ internal fun disclosureDigests(claims: Claims): List<DisclosureDigest> {
         }
     return claims.map { (attribute, json) -> digestsOf(attribute, json) }.flatten()
 }
-
-data class SdJwtVerificationException(val reason: VerificationError) : Exception()
-
-fun VerificationError.asException(): SdJwtVerificationException = SdJwtVerificationException(this)

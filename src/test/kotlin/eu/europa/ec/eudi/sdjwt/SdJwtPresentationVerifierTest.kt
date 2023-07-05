@@ -22,7 +22,6 @@ import kotlin.test.assertTrue
 
 class SdJwtPresentationVerifierTest {
 
-
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() {
         SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "")
@@ -89,7 +88,6 @@ class SdJwtPresentationVerifierTest {
         verifier.verifySuccess(sdJwt = "$jwt~$d1~$jwt")
     }
 
-
     private fun SdJwtPresentationVerifier.verifyExpectingError(expectedError: VerificationError, sdJwt: String) {
         val verification = verify(sdJwt = sdJwt)
         verification.fold(
@@ -109,7 +107,6 @@ class SdJwtPresentationVerifierTest {
         assertTrue { verification.isSuccess }
     }
 
-
     private val jwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkZwaEZGcGoxdnRyMHJwWUstMTRmaWNrR
             0tNZzN6ZjFmSXBKWHhUSzhQQUUiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL
@@ -126,5 +123,3 @@ class SdJwtPresentationVerifierTest {
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
     """.trimIndent().removeNewLine()
 }
-
-
