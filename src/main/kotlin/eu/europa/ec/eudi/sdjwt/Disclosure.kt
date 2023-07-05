@@ -113,10 +113,19 @@ value class Disclosure private constructor(val value: String) {
         /**
          * Concatenates the given disclosures into a single string, separated by
          * "~". The string also starts with "~".
+         * @param ds the disclosures to concatenate
+         * @return the string as described above
          */
         fun concat(ds: Iterable<Disclosure>): String =
             ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" }
     }
 }
 
+/**
+ * Concatenates the given disclosures into a single string, separated by
+ * "~". The string also starts with "~".
+ *
+ * @receiver the disclosures to concatenate
+ * @return the string as described above
+ */
 fun Iterable<Disclosure>.concat(): String = Disclosure.concat(this)

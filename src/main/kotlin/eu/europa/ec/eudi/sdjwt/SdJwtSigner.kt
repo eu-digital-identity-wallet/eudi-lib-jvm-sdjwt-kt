@@ -74,18 +74,18 @@ object SdJwtSigner {
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
 
-fun <JWT : NimbusJWT> SdJwt.Issuance<JWT>.serialize(): CombinedIssuanceSdJwt =
-    serialize { it.serialize() }
+fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
+    is SdJwt.Issuance<JWT> -> toCombinedIssuanceFormat(NimbusJWT::serialize)
+    is SdJwt.Presentation<JWT, HB_JWT> -> toCombinedPresentationFormat(NimbusJWT::serialize, NimbusJWT::serialize)
+}
 
+/**
+ *
+ */
 inline fun sdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     disclosuresCreator: DisclosuresCreator = SdJwtSigner.Default,
     builderAction: SdJwtElementsBuilder.() -> Unit,
 ): NimbusIssuanceSdJwt =
-    SdJwtSigner.sign(
-        signer,
-        signAlgorithm,
-        disclosuresCreator,
-        sdJwt(builderAction),
-    ).getOrThrow()
+    SdJwtSigner.sign(signer, signAlgorithm, disclosuresCreator, sdJwt(builderAction)).getOrThrow()
