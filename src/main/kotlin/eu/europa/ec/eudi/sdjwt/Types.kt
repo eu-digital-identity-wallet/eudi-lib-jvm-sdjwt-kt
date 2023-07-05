@@ -181,7 +181,7 @@ sealed interface SdJwt<JWT, HB_JWT> {
 fun <JWT> SdJwt.Issuance<JWT>.toCombinedIssuanceFormat(
     serializeJwt: (JWT) -> String,
 ): String =
-    "${serializeJwt(jwt)}${disclosures.concat()}}"
+    "${serializeJwt(jwt)}${disclosures.concat()}"
 
 /**
  * Serialized a [SdJwt.Presentation] to Combined Presentation Format
@@ -197,4 +197,4 @@ fun <JWT, HB_JWT> SdJwt.Presentation<JWT, HB_JWT>.toCombinedPresentationFormat(
     serializeJwt: (JWT) -> String,
     serializeHolderBindingJwt: (HB_JWT) -> String,
 ): String =
-    "${serializeJwt(jwt)}${disclosures.concat()}~${holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""}"
+    "${serializeJwt(jwt)}${disclosures.concat()}~${holderBindingJwt?.run(serializeHolderBindingJwt)}"

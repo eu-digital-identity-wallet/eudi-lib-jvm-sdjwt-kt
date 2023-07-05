@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -41,9 +43,23 @@ fun main() {
         ),
     )
     val sdJwtElements = emailCredential.sdJwtElements()
-    val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow()
 
-    disclosedClaims.print()
+    val sdJwt = SdJwtSigner.sign(
+        signer = ECDSASigner(issuerKey),
+        signAlgorithm = JWSAlgorithm.ES256,
+        sdJwtElements = sdJwtElements,
+    ).getOrThrow()
+
+    sdJwt.also {
+        println("Issuer Pub Key")
+        println(issuerKey.toPublicJWK().toJSONString())
+        println("Disclosures")
+        it.disclosures.forEach { d -> println(d.claim()) }
+        println("JWT content")
+        println(it.jwt.jwtClaimsSet.toString())
+        println("Combined Issuance Format")
+        println(it.serialize())
+    }
 }
 
 private fun EmailCredential.sdJwtElements(): List<SdJwtElement> =
