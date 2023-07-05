@@ -135,7 +135,7 @@ typealias Jwt = String
  * @param JWT the type representing the JWT part of the SD-JWT
  * @param HB_JWT the type representing the Holder Binding part of the SD
  */
-sealed interface SdJwt<JWT, HB_JWT> {
+sealed interface SdJwt<out JWT, out HB_JWT> {
 
     /**
      * The JWT part of the SD-JWT

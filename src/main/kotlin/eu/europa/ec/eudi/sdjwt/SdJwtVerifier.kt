@@ -188,14 +188,14 @@ object SdJwtVerifier {
     fun verifyIssuance(
         jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
         sdJwt: String,
-    ): Result<SdJwt.Issuance<Claims>> =
+    ): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> =
         SdJwtIssuanceVerifier(jwtVerifier).verify(sdJwt)
 
     fun verifyPresentation(
         jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
         holderBindingVerifier: HolderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
         sdJwt: String,
-    ): Result<SdJwt.Presentation<Claims, Jwt>> =
+    ): Result<SdJwt.Presentation<Pair<Jwt, Claims>, Jwt>> =
         SdJwtPresentationVerifier(jwtVerifier, holderBindingVerifier).verify(sdJwt)
 }
 
@@ -203,13 +203,13 @@ internal class SdJwtIssuanceVerifier(
     private val jwtVerifier: JwtVerifier = JwtVerifier.NoSignatureValidation,
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Issuance<Claims>> = runCatching {
+    fun verify(sdJwt: String): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> = runCatching {
         // Parse
         val (jwt, rawDisclosures) = parseIssuance(sdJwt).getOrThrow()
         // Check JWT
         val jwtClaims = jwtVerifier.verifyJwt(jwt).getOrThrow()
         val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        SdJwt.Issuance(jwtClaims, disclosures)
+        SdJwt.Issuance(jwt to jwtClaims, disclosures)
     }
 
     private fun parseIssuance(sdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
@@ -226,7 +226,7 @@ internal class SdJwtPresentationVerifier(
     private val holderBindingVerifier: HolderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Presentation<Claims, Jwt>> = runCatching {
+    fun verify(sdJwt: String): Result<SdJwt.Presentation<Pair<Jwt, Claims>, Jwt>> = runCatching {
         // Parse
         val (jwt, rawDisclosures, holderBindingJwt) = parsePresentation(sdJwt).getOrThrow()
         // Check JWT
@@ -234,7 +234,7 @@ internal class SdJwtPresentationVerifier(
         // Check Holder binding
         checkHolderBindingJwt(jwtClaims, holderBindingJwt).getOrThrow()
         val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        SdJwt.Presentation(jwtClaims, disclosures, holderBindingJwt)
+        SdJwt.Presentation(jwt to jwtClaims, disclosures, holderBindingJwt)
     }
 
     private fun parsePresentation(sdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {

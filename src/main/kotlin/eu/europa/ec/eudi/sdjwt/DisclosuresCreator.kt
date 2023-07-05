@@ -19,6 +19,8 @@ import eu.europa.ec.eudi.sdjwt.SdJwtElement.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
+val DefaultDisclosureCreator: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 0)
+
 /**
  * A class for [disclosing][disclose] a set of [SD-JWT elements][SdJwtElement].
  * In this context, [outcome][DisclosedClaims] of the disclosure is the calculation

@@ -20,7 +20,27 @@ is implemented in Kotlin, targeting JVM.
 Library's SD-JWT DSL leverages the the DSL provided by 
 [KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements 
 
+## Use cases supported
+
+- [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT (in Combined Issuance Format)
+- [Holder Verification](#holder-verification): As Holder verify a SD-JWT (in Combined Issuance Format) issued by an Issuer
+- [Holder Presentation](#holder-presentation): As Holder create a SD-JWT for presentation (in Combined Presentation Format)
+- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT (in Combined Presentation Format) 
+
 ## Issuance
+
+To issue a SD-JWT, an `Issuer` should have:
+
+- Decided on how the issued claims will be selectively disclosed (check [DSL examples](#dsl-examples))
+- Whether to use decoy digests or not
+- An appropriate signing key pair
+- optionally, decided if and how will include holder's public key to the SD-JWT
+
+In the example bellow, Issuer decides to issue an SD-JWT as follows:
+
+- Includes in plain standard JWT claims (`sub`,`iss`, `iat`, `exp`)
+- Makes selectively disclosable a claim named `address` using structured disclosure. This allows to individually disclose every sub-claim of `address`
+- Uses his RSA key pair to sign the SD-JWT
 
 ```kotlin
 
@@ -47,20 +67,14 @@ val sdJwt = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorith
     }
 }.serialize()
 
-
 ```
 
-## Verification
-
-There are two cases of SD-JWT verification:
-- in case of `combined issuance format`. This is applicable to the holder
-- in case of  `combined presentation format`. This is applicable to the verifier 
-
-### Holder Verification
+## Holder Verification
 
 In this case the SD-JWT is expected to be in Combined Issuance format.
-Holder should know the public key of the Issuer and the algorithm used by the Issuer
-to sign the SD-JWT
+
+`Holder` must know: 
+- the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
 
 ```kotlin
 import eu.europa.ec.eudi.sdjwt.*
@@ -71,12 +85,35 @@ val unverifiedSdJwt : String ="..."
 val issuerPubKey: ECPublicKey
 val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier() 
 
-val sdJwt : SdJwt.Issuance<Claims> = 
+val holdersSdJwt : SdJwt.Issuance<Claims> = 
     SdJwtVerifier.verifyIssuance(jwtVerifier, unverifiedSdJwt).getOrThrow()
-val (jwtClaims, disclosures) = sdJwt
+val (jwtClaims, disclosures) = holdersSdJwt
 ```
 
-### Verifier Verification
+## Holder Presentation
+
+To create a presentation SD-JWT, a `Holder` must:
+
+- Have an issued SD-JWT
+- Know whether verifier to whom the presentation is for, requires Holder Binding or not
+
+In the following example, `Holder` presents only `street_address` and `country` without Holder Binding 
+
+```kotlin
+
+val holdersSdJwt : SdJwt.Issuance<SignedJWT> 
+
+// Chooses which selectively disclosable claims to be presented
+val claimsToDisclose = {claim -> claim.name in listOf("street_address", "country")}
+
+val presentationSdJwt : SdJwt.Presentation<SignedJwt, Nothing> =  
+        holdersSdJwt.present(null, claimsToDisclose)
+
+val presentationSdJwtStr = presentationSdJwt.serialize()
+
+```
+
+## Presentation Verification
 
 In this case the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer

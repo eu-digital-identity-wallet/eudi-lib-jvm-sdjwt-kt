@@ -27,78 +27,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.time.Instant
 
-fun main() {
-    val issuerKey: ECKey = ECKeyGenerator(Curve.P_256).keyID("issuer").generate().also {
-        println("Issuer Pub Key")
-        println(it.toPublicJWK().toJSONString())
-    }
-
-    val holderKey = ECKeyGenerator(Curve.P_256).keyID("holder").generate()
-
-    val emailCredential = EmailCredential(
-        type = "Sample Email",
-        issuedAt = Instant.now(),
-        expiresAt = Instant.now().plusSeconds(100),
-        issuerPubKey = issuerKey.toPublicJWK(),
-        holderPubKey = holderKey.toPublicJWK(),
-        credentialSubject = CredentialSubject(
-            givenName = "John",
-            familyName = "Doe",
-            email = "john@foobar.com",
-            countries = listOf("GR", "DE"),
-        ),
-    )
-    val sdJwtElements = emailCredential.sdJwtElements()
-
-    val holderSdJwt = SdJwtSigner.sign(
-        signer = ECDSASigner(issuerKey),
-        signAlgorithm = JWSAlgorithm.ES256,
-        sdJwtElements = sdJwtElements,
-    ).getOrThrow()
-
-    holderSdJwt.also {
-        println("\nSelectively Disclosable Claims")
-        it.selectivelyDisclosedClaims().forEach { claim -> println(claim) }
-        println("JWT content")
-        println(it.jwt.jwtClaimsSet.toString())
-        println("Combined Issuance Format")
-        println(it.serialize())
-    }
-
-    SdJwtVerifier.verifyIssuance(
-        ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
-        sdJwt = holderSdJwt.serialize(),
-    ).getOrThrow().also { println(it) }
-
-    val presentedSdJwt = holderSdJwt.present(holderBindingJwt = null) { claim -> claim.name() in listOf("email") }
-    presentedSdJwt.selectivelyDisclosedClaims().forEach { println("\nPresented Claim: $it") }
-
-    SdJwtVerifier.verifyPresentation(
-        ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
-        sdJwt = presentedSdJwt.serialize(),
-    ).getOrThrow().also { println(it) }
-}
-
-private fun EmailCredential.sdJwtElements(): List<SdJwtElement> =
-    sdJwt {
-        iss(didJwk(issuerPubKey))
-        iat(issuedAt)
-        exp(expiresAt)
-        cnf(holderPubKey)
-        structured("credentialSubject") {
-            flat(credentialSubject.asJsonObject())
-        }
-    }
-
-data class EmailCredential(
-    val type: String,
-    val issuedAt: Instant,
-    val expiresAt: Instant,
-    val issuerPubKey: JWK,
-    val holderPubKey: JWK?,
-    val credentialSubject: CredentialSubject,
-)
-
+/**
+ * Domain model of credential
+ */
 @Serializable
 data class CredentialSubject(
     @SerialName("given_name") val givenName: String,
@@ -107,20 +38,92 @@ data class CredentialSubject(
     val countries: List<String>,
 )
 
-private fun SdJwtElementsBuilder.cnf(jwk: JWK?) {
-    plain {
-        putJsonObject("cnf") {
-            jwk?.let { putJsonObjectFromString("jwk", it.toJSONString()) }
+class SampleIssuer(private val issuerKey: ECKey) {
+
+    private val sdJwtIssuer = NimbusSdJwtIssuerFactory.createIssuer(
+        signer = ECDSASigner(issuerKey),
+        signAlgorithm = JWSAlgorithm.ES256,
+    )
+    fun jwtVerifier() = ECDSAVerifier(issuerKey.toPublicJWK()).asJwtVerifier()
+
+    fun issue(holderPubKey: JWK?, credentialSubject: CredentialSubject): String {
+        val sdJwtElements =
+            sdJwt {
+                iss(didJwk(issuerKey.toPublicJWK()))
+                iat(Instant.now())
+                exp(Instant.now().plusSeconds(1000))
+                cnf(holderPubKey)
+                structured("credentialSubject") {
+                    flat(credentialSubject.asJsonObject())
+                }
+            }
+        return sdJwtIssuer.issue(sdJwtElements = sdJwtElements).getOrThrow().serialize()
+    }
+
+    fun didJwk(jwk: JWK): String =
+        "did:jwk:${JwtBase64.encodeString(jwk.toJSONString())}"
+
+    private fun SdJwtElementsBuilder.cnf(jwk: JWK?) {
+        plain {
+            putJsonObject("cnf") {
+                jwk?.let { putJsonObjectFromString("jwk", it.toJSONString()) }
+            }
         }
+    }
+
+    private fun JsonObjectBuilder.putJsonObjectFromString(claimName: String, jsonStr: String) {
+        val jsonObject = jsonStr.let { json.parseToJsonElement(it).jsonObject }
+        put(claimName, jsonObject)
+    }
+
+    private fun CredentialSubject.asJsonObject(): JsonObject = json.encodeToJsonElement(this).jsonObject
+}
+
+class SampleHolder(private val holderKey: ECKey) {
+
+    private var credentialSdJwt: SdJwt.Issuance<Jwt>? = null
+    fun pubKey(): ECKey = holderKey.toPublicJWK()
+
+    fun verifyIssuance(issuerJwtVerifier: JwtVerifier, sdJwt: String) {
+        val issued: SdJwt.Issuance<Pair<Jwt, Claims>> = SdJwtVerifier.verifyIssuance(
+            issuerJwtVerifier,
+            sdJwt = sdJwt,
+        ).getOrThrow().also { println(it) }
+        credentialSdJwt = SdJwt.Issuance(issued.jwt.first, issued.disclosures)
+    }
+
+    fun present(criteria: (Claim) -> Boolean): String {
+        return credentialSdJwt!!.present(null, criteria).toCombinedPresentationFormat({ it }, { it })
     }
 }
 
-private fun didJwk(jwk: JWK): String =
-    "did:jwk:${JwtBase64.encodeString(jwk.toJSONString())}"
+class SampleVerifier(val query: (Claim) -> Boolean) {
 
-private fun JsonObjectBuilder.putJsonObjectFromString(claimName: String, jsonStr: String) {
-    val jsonObject = jsonStr.let { json.parseToJsonElement(it).jsonObject }
-    put(claimName, jsonObject)
+    private var credentialSdJwt: SdJwt.Presentation<Jwt, Nothing>? = null
+    fun verifyPresentation(issuerJwtVerifier: JwtVerifier, sdJwt: String) {
+        val issued: SdJwt.Presentation<Pair<Jwt, Claims>, Jwt> = SdJwtVerifier.verifyPresentation(
+            jwtVerifier = issuerJwtVerifier,
+            holderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
+            sdJwt = sdJwt,
+        ).getOrThrow().also { println(it) }
+        credentialSdJwt = SdJwt.Presentation(issued.jwt.first, issued.disclosures, null)
+    }
 }
 
-private fun CredentialSubject.asJsonObject(): JsonObject = json.encodeToJsonElement(this).jsonObject
+fun main() {
+    val issuer = SampleIssuer(ECKeyGenerator(Curve.P_256).keyID("issuer").generate())
+    val holder = SampleHolder(ECKeyGenerator(Curve.P_256).keyID("holder").generate())
+    val verifier = SampleVerifier { claim -> claim.name() in listOf("email") }
+
+    val emailCredential = CredentialSubject(
+        givenName = "John",
+        familyName = "Doe",
+        email = "john@foobar.com",
+        countries = listOf("GR", "DE"),
+    )
+
+    val issuedSdJwt: String = issuer.issue(holder.pubKey(), emailCredential)
+    holder.verifyIssuance(issuer.jwtVerifier(), issuedSdJwt)
+    val presentedSdJwt: String = holder.present(verifier.query)
+    verifier.verifyPresentation(issuer.jwtVerifier(), presentedSdJwt)
+}
