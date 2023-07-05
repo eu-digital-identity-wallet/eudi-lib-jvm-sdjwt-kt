@@ -22,7 +22,9 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import java.util.*
 
 val hmacKey = "111111111111111111111111111111111111111111"
@@ -75,20 +77,16 @@ fun main() {
     val vcClaim = jwtVcJson["credentialSubject"]!!.jsonObject
 
     // Generate an RSA key pair
-    val rsaJWK = genRSAKeyPair()
-    val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
+    val issuerKeyPair = genRSAKeyPair()
+    val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.signAndSerialize(
-        signer = RSASSASigner(rsaJWK),
-        signAlgorithm = JWSAlgorithm.RS256,
-        disclosuresCreator = DisclosuresCreator(hashAlgorithm = HashAlgorithm.SHA3_512),
-        sdJwtElements = sdJwt {
+    val sdJwt: CombinedIssuanceSdJwt =
+        SdJwtSigner.signAndSerialize(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
             structuredWithFlatClaims("credentialSubject", vcClaim)
-        },
-    ).getOrThrow()
+        }.getOrThrow()
 
-    val verification = verify(sdJwt, RSASSAVerifier(rsaPublicJWK))
+    val verification = verify(sdJwt, issuerPubKey)
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)
@@ -101,10 +99,12 @@ fun main() {
             println("\nVerified Claim Set \n================")
             println(format.encodeToString(verification.sdJwt.jwt.second))
         }
+
         else -> println(verification)
     }
 }
 
-fun verify(sdJwt: String, verifier: com.nimbusds.jose.JWSVerifier): Verification {
-    return SdJwtVerifier(jwtVerifier = verifier.asJwtVerifier()).verify(sdJwt)
+fun verify(sdJwt: String, issuerPubKey: RSAKey): Verification {
+    val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
+    return SdJwtVerifier(jwtVer).verify(sdJwt)
 }

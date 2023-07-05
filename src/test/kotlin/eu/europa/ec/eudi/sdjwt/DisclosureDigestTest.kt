@@ -24,9 +24,9 @@ class DisclosureDigestTest {
     fun simple() {
         val disclosure = Disclosure.wrap("WyI2cU1RdlJMNWhhaiIsICJmYW1pbHlfbmFtZSIsICJNw7ZiaXVzIl0").getOrThrow()
 
-        val expectedHash = "uutlBuYeMDyjLLTpf6Jxi7yNkEF35jdyWMn9U7b_RYY"
-        val hashed = DisclosureDigest.digest(HashAlgorithm.SHA_256, disclosure).getOrThrow()
+        val expectedDigest = "uutlBuYeMDyjLLTpf6Jxi7yNkEF35jdyWMn9U7b_RYY"
+        val digest = DisclosureDigest.digest(HashAlgorithm.SHA_256, disclosure).getOrThrow()
 
-        assertEquals(expectedHash, hashed.value)
+        assertEquals(expectedDigest, digest.value)
     }
 }
