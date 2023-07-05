@@ -16,67 +16,58 @@
 package eu.europa.ec.eudi.sdjwt
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class SdJwtVerifierTest {
+class SdJwtPresentationVerifierTest {
 
-    private fun assertError(expectedError: VerificationError, verification: Verification) {
-        assertEquals(Verification.Invalid(expectedError), verification)
-    }
-
-    private fun SdJwtVerifier.verifyExpectingError(expectedError: VerificationError, sdJwt: String) {
-        val verification = verify(sdJwt = sdJwt)
-        assertError(expectedError, verification)
-    }
 
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "")
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures , no ending ~ verify should return ParsingError`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "jwt")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "jwt")
     }
 
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding, no ending ~ verify should return ParsingError`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "$jwt")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "$jwt")
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~")
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt, no disclosures and has holderBinding verify should return InvalidJwt`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~hb")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~hb")
     }
 
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() {
-        val verification = SdJwtVerifier().verify(sdJwt = "$jwt~")
-        assertTrue(verification is Verification.Valid)
+        SdJwtPresentationVerifier().verifySuccess(sdJwt = "$jwt~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and invalid holderBinding verify should return InvalidHolderBindingJwt`() {
-        SdJwtVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
+        SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
             .verifyExpectingError(VerificationError.HolderBindingError.InvalidHolderBindingJwt, sdJwt = "$jwt~hb")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and valid holderBinding verify should return Valid`() {
-        val verification =
-            SdJwtVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent).verify(sdJwt = "$jwt~$jwt")
-        assertTrue { verification is Verification.Valid }
+        SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
+            .verifySuccess(sdJwt = "$jwt~$jwt")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() {
-        SdJwtVerifier().verifyExpectingError(
+        SdJwtPresentationVerifier().verifyExpectingError(
             VerificationError.InvalidDisclosures(listOf("d1", "d2")),
             sdJwt = "$jwt~d1~d2~",
         )
@@ -84,21 +75,40 @@ class SdJwtVerifierTest {
 
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() {
-        val verification = SdJwtVerifier().verify(sdJwt = "$jwt~$d1~")
-        assertTrue { verification is Verification.Valid }
+        SdJwtPresentationVerifier().verifySuccess(sdJwt = "$jwt~$d1~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() {
-        SdJwtVerifier().verifyExpectingError(VerificationError.NonUnqueDisclosures, sdJwt = "$jwt~$d1~$d1~")
+        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.NonUnqueDisclosures, sdJwt = "$jwt~$d1~$d1~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures and valid holder binding verify should return Valid`() {
-        val verifier = SdJwtVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
-        val verification = verifier.verify(sdJwt = "$jwt~$d1~$jwt")
-        assertTrue { verification is Verification.Valid }
+        val verifier = SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
+        verifier.verifySuccess(sdJwt = "$jwt~$d1~$jwt")
     }
+
+
+    private fun SdJwtPresentationVerifier.verifyExpectingError(expectedError: VerificationError, sdJwt: String) {
+        val verification = verify(sdJwt = sdJwt)
+        verification.fold(
+            onSuccess = { fail("Was expecting error") },
+            onFailure = { exception ->
+                if (exception is SdJwtVerificationException) {
+                    assertEquals(expectedError, exception.reason)
+                } else {
+                    fail(exception)
+                }
+            },
+        )
+    }
+
+    private fun SdJwtPresentationVerifier.verifySuccess(sdJwt: String) {
+        val verification = verify(sdJwt = sdJwt)
+        assertTrue { verification.isSuccess }
+    }
+
 
     private val jwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkZwaEZGcGoxdnRyMHJwWUstMTRmaWNrR
@@ -117,4 +127,4 @@ class SdJwtVerifierTest {
     """.trimIndent().removeNewLine()
 }
 
-private fun String.removeNewLine(): String = replace("\n", "")
+

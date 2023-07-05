@@ -26,7 +26,7 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 private fun JsonObject.asBytes(): ByteArray = toString().encodeToByteArray()
 
-typealias NimbusSdJwt = SdJwt<NimbusSignedJWT, NimbusJWT>
+typealias NimbusIssuanceSdJwt = SdJwt.Issuance<NimbusSignedJWT>
 
 /**
  *
@@ -45,7 +45,6 @@ object SdJwtSigner {
      * It MUST NOT use none or an identifier for a symmetric algorithm (MAC).
      * @param disclosuresCreator specifies the details of producing disclosures & hashes, such as [HashAlgorithm],
      * decoys to use etc.
-     * @param holderBindingJwt if provided it will be appended to the end of the SD-JWT.
      * @param sdJwtElements the contents of the SD-JWT
      *
      * @return the SD-JWT
@@ -54,9 +53,8 @@ object SdJwtSigner {
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         disclosuresCreator: DisclosuresCreator = Default,
-        holderBindingJwt: NimbusJWT? = null,
         sdJwtElements: List<SdJwtElement>,
-    ): Result<NimbusSdJwt> = runCatching {
+    ): Result<NimbusIssuanceSdJwt> = runCatching {
         require(allowSymmetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
 
         val (disclosures, claims) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
@@ -65,7 +63,7 @@ object SdJwtSigner {
 
         val jwt = NimbusSignedJWT(header, NimbusJWTClaimsSet.parse(payload.toJSONObject())).also { it.sign(signer) }
 
-        NimbusSdJwt(jwt, disclosures, holderBindingJwt)
+        NimbusIssuanceSdJwt(jwt, disclosures)
     }
 
     /**
@@ -76,20 +74,18 @@ object SdJwtSigner {
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
 
-fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): CombinedIssuanceSdJwt =
-    serialize({ it.serialize() }, { it.serialize() })
+fun <JWT : NimbusJWT> SdJwt.Issuance<JWT>.serialize(): CombinedIssuanceSdJwt =
+    serialize { it.serialize() }
 
 inline fun sdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     disclosuresCreator: DisclosuresCreator = SdJwtSigner.Default,
-    holderBindingJwt: NimbusJWT? = null,
     builderAction: SdJwtElementsBuilder.() -> Unit,
-): NimbusSdJwt =
+): NimbusIssuanceSdJwt =
     SdJwtSigner.sign(
         signer,
         signAlgorithm,
         disclosuresCreator,
-        holderBindingJwt,
         sdJwt(builderAction),
     ).getOrThrow()

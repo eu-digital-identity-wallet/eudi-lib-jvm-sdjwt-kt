@@ -134,10 +134,29 @@ operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = Disc
 typealias CombinedIssuanceSdJwt = String
 typealias Jwt = String
 
-data class SdJwt<JWT, HB_JWT>(val jwt: JWT, val disclosures: Set<Disclosure>, val holderBindingJwt: HB_JWT?)
+sealed interface SdJwt<JWT, HB_JWT> {
 
-fun <JWT, HB_JWT> SdJwt<JWT, HB_JWT>.serialize(
+    val jwt: JWT
+    val disclosures: Set<Disclosure>
+
+    data class Issuance<JWT>(
+        override val jwt: JWT,
+        override val disclosures: Set<Disclosure>,
+    ) : SdJwt<JWT, Nothing>
+    data class Presentation<JWT, HB_JWT>(
+        override val jwt: JWT,
+        override val disclosures: Set<Disclosure>,
+        val holderBindingJwt: HB_JWT?,
+    ) : SdJwt<JWT, HB_JWT>
+}
+
+fun <JWT> SdJwt.Issuance<JWT>.serialize(
+    serializeJwt: (JWT) -> String,
+): CombinedIssuanceSdJwt =
+    "${serializeJwt(jwt)}${disclosures.concat()}}"
+
+fun <JWT, HB_JWT> SdJwt.Presentation<JWT, HB_JWT>.serialize(
     serializeJwt: (JWT) -> String,
     serializeHolderBindingJwt: (HB_JWT) -> String,
-): CombinedIssuanceSdJwt =
-    "${serializeJwt(jwt)}${disclosures.concat()}${holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""}"
+): String =
+    "${serializeJwt(jwt)}${disclosures.concat()}~${holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""}"

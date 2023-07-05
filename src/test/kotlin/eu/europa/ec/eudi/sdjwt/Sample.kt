@@ -79,30 +79,34 @@ fun main() {
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
     val sdJwt: CombinedIssuanceSdJwt =
+
         sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
             structuredWithFlatClaims("credentialSubject", vcClaim)
         }.serialize()
 
-    val verification = verify(sdJwt, issuerPubKey)
+    val verification = verifyIssuance(sdJwt, issuerPubKey)
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)
     println("\nVC as sd-jwt\n================")
     println(sdJwt)
-    when (verification) {
-        is Verification.Valid -> {
-            println("\nDisclosures\n================")
-            verification.sdJwt.disclosures.forEach { println(it.claim()) }
-            println("\nVerified Claim Set \n================")
-            println(format.encodeToString(verification.sdJwt.jwt.second))
-        }
 
-        else -> println(verification)
-    }
+    verification.fold(
+        onSuccess = { issuanceSdJwt ->
+            println("\nDisclosures\n================")
+            issuanceSdJwt.disclosures.forEach { println(it.claim()) }
+            println("\nVerified Claim Set \n================")
+            println(format.encodeToString(issuanceSdJwt.jwt.second))
+        },
+        onFailure = {
+            println("Error: $it")
+        },
+
+    )
 }
 
-fun verify(sdJwt: String, issuerPubKey: RSAKey): Verification {
+fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
-    return SdJwtVerifier(jwtVer).verify(sdJwt)
+    return SdJwtIssuanceVerifier(jwtVer).verify(sdJwt)
 }
