@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import kotlinx.serialization.SerialName
@@ -26,7 +28,11 @@ import kotlinx.serialization.json.*
 import java.time.Instant
 
 fun main() {
-    val issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer").generate()
+    val issuerKey: ECKey = ECKeyGenerator(Curve.P_256).keyID("issuer").generate().also {
+        println("Issuer Pub Key")
+        println(it.toPublicJWK().toJSONString())
+    }
+
     val holderKey = ECKeyGenerator(Curve.P_256).keyID("holder").generate()
 
     val emailCredential = EmailCredential(
@@ -44,22 +50,33 @@ fun main() {
     )
     val sdJwtElements = emailCredential.sdJwtElements()
 
-    val sdJwt = SdJwtSigner.sign(
+    val holderSdJwt = SdJwtSigner.sign(
         signer = ECDSASigner(issuerKey),
         signAlgorithm = JWSAlgorithm.ES256,
         sdJwtElements = sdJwtElements,
     ).getOrThrow()
 
-    sdJwt.also {
-        println("Issuer Pub Key")
-        println(issuerKey.toPublicJWK().toJSONString())
-        println("Disclosures")
-        it.disclosures.forEach { d -> println(d.claim()) }
+    holderSdJwt.also {
+        println("\nSelectively Disclosable Claims")
+        it.selectivelyDisclosedClaims().forEach { claim -> println(claim) }
         println("JWT content")
         println(it.jwt.jwtClaimsSet.toString())
         println("Combined Issuance Format")
         println(it.serialize())
     }
+
+    SdJwtVerifier.verifyIssuance(
+        ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
+        sdJwt = holderSdJwt.serialize(),
+    ).getOrThrow().also { println(it) }
+
+    val presentedSdJwt = holderSdJwt.present(holderBindingJwt = null) { claim -> claim.name() in listOf("email") }
+    presentedSdJwt.selectivelyDisclosedClaims().forEach { println("\nPresented Claim: $it") }
+
+    SdJwtVerifier.verifyPresentation(
+        ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
+        sdJwt = presentedSdJwt.serialize(),
+    ).getOrThrow().also { println(it) }
 }
 
 private fun EmailCredential.sdJwtElements(): List<SdJwtElement> =

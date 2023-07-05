@@ -30,9 +30,21 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val iss = "Issuer"
 val issuerKeyPair: RSAKey
-val sdJwt =sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
-    iss(iss)
-    flat { put("foo", "bar") }
+val sdJwt = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+    
+    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
+    structured("address") {
+        flat {
+            put("street_address", "Schulstr. 12")
+            put("locality", "Schulpforta")
+            put("region", "Sachsen-Anhalt")
+            put("country", "DE")
+        }
+    }
 }.serialize()
 
 
@@ -40,7 +52,59 @@ val sdJwt =sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm
 
 ## Verification
 
-TBD
+There are two cases of SD-JWT verification:
+- in case of `combined issuance format`. This is applicable to the holder
+- in case of  `combined presentation format`. This is applicable to the verifier 
+
+### Holder Verification
+
+In this case the SD-JWT is expected to be in Combined Issuance format.
+Holder should know the public key of the Issuer and the algorithm used by the Issuer
+to sign the SD-JWT
+
+```kotlin
+import eu.europa.ec.eudi.sdjwt.*
+import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.crypto.ECDSAVerifier
+
+val unverifiedSdJwt : String ="..."
+val issuerPubKey: ECPublicKey
+val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier() 
+
+val sdJwt : SdJwt.Issuance<Claims> = 
+    SdJwtVerifier.verifyIssuance(jwtVerifier, unverifiedSdJwt).getOrThrow()
+val (jwtClaims, disclosures) = sdJwt
+```
+
+### Verifier Verification
+
+In this case the SD-JWT is expected to be in Combined Presentation format.
+Verifier should know the public key of the Issuer and the algorithm used by the Issuer
+to sign the SD-JWT. Also, if verification includes Holder Binding, the Verifier must also
+know a how the public key of the Holder was included into the SD-JWT and which algorithm
+the Holder used to sign the `Holder Binding JWT`
+
+```kotlin
+import eu.europa.ec.eudi.sdjwt.*
+import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.crypto.ECDSAVerifier
+
+val unverifiedSdJwt : String ="..."
+val issuerPubKey: ECPublicKey
+val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
+
+//
+// The following demonstrates verification of presentation
+// without Holder Binding JWT
+//
+val sdJwt : SdJwt.Presentation<Claims, String> =
+    SdJwtVerifier.verifyPresentation(
+        jwtVerifier = jwtVerifier,
+        holderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
+        sdJwt = unverifiedSdJwt
+    ).getOrThrow()
+
+```
 
 ## DSL Examples
 

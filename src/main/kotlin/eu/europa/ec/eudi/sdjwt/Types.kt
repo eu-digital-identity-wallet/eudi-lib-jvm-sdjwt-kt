@@ -147,6 +147,9 @@ sealed interface SdJwt<JWT, HB_JWT> {
      */
     val disclosures: Set<Disclosure>
 
+    fun selectivelyDisclosedClaims(): Claims =
+        disclosures.associate { it.claim() }
+
     /**
      * The SD-JWT as it is produced by the issuer and handed-over to the holder
      * @param jwt The JWT part of the SD-JWT
@@ -170,6 +173,16 @@ sealed interface SdJwt<JWT, HB_JWT> {
     ) : SdJwt<JWT, HB_JWT>
 }
 
+fun <JWT, HB_JWT> SdJwt.Issuance<JWT>.present(
+    holderBindingJwt: HB_JWT? = null,
+    criteria: (Claim) -> Boolean,
+): SdJwt.Presentation<JWT, HB_JWT> =
+    SdJwt.Presentation(
+        jwt,
+        disclosures.filter { disclosure -> criteria(disclosure.claim()) }.toSet(),
+        holderBindingJwt,
+    )
+
 /**
  * Serializes a [SdJwt.Issuance] to Combined Issuance Format
  *
@@ -180,8 +193,11 @@ sealed interface SdJwt<JWT, HB_JWT> {
  */
 fun <JWT> SdJwt.Issuance<JWT>.toCombinedIssuanceFormat(
     serializeJwt: (JWT) -> String,
-): String =
-    "${serializeJwt(jwt)}${disclosures.concat()}"
+): String {
+    val serializedJwt = serializeJwt(jwt)
+    val serializedDisclosures = disclosures.concat()
+    return "$serializedJwt$serializedDisclosures"
+}
 
 /**
  * Serialized a [SdJwt.Presentation] to Combined Presentation Format
@@ -196,5 +212,9 @@ fun <JWT> SdJwt.Issuance<JWT>.toCombinedIssuanceFormat(
 fun <JWT, HB_JWT> SdJwt.Presentation<JWT, HB_JWT>.toCombinedPresentationFormat(
     serializeJwt: (JWT) -> String,
     serializeHolderBindingJwt: (HB_JWT) -> String,
-): String =
-    "${serializeJwt(jwt)}${disclosures.concat()}~${holderBindingJwt?.run(serializeHolderBindingJwt)}"
+): String {
+    val serializedJwt = serializeJwt(jwt)
+    val serializedDisclosures = disclosures.concat()
+    val serializedHbJwt = holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""
+    return "$serializedJwt$serializedDisclosures~$serializedHbJwt"
+}
