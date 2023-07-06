@@ -22,11 +22,15 @@ class SdJwtIssuanceVerifierTest {
 
     @Test
     fun simple() {
-        SdJwtIssuanceVerifier(JwtSignatureVerifier.NoSignatureValidation).verifySuccess(sdJwt = "$jwt~$d1")
+        verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1")
     }
 
-    private fun SdJwtIssuanceVerifier.verifySuccess(sdJwt: String) {
-        val verification = verify(sdJwt = sdJwt)
+    private fun verifyIssuanceSuccess(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: String,
+    ) {
+        val verification =
+            SdJwtVerifier.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt)
         assertTrue { verification.isSuccess }
     }
 

@@ -226,33 +226,33 @@ object SdJwtVerifier {
 
     fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier,
-        sdJwt: String,
+        unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> =
-        SdJwtIssuanceVerifier(jwtSignatureVerifier).verify(sdJwt)
+        SdJwtIssuanceVerifier(jwtSignatureVerifier).verify(unverifiedSdJwt)
 
     fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
         holderBindingVerifier: HolderBindingVerifier,
-        sdJwt: String,
+        unverifiedSdJwt: String,
     ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> =
-        SdJwtPresentationVerifier(jwtSignatureVerifier, holderBindingVerifier).verify(sdJwt)
+        SdJwtPresentationVerifier(jwtSignatureVerifier, holderBindingVerifier).verify(unverifiedSdJwt)
 }
 
-internal class SdJwtIssuanceVerifier(
+private class SdJwtIssuanceVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier,
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
+    fun verify(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Parse
-        val (jwt, rawDisclosures) = parseIssuance(sdJwt).getOrThrow()
+        val (jwt, rawDisclosures) = parseCombinedIssuanceFormat(unverifiedSdJwt).getOrThrow()
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(jwt).getOrThrow()
         val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
         SdJwt.Issuance(jwt to jwtClaims, disclosures)
     }
 
-    private fun parseIssuance(sdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
-        val list = sdJwt.split('~')
+    private fun parseCombinedIssuanceFormat(unverifiedSdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
+        val list = unverifiedSdJwt.split('~')
         if (list.size <= 1) throw ParsingError.asException()
         val jwt = list[0]
         val ds = list.drop(1).filter { it.isNotBlank() }
@@ -260,14 +260,14 @@ internal class SdJwtIssuanceVerifier(
     }
 }
 
-internal class SdJwtPresentationVerifier(
+private class SdJwtPresentationVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier,
     private val holderBindingVerifier: HolderBindingVerifier,
 ) {
 
-    fun verify(sdJwt: String): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
+    fun verify(unverifiedSdJwt: String): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
         // Parse
-        val (jwt, rawDisclosures, holderBindingJwt) = parsePresentation(sdJwt).getOrThrow()
+        val (jwt, rawDisclosures, holderBindingJwt) = parseCombinedPresentationFormat(unverifiedSdJwt).getOrThrow()
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(jwt).getOrThrow()
         // Check Holder binding
@@ -277,11 +277,11 @@ internal class SdJwtPresentationVerifier(
         SdJwt.Presentation(jwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
     }
 
-    private fun parsePresentation(sdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {
-        val list = sdJwt.split('~')
+    private fun parseCombinedPresentationFormat(unverifiedSdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {
+        val list = unverifiedSdJwt.split('~')
         if (list.size <= 1) throw ParsingError.asException()
         val jwt = list[0]
-        val containsHolderBinding = !sdJwt.endsWith('~')
+        val containsHolderBinding = !unverifiedSdJwt.endsWith('~')
         val ds = list.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
         val hbJwt = if (containsHolderBinding) list.last() else null
         Triple(jwt, ds, hbJwt)

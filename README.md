@@ -137,7 +137,7 @@ val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 val sdJwt : SdJwt.Presentation<Claims, String> =
     SdJwtVerifier.verifyPresentation(
         jwtVerifier = jwtVerifier,
-        holderBindingVerifier = HolderBindingVerifier.ShouldNotBePresent,
+        holderBindingVerifier = HolderBindingVerifier.MustNotBePresent,
         sdJwt = unverifiedSdJwt
     ).getOrThrow()
 

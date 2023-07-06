@@ -319,7 +319,7 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
         SdJwtVerifier.verifyPresentation(
             jwtSignatureVerifier = issuerJwtSignatureVerifier,
             holderBindingVerifier = holderBindingVerifier(holderPubKeyExtractor, holderBindingJwtSignatureVerifier),
-            sdJwt = sdJwt,
+            unverifiedSdJwt = sdJwt,
         ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> ->
             presentation = SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.holderBindingJwt?.first)
 

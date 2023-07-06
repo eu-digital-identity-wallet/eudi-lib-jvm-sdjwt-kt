@@ -106,7 +106,7 @@ fun main() {
     )
 }
 
-fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<Pair<Jwt, Claims>>> {
+fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<JwtAndClaims>> {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
-    return SdJwtIssuanceVerifier(jwtVer).verify(sdJwt)
+    return SdJwtVerifier.verifyIssuance(jwtVer, sdJwt)
 }
