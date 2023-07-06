@@ -22,7 +22,7 @@ class SdJwtIssuanceVerifierTest {
 
     @Test
     fun simple() {
-        SdJwtIssuanceVerifier().verifySuccess(sdJwt = "$jwt~$d1")
+        SdJwtIssuanceVerifier(JwtSignatureVerifier.NoSignatureValidation).verifySuccess(sdJwt = "$jwt~$d1")
     }
 
     private fun SdJwtIssuanceVerifier.verifySuccess(sdJwt: String) {

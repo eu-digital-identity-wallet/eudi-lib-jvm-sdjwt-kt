@@ -15,12 +15,49 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import java.text.ParseException
+import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
 import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
+import com.nimbusds.jose.JWSVerifier as NimbusJWSVerifier
 import com.nimbusds.jwt.JWT as NimbusJWT
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
+import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
+
+fun noSignatureValidation(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+    try {
+        val signedJwt = NimbusSignedJWT.parse(jwt)
+        signedJwt.jwtClaimsSet.asClaims()
+    } catch (e: ParseException) {
+        null
+    }
+}
+
+fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+    try {
+        val signedJwt = NimbusSignedJWT.parse(jwt)
+        if (!signedJwt.verify(this)) null
+        else signedJwt.jwtClaimsSet.asClaims()
+    } catch (e: ParseException) {
+        null
+    } catch (e: NimbusJOSEException) {
+        null
+    }
+}
+
+fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+    process(jwt, null).asClaims()
+}
+
+fun NimbusJWTClaimsSet.asClaims(): Claims =
+    toPayload().toBytes().run {
+        val s: String = this.decodeToString()
+        Json.parseToJsonElement(s).jsonObject
+    }
 
 /**
  *
@@ -30,11 +67,11 @@ object NimbusSdJwtIssuerFactory {
     private const val allowSymmetric = true
 
     /**
-     * Factory method for creating a [NimbusIssuer]
+     * Factory method for creating a [SdJwtIssuer]
      *
      * @param signer the signer that will sign the SD-JWT
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
-     * @return a [NimbusIssuer]
+     * @return a [SdJwtIssuer]
      */
     fun createIssuer(
         signer: NimbusJWSSigner,

@@ -24,49 +24,77 @@ class SdJwtPresentationVerifierTest {
 
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(VerificationError.ParsingError, sdJwt = "")
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures , no ending ~ verify should return ParsingError`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "jwt")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(VerificationError.ParsingError, sdJwt = "jwt")
     }
 
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding, no ending ~ verify should return ParsingError`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.ParsingError, sdJwt = "$jwt")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(VerificationError.ParsingError, sdJwt = jwt)
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~")
     }
 
     @Test
     fun `when sd-jwt has an invalid jwt, no disclosures and has holderBinding verify should return InvalidJwt`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~hb")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(VerificationError.InvalidJwt, sdJwt = "jwt~hb")
     }
 
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() {
-        SdJwtPresentationVerifier().verifySuccess(sdJwt = "$jwt~")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustNotBePresent,
+        ).verifySuccess(sdJwt = "$jwt~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and invalid holderBinding verify should return InvalidHolderBindingJwt`() {
-        SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
-            .verifyExpectingError(VerificationError.HolderBindingError.InvalidHolderBindingJwt, sdJwt = "$jwt~hb")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifyExpectingError(
+            VerificationError.HolderBindingFailed(HolderBindingError.InvalidHolderBindingJwt),
+            sdJwt = "$jwt~hb",
+        )
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and valid holderBinding verify should return Valid`() {
-        SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
-            .verifySuccess(sdJwt = "$jwt~$jwt")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifySuccess(sdJwt = "$jwt~$jwt")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() {
-        SdJwtPresentationVerifier().verifyExpectingError(
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustNotBePresent,
+        ).verifyExpectingError(
             VerificationError.InvalidDisclosures(listOf("d1", "d2")),
             sdJwt = "$jwt~d1~d2~",
         )
@@ -74,18 +102,26 @@ class SdJwtPresentationVerifierTest {
 
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() {
-        SdJwtPresentationVerifier().verifySuccess(sdJwt = "$jwt~$d1~")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustNotBePresent,
+        ).verifySuccess(sdJwt = "$jwt~$d1~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() {
-        SdJwtPresentationVerifier().verifyExpectingError(VerificationError.NonUnqueDisclosures, sdJwt = "$jwt~$d1~$d1~")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustNotBePresent,
+        ).verifyExpectingError(VerificationError.NonUnqueDisclosures, sdJwt = "$jwt~$d1~$d1~")
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures and valid holder binding verify should return Valid`() {
-        val verifier = SdJwtPresentationVerifier(holderBindingVerifier = HolderBindingVerifier.MustBePresent)
-        verifier.verifySuccess(sdJwt = "$jwt~$d1~$jwt")
+        SdJwtPresentationVerifier(
+            JwtSignatureVerifier.NoSignatureValidation,
+            HolderBindingVerifier.MustBePresent,
+        ).verifySuccess(sdJwt = "$jwt~$d1~$jwt")
     }
 
     private fun SdJwtPresentationVerifier.verifyExpectingError(expectedError: VerificationError, sdJwt: String) {

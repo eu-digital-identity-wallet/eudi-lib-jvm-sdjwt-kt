@@ -81,7 +81,7 @@ class HolderBindingTest {
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
         // Assert issuer verifier is able to verify JWT
-        val jwtClaims = assertNotNull(issuer.jwtVerifier().invoke(issuedSdJwt.jwt.serialize()))
+        val jwtClaims = assertNotNull(issuer.jwtVerifier().verify(issuedSdJwt.jwt.serialize()).getOrNull())
 
         // Assert issuers pub key extractor is able to retrieve holder pub key
         val holderPubKeyExtractor = issuer.extractHolderPubKey()
@@ -162,12 +162,12 @@ class SampleIssuer(private val issuerKey: ECKey) {
     }
 
     /**
-     * This is an advanced [JwtVerifier] backed by Nimbus [DefaultJWTProcessor]
+     * This is an advanced [JwtSignatureVerifier] backed by Nimbus [DefaultJWTProcessor]
      * Verifies that the header of JWT contains typ claim equal to [jwtType].
      * Checks the signature of the JWT using issuers pub key and [signAlgorithm].
      * Makes sures that claims : "iss", "iat", "exp" and "cnf" are present
      */
-    fun jwtVerifier(): JwtVerifier =
+    fun jwtVerifier(): JwtSignatureVerifier =
         DefaultJWTProcessor<SecurityContext>().apply {
             jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(jwtType)
             jwsKeySelector = SingleKeyJWSKeySelector(
@@ -258,7 +258,7 @@ class SampleHolder(private val holderKey: ECKey) {
     private var credentialSdJwt: SdJwt.Issuance<Jwt>? = null
     fun pubKey(): ECKey = holderKey.toPublicJWK()
 
-    fun holderBindingVerifier(): (JWK) -> JwtVerifier = { holderPubKey ->
+    fun holderBindingVerifier(): (JWK) -> JwtSignatureVerifier = { holderPubKey ->
         DefaultJWTProcessor<SecurityContext>().apply {
             jwsKeySelector = SingleKeyJWSKeySelector(
                 holderBindingSigningAlgorithm,
@@ -267,10 +267,10 @@ class SampleHolder(private val holderKey: ECKey) {
         }.asJwtVerifier()
     }
 
-    fun storeCredential(issuerJwtVerifier: JwtVerifier, sdJwt: String) {
+    fun storeCredential(issuerJwtSignatureVerifier: JwtSignatureVerifier, sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
-        SdJwtVerifier.verifyIssuance(issuerJwtVerifier, sdJwt).fold(
-            onSuccess = { issued: SdJwt.Issuance<Pair<Jwt, Claims>> ->
+        SdJwtVerifier.verifyIssuance(issuerJwtSignatureVerifier, sdJwt).fold(
+            onSuccess = { issued: SdJwt.Issuance<JwtAndClaims> ->
                 credentialSdJwt = SdJwt.Issuance(issued.jwt.first, issued.disclosures)
                 holderDebug("Stored SD-JWT")
             },
@@ -311,17 +311,17 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
     }.also { lastChallenge = it }
 
     fun acceptPresentation(
-        issuerJwtVerifier: JwtVerifier,
+        issuerJwtSignatureVerifier: JwtSignatureVerifier,
         holderPubKeyExtractor: (Claims) -> JWK?,
-        holderBindingJwtVerifier: (JWK) -> JwtVerifier,
+        holderBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
         sdJwt: String,
     ) {
         SdJwtVerifier.verifyPresentation(
-            jwtVerifier = issuerJwtVerifier,
-            holderBindingVerifier = holderBindingVerifier(holderPubKeyExtractor, holderBindingJwtVerifier),
+            jwtSignatureVerifier = issuerJwtSignatureVerifier,
+            holderBindingVerifier = holderBindingVerifier(holderPubKeyExtractor, holderBindingJwtSignatureVerifier),
             sdJwt = sdJwt,
-        ).fold(onSuccess = { presented: SdJwt.Presentation<Pair<Jwt, Claims>, Jwt> ->
-            presentation = SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.holderBindingJwt)
+        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> ->
+            presentation = SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.holderBindingJwt?.first)
 
             verifierDebug("Presentation accepted with SD Claims:")
             presented.selectivelyDisclosedClaims().onEachIndexed { i, c -> verifierDebug("-> $i $c") }
@@ -333,11 +333,11 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
 
     private fun holderBindingVerifier(
         holderPubKeyExtractor: (Claims) -> JWK?,
-        holderBindingJwtVerifier: (JWK) -> JwtVerifier,
+        holderBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
     ): HolderBindingVerifier =
         HolderBindingVerifier.MustBePresentAndValid { sdJwtClaims ->
             holderPubKeyExtractor(sdJwtClaims)?.let { jwk ->
-                holderBindingJwtVerifier(jwk).and { holderBindingJwtClaims ->
+                holderBindingJwtSignatureVerifier(jwk).and { holderBindingJwtClaims ->
                     holderBindingJwtClaims == lastChallenge
                 }
             }
