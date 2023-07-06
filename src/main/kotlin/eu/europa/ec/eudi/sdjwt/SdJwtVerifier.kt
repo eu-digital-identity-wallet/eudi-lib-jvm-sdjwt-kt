@@ -18,6 +18,8 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.HolderBindingError.*
 import eu.europa.ec.eudi.sdjwt.HolderBindingVerifier.Companion.MustBePresent
 import eu.europa.ec.eudi.sdjwt.HolderBindingVerifier.MustNotBePresent
+import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
+import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -180,16 +182,20 @@ sealed interface HolderBindingError {
 sealed interface HolderBindingVerifier {
 
     fun verify(jwtClaims: Claims, holderBindingJwt: String?): Result<Claims?> = runCatching {
+        fun mustBeNotPresent(): Claims? =
+            if (holderBindingJwt != null) throw UnexpectedHolderBindingJwt.asException()
+            else null
+
+        fun mustBePresentAndValid(holderBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
+            if (holderBindingJwt == null) throw MissingHolderBindingJwt.asException()
+            val holderBindingJwtVerifier =
+                holderBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
+            return holderBindingJwtVerifier.checkSignature(holderBindingJwt)
+                ?: throw InvalidHolderBindingJwt.asException()
+        }
         when (this) {
-            is MustNotBePresent -> if (holderBindingJwt != null) throw UnexpectedHolderBindingJwt.asException() else null
-            is MustBePresentAndValid ->
-                if (holderBindingJwt != null) {
-                    when (val holderBindingJwtVerifier = holderBindingVerifierProvider(jwtClaims)) {
-                        null -> throw MissingHolderPubKey.asException()
-                        else -> holderBindingJwtVerifier.checkSignature(holderBindingJwt)
-                            ?: throw InvalidHolderBindingJwt.asException()
-                    }
-                } else throw MissingHolderBindingJwt.asException()
+            is MustNotBePresent -> mustBeNotPresent()
+            is MustBePresentAndValid -> mustBePresentAndValid(holderBindingVerifierProvider)
         }
     }
 
@@ -220,88 +226,130 @@ sealed interface HolderBindingVerifier {
     }
 }
 
+/**
+ *
+ */
 typealias JwtAndClaims = Pair<Jwt, Claims>
 
+/**
+ * A single point for verifying SD-JWTs in both [Combined Issuance Format][verifyIssuance]
+ * and [Combined Presentation Format][verifyPresentation]
+ */
 object SdJwtVerifier {
 
+    /**
+     * Verifies a SD-JWT in Combined Issuance Format
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT
+     *
+     * @param jwtSignatureVerifier the verification of the signature of the JWT part of the SD-JWT. In order to provide
+     * an implementation of this, Holder should be aware of the public key and the signing algorithm that the Issuer
+     * used to sign the SD-JWT
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
+     */
     fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> =
-        SdJwtIssuanceVerifier(jwtSignatureVerifier).verify(unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
+        // Parse
+        val (unverifiedJwt, unverifiedDisclosures) = parseCombinedIssuance(unverifiedSdJwt).getOrThrow()
+        // Check JWT signature
+        val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
+        val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
+        val digests = uniqueDigests(jwtClaims)
+        // Check Disclosures
+        val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
+        SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
+    }
 
+    /**
+     * Verifies a SD-JWT in Combined Presentation Format
+     * Typically, this is useful to Verifier that wants to verify  presentation SD-JWT communicated by Holder
+     *
+     * @param jwtSignatureVerifier the verification of the signature of the JWT part of the SD-JWT. In order to provide
+     * an implementation of this, Verifier should be aware of the public key and the signing algorithm that the Issuer
+     * used to sign the SD-JWT
+     * @param holderBindingVerifier specifies whether a Holder Binding JWT is expected or not.
+     * In the case that it is expected, Verifier should be aware of how the Issuer have chosen to include the
+     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier,
+     * in order to produce the Holder Binding JWT.
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will  the [JWT][SdJwt.Presentation.jwt] and [holder binding JWT]
+     * are representing in both string and decoded payload
+     */
     fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
         holderBindingVerifier: HolderBindingVerifier,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> =
-        SdJwtPresentationVerifier(jwtSignatureVerifier, holderBindingVerifier).verify(unverifiedSdJwt)
+    ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
+        // Parse
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedHBJwt) =
+            parseCombinedPresentation(unverifiedSdJwt)
+
+        // Check JWT
+        val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
+        val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
+        val digests = uniqueDigests(jwtClaims)
+        val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
+
+        // Check Holder binding
+        val hbClaims = holderBindingVerifier.verify(jwtClaims, unverifiedHBJwt).getOrThrow()
+        val holderBindingJwtAndClaims = unverifiedHBJwt?.let { hb -> hbClaims?.let { cs -> hb to cs } }
+
+        // Assemble it
+        SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
+    }
 }
 
-private class SdJwtIssuanceVerifier(
-    private val jwtSignatureVerifier: JwtSignatureVerifier,
-) {
-
-    fun verify(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-        // Parse
-        val (jwt, rawDisclosures) = parseCombinedIssuanceFormat(unverifiedSdJwt).getOrThrow()
-        // Check JWT
-        val jwtClaims = jwtSignatureVerifier.verify(jwt).getOrThrow()
-        val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        SdJwt.Issuance(jwt to jwtClaims, disclosures)
-    }
-
-    private fun parseCombinedIssuanceFormat(unverifiedSdJwt: String): Result<Pair<Jwt, List<String>>> = runCatching {
-        val list = unverifiedSdJwt.split('~')
-        if (list.size <= 1) throw ParsingError.asException()
-        val jwt = list[0]
-        val ds = list.drop(1).filter { it.isNotBlank() }
+/**
+ * Parses an SD-JWT, assuming Combined Issuance Format
+ * @param unverifiedSdJwt the SD-JWT to be verified
+ * @return the JWT and the list of disclosures (as string), or raises [ParsingError]
+ */
+private fun parseCombinedIssuance(unverifiedSdJwt: String): Result<Pair<Jwt, List<String>>> =
+    runCatching {
+        val parts = unverifiedSdJwt.split('~')
+        if (parts.size <= 1) throw ParsingError.asException()
+        val jwt = parts[0]
+        val ds = parts.drop(1).filter { it.isNotBlank() }
         jwt to ds
     }
+
+/**
+ * Parses an SD-JWT, assuming Combined Presentation Format
+ * @param unverifiedSdJwt the SD-JWT to be verified
+ * @return the JWT , the list of disclosures and the Holder Binding JWT (as string), or raises [ParsingError]
+ */
+private fun parseCombinedPresentation(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
+    val parts = unverifiedSdJwt.split('~')
+    if (parts.size <= 1) throw ParsingError.asException()
+    val jwt = parts[0]
+    val containsHolderBinding = !unverifiedSdJwt.endsWith('~')
+    val ds = parts.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
+    val hbJwt = if (containsHolderBinding) parts.last() else null
+    return Triple(jwt, ds, hbJwt)
 }
 
-private class SdJwtPresentationVerifier(
-    private val jwtSignatureVerifier: JwtSignatureVerifier,
-    private val holderBindingVerifier: HolderBindingVerifier,
-) {
-
-    fun verify(unverifiedSdJwt: String): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
-        // Parse
-        val (jwt, rawDisclosures, holderBindingJwt) = parseCombinedPresentationFormat(unverifiedSdJwt).getOrThrow()
-        // Check JWT
-        val jwtClaims = jwtSignatureVerifier.verify(jwt).getOrThrow()
-        // Check Holder binding
-        val hbClaims = holderBindingVerifier.verify(jwtClaims, holderBindingJwt).getOrThrow()
-        val disclosures = disclosures(jwtClaims, rawDisclosures).getOrThrow()
-        val holderBindingJwtAndClaims = holderBindingJwt?.let { hb -> hbClaims?.let { cs -> hb to cs } }
-        SdJwt.Presentation(jwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
-    }
-
-    private fun parseCombinedPresentationFormat(unverifiedSdJwt: String): Result<Triple<Jwt, List<String>, Jwt?>> = runCatching {
-        val list = unverifiedSdJwt.split('~')
-        if (list.size <= 1) throw ParsingError.asException()
-        val jwt = list[0]
-        val containsHolderBinding = !unverifiedSdJwt.endsWith('~')
-        val ds = list.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
-        val hbJwt = if (containsHolderBinding) list.last() else null
-        Triple(jwt, ds, hbJwt)
-    }
-}
-
-private fun disclosures(jwtClaims: Claims, rawDisclosures: List<String>): Result<Set<Disclosure>> {
+/**
+ * Verify the disclosures
+ * @param hashAlgorithm
+ * @param unverifiedDisclosures
+ * @param digests
+ * @return
+ */
+private fun verifyDisclosures(
+    hashAlgorithm: HashAlgorithm,
+    unverifiedDisclosures: List<String>,
+    digests: Set<DisclosureDigest>,
+): Set<Disclosure> {
     /**
-     * Looks in the provided claims for the hashing algorithm
-     * @return the hashing algorithm, if a hashing algorithm is present and contains a string
-     * representing a supported [HashAlgorithm]
+     * Checks that the [unverifiedDisclosures] are indeed [Disclosure] and that are unique
+     * @return the set of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUnqueDisclosures]
      */
-    fun hashingAlgorithmClaim(): HashAlgorithm =
-        jwtClaims["_sd_alg"]?.let { element ->
-            if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
-            else null
-        } ?: throw MissingOrUnknownHashingAlgorithm.asException()
-
-    fun disclosures(): Set<Disclosure> {
-        val maybeDisclosures = rawDisclosures.associateWith { Disclosure.wrap(it) }
+    fun uniqueDisclosures(): Set<Disclosure> {
+        val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
 
         maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
             if (invalidDisclosures.isNotEmpty())
@@ -309,41 +357,44 @@ private fun disclosures(jwtClaims: Claims, rawDisclosures: List<String>): Result
         }
 
         return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
-            if (rawDisclosures.size != disclosures.size) throw NonUnqueDisclosures.asException()
+            if (unverifiedDisclosures.size != disclosures.size) throw NonUnqueDisclosures.asException()
         }
     }
 
-    fun allDisclosuresHaveSignedDigest(
-        hashAlgorithm: HashAlgorithm,
-        disclosures: Set<Disclosure>,
-        disclosureDigestsInJwt: List<DisclosureDigest>,
-    ) {
-        val calculatedDigestsPerDisclosure: Map<Disclosure, DisclosureDigest> =
-            disclosures.associateWith { DisclosureDigest.digest(hashAlgorithm, it).getOrThrow() }
+    val disclosures = uniqueDisclosures()
+    val calculatedDigestsPerDisclosure: Map<Disclosure, DisclosureDigest> =
+        disclosures.associateWith { DisclosureDigest.digest(hashAlgorithm, it).getOrThrow() }
 
-        val disclosuresMissingDigest = mutableListOf<Disclosure>()
-        for ((disclosure, digest) in calculatedDigestsPerDisclosure) {
-            if (digest !in disclosureDigestsInJwt) {
-                disclosuresMissingDigest.add(disclosure)
-            }
-        }
-
-        if (disclosuresMissingDigest.isNotEmpty()) throw MissingDigests(disclosuresMissingDigest).asException()
-    }
-
-    return runCatching {
-        // Get Digests
-        val disclosureDigestsInJwt = disclosureDigests(jwtClaims).also {
-            // Make sure Digests are unique
-            if (it.toSet().size != it.size) throw NonUniqueDisclosureDigests.asException()
-        }
-
-        // Make sure there is signed digest for each disclosure
-        disclosures().also { disclosures ->
-            val hashingAlgorithm = hashingAlgorithmClaim()
-            allDisclosuresHaveSignedDigest(hashingAlgorithm, disclosures, disclosureDigestsInJwt)
+    val disclosuresMissingDigest = mutableListOf<Disclosure>()
+    for ((disclosure, digest) in calculatedDigestsPerDisclosure) {
+        if (digest !in digests) {
+            disclosuresMissingDigest.add(disclosure)
         }
     }
+
+    if (disclosuresMissingDigest.isNotEmpty()) throw MissingDigests(disclosuresMissingDigest).asException()
+    return disclosures
+}
+
+private fun uniqueDigests(jwtClaims: Claims): Set<DisclosureDigest> {
+    // Get Digests
+    val digests = disclosureDigests(jwtClaims)
+    val uniqueDigests = digests.toSet()
+    if (uniqueDigests.size != digests.size) throw NonUniqueDisclosureDigests.asException()
+    return uniqueDigests
+}
+
+/**
+ * Looks in the provided claims for the hashing algorithm
+ * @param jwtClaims the claims in the JWT part of the SD-jWT
+ * @return the hashing algorithm, if a hashing algorithm is present and contains a string
+ * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
+ */
+private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
+    return jwtClaims["_sd_alg"]?.let { element ->
+        if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
+        else null
+    } ?: throw MissingOrUnknownHashingAlgorithm.asException()
 }
 
 /**
