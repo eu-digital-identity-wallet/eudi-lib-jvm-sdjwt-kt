@@ -62,7 +62,6 @@ class HolderBindingTest {
      */
     @Test
     fun testIssuance() {
-
         val emailCredential = SampleCredential(
             givenName = "John",
             familyName = "Doe",
@@ -115,7 +114,7 @@ class HolderBindingTest {
             issuer.jwtVerifier(),
             issuer.extractHolderPubKey(),
             holder.holderBindingVerifier(),
-            presentedSdJwt
+            presentedSdJwt,
         )
     }
 
@@ -140,7 +139,6 @@ fun JWK.asJsonObject(): JsonObject = json.parseToJsonElement(toJSONString()).jso
  * Sample issuer
  */
 class SampleIssuer(private val issuerKey: ECKey) {
-
 
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType("sd-jwt")
@@ -205,16 +203,15 @@ class SampleIssuer(private val issuerKey: ECKey) {
         return sdJwtIssuer.issue(sdJwtElements = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
-                issued.selectivelyDisclosedClaims().onEachIndexed{ i,c-> issuerDebug("-> $i $c")}
+                issued.selectivelyDisclosedClaims().onEachIndexed { i, c -> issuerDebug("-> $i $c") }
                 issued
             },
             onFailure = { exception ->
                 issuerDebug("Failed to issue SD-JWT")
                 throw exception
-            }
+            },
         )
     }
-
 
     /**
      * This is the issuer convention of including holder's pub key to SD-JWT
@@ -280,7 +277,7 @@ class SampleHolder(private val holderKey: ECKey) {
             onFailure = { exception ->
                 holderDebug("Failed to store SD-JWT")
                 throw exception
-            }
+            },
         )
     }
 
@@ -317,7 +314,7 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
         issuerJwtVerifier: JwtVerifier,
         holderPubKeyExtractor: (Claims) -> JWK?,
         holderBindingJwtVerifier: (JWK) -> JwtVerifier,
-        sdJwt: String
+        sdJwt: String,
     ) {
         SdJwtVerifier.verifyPresentation(
             jwtVerifier = issuerJwtVerifier,
@@ -327,17 +324,16 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
             presentation = SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.holderBindingJwt)
 
             verifierDebug("Presentation accepted with SD Claims:")
-            presented.selectivelyDisclosedClaims().onEachIndexed{ i,c-> verifierDebug("-> $i $c")}
+            presented.selectivelyDisclosedClaims().onEachIndexed { i, c -> verifierDebug("-> $i $c") }
         }, onFailure = { exception ->
             verifierDebug("Unable to verify presentation")
             throw exception
         })
-
     }
 
     private fun holderBindingVerifier(
         holderPubKeyExtractor: (Claims) -> JWK?,
-        holderBindingJwtVerifier: (JWK) -> JwtVerifier
+        holderBindingJwtVerifier: (JWK) -> JwtVerifier,
     ): HolderBindingVerifier =
         HolderBindingVerifier.MustBePresentAndValid { sdJwtClaims ->
             holderPubKeyExtractor(sdJwtClaims)?.let { jwk ->
