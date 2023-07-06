@@ -69,6 +69,9 @@ val sdJwt = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorith
 
 ```
 
+Please check [HolderBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/HolderBindingTest.kt) for more advanced
+issuance scenario, including adding to the SD-JWT, holder public key, to leverage holder binding.
+
 ## Holder Verification
 
 In this case the SD-JWT is expected to be in Combined Issuance format.
@@ -81,13 +84,12 @@ import eu.europa.ec.eudi.sdjwt.*
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.crypto.ECDSAVerifier
 
-val unverifiedSdJwt : String ="..."
+val unverifiedSdJwt: String = "..."
 val issuerPubKey: ECPublicKey
-val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier() 
+val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
-val holdersSdJwt : SdJwt.Issuance<Claims> = 
-    SdJwtVerifier.verifyIssuance(jwtVerifier, unverifiedSdJwt).getOrThrow()
-val (jwtClaims, disclosures) = holdersSdJwt
+val issued: SdJwt.Issuance<JwtAndClaims> = SdJwtVerifier.verifyIssuance(jwtVerifier, unverifiedSdJwt).getOrThrow()
+val (jwtAndClaims, disclosures) = issued
 ```
 
 ## Holder Presentation
@@ -101,15 +103,14 @@ In the following example, `Holder` presents only `street_address` and `country` 
 
 ```kotlin
 
-val holdersSdJwt : SdJwt.Issuance<SignedJWT> 
+//
+//  The SD-JWT that holder has an issued SD-JWT
+val issued: SdJwt.Issuance<JwtAndClaims> 
+val whatToDisclose : (Claim)->Boolean = {claim -> claim.name() in listOf("street_address", "country")}
 
-// Chooses which selectively disclosable claims to be presented
-val claimsToDisclose = {claim -> claim.name in listOf("street_address", "country")}
 
-val presentationSdJwt : SdJwt.Presentation<SignedJwt, Nothing> =  
-        holdersSdJwt.present(null, claimsToDisclose)
-
-val presentationSdJwtStr = presentationSdJwt.serialize()
+val presentation: SdJwt.Presentation<JwtAndClaims, Nothing> = issued.present(criteria = whatToDisclose)
+val combinedPresentationFormat: String = presentation.toCombinedPresentationFormat({it.first}, {it})
 
 ```
 
@@ -134,7 +135,7 @@ val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 // The following demonstrates verification of presentation
 // without Holder Binding JWT
 //
-val sdJwt : SdJwt.Presentation<Claims, String> =
+val sdJwt : SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
     SdJwtVerifier.verifyPresentation(
         jwtVerifier = jwtVerifier,
         holderBindingVerifier = HolderBindingVerifier.MustNotBePresent,
@@ -142,6 +143,8 @@ val sdJwt : SdJwt.Presentation<Claims, String> =
     ).getOrThrow()
 
 ```
+Please check [HolderBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/HolderBindingTest.kt) for more advanced
+presentation scenario which includes holder binding
 
 ## DSL Examples
 

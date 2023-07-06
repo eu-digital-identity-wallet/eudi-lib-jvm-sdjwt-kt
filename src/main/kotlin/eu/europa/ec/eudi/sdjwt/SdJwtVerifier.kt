@@ -227,7 +227,7 @@ sealed interface HolderBindingVerifier {
 }
 
 /**
- *
+ * Representation of a JWT both as [string][Jwt] and its [payload][Claims]
  */
 typealias JwtAndClaims = Pair<Jwt, Claims>
 
@@ -253,13 +253,17 @@ object SdJwtVerifier {
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures) = parseCombinedIssuance(unverifiedSdJwt).getOrThrow()
+        val (unverifiedJwt, unverifiedDisclosures) = parseCombinedIssuance(unverifiedSdJwt)
+
         // Check JWT signature
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
         val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
         val digests = uniqueDigests(jwtClaims)
+
         // Check Disclosures
         val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
+
+        // Assemble it
         SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
     }
 
@@ -296,9 +300,9 @@ object SdJwtVerifier {
 
         // Check Holder binding
         val hbClaims = holderBindingVerifier.verify(jwtClaims, unverifiedHBJwt).getOrThrow()
-        val holderBindingJwtAndClaims = unverifiedHBJwt?.let { hb -> hbClaims?.let { cs -> hb to cs } }
 
         // Assemble it
+        val holderBindingJwtAndClaims = unverifiedHBJwt?.let { hb -> hbClaims?.let { cs -> hb to cs } }
         SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
     }
 }
@@ -308,14 +312,13 @@ object SdJwtVerifier {
  * @param unverifiedSdJwt the SD-JWT to be verified
  * @return the JWT and the list of disclosures (as string), or raises [ParsingError]
  */
-private fun parseCombinedIssuance(unverifiedSdJwt: String): Result<Pair<Jwt, List<String>>> =
-    runCatching {
-        val parts = unverifiedSdJwt.split('~')
-        if (parts.size <= 1) throw ParsingError.asException()
-        val jwt = parts[0]
-        val ds = parts.drop(1).filter { it.isNotBlank() }
-        jwt to ds
-    }
+private fun parseCombinedIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
+    val parts = unverifiedSdJwt.split('~')
+    if (parts.size <= 1) throw ParsingError.asException()
+    val jwt = parts[0]
+    val ds = parts.drop(1).filter { it.isNotBlank() }
+    return jwt to ds
+}
 
 /**
  * Parses an SD-JWT, assuming Combined Presentation Format
@@ -334,6 +337,7 @@ private fun parseCombinedPresentation(unverifiedSdJwt: String): Triple<Jwt, List
 
 /**
  * Verify the disclosures
+ *
  * @param hashAlgorithm
  * @param unverifiedDisclosures
  * @param digests
@@ -350,12 +354,10 @@ private fun verifyDisclosures(
      */
     fun uniqueDisclosures(): Set<Disclosure> {
         val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
-
         maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
             if (invalidDisclosures.isNotEmpty())
                 throw InvalidDisclosures(invalidDisclosures.toList()).asException()
         }
-
         return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
             if (unverifiedDisclosures.size != disclosures.size) throw NonUnqueDisclosures.asException()
         }
