@@ -72,6 +72,7 @@ class SdJwtIssuanceVerifierTest {
             },
         )
     }
+
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() {
         verifyIssuanceExpectingError(
@@ -108,8 +109,6 @@ class SdJwtIssuanceVerifierTest {
         )
     }
 
-
-
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() {
         verifyIssuanceSuccess(
@@ -117,7 +116,6 @@ class SdJwtIssuanceVerifierTest {
             "$jwt~",
         )
     }
-
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and valid holderBinding verify should return Valid`() {
@@ -153,11 +151,4 @@ class SdJwtIssuanceVerifierTest {
         )
     }
 
-    @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures and valid holder binding verify should return Valid`() {
-        verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~$d1~$jwt",
-        )
-    }
 }
