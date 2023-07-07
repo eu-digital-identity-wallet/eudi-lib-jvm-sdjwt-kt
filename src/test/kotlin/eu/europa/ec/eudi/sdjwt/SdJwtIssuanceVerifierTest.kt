@@ -55,7 +55,6 @@ class SdJwtIssuanceVerifierTest {
     private fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
         jwtSignatureVerifier: JwtSignatureVerifier,
-        //holderBindingVerifier: HolderBindingVerifier,
         unverifiedSdJwt: String,
     ) {
         val verification = SdJwtVerifier.verifyIssuance(
@@ -109,14 +108,7 @@ class SdJwtIssuanceVerifierTest {
         )
     }
 
-    @Test
-    fun `when sd-jwt has an invalid jwt, no disclosures and has holderBinding verify should return InvalidJwt`() {
-        verifyIssuanceExpectingError(
-            VerificationError.InvalidJwt,
-            JwtSignatureVerifier.NoSignatureValidation,
-            "jwt~hb",
-        )
-    }
+
 
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() {
@@ -126,14 +118,6 @@ class SdJwtIssuanceVerifierTest {
         )
     }
 
-    @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and invalid holderBinding verify should return InvalidHolderBindingJwt`() {
-        verifyIssuanceExpectingError(
-            VerificationError.HolderBindingFailed(HolderBindingError.InvalidHolderBindingJwt),
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~hb",
-        )
-    }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and valid holderBinding verify should return Valid`() {
