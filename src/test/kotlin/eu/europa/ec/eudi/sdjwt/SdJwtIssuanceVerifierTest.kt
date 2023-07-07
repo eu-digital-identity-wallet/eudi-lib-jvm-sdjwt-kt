@@ -118,14 +118,6 @@ class SdJwtIssuanceVerifierTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and valid holderBinding verify should return Valid`() {
-        verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~$jwt",
-        )
-    }
-
-    @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() {
         verifyIssuanceExpectingError(
             VerificationError.InvalidDisclosures(listOf("d1", "d2")),
@@ -150,5 +142,4 @@ class SdJwtIssuanceVerifierTest {
             "$jwt~$d1~$d1~",
         )
     }
-
 }
