@@ -109,14 +109,14 @@ value class Disclosure private constructor(val value: String) {
             val claimValue = array[2]
             salt to (claimName to claimValue)
         }
-
-        /**
-         * Concatenates the given disclosures into a single string, separated by
-         * "~". The string also starts with "~".
-         */
-        fun concat(ds: Iterable<Disclosure>): String =
-            ds.fold("") { acc, disclosure -> "$acc~${disclosure.value}" }
     }
 }
 
-fun Iterable<Disclosure>.concat(): String = Disclosure.concat(this)
+/**
+ * Concatenates the given disclosures into a single string, separated by
+ * "~". The string also starts with "~".
+ *
+ * @receiver the disclosures to concatenate
+ * @return the string as described above
+ */
+fun Iterable<Disclosure>.concat(): String = fold("") { acc, disclosure -> "$acc~${disclosure.value}" }

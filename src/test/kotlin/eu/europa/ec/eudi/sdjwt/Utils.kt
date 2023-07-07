@@ -39,3 +39,4 @@ fun DisclosedClaims.print() {
     }
     claimSet.also { println(json.encodeToString(it)) }
 }
+fun String.removeNewLine(): String = replace("\n", "")

@@ -21,12 +21,11 @@ import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
-import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import java.util.*
-
-val hmacKey = "111111111111111111111111111111111111111111"
 
 val jwtVcPayload = """{
   "iss": "https://example.com",
@@ -76,58 +75,38 @@ fun main() {
     val vcClaim = jwtVcJson["credentialSubject"]!!.jsonObject
 
     // Generate an RSA key pair
-    val rsaJWK = genRSAKeyPair()
-    val rsaPublicJWK = rsaJWK.toPublicJWK().also { println("\npublic key\n================\n$it") }
+    val issuerKeyPair = genRSAKeyPair()
+    val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: CombinedIssuanceSdJwt = SdJwtSigner.sign(
-        signer = RSASSASigner(rsaJWK),
-        signAlgorithm = JWSAlgorithm.RS256,
-        disclosuresCreator = DisclosuresCreator(hashAlgorithm = HashAlgorithm.SHA3_512),
-        sdJwtElements = sdJwt {
+    val sdJwt: String =
+
+        sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
             structuredWithFlatClaims("credentialSubject", vcClaim)
-        },
-    ).getOrThrow()
+        }.serialize()
 
-    val (jwt, disclosures) = sdJwt.decompose().getOrThrow()
+    val verification = verifyIssuance(sdJwt, issuerPubKey)
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)
     println("\nVC as sd-jwt\n================")
     println(sdJwt)
-    println("\nJwt\n================")
-    println(jwt)
-    println("\nDisclosures\n================")
-    disclosures.forEach { println(it.claim()) }
 
-    val claimSet = verify(jwt, disclosures, RSASSAVerifier(rsaPublicJWK)).getOrThrow()
+    verification.fold(
+        onSuccess = { issuanceSdJwt ->
+            println("\nDisclosures\n================")
+            issuanceSdJwt.disclosures.forEach { println(it.claim()) }
+            println("\nVerified Claim Set \n================")
+            println(format.encodeToString(issuanceSdJwt.jwt))
+        },
+        onFailure = {
+            println("Error: $it")
+        },
 
-    println("\nVerified Claim Set \n================")
-    println(format.encodeToString(claimSet))
+    )
 }
 
-fun verify(jwt: Jwt, ds: List<Disclosure>, verifier: com.nimbusds.jose.JWSVerifier): Result<JsonObject> {
-    fun extractDisclosureHashes(j: JsonObject): Result<List<DisclosureDigest>> = runCatching {
-        val hds: List<DisclosureDigest> = j["_sd"]?.jsonArray?.map {
-            check(it.jsonPrimitive.isString)
-            DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow()
-        } ?: emptyList()
-
-        hds + j.values.filterIsInstance<JsonObject>().flatMap { extractDisclosureHashes(it).getOrThrow() }
-    }
-    return runCatching {
-        val signedJwt = SignedJWT.parse(jwt)
-        check(signedJwt.verify(verifier)) { "Signature verification failed" }
-        val sdAlg = signedJwt.jwtClaimsSet.getStringClaim("_sd_alg")
-            ?: throw IllegalArgumentException("Missing _sd_alg attribute")
-        val hashAlg = HashAlgorithm.fromString(sdAlg) ?: throw IllegalArgumentException("Unsupported hash alg $sdAlg")
-        val calculatedHashes = ds.associateBy { DisclosureDigest.digest(hashAlg, it).getOrThrow() }
-
-        val str = signedJwt.jwtClaimsSet.toString(false)
-        val claimSet = format.parseToJsonElement(str).jsonObject
-        val ehds: List<DisclosureDigest> = extractDisclosureHashes(claimSet).getOrThrow()
-        if (calculatedHashes.keys.any { !ehds.contains(it) }) throw IllegalArgumentException("Hash mismatch")
-
-        claimSet
-    }
+fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<JwtAndClaims>> {
+    val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
+    return SdJwtVerifier.verifyIssuance(jwtVer, sdJwt)
 }

@@ -147,7 +147,7 @@ class DisclosedClaimSetTest {
             assertContainsPlainClaims(jwtClaimSet, plainClaims)
             assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
             assertDisclosures()
-            assertHashesNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+            assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
             return disclosedJsonObject
         }
     }
@@ -213,7 +213,7 @@ class DisclosedClaimSetTest {
             assertJwtClaimSetSize()
             assertContainsPlainClaims(jwtClaimSet, plainClaims)
             assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
-            assertHashesNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+            assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
         }
     }
 
@@ -239,46 +239,16 @@ class DisclosedClaimSetTest {
             assertEquals(expectedSdAlgValue, sdAlgValue)
         }
 
-        fun assertHashesNumberGreaterOrEqualToDisclosures(
+        fun assertDigestNumberGreaterOrEqualToDisclosures(
             sdEncoded: JsonObject,
             disclosures: Collection<Disclosure>,
         ) {
-            val hashes = sdEncoded.collectHashedDisclosures()
+            val hashes = disclosureDigests(sdEncoded)
             // Hashes can be more than disclosures due to decoy
             if (disclosures.isNotEmpty()) {
                 assertTrue { hashes.size >= disclosures.size }
             } else {
                 assertTrue(hashes.isEmpty())
-            }
-        }
-
-        private fun JsonObject.collectHashedDisclosures(): List<DisclosureDigest> =
-            map { (attr, json) ->
-                when {
-                    attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
-                        DisclosureDigest.wrap(v.jsonPrimitive.content).getOrThrow()
-                    }
-
-                    json is JsonObject -> json.collectHashedDisclosures()
-                    json is JsonArray -> TODO()
-                    else -> emptyList()
-                }
-            }.flatten()
-
-        private fun JsonElement.collectHashes(): List<DisclosureDigest> {
-            return when (this) {
-                is JsonObject -> map { (attr, json) ->
-                    when {
-                        attr == "_sd" && json is JsonArray -> json.jsonArray.map { v ->
-                            DisclosureDigest.wrap(v.jsonPrimitive.content).getOrThrow()
-                        }
-
-                        else -> json.collectHashes()
-                    }
-                }.flatten()
-
-                is JsonArray -> map { json -> json.collectHashes() }.flatten()
-                else -> emptyList()
             }
         }
     }
