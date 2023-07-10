@@ -15,97 +15,165 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
-private typealias DisclosurePerDigest = Map<DisclosureDigest, Disclosure>
+/**
+ * Recreates the claims, used to produce the SD-JWT
+ * That are :
+ * - The plain claims found into the [SdJwt.jwt]
+ * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
+ *   be replaced by [Disclosure.claim]
+ *
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to use
+ * @return the claims that were used to produce the SD-JWT
+ */
+fun <JWT> SdJwt<JWT, *>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
+    val disclosedClaims = DisclosedClaims(disclosures, JsonObject(claimsOf(jwt)))
+    return RecreateClaims.recreateClaims(disclosedClaims)
+}
 
-fun SdJwt<Claims, *>.recreateClaims(): Claims =
-    RecreateClaims.recreateClaims(disclosures, jwt)
+private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
-fun DisclosedClaims.recreateClaims(): Claims =
-    RecreateClaims.recreateClaims(disclosures, claimSet)
+internal object RecreateClaims {
 
-object RecreateClaims {
-
-    fun recreateClaims(disclosures: Set<Disclosure>, claims: Claims): Claims {
-        val sdAlgorithm = claims.hashAlgorithm()
-        require(sdAlgorithm != null || disclosureDigests(claims).isEmpty()) { "Missing hashing algorithm" }
-        if (sdAlgorithm == null) {
-            return claims
+    internal fun recreateClaims(disclosedClaims: DisclosedClaims): Claims {
+        val (disclosures, claims) = disclosedClaims
+        val hashAlgorithm = claims.hashAlgorithm()
+        return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
+        else {
+            val containsDigests = disclosureDigests(claims).isNotEmpty()
+            if (disclosures.isEmpty() && !containsDigests) claims
+            else error("Missing hash algorithm")
         }
-        val disclosuresPerDigest = disclosures.associateBy { DisclosureDigest.digest(sdAlgorithm, it.value).getOrThrow() }
-        val (outDisclosuresPerDigest, outClaims) = replaceDigestsRecursively(disclosuresPerDigest, claims - "_sd_alg")
-        require(outDisclosuresPerDigest.isEmpty()) {
-            "Could not find digests for disclosures ${outDisclosuresPerDigest.values.map { it.claim().name() }}"
-        }
-        return outClaims
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
-    private fun replaceDigestsRecursively(disclosuresPerDigest: DisclosurePerDigest, claims: Claims): Pair<DisclosurePerDigest, Claims> {
-        val (tmpDpD, tmpCs) = replaceDigests(disclosuresPerDigest, claims)
-        val outCs = tmpCs.toMutableMap()
-        var outDpd = tmpDpD.toMutableMap()
-        for (c in tmpCs) {
-            when (val cVal = c.value) {
-                is JsonObject -> {
-                    val (iDpd, iCs) = replaceDigestsRecursively(tmpDpD, cVal)
-                    outCs[c.key] = JsonObject(iCs)
-                    outDpd = iDpd.toMutableMap()
-                }
-                is JsonArray -> {
-                    outCs[c.key] = buildJsonArray {
-                        addAll(
-                            cVal.map {
-                                if (it is JsonObject) {
-                                    val (iDpd, iCs) = replaceDigestsRecursively(tmpDpD, it.jsonObject)
-                                    outDpd = iDpd.toMutableMap()
-                                    JsonObject(iCs)
-                                } else { it }
-                            },
-                        )
-                    }
-                }
-                else -> {
-                    outCs[c.key] = cVal
-                }
-            }
-        }
-
-        return outDpd to outCs
-    }
-
-    private fun replaceDigests(
-        disclosuresPerDigest: DisclosurePerDigest,
+    /**
+     * Replaces the digests found within [claims] and/or [disclosures] with
+     * the [disclosures]
+     *
+     * @param hashAlgorithm the hash algorithm used to produce the [digests][DisclosureDigest]
+     * @param disclosures the disclosures to use when replacing digests
+     * @param claims the claims to use
+     *
+     * @return the initial [claims] having all digests replaced by [Disclosure]
+     * @throws IllegalStateException when not all [disclosures] have been used, which means
+     * that [claims] doesn't contain a [DisclosureDigest] for every [Disclosure]
+     */
+    private fun replaceDigestsWithDisclosures(
+        hashAlgorithm: HashAlgorithm,
+        disclosures: Set<Disclosure>,
         claims: Claims,
-    ): Pair<DisclosurePerDigest, Claims> {
-        val outClaims = claims.toMutableMap()
-        val outDisclosuresPerDigest = disclosuresPerDigest.toMutableMap()
+    ): Claims {
+        // Recalculate digests, using the hash algorithm
+        val disclosuresPerDigest = disclosures.associateBy {
+            DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
+        }.toMutableMap()
 
-        fun replaceDigest(digest: DisclosureDigest, disclosure: Disclosure) {
+        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims)
+
+        // Make sure, all disclosures have been embedded
+        require(disclosuresPerDigest.isEmpty()) {
+            "Could not find digests for disclosures ${disclosuresPerDigest.values.map { it.claim().name() }}"
+        }
+        return recreatedClaims
+    }
+
+    /**
+     * Embed disclosures into [jsonElement], if the element
+     * is [JsonObject] or a [JsonArray] with [JSON objects][JsonObject],
+     * including nested elements.
+     *
+     * @param disclosures the disclosures to use when replacing digests
+     * @param jsonElement the element to use
+     * @return a json element where all digests have been replaced by disclosed claims
+     */
+    private fun embedDisclosuresIntoElement(
+        disclosures: DisclosurePerDigest,
+        jsonElement: JsonElement,
+    ): JsonElement = when (jsonElement) {
+        is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement)
+        is JsonArray ->
+            jsonElement
+                .map { element -> embedDisclosuresIntoElement(disclosures, element) }
+                .let { elements -> JsonArray(elements) }
+
+        else -> jsonElement
+    }
+
+    /**
+     * Embed disclosures into [claims]
+     * Replaces the direct (immediate) digests of the object and
+     * then recursively do the same for all elements
+     * that are either objects or arrays
+     *
+     * @param disclosures the disclosures to use when replacing digests
+     * @param claims the claims to use
+     *
+     * @return the given [claims] with the digests, if any, replaced by disclosures, including
+     * all nested objects and/or array of objects
+     */
+    private fun embedDisclosuresIntoObject(
+        disclosures: DisclosurePerDigest,
+        claims: Claims,
+    ): JsonObject =
+        replaceDirectDigests(disclosures, claims)
+            .mapValues { (_, element) -> embedDisclosuresIntoElement(disclosures, element) }
+            .let { obj -> JsonObject(obj) }
+
+    /**
+     * Replaces the direct (immediate) digests found in the _sd claim
+     * with the [Disclosure.claim] from [disclosures]
+     *
+     * @param disclosures the disclosures to use when replacing digests
+     * @param claims the claims to use
+     * @return the given [claims] with the digests, if any, replaced by disclosures.
+     */
+    private fun replaceDirectDigests(
+        disclosures: DisclosurePerDigest,
+        claims: Claims,
+    ): Claims {
+        val resultingClaims = claims.toMutableMap()
+
+        fun embed(digest: DisclosureDigest, disclosure: Disclosure) {
             val (name, value) = disclosure.claim()
             require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
-            outDisclosuresPerDigest.remove(digest)
-            outClaims[name] = value
+            disclosures.remove(digest)
+            resultingClaims[name] = value
         }
 
-        // Replace each digest with the claim from the disclosure
-        for (digest in claims.ownDigests()) {
-            outDisclosuresPerDigest[digest]?.let { disclosure -> replaceDigest(digest, disclosure) }
+        // Replace each digest with the claim from the disclosure, if found
+        // otherwise digest is probably decoy
+        for (digest in claims.directDigests()) {
+            disclosures[digest]?.let { disclosure -> embed(digest, disclosure) }
         }
-        // Remove _sd claim
-        outClaims.remove("_sd")
+        // Remove _sd claim, if present
+        resultingClaims.remove("_sd")
 
-        return outDisclosuresPerDigest to outClaims
+        return resultingClaims
     }
-
-    private fun Claims.ownDigests(): Set<DisclosureDigest> =
-        this["_sd"]?.jsonArray
-            ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
-            ?.toSet()
-            ?: emptySet()
-
-    private fun Claims.hashAlgorithm(): HashAlgorithm? =
-        this["_sd_alg"]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
 }
+
+/**
+ * Cet the [digests][DisclosureDigest] by looking for digests claim.
+ * This should be an array, of digests, under "_sd" name.
+ *
+ * No recursive involved. Just the immediate digests.
+ *
+ *  @receiver the claims to check
+ *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
+ */
+private fun Claims.directDigests(): Set<DisclosureDigest> =
+    this["_sd"]?.jsonArray
+        ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
+        ?.toSet()
+        ?: emptySet()
+
+/**
+ * Gets from the [Claims] the hash algorithm claim ("_sd_alg")
+ * @receiver the claims to check
+ * @return The [HashAlgorithm] if found
+ */
+private fun Claims.hashAlgorithm(): HashAlgorithm? =
+    this["_sd_alg"]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }

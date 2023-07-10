@@ -147,9 +147,6 @@ sealed interface SdJwt<out JWT, out HB_JWT> {
      */
     val disclosures: Set<Disclosure>
 
-    fun selectivelyDisclosedClaims(): Claims =
-        disclosures.associate { it.claim() }
-
     /**
      * The SD-JWT as it is produced by the issuer and handed-over to the holder
      * @param jwt The JWT part of the SD-JWT
@@ -173,13 +170,25 @@ sealed interface SdJwt<out JWT, out HB_JWT> {
     ) : SdJwt<JWT, HB_JWT>
 }
 
+/**
+ * Creates a [presentation SD-JWT][SdJwt.Presentation]
+ *
+ * @param holderBindingJwt optional, the Holder Binding JWT to include
+ * @param selectivelyDisclose a predicate of the [claims][SdJwt.Issuance.disclosures]
+ * to be selectively disclosed into the presentation
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @param HB_JWT the type representing the Holder Binding part of the SD
+ * @return the presentation
+ *
+ * @receiver the [issued SD-JWT][SdJwt.Issuance] from which the presentation will be created
+ */
 fun <JWT, HB_JWT> SdJwt.Issuance<JWT>.present(
     holderBindingJwt: HB_JWT? = null,
-    criteria: (Claim) -> Boolean,
+    selectivelyDisclose: (Claim) -> Boolean,
 ): SdJwt.Presentation<JWT, HB_JWT> =
     SdJwt.Presentation(
         jwt,
-        disclosures.filter { disclosure -> criteria(disclosure.claim()) }.toSet(),
+        disclosures.filter { disclosure -> selectivelyDisclose(disclosure.claim()) }.toSet(),
         holderBindingJwt,
     )
 

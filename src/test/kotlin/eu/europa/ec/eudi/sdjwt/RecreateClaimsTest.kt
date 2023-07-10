@@ -15,9 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
@@ -36,8 +36,12 @@ class RecreateClaimsTest {
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdJwtElements: List<SdJwtElement>): Claims =
-        DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow().recreateClaims()
+    private fun discloseAndRecreate(sdJwtElements: List<SdJwtElement>): Claims {
+        val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow()
+        return RecreateClaims.recreateClaims(disclosedClaims).also {
+            println(json.encodeToString(it))
+        }
+    }
 
     @Test
     fun `recreating plain and flat disclosed claims should return their combination`() {
@@ -86,6 +90,44 @@ class RecreateClaimsTest {
 
         val expected = plainClaims + buildJsonObject {
             put("structured", JsonObject(structuredSubClaims + structuredPlainSubClaims))
+        }
+
+        val actual = discloseAndRecreate(sdJwtElements)
+        assertEquals(expected, actual)
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun `recreating plain and recursive which contains some plain and flats`() {
+        val plainClaims = buildJsonObject {
+            put("iss", "iss")
+            put("sub", "sub")
+        }
+        val subClaims = buildJsonObject {
+            put("test123", 123)
+            putJsonArray("foo") { addAll(listOf(true, false, true)) }
+            putJsonArray("addresses") {
+                add(
+                    buildJsonObject {
+                        put("type", "work")
+                        put("street", "wotkStreet")
+                    },
+                )
+                add(
+                    buildJsonObject {
+                        put("type", "home")
+                        put("street", "homeStreet")
+                    },
+                )
+            }
+        }
+        val sdJwtElements = sdJwt {
+            plain(plainClaims)
+            recursively("recursively", subClaims)
+        }
+
+        val expected = plainClaims + buildJsonObject {
+            put("recursively", subClaims)
         }
 
         val actual = discloseAndRecreate(sdJwtElements)
