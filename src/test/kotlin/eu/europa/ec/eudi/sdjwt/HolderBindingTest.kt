@@ -347,3 +347,6 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
         println("Verifier: $s")
     }
 }
+
+private fun SdJwt<*, *>.selectivelyDisclosedClaims(): Claims =
+    disclosures.associate { it.claim() }

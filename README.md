@@ -25,7 +25,8 @@ Library's SD-JWT DSL leverages the the DSL provided by
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT (in Combined Issuance Format)
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT (in Combined Issuance Format) issued by an Issuer
 - [Holder Presentation](#holder-presentation): As Holder create a SD-JWT for presentation (in Combined Presentation Format)
-- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT (in Combined Presentation Format) 
+- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT (in Combined Presentation Format)
+- [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
 ## Issuance
 
@@ -50,7 +51,7 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val iss = "Issuer"
 val issuerKeyPair: RSAKey
-val sdJwt = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
     
     sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
     iss("https://example.com/issuer")
@@ -145,6 +146,53 @@ val sdJwt : SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
 ```
 Please check [HolderBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/HolderBindingTest.kt) for more advanced
 presentation scenario which includes holder binding
+
+
+## Recreate original claims
+
+Given an `SdJwt`, either issuance or presentation, the original claims used to produce the SD-JWT can be
+recreated. This includes the claims that are always disclosed (included in the JWT part of the SD-JWT) having 
+the digests replaced by selectively disclosable claims found in disclosures.
+
+```kotlin
+val iss = "Issuer"
+val issuerKeyPair: RSAKey
+val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+
+    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
+
+    structured("address") {
+        flat {
+            put("street_address", "Schulstr. 12")
+            put("locality", "Schulpforta")
+            put("region", "Sachsen-Anhalt")
+            put("country", "DE")
+        }
+    }
+}
+val claims: Claims = sdJwt.recreateClaims{ jwt -> jwt.asClaims() }
+```
+
+The claims contents would be
+
+```json
+{
+   "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
+   "iss": "https://example.com/issuer",
+   "iat": 1516239022,
+   "exp": 1735689661,
+   "address" : {
+        "street_address": "Schulstr. 12",
+        "locality": "Schulpforta",
+        "region": "Sachsen-Anhalt",
+        "country": "DE"
+   }
+}
+```
+
 
 ## DSL Examples
 
