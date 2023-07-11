@@ -29,8 +29,7 @@ jobs:
   publish-to-sonatype-snapshot:
     name: Publish to sonatype.org (SNAPSHOT)
     needs: [ build-gradle ]
-    # Runs only in main
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&  github.repository_owner == 'eu-digital-identity-wallet'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release')) &&  github.repository_owner == 'eu-digital-identity-wallet'
     runs-on: ubuntu-latest
     permissions:
       contents: read
