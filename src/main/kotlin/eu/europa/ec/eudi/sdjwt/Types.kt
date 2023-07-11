@@ -118,8 +118,6 @@ data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonO
     }
 }
 
-operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = DisclosedClaims.add(this, that)
-
 typealias Jwt = String
 
 /**
