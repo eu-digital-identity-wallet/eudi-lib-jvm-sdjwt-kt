@@ -17,7 +17,7 @@ disclosable.
 Library implements [SD-JWT draft4](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-04.html)
 is implemented in Kotlin, targeting JVM.
 
-Library's SD-JWT DSL leverages the the DSL provided by 
+Library's SD-JWT DSL leverages the DSL provided by 
 [KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements 
 
 ## Use cases supported
@@ -239,11 +239,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
-
-
-
-
-
-
