@@ -74,7 +74,9 @@ class HolderBindingTest {
             println("Issued: ${it.serialize()}")
         }
         // Assert Disclosed claims
-        val selectivelyDisclosedClaims = issuedSdJwt.selectivelyDisclosedClaims()
+        val selectivelyDisclosedClaims = issuedSdJwt.recreateClaims { it.jwtClaimsSet.asClaims() }["credentialSubject"]?.jsonObject
+            ?: JsonObject(emptyMap())
+
         assertEquals(4, selectivelyDisclosedClaims.size)
         assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
         assertEquals(emailCredential.familyName, selectivelyDisclosedClaims["family_name"]?.jsonPrimitive?.content)
@@ -203,7 +205,6 @@ class SampleIssuer(private val issuerKey: ECKey) {
         return sdJwtIssuer.issue(sdJwtElements = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
-                issued.selectivelyDisclosedClaims().onEachIndexed { i, c -> issuerDebug("-> $i $c") }
                 issued
             },
             onFailure = { exception ->
@@ -283,8 +284,8 @@ class SampleHolder(private val holderKey: ECKey) {
 
     fun present(verifierChallenge: JsonObject, criteria: (Claim) -> Boolean): String {
         holderDebug("Presenting credentials ...")
-        val holderBindingJwt = keyBindingJwt(verifierChallenge)
-        return credentialSdJwt!!.present(holderBindingJwt, criteria).toCombinedPresentationFormat({ it }, { it })
+        val keyBindingJwt = keyBindingJwt(verifierChallenge)
+        return credentialSdJwt!!.present(keyBindingJwt, criteria).toCombinedPresentationFormat({ it }, { it })
     }
 
     private fun keyBindingJwt(verifierChallenge: JsonObject): String =
@@ -325,7 +326,6 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
                 SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.keyBindingJwt?.first)
 
             verifierDebug("Presentation accepted with SD Claims:")
-            presented.selectivelyDisclosedClaims().onEachIndexed { i, c -> verifierDebug("-> $i $c") }
         }, onFailure = { exception ->
             verifierDebug("Unable to verify presentation")
             throw exception
@@ -348,6 +348,3 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
         println("Verifier: $s")
     }
 }
-
-private fun SdJwt<*, *>.selectivelyDisclosedClaims(): Claims =
-    disclosures.associate { it.claim() }

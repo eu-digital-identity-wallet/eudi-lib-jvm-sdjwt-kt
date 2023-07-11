@@ -48,13 +48,13 @@ fun Claim.value(): JsonElement = second
 typealias Claims = Map<String, JsonElement>
 
 /**
- * Salt to be included in a [Disclosure] claim.
+ * Salt to be included in a [ClaimDisclosure] claim.
  * Check [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 typealias Salt = String
 
 /**
- * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
+ * Hashing algorithms, used to produce the [DisclosureDigest] of a [ClaimDisclosure]
  */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),
@@ -84,6 +84,12 @@ sealed interface SdJwtElement {
     data class FlatDisclosed(val claims: Claims) : SdJwtElement
     data class StructuredDisclosed(val claimName: String, val elements: List<SdJwtElement>) : SdJwtElement
     data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
+    data class Array(val claimName: String, val elements: List<SdArrayElement>) : SdJwtElement
+}
+
+sealed interface SdArrayElement {
+    data class Plain(val element: JsonElement) : SdArrayElement
+    data class SelectivelyDisclosed(val element: JsonElement) : SdArrayElement
 }
 
 /**
@@ -179,7 +185,12 @@ fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
 ): SdJwt.Presentation<JWT, KB_JWT> =
     SdJwt.Presentation(
         jwt,
-        disclosures.filter { disclosure -> selectivelyDisclose(disclosure.claim()) }.toSet(),
+        disclosures.filter { disclosure ->
+            when (disclosure) {
+                is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                is Disclosure.ObjectProperty -> selectivelyDisclose(disclosure.claim())
+            }
+        }.toSet(),
         keyBindingJwt,
     )
 

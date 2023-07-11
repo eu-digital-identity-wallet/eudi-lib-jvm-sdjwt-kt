@@ -38,21 +38,21 @@ class DisclosuresCreator(
 ) {
 
     /**
-     * Creates [disclosures][Disclosure] & [hashes][DisclosureDigest], possibly including decoys,
+     * Creates [disclosures][Disclosure] & [hashes][Disclosure], possibly including decoys,
      * depending on the [numOfDecoysLimit] provided
      *
-     * @param claims the claims for which to calculate [Disclosure] and [DisclosureDigest]
+     * @param claims the claims for which to calculate [DisclosedClaims] and [DisclosureDigest]
      *
      * @return disclosures and hashes, possibly including decoys
      * */
     private fun disclosuresAndDigests(
         claims: Claims,
         allowNestedHashClaim: Boolean,
-    ): Pair<Set<Disclosure>, Set<DisclosureDigest>> {
-        val digestPerDisclosure = mutableMapOf<Disclosure, DisclosureDigest>()
+    ): Pair<Set<Disclosure.ObjectProperty>, Set<DisclosureDigest>> {
+        val digestPerDisclosure = mutableMapOf<Disclosure.ObjectProperty, DisclosureDigest>()
 
         for (claim in claims) {
-            val disclosure = Disclosure.encode(saltProvider, claim.toPair(), allowNestedHashClaim).getOrThrow()
+            val disclosure = Disclosure.objectProperty(saltProvider, claim.toPair(), allowNestedHashClaim).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
             digestPerDisclosure[disclosure] = digest
         }
@@ -91,11 +91,38 @@ class DisclosuresCreator(
             return DisclosedClaims(ds1 + ds2, claimSet2)
         }
 
+        fun array(claimName: String, elements: List<SdArrayElement>): DisclosedClaims {
+            return if (elements.isEmpty()) DisclosedClaims.Empty
+            else {
+                val ds = mutableSetOf<Disclosure.ArrayElement>()
+                val elements1 = elements.map { e ->
+                    when (e) {
+                        is SdArrayElement.Plain -> e.element
+                        is SdArrayElement.SelectivelyDisclosed -> {
+                            val disclosure = Disclosure.arrayElement(saltProvider, e.element).getOrThrow()
+                            val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
+                            ds += disclosure
+                            buildJsonObject { put("...", digest.value) }
+                        }
+                    }
+                }
+                DisclosedClaims(
+                    ds,
+                    buildJsonObject {
+                        putJsonArray(claimName) {
+                            addAll(elements1)
+                        }
+                    },
+                )
+            }
+        }
+
         return when (sdJwtElement) {
             is Plain -> plain(sdJwtElement.claims)
             is FlatDisclosed -> flat(sdJwtElement.claims)
             is StructuredDisclosed -> structured(sdJwtElement.claimName, sdJwtElement.elements)
             is RecursivelyDisclosed -> recursively(sdJwtElement.claimName, sdJwtElement.claims)
+            is SdJwtElement.Array -> array(sdJwtElement.claimName, sdJwtElement.elements)
         }
     }
 

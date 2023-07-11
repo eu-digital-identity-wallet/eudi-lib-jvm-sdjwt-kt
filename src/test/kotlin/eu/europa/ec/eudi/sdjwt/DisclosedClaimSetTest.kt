@@ -137,9 +137,15 @@ class DisclosedClaimSetTest {
                 )
 
                 disclosures.forEach { d ->
-                    val (claimName, claimValue) = d.claim()
-                    println("Found disclosure for $claimName -> $claimValue")
-                    assertEquals(claimsToBeDisclosed[claimName], claimValue)
+                    when (d) {
+                        is Disclosure.ObjectProperty -> {
+                            val (claimName, claimValue) = d.claim()
+                            println("Found disclosure for $claimName -> $claimValue")
+                            assertEquals(claimsToBeDisclosed[claimName], claimValue)
+                        }
+
+                        else -> TODO()
+                    }
                 }
             }
 
