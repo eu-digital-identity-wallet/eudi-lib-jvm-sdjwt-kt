@@ -70,8 +70,8 @@ val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKey
 
 ```
 
-Please check [HolderBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/HolderBindingTest.kt) for more advanced
-issuance scenario, including adding to the SD-JWT, holder public key, to leverage holder binding.
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
+issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
 
 ## Holder Verification
 
@@ -98,7 +98,7 @@ val (jwtAndClaims, disclosures) = issued
 To create a presentation SD-JWT, a `Holder` must:
 
 - Have an issued SD-JWT
-- Know whether verifier to whom the presentation is for, requires Holder Binding or not
+- Know whether verifier to whom the presentation is for, requires Key Binding or not
 
 In the following example, `Holder` presents only `street_address` and `country` without Holder Binding 
 
@@ -119,9 +119,9 @@ val combinedPresentationFormat: String = presentation.toCombinedPresentationForm
 
 In this case the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
-to sign the SD-JWT. Also, if verification includes Holder Binding, the Verifier must also
+to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
 know a how the public key of the Holder was included into the SD-JWT and which algorithm
-the Holder used to sign the `Holder Binding JWT`
+the Holder used to sign the `Key Binding JWT`
 
 ```kotlin
 import eu.europa.ec.eudi.sdjwt.*
@@ -134,7 +134,7 @@ val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
 //
 // The following demonstrates verification of presentation
-// without Holder Binding JWT
+// without Key Binding JWT
 //
 val sdJwt : SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
     SdJwtVerifier.verifyPresentation(
@@ -144,8 +144,8 @@ val sdJwt : SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
     ).getOrThrow()
 
 ```
-Please check [HolderBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/HolderBindingTest.kt) for more advanced
-presentation scenario which includes holder binding
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
+presentation scenario which includes key binding
 
 
 ## Recreate original claims

@@ -15,9 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.HolderBindingError.*
-import eu.europa.ec.eudi.sdjwt.HolderBindingVerifier.Companion.MustBePresent
-import eu.europa.ec.eudi.sdjwt.HolderBindingVerifier.MustNotBePresent
+import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.MustBePresent
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
@@ -51,7 +51,7 @@ sealed interface VerificationError {
      * Failure to verify holder binding
      * @param details the specific problem
      */
-    data class HolderBindingFailed(val details: HolderBindingError) : VerificationError
+    data class HolderBindingFailed(val details: KeyBindingError) : VerificationError
 
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
@@ -141,87 +141,87 @@ fun interface JwtSignatureVerifier {
 /**
  * Errors related to Holder Binding
  */
-sealed interface HolderBindingError {
+sealed interface KeyBindingError {
 
     /**
      * Indicates that the pub key of the holder cannot be located
      * in SD-JWT, JWT claims
      */
-    object MissingHolderPubKey : HolderBindingError {
+    object MissingHolderPubKey : KeyBindingError {
         override fun toString(): String = "MissingHolderPubKey"
     }
 
     /**
-     * SD-JWT contains in invalid Holder Binding JWT
+     * SD-JWT contains in invalid Key Binding JWT
      */
-    object InvalidHolderBindingJwt : HolderBindingError {
-        override fun toString(): String = "InvalidHolderBindingJwt"
+    object InvalidKeyBindingJwt : KeyBindingError {
+        override fun toString(): String = "InvalidKeyBindingJwt"
     }
 
     /**
-     * SD-JWT contains a Holder Binding JWT, but this was not expected
+     * SD-JWT contains a Key Binding JWT, but this was not expected
      */
-    object UnexpectedHolderBindingJwt : HolderBindingError {
-        override fun toString(): String = "UnexpectedHolderBindingJwt"
+    object UnexpectedKeyBindingJwt : KeyBindingError {
+        override fun toString(): String = "UnexpectedKeyBindingJwt"
     }
 
     /**
-     * SD-JWT lacks a Holder Binding JWT, which was expected
+     * SD-JWT lacks a Key Binding JWT, which was expected
      */
-    object MissingHolderBindingJwt : HolderBindingError {
-        override fun toString(): String = "MissingHolderBindingJwt"
+    object MissingKeyBindingJwt : KeyBindingError {
+        override fun toString(): String = "MissingKeyBindingJwt"
     }
 }
 
 /**
  * This represents the two kinds of Holder Binding verification
  *
- * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a [SdJwt.Presentation.holderBindingJwt]
- * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid [SdJwt.Presentation.holderBindingJwt]
+ * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a [SdJwt.Presentation.keyBindingJwt]
+ * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid [SdJwt.Presentation.keyBindingJwt]
  */
-sealed interface HolderBindingVerifier {
+sealed interface KeyBindingVerifier {
 
     fun verify(jwtClaims: Claims, holderBindingJwt: String?): Result<Claims?> = runCatching {
         fun mustBeNotPresent(): Claims? =
-            if (holderBindingJwt != null) throw UnexpectedHolderBindingJwt.asException()
+            if (holderBindingJwt != null) throw UnexpectedKeyBindingJwt.asException()
             else null
 
         fun mustBePresentAndValid(holderBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
-            if (holderBindingJwt == null) throw MissingHolderBindingJwt.asException()
+            if (holderBindingJwt == null) throw MissingKeyBindingJwt.asException()
             val holderBindingJwtVerifier =
                 holderBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
             return holderBindingJwtVerifier.checkSignature(holderBindingJwt)
-                ?: throw InvalidHolderBindingJwt.asException()
+                ?: throw InvalidKeyBindingJwt.asException()
         }
         when (this) {
             is MustNotBePresent -> mustBeNotPresent()
-            is MustBePresentAndValid -> mustBePresentAndValid(holderBindingVerifierProvider)
+            is MustBePresentAndValid -> mustBePresentAndValid(keyBindingVerifierProvider)
         }
     }
 
     /**
      * Indicates that a presentation SD-JWT must not have holder binding
      */
-    object MustNotBePresent : HolderBindingVerifier
+    object MustNotBePresent : KeyBindingVerifier
 
     /**
      * Indicates that a presentation SD-JWT must have holder binding
      *
-     * @param holderBindingVerifierProvider this is a function to extract of the JWT part of the SD-JWT,
+     * @param keyBindingVerifierProvider this is a function to extract of the JWT part of the SD-JWT,
      * the public key of the Holder and create [JwtSignatureVerifier] to be used for validating the
-     * signature of the Holder Binding JWT. It assumes, that Issuer has included somehow the holder pub key
+     * signature of the Key Binding JWT. It assumes, that Issuer has included somehow the holder pub key
      * to SD-JWT.
      *
      */
-    class MustBePresentAndValid(val holderBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?) :
-        HolderBindingVerifier
+    class MustBePresentAndValid(val keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?) :
+        KeyBindingVerifier
 
     companion object {
         /**
-         * Indicates that  presentation SD-JWT must have holder binding. Νο signature validation is performed
+         * Indicates that  presentation SD-JWT must have key binding. Νο signature validation is performed
          */
         val MustBePresent: MustBePresentAndValid = MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
-        private fun HolderBindingError.asException(): SdJwtVerificationException =
+        private fun KeyBindingError.asException(): SdJwtVerificationException =
             HolderBindingFailed(this).asException()
     }
 }
@@ -274,7 +274,7 @@ object SdJwtVerifier {
      * @param jwtSignatureVerifier the verification of the signature of the JWT part of the SD-JWT. In order to provide
      * an implementation of this, Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT
-     * @param holderBindingVerifier specifies whether a Holder Binding JWT is expected or not.
+     * @param keyBindingVerifier specifies whether a Holder Binding JWT is expected or not.
      * In the case that it is expected, Verifier should be aware of how the Issuer have chosen to include the
      * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier,
      * in order to produce the Holder Binding JWT.
@@ -285,11 +285,11 @@ object SdJwtVerifier {
      */
     fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
-        holderBindingVerifier: HolderBindingVerifier,
+        keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
     ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedHBJwt) =
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
             parseCombinedPresentation(unverifiedSdJwt)
 
         // Check JWT
@@ -299,10 +299,10 @@ object SdJwtVerifier {
         val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
 
         // Check Holder binding
-        val hbClaims = holderBindingVerifier.verify(jwtClaims, unverifiedHBJwt).getOrThrow()
+        val kbClaims = keyBindingVerifier.verify(jwtClaims, unverifiedKBJwt).getOrThrow()
 
         // Assemble it
-        val holderBindingJwtAndClaims = unverifiedHBJwt?.let { hb -> hbClaims?.let { cs -> hb to cs } }
+        val holderBindingJwtAndClaims = unverifiedKBJwt?.let { hb -> kbClaims?.let { cs -> hb to cs } }
         SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
     }
 }
@@ -329,9 +329,9 @@ private fun parseCombinedPresentation(unverifiedSdJwt: String): Triple<Jwt, List
     val parts = unverifiedSdJwt.split('~')
     if (parts.size <= 1) throw ParsingError.asException()
     val jwt = parts[0]
-    val containsHolderBinding = !unverifiedSdJwt.endsWith('~')
-    val ds = parts.drop(1).run { if (containsHolderBinding) dropLast(1) else this }.filter { it.isNotBlank() }
-    val hbJwt = if (containsHolderBinding) parts.last() else null
+    val containsKeyBinding = !unverifiedSdJwt.endsWith('~')
+    val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
+    val hbJwt = if (containsKeyBinding) parts.last() else null
     return Triple(jwt, ds, hbJwt)
 }
 

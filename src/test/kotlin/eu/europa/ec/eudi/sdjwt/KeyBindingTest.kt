@@ -104,7 +104,7 @@ class HolderBindingTest {
         // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
         holder.storeCredential(issuer.jwtVerifier(), issuedSdJwt)
 
-        // Holder must obtain a challenge from verifier to sign it as Holder Binding JWT
+        // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
         // Also Holder should know what verifier wants to be presented
         val presentedSdJwt: String = holder.present(verifier.challenge(), verifier.query)
 
@@ -113,7 +113,7 @@ class HolderBindingTest {
         verifier.acceptPresentation(
             issuer.jwtVerifier(),
             issuer.extractHolderPubKey(),
-            holder.holderBindingVerifier(),
+            holder.keyBindingVerifier(),
             presentedSdJwt,
         )
     }
@@ -250,7 +250,7 @@ class SampleIssuer(private val issuerKey: ECKey) {
  */
 class SampleHolder(private val holderKey: ECKey) {
 
-    private val holderBindingSigningAlgorithm = JWSAlgorithm.ES256
+    private val keyBindingSigningAlgorithm = JWSAlgorithm.ES256
 
     /**
      * Keeps the issued credential
@@ -258,10 +258,10 @@ class SampleHolder(private val holderKey: ECKey) {
     private var credentialSdJwt: SdJwt.Issuance<Jwt>? = null
     fun pubKey(): ECKey = holderKey.toPublicJWK()
 
-    fun holderBindingVerifier(): (JWK) -> JwtSignatureVerifier = { holderPubKey ->
+    fun keyBindingVerifier(): (JWK) -> JwtSignatureVerifier = { holderPubKey ->
         DefaultJWTProcessor<SecurityContext>().apply {
             jwsKeySelector = SingleKeyJWSKeySelector(
-                holderBindingSigningAlgorithm,
+                keyBindingSigningAlgorithm,
                 holderPubKey.toECKey().toECPublicKey(),
             )
         }.asJwtVerifier()
@@ -283,13 +283,13 @@ class SampleHolder(private val holderKey: ECKey) {
 
     fun present(verifierChallenge: JsonObject, criteria: (Claim) -> Boolean): String {
         holderDebug("Presenting credentials ...")
-        val holderBindingJwt = holderBindingJwt(verifierChallenge)
+        val holderBindingJwt = keyBindingJwt(verifierChallenge)
         return credentialSdJwt!!.present(holderBindingJwt, criteria).toCombinedPresentationFormat({ it }, { it })
     }
 
-    private fun holderBindingJwt(verifierChallenge: JsonObject): String =
+    private fun keyBindingJwt(verifierChallenge: JsonObject): String =
         SignedJWT(
-            JWSHeader.Builder(holderBindingSigningAlgorithm).keyID(holderKey.keyID).build(),
+            JWSHeader.Builder(keyBindingSigningAlgorithm).keyID(holderKey.keyID).build(),
             JWTClaimsSet.parse(verifierChallenge.toString()),
         ).apply {
             sign(ECDSASigner(holderKey))
@@ -313,15 +313,16 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
     fun acceptPresentation(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
         holderPubKeyExtractor: (Claims) -> JWK?,
-        holderBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
+        keyBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
         sdJwt: String,
     ) {
         SdJwtVerifier.verifyPresentation(
             jwtSignatureVerifier = issuerJwtSignatureVerifier,
-            holderBindingVerifier = holderBindingVerifier(holderPubKeyExtractor, holderBindingJwtSignatureVerifier),
+            keyBindingVerifier = keyBindingVerifier(holderPubKeyExtractor, keyBindingJwtSignatureVerifier),
             unverifiedSdJwt = sdJwt,
         ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> ->
-            presentation = SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.holderBindingJwt?.first)
+            presentation =
+                SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.keyBindingJwt?.first)
 
             verifierDebug("Presentation accepted with SD Claims:")
             presented.selectivelyDisclosedClaims().onEachIndexed { i, c -> verifierDebug("-> $i $c") }
@@ -331,13 +332,13 @@ class SampleVerifier(val query: (Claim) -> Boolean) {
         })
     }
 
-    private fun holderBindingVerifier(
+    private fun keyBindingVerifier(
         holderPubKeyExtractor: (Claims) -> JWK?,
-        holderBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
-    ): HolderBindingVerifier =
-        HolderBindingVerifier.MustBePresentAndValid { sdJwtClaims ->
+        kwyBindingJwtSignatureVerifier: (JWK) -> JwtSignatureVerifier,
+    ): KeyBindingVerifier =
+        KeyBindingVerifier.MustBePresentAndValid { sdJwtClaims ->
             holderPubKeyExtractor(sdJwtClaims)?.let { jwk ->
-                holderBindingJwtSignatureVerifier(jwk).and { holderBindingJwtClaims ->
+                kwyBindingJwtSignatureVerifier(jwk).and { holderBindingJwtClaims ->
                     holderBindingJwtClaims == lastChallenge
                 }
             }
