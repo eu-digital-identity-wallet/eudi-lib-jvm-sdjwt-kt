@@ -16,19 +16,12 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 
-typealias ArrayClaim = Pair<String, JsonArray>
-
-class ArrayElementTest {
-
-    private val saltProvider = SaltProvider.Default
-    private val hashAlgorithm = HashAlgorithm.SHA_256
-
+class SelectivelyDisclosedArrayElementTest {
     @Test
     fun simple() {
         val sdJwtElements = sdJwt {

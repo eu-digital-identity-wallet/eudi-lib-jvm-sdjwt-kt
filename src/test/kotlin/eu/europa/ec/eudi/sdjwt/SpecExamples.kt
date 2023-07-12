@@ -16,17 +16,19 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.fail
 import kotlin.test.assertEquals
 
 class SpecExamples {
 
-    private val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = 0)
-
     @Test
-    fun `Example1 SD-JWT`() = test("Example 1 SD-JWT", 10) {
+    fun `Example1 SD-JWT`() = test("Example 1 SD-JWT", expectedDisclosuresNo = 10) {
         sdJwt {
             sub("user_42")
             iss("https://example.com/issuer")
@@ -53,11 +55,105 @@ class SpecExamples {
                 sd("US")
                 sd("DE")
             }
+
+            plain {
+                putJsonObject("cnf") {
+                    putJsonObject("jwk") {
+                        put("kty", "EC")
+                        put("crv", "P-256")
+                        put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                        put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+                    }
+                }
+            }
         }
     }
 
     @Test
-    fun `Option 1 Flat SD-JWT`() = test("Option 1 Flat SD-JWT", 1) {
+    fun `Example 1 presentation of all claims`() {
+        val unverifiedSdJwt = """
+            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
+            DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
+            TVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHb
+            EFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3Jae
+            mZVYW9tTG8iLCAiWFFfM2tQS3QxWHlYN0tBTmtxVlI2eVoyVmE1TnJQSXZQWWJ5TXZSS
+            0JNTSIsICJYekZyendzY002R242Q0pEYzZ2Vks4QmtNbmZHOHZPU0tmcFBJWmRBZmRFI
+            iwgImdiT3NJNEVkcTJ4Mkt3LXc1d1BFemFrb2I5aFYxY1JEMEFUTjNvUUw5Sk0iLCAia
+            nN1OXlWdWx3UVFsaEZsTV8zSmx6TWFTRnpnbGhRRzBEcGZheVF3TFVLNCJdLCAiaXNzI
+            jogImh0dHBzOi8vZXhhbXBsZS5jb20vaXNzdWVyIiwgImlhdCI6IDE2ODMwMDAwMDAsI
+            CJleHAiOiAxODgzMDAwMDAwLCAic3ViIjogInVzZXJfNDIiLCAibmF0aW9uYWxpdGllc
+            yI6IFt7Ii4uLiI6ICJwRm5kamtaX1ZDem15VGE2VWpsWm8zZGgta284YUlLUWM5RGxHe
+            mhhVllvIn0sIHsiLi4uIjogIjdDZjZKa1B1ZHJ5M2xjYndIZ2VaOGtoQXYxVTFPU2xlc
+            lAwVmtCSnJXWjAifV0sICJfc2RfYWxnIjogInNoYS0yNTYiLCAiY25mIjogeyJqd2siO
+            iB7Imt0eSI6ICJFQyIsICJjcnYiOiAiUC0yNTYiLCAieCI6ICJUQ0FFUjE5WnZ1M09IR
+            jRqNFc0dmZTVm9ISVAxSUxpbERsczd2Q2VHZW1jIiwgInkiOiAiWnhqaVdXYlpNUUdIV
+            ldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9fX0.kmx687kUBiIDvKWgo2Dub
+            -TpdCCRLZwtD7TOj4RoLsUbtFBI8sMrtH2BejXtm_P6fOAjKAVc_7LRNJFgm3PJhg~Wy
+            IyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImdpdmVuX25hbWUiLCAiSm9obiJd~WyJlb
+            HVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~WyI2SWo3
+            dE0tYTVpVlBHYm9TNXRtdlZBIiwgImVtYWlsIiwgImpvaG5kb2VAZXhhbXBsZS5jb20i
+            XQ~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgInBob25lX251bWJlciIsICIrMS0yM
+            DItNTU1LTAxMDEiXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgInBob25lX251bW
+            Jlcl92ZXJpZmllZCIsIHRydWVd~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImFkZ
+            HJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5I
+            jogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMif
+            V0~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgImJpcnRoZGF0ZSIsICIxOTQwLTAxL
+            TAxIl0~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgInVwZGF0ZWRfYXQiLCAxNTcwM
+            DAwMDAwXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIlVTIl0~WyJuUHVvUW5rUk
+            ZxM0JJZUFtN0FuWEZBIiwgIkRFIl0~
+        """.trimIndent().removeNewLine()
+        SdJwtVerifier.verifyPresentation(
+            JwtSignatureVerifier.NoSignatureValidation,
+            KeyBindingVerifier.MustNotBePresent,
+            unverifiedSdJwt,
+        ).fold(
+            onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
+            onFailure = { fail(it) },
+        )
+    }
+
+    @Test
+    fun `Example 1 presentation of given_name, family_name, and address`() {
+        val unverifiedSdJwt = """
+            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
+            DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
+            TVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHb
+            EFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3Jae
+            mZVYW9tTG8iLCAiWFFfM2tQS3QxWHlYN0tBTmtxVlI2eVoyVmE1TnJQSXZQWWJ5TXZSS
+            0JNTSIsICJYekZyendzY002R242Q0pEYzZ2Vks4QmtNbmZHOHZPU0tmcFBJWmRBZmRFI
+            iwgImdiT3NJNEVkcTJ4Mkt3LXc1d1BFemFrb2I5aFYxY1JEMEFUTjNvUUw5Sk0iLCAia
+            nN1OXlWdWx3UVFsaEZsTV8zSmx6TWFTRnpnbGhRRzBEcGZheVF3TFVLNCJdLCAiaXNzI
+            jogImh0dHBzOi8vZXhhbXBsZS5jb20vaXNzdWVyIiwgImlhdCI6IDE2ODMwMDAwMDAsI
+            CJleHAiOiAxODgzMDAwMDAwLCAic3ViIjogInVzZXJfNDIiLCAibmF0aW9uYWxpdGllc
+            yI6IFt7Ii4uLiI6ICJwRm5kamtaX1ZDem15VGE2VWpsWm8zZGgta284YUlLUWM5RGxHe
+            mhhVllvIn0sIHsiLi4uIjogIjdDZjZKa1B1ZHJ5M2xjYndIZ2VaOGtoQXYxVTFPU2xlc
+            lAwVmtCSnJXWjAifV0sICJfc2RfYWxnIjogInNoYS0yNTYiLCAiY25mIjogeyJqd2siO
+            iB7Imt0eSI6ICJFQyIsICJjcnYiOiAiUC0yNTYiLCAieCI6ICJUQ0FFUjE5WnZ1M09IR
+            jRqNFc0dmZTVm9ISVAxSUxpbERsczd2Q2VHZW1jIiwgInkiOiAiWnhqaVdXYlpNUUdIV
+            ldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9fX0.kmx687kUBiIDvKWgo2Dub
+            -TpdCCRLZwtD7TOj4RoLsUbtFBI8sMrtH2BejXtm_P6fOAjKAVc_7LRNJFgm3PJhg~Wy
+            JlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~WyJBS
+            ngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzI
+            jogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogI
+            kFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5ST
+            jl3IiwgImdpdmVuX25hbWUiLCAiSm9obiJd~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNB
+            IiwgIlVTIl0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI
+            6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWV
+            yIiwgImlhdCI6IDE2ODgxNjA0ODN9.tKnLymr8fQfupOgvMgBK3GCEIDEzhgta4MgnxY
+            m9fWGMkqrz2R5PSkv0I-AXKXtIF6bdZRbjL-t43vC87jVoZQ
+        """.trimIndent().removeNewLine()
+        SdJwtVerifier.verifyPresentation(
+            JwtSignatureVerifier.NoSignatureValidation,
+            KeyBindingVerifier.MustBePresent,
+            unverifiedSdJwt,
+        ).fold(
+            onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
+            onFailure = { fail(it) },
+        )
+    }
+
+    @Test
+    fun `Option 1 Flat SD-JWT`() = test("Option 1 Flat SD-JWT", expectedDisclosuresNo = 1) {
         sdJwt {
             sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
             iss("https://example.com/issuer")
@@ -76,7 +172,7 @@ class SpecExamples {
     }
 
     @Test
-    fun `Option 2 Structured SD-JWT`() = test("Option 2 Structured SD-JWT", 4) {
+    fun `Option 2 Structured SD-JWT`() = test("Option 2 Structured SD-JWT", expectedDisclosuresNo = 4) {
         sdJwt {
             sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
             iss("https://example.com/issuer")
@@ -95,7 +191,7 @@ class SpecExamples {
     }
 
     @Test
-    fun `Option 3 Recursively SD-JWT`() = test("Option 3 Recursively SD-JWT", 5) {
+    fun `Option 3 Recursively SD-JWT`() = test("Option 3 Recursively SD-JWT", expectedDisclosuresNo = 5) {
         sdJwt {
             sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
             iss("https://example.com/issuer")
@@ -112,28 +208,29 @@ class SpecExamples {
     }
 
     @Test
-    fun `Example 2 Handling Structured Claims`() = test("Example 2 Handling Structured Claims", 7) {
-        sdJwt {
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
+    fun `Example 2 Handling Structured Claims`() =
+        test("Example 2 Handling Structured Claims", expectedDisclosuresNo = 7) {
+            sdJwt {
+                iss("https://example.com/issuer")
+                iat(1516239022)
+                exp(1735689661)
 
-            flat {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("given_name", "太郎")
-                put("family_name", "山田")
-                put("email", "\"unusual email address\"@example.jp")
-                put("phone_number", "+81-80-1234-5678")
-                putJsonObject("address") {
-                    put("street_address", "東京都港区芝公園４丁目２−８")
-                    put("locality", "東京都")
-                    put("region", "港区")
-                    put("country", "JP")
+                flat {
+                    put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                    put("given_name", "太郎")
+                    put("family_name", "山田")
+                    put("email", "\"unusual email address\"@example.jp")
+                    put("phone_number", "+81-80-1234-5678")
+                    putJsonObject("address") {
+                        put("street_address", "東京都港区芝公園４丁目２−８")
+                        put("locality", "東京都")
+                        put("region", "港区")
+                        put("country", "JP")
+                    }
+                    put("birthdate", "1940-01-01")
                 }
-                put("birthdate", "1940-01-01")
             }
         }
-    }
 
     @Test
     fun example3() {
@@ -180,7 +277,7 @@ class SpecExamples {
     }
 
     @Test
-    fun `Example 3 Complex Structured`() = test("Example 3 Complex Structured", 12) {
+    fun `Example 3 Complex Structured`() = test("Example 3 Complex Structured", expectedDisclosuresNo = 12) {
         sdJwt {
             iss("https://example.com/issuer")
             iat(1516239022)
@@ -201,23 +298,21 @@ class SpecExamples {
                         put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
                     }
                     sdArray("evidence") {
-                        sd(
-                            buildJsonObject {
-                                put("type", "document")
-                                put("method", "pipp")
-                                put("time", "2012-04-22T11:30Z")
-                                putJsonObject("document") {
-                                    put("type", "idcard")
-                                    putJsonObject("issuer") {
-                                        put("name", "Stadt Augsburg")
-                                        put("country", "DE")
-                                    }
-                                    put("number", "53554554")
-                                    put("date_of_issuance", "2010-03-23")
-                                    put("date_of_expiry", "2020-03-22")
+                        sd {
+                            put("type", "document")
+                            put("method", "pipp")
+                            put("time", "2012-04-22T11:30Z")
+                            putJsonObject("document") {
+                                put("type", "idcard")
+                                putJsonObject("issuer") {
+                                    put("name", "Stadt Augsburg")
+                                    put("country", "DE")
                                 }
-                            },
-                        )
+                                put("number", "53554554")
+                                put("date_of_issuance", "2010-03-23")
+                                put("date_of_expiry", "2020-03-22")
+                            }
+                        }
                     }
                 }
                 structured("claim") {
@@ -244,12 +339,60 @@ class SpecExamples {
         }
     }
 
+    @Test
+    fun `Example 4A`() = test("Example 4A", numOfDecoysLimit = 4, expectedDisclosuresNo = 10) {
+        val d1 = """
+            WyItNmhDZVJFV3JjRWg0Q2JzQ2RjVTVRIiwgImFkZHJlc3MiLCB7Il9zZCI6
+            IFsiOHo4ejlYOWpVdGI5OWdqZWpDd0ZBR3o0YXFsSGYtc0NxUTZlTV9xbXBV
+            USIsICJDeHE0ODcyVVhYbmdHVUxUX2tsOGZkd1ZGa3lLNkFKZlBaTHk3TDVf
+            MGtJIiwgImxjMk8weER4WXdiZ2M4cjJERXc3eWhfSURXZXhXOENiZ3R6WVBR
+            RlJpNGMiXSwgInBvc3RhbF9jb2RlIjogIjEyMzQ1IiwgImxvY2FsaXR5Ijog
+            IklyZ2VuZHdvIiwgInN0cmVldF9hZGRyZXNzIjogIlNvbm5lbnN0cmFzc2Ug
+            MjMiLCAiY291bnRyeV9jb2RlIjogIkRFIn1d
+        """.trimIndent().removeNewLine()
+        Disclosure.wrap(d1).getOrThrow().also { println(it.claim()) }
+
+        sdJwt {
+            iss("https://pid-provider.memberstate.example.eu")
+            iat(1541493724)
+            exp(1883000000)
+            plain {
+                put("type", "PersonIdentificationData")
+            }
+
+            flat {
+                put("first_name", "Erika")
+                put("family_name", "Mustermann")
+                put("birth_family_name", "Schmidt")
+                put("birthdate", "1973-01-01")
+                put("is_over_18", true)
+                put("is_over_21", true)
+                put("is_over_65", false)
+            }
+
+            flatArray("nationalities") {
+                sd("DE")
+            }
+
+            flatStructured("address") {
+                plain {
+                    put("postal_code", "12345")
+                    put("locality", "Irgendwo")
+                    put("street_address", "Sonnenstrasse 23")
+                    put("country_code", "DE")
+                }
+            }
+        }
+    }
+
     private fun test(
         descr: String,
+        numOfDecoysLimit: Int = 0,
         expectedDisclosuresNo: Int,
         sdJwtElements: () -> List<SdJwtElement>,
     ) {
         println(descr)
+        val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = numOfDecoysLimit)
         val disclosedClaimsResult = disclosuresCreator.discloseSdJwt(sdJwtElements())
         val disclosedClaims = assertDoesNotThrow { disclosedClaimsResult.getOrThrow() }
         disclosedClaims.run { print() }

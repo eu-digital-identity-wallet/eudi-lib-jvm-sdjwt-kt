@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.SdJwtElement.FlatDisclosed
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import java.time.Instant
@@ -54,6 +55,8 @@ class SdJwtElementsBuilder
          */
         private val flatClaims = mutableMapOf<String, JsonElement>()
 
+        private val flatNested = mutableListOf<SdJwtElement.FlatNested>()
+
         /**
          * Claims to be disclosed in structured manner
          */
@@ -64,7 +67,7 @@ class SdJwtElementsBuilder
          */
         private val recursivelyClaims = mutableListOf<SdJwtElement.RecursivelyDisclosed>()
 
-        private val arrays = mutableListOf<SdJwtElement.Array>()
+        private val selectivelyDisclosedArrays = mutableListOf<SdJwtElement.SelectivelyDisclosedArray>()
 
         /**
          * Adds plain claims
@@ -78,8 +81,12 @@ class SdJwtElementsBuilder
             flatClaims += cs
         }
 
-        fun sdArray(a: SdJwtElement.Array) {
-            arrays += a
+        fun flatNested(element: SdJwtElement.FlatNestable) {
+            flatNested += SdJwtElement.FlatNested(element)
+        }
+
+        fun sdArray(a: SdJwtElement.SelectivelyDisclosedArray) {
+            selectivelyDisclosedArrays += a
         }
 
         internal fun structured(s: SdJwtElement.StructuredDisclosed) {
@@ -98,8 +105,9 @@ class SdJwtElementsBuilder
         internal fun build(): List<SdJwtElement> =
             buildList {
                 add(SdJwtElement.Plain(plainClaims))
-                addAll(arrays)
-                add(SdJwtElement.FlatDisclosed(flatClaims))
+                addAll(selectivelyDisclosedArrays)
+                addAll(flatNested)
+                add(FlatDisclosed(flatClaims))
                 addAll(structuredClaims)
                 addAll(recursivelyClaims)
             }
@@ -121,9 +129,18 @@ fun SdJwtElementsBuilder.flat(builderAction: (@SdJwtElementDsl JsonObjectBuilder
     flat(buildJsonObject(builderAction))
 }
 
+fun SdJwtElementsBuilder.flatArray(claimName: String, builderAction: (@SdJwtElementDsl SdArrayBuilder).() -> Unit) {
+    flatNested(SdJwtElement.SelectivelyDisclosedArray(claimName, sdArray(builderAction)))
+}
+
+fun SdJwtElementsBuilder.flatStructured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
+    val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
+    flatNested(element)
+}
+
 fun SdJwtElementsBuilder.sdArray(claimName: String, builderAction: (@SdJwtElementDsl SdArrayBuilder).() -> Unit) {
     val elements = sdArray(builderAction)
-    sdArray(SdJwtElement.Array(claimName, elements))
+    sdArray(SdJwtElement.SelectivelyDisclosedArray(claimName, elements))
 }
 
 /**
@@ -143,7 +160,7 @@ fun SdJwtElementsBuilder.structured(claimName: String, builderAction: SdJwtEleme
  * @param flatSubClaims the usage of the builder
  */
 fun SdJwtElementsBuilder.structuredWithFlatClaims(claimName: String, flatSubClaims: Claims) {
-    val element = SdJwtElement.StructuredDisclosed(claimName, listOf(SdJwtElement.FlatDisclosed(flatSubClaims)))
+    val element = SdJwtElement.StructuredDisclosed(claimName, listOf(FlatDisclosed(flatSubClaims)))
     structured(element)
 }
 
@@ -282,6 +299,9 @@ fun SdArrayBuilder.sd(value: Number) {
 
 fun SdArrayBuilder.sd(value: Boolean) {
     sd(JsonPrimitive(value))
+}
+fun SdArrayBuilder.sd(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    sd(buildJsonObject(builderAction))
 }
 
 @DslMarker

@@ -74,13 +74,13 @@ class DisclosuresCreator(
             if (claims.isEmpty()) DisclosedClaims.Empty
             else DisclosedClaims(emptySet(), JsonObject(claims))
 
-        fun flat(claims: Claims, allowNestedHashClaim: Boolean = false): DisclosedClaims =
-            if (claims.isEmpty()) DisclosedClaims.Empty
-            else {
-                val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
-                val hashClaims = JsonObject(mapOf("_sd" to buildJsonArray { addAll(digests.map { it.value }) }))
-                DisclosedClaims(disclosures, hashClaims)
-            }
+        fun flat(claims: Claims, allowNestedHashClaim: Boolean = false): DisclosedClaims {
+            val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
+            val hashClaims =
+                if (digests.isNotEmpty()) JsonObject(mapOf("_sd" to buildJsonArray { addAll(digests.map { it.value }) }))
+                else JsonObject(emptyMap())
+            return DisclosedClaims(disclosures, hashClaims)
+        }
 
         fun structured(claimName: String, elements: List<SdJwtElement>): DisclosedClaims =
             disclose(elements).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
@@ -117,12 +117,19 @@ class DisclosuresCreator(
             }
         }
 
+        fun flatNested(nested: FlatNestable): DisclosedClaims {
+            val (ds1, cs1) = disclose(listOf(nested))
+            val (ds2, cs2) = flat(cs1, true)
+            return DisclosedClaims(ds1 + ds2, cs2)
+        }
+
         return when (sdJwtElement) {
             is Plain -> plain(sdJwtElement.claims)
             is FlatDisclosed -> flat(sdJwtElement.claims)
             is StructuredDisclosed -> structured(sdJwtElement.claimName, sdJwtElement.elements)
             is RecursivelyDisclosed -> recursively(sdJwtElement.claimName, sdJwtElement.claims)
-            is SdJwtElement.Array -> array(sdJwtElement.claimName, sdJwtElement.elements)
+            is SelectivelyDisclosedArray -> array(sdJwtElement.claimName, sdJwtElement.elements)
+            is FlatNested -> flatNested(sdJwtElement.nested)
         }
     }
 
