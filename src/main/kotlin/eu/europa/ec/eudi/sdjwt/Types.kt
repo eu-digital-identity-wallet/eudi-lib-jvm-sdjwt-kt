@@ -17,8 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
 
 /**
  * A claim is an attribute of an entity.
@@ -50,13 +48,13 @@ fun Claim.value(): JsonElement = second
 typealias Claims = Map<String, JsonElement>
 
 /**
- * Salt to be included in a [Disclosure] claim.
+ * Salt to be included in a [ClaimDisclosure] claim.
  * Check [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 typealias Salt = String
 
 /**
- * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
+ * Hashing algorithms, used to produce the [DisclosureDigest] of a [ClaimDisclosure]
  */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),
@@ -86,6 +84,12 @@ sealed interface SdJwtElement {
     data class FlatDisclosed(val claims: Claims) : SdJwtElement
     data class StructuredDisclosed(val claimName: String, val elements: List<SdJwtElement>) : SdJwtElement
     data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
+    data class Array(val claimName: String, val elements: List<SdArrayElement>) : SdJwtElement
+}
+
+sealed interface SdArrayElement {
+    data class Plain(val element: JsonElement) : SdArrayElement
+    data class SelectivelyDisclosed(val element: JsonElement) : SdArrayElement
 }
 
 /**
@@ -95,11 +99,6 @@ sealed interface SdJwtElement {
  * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
  */
 data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonObject) {
-
-    constructor(disclosures: Set<Disclosure>, buildAction: JsonObjectBuilder.() -> Unit) : this(
-        disclosures,
-        buildJsonObject(buildAction),
-    )
 
     fun mapClaims(f: (JsonObject) -> JsonObject): DisclosedClaims = DisclosedClaims(disclosures, f(claimSet))
 
@@ -125,17 +124,15 @@ data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonO
     }
 }
 
-operator fun DisclosedClaims.plus(that: DisclosedClaims): DisclosedClaims = DisclosedClaims.add(this, that)
-
 typealias Jwt = String
 
 /**
  * A parameterized representation of the SD-JWT
  *
  * @param JWT the type representing the JWT part of the SD-JWT
- * @param HB_JWT the type representing the Holder Binding part of the SD
+ * @param KB_JWT the type representing the Holder Binding part of the SD
  */
-sealed interface SdJwt<out JWT, out HB_JWT> {
+sealed interface SdJwt<out JWT, out KB_JWT> {
 
     /**
      * The JWT part of the SD-JWT
@@ -161,35 +158,40 @@ sealed interface SdJwt<out JWT, out HB_JWT> {
      * The SD-JWT as it is produced by the holder and presented to the verifier
      * @param jwt the JWT part of the SD-JWT
      * @param disclosures the disclosures that holder decided to disclose to the verifier
-     * @param holderBindingJwt optional Holder Binding JWT
+     * @param keyBindingJwt optional Holder Binding JWT
      */
-    data class Presentation<JWT, HB_JWT>(
+    data class Presentation<JWT, KB_JWT>(
         override val jwt: JWT,
         override val disclosures: Set<Disclosure>,
-        val holderBindingJwt: HB_JWT?,
-    ) : SdJwt<JWT, HB_JWT>
+        val keyBindingJwt: KB_JWT?,
+    ) : SdJwt<JWT, KB_JWT>
 }
 
 /**
  * Creates a [presentation SD-JWT][SdJwt.Presentation]
  *
- * @param holderBindingJwt optional, the Holder Binding JWT to include
+ * @param keyBindingJwt optional, the Holder Binding JWT to include
  * @param selectivelyDisclose a predicate of the [claims][SdJwt.Issuance.disclosures]
  * to be selectively disclosed into the presentation
  * @param JWT the type representing the JWT part of the SD-JWT
- * @param HB_JWT the type representing the Holder Binding part of the SD
+ * @param KB_JWT the type representing the Key Binding part of the SD-JWT
  * @return the presentation
  *
  * @receiver the [issued SD-JWT][SdJwt.Issuance] from which the presentation will be created
  */
-fun <JWT, HB_JWT> SdJwt.Issuance<JWT>.present(
-    holderBindingJwt: HB_JWT? = null,
+fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
+    keyBindingJwt: KB_JWT? = null,
     selectivelyDisclose: (Claim) -> Boolean,
-): SdJwt.Presentation<JWT, HB_JWT> =
+): SdJwt.Presentation<JWT, KB_JWT> =
     SdJwt.Presentation(
         jwt,
-        disclosures.filter { disclosure -> selectivelyDisclose(disclosure.claim()) }.toSet(),
-        holderBindingJwt,
+        disclosures.filter { disclosure ->
+            when (disclosure) {
+                is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                is Disclosure.ObjectProperty -> selectivelyDisclose(disclosure.claim())
+            }
+        }.toSet(),
+        keyBindingJwt,
     )
 
 /**
@@ -213,17 +215,17 @@ fun <JWT> SdJwt.Issuance<JWT>.toCombinedIssuanceFormat(
  *
  * @param serializeJwt a function to serialize the [JWT]
  * @param JWT the type representing the JWT part of the SD-JWT
- * @param serializeHolderBindingJwt a function to serialize the [HB_JWT]
- * @param HB_JWT the type representing the Holder Binding part of the SD
+ * @param serializeKeyBindingJwt a function to serialize the [KB_JWT]
+ * @param KB_JWT the type representing the Key Binding part of the SD
  * @receiver the SD-JWT to serialize
  * @return the Combined Presentation format of the SD-JWT
  */
-fun <JWT, HB_JWT> SdJwt.Presentation<JWT, HB_JWT>.toCombinedPresentationFormat(
+fun <JWT, KB_JWT> SdJwt.Presentation<JWT, KB_JWT>.toCombinedPresentationFormat(
     serializeJwt: (JWT) -> String,
-    serializeHolderBindingJwt: (HB_JWT) -> String,
+    serializeKeyBindingJwt: (KB_JWT) -> String,
 ): String {
     val serializedJwt = serializeJwt(jwt)
     val serializedDisclosures = disclosures.concat()
-    val serializedHbJwt = holderBindingJwt?.run(serializeHolderBindingJwt) ?: ""
-    return "$serializedJwt$serializedDisclosures~$serializedHbJwt"
+    val serializedKbJwt = keyBindingJwt?.run(serializeKeyBindingJwt) ?: ""
+    return "$serializedJwt$serializedDisclosures~$serializedKbJwt"
 }

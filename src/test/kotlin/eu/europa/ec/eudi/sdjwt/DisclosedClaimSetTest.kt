@@ -137,9 +137,15 @@ class DisclosedClaimSetTest {
                 )
 
                 disclosures.forEach { d ->
-                    val (claimName, claimValue) = d.claim()
-                    println("Found disclosure for $claimName -> $claimValue")
-                    assertEquals(claimsToBeDisclosed[claimName], claimValue)
+                    when (d) {
+                        is Disclosure.ObjectProperty -> {
+                            val (claimName, claimValue) = d.claim()
+                            println("Found disclosure for $claimName -> $claimValue")
+                            assertEquals(claimsToBeDisclosed[claimName], claimValue)
+                        }
+
+                        else -> TODO()
+                    }
                 }
             }
 
@@ -243,7 +249,7 @@ class DisclosedClaimSetTest {
             sdEncoded: JsonObject,
             disclosures: Collection<Disclosure>,
         ) {
-            val hashes = disclosureDigests(sdEncoded)
+            val hashes = collectDigests(sdEncoded)
             // Hashes can be more than disclosures due to decoy
             if (disclosures.isNotEmpty()) {
                 assertTrue { hashes.size >= disclosures.size }

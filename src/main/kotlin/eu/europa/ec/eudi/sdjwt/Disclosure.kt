@@ -20,18 +20,25 @@ import kotlinx.serialization.json.*
 /**
  * A combination of a salt, a cleartext claim name, and a cleartext claim value,
  * all of which are used to calculate a digest for the respective claim.
- *
- * @param value a string as defined in [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
-@JvmInline
-value class Disclosure private constructor(val value: String) {
+sealed interface Disclosure {
+
+    val value: String
 
     /**
      * Decodes and extracts the disclosed claim
      * @return the disclosed claim
      */
-    fun claim(): Claim =
-        decode(value).getOrThrow().second
+    fun claim(): Claim {
+        val (_, name, value) = decode(value).getOrThrow()
+        return (name ?: "...") to value
+    }
+
+    @JvmInline
+    value class ArrayElement internal constructor(override val value: String) : Disclosure
+
+    @JvmInline
+    value class ObjectProperty internal constructor(override val value: String) : Disclosure
 
     companion object {
 
@@ -41,22 +48,69 @@ value class Disclosure private constructor(val value: String) {
          * a json string (salt)
          * a json string (claim name)
          * a json element (claim value)
+         * for [ObjectProperty]
+         *
+         * or
+         *
+         * a json string (salt)
+         * a json element (claim value)
+         * for [ArrayElement]
          */
-        internal fun wrap(s: String): Result<Disclosure> = decode(s).map { Disclosure(s) }
+        internal fun wrap(s: String): Result<Disclosure> =
+            decode(s).map { (_, name, _) ->
+                if (name != null) ObjectProperty(s)
+                else ArrayElement(s)
+            }
+
+        internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatching {
+            val base64Decoded = JwtBase64.decodeString(disclosure)
+            val array = Json.decodeFromString<JsonArray>(base64Decoded)
+            when (array.size) {
+                3 -> {
+                    val salt = array[0].jsonPrimitive.content
+                    val claimName = array[1].jsonPrimitive.content
+                    val claimValue = array[2]
+                    Triple(salt, claimName, claimValue)
+                }
+
+                2 -> {
+                    val salt = array[0].jsonPrimitive.content
+                    val claimValue = array[1]
+                    Triple(salt, null, claimValue)
+                }
+
+                else -> throw IllegalArgumentException("Was expecting an json array of 3 or 2 elements")
+            }
+        }
+
+        internal fun arrayElement(
+            saltProvider: SaltProvider = SaltProvider.Default,
+            element: JsonElement,
+        ): Result<ArrayElement> = runCatching {
+            // Create a Json Array [salt, claimName, claimValue]
+            val jsonArray = buildJsonArray {
+                add(JsonPrimitive(saltProvider.salt())) // salt
+                add(element) // claim value
+            }
+            val jsonArrayStr = jsonArray.toString()
+            // Base64-url-encoded
+            val encoded = JwtBase64.encodeString(jsonArrayStr)
+            ArrayElement(encoded)
+        }
 
         /**
-         * Encodes a [Claim] into [Disclosure] using the provided [saltProvider]
-         * according to [SD-JWT spec][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
+         * Encodes a [Claim] into [Disclosure.ObjectProperty] using the provided [saltProvider]
+         * according to SD-JWT specification
          *
          * @param saltProvider the [SaltProvider] to be used. Defaults to [SaltProvider.Default]
          * @param claim the claim to be disclosed
          * @param allowNestedHashClaim whether to allow the presence of nested hash claim (_sd)
          */
-        fun encode(
+        internal fun objectProperty(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
             allowNestedHashClaim: Boolean = false,
-        ): Result<Disclosure> {
+        ): Result<ObjectProperty> {
             // Make sure that claim name is not _sd
             fun isValidAttributeName(attribute: String): Boolean = attribute != "_sd"
 
@@ -88,26 +142,8 @@ value class Disclosure private constructor(val value: String) {
                 val jsonArrayStr = jsonArray.toString()
                 // Base64-url-encoded
                 val encoded = JwtBase64.encodeString(jsonArrayStr)
-                Disclosure(encoded)
+                ObjectProperty(encoded)
             }
-        }
-
-        /**
-         * Decodes the given [string][disclosure]  into a pair of [salt][Salt] and [claim][Claim]
-         *
-         * @param disclosure the disclosure value
-         * @return the [Salt] and the [Claim] of the disclosure, if the provided input is a disclosure.
-         */
-        fun decode(disclosure: String): Result<Pair<Salt, Claim>> = runCatching {
-            val base64Decoded = JwtBase64.decodeString(disclosure)
-            val array = Json.decodeFromString<JsonArray>(base64Decoded)
-            if (array.size != 3) {
-                throw IllegalArgumentException("Was expecting an json array of 3 elements")
-            }
-            val salt = array[0].jsonPrimitive.content
-            val claimName = array[1].jsonPrimitive.content
-            val claimValue = array[2]
-            salt to (claimName to claimValue)
         }
     }
 }

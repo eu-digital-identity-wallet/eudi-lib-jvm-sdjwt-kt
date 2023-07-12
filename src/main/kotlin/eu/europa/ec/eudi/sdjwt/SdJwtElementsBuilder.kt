@@ -64,6 +64,8 @@ class SdJwtElementsBuilder
          */
         private val recursivelyClaims = mutableListOf<SdJwtElement.RecursivelyDisclosed>()
 
+        private val arrays = mutableListOf<SdJwtElement.Array>()
+
         /**
          * Adds plain claims
          * @param cs claims to add
@@ -74,6 +76,10 @@ class SdJwtElementsBuilder
 
         fun flat(cs: Claims) {
             flatClaims += cs
+        }
+
+        fun sdArray(a: SdJwtElement.Array) {
+            arrays += a
         }
 
         internal fun structured(s: SdJwtElement.StructuredDisclosed) {
@@ -92,6 +98,7 @@ class SdJwtElementsBuilder
         internal fun build(): List<SdJwtElement> =
             buildList {
                 add(SdJwtElement.Plain(plainClaims))
+                addAll(arrays)
                 add(SdJwtElement.FlatDisclosed(flatClaims))
                 addAll(structuredClaims)
                 addAll(recursivelyClaims)
@@ -112,6 +119,11 @@ fun SdJwtElementsBuilder.plain(builderAction: (@SdJwtElementDsl JsonObjectBuilde
  */
 fun SdJwtElementsBuilder.flat(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
     flat(buildJsonObject(builderAction))
+}
+
+fun SdJwtElementsBuilder.sdArray(claimName: String, builderAction: (@SdJwtElementDsl SdArrayBuilder).() -> Unit) {
+    val elements = sdArray(builderAction)
+    sdArray(SdJwtElement.Array(claimName, elements))
 }
 
 /**
@@ -231,6 +243,45 @@ fun SdJwtElementsBuilder.aud(aud: Collection<String>) {
             }
         }
     }
+}
+
+@OptIn(ExperimentalContracts::class)
+inline fun sdArray(builderAction: SdArrayBuilder.() -> Unit): List<SdArrayElement> {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val v = SdArrayBuilder()
+    v.builderAction()
+    return v.build()
+}
+
+@SdJwtElementDsl
+class SdArrayBuilder
+    @PublishedApi
+    internal constructor() {
+
+        private val elements = mutableListOf<SdArrayElement>()
+
+        fun plain(element: JsonElement) {
+            elements.add(SdArrayElement.Plain(element))
+        }
+
+        fun sd(element: JsonElement) {
+            elements.add(SdArrayElement.SelectivelyDisclosed(element))
+        }
+
+        @PublishedApi
+        internal fun build(): List<SdArrayElement> = elements.toList()
+    }
+
+fun SdArrayBuilder.sd(value: String) {
+    sd(JsonPrimitive(value))
+}
+
+fun SdArrayBuilder.sd(value: Number) {
+    sd(JsonPrimitive(value))
+}
+
+fun SdArrayBuilder.sd(value: Boolean) {
+    sd(JsonPrimitive(value))
 }
 
 @DslMarker

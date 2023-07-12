@@ -43,7 +43,7 @@ internal object RecreateClaims {
         val hashAlgorithm = claims.hashAlgorithm()
         return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
         else {
-            val containsDigests = disclosureDigests(claims).isNotEmpty()
+            val containsDigests = collectDigests(claims).isNotEmpty()
             if (disclosures.isEmpty() && !containsDigests) claims
             else error("Missing hash algorithm")
         }
@@ -65,7 +65,7 @@ internal object RecreateClaims {
         hashAlgorithm: HashAlgorithm,
         disclosures: Set<Disclosure>,
         claims: Claims,
-    ): Claims {
+    ): JsonObject {
         // Recalculate digests, using the hash algorithm
         val disclosuresPerDigest = disclosures.associateBy {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
@@ -75,7 +75,7 @@ internal object RecreateClaims {
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
-            "Could not find digests for disclosures ${disclosuresPerDigest.values.map { it.claim().name() }}"
+            "Could not find digests for disclosures ${disclosuresPerDigest.values.map { it.value }}"
         }
         return recreatedClaims
     }
@@ -92,14 +92,23 @@ internal object RecreateClaims {
     private fun embedDisclosuresIntoElement(
         disclosures: DisclosurePerDigest,
         jsonElement: JsonElement,
-    ): JsonElement = when (jsonElement) {
-        is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement)
-        is JsonArray ->
-            jsonElement
-                .map { element -> embedDisclosuresIntoElement(disclosures, element) }
-                .let { elements -> JsonArray(elements) }
+    ): JsonElement {
+        fun embedDisclosuresIntoArrayElement(e: JsonElement): JsonElement {
+            val sdArrayElement =
+                if (e is JsonObject) replaceArrayDigest(disclosures, e) ?: e
+                else e
 
-        else -> jsonElement
+            return embedDisclosuresIntoElement(disclosures, sdArrayElement)
+        }
+        return when (jsonElement) {
+            is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement)
+            is JsonArray ->
+                jsonElement
+                    .map { element -> embedDisclosuresIntoArrayElement(element) }
+                    .let { elements -> JsonArray(elements) }
+
+            else -> jsonElement
+        }
     }
 
     /**
@@ -124,7 +133,7 @@ internal object RecreateClaims {
 
     /**
      * Replaces the direct (immediate) digests found in the _sd claim
-     * with the [Disclosure.claim] from [disclosures]
+     * with the [Disclosure.ObjectProperty.claim] from [disclosures]
      *
      * @param disclosures the disclosures to use when replacing digests
      * @param claims the claims to use
@@ -136,7 +145,7 @@ internal object RecreateClaims {
     ): Claims {
         val resultingClaims = claims.toMutableMap()
 
-        fun embed(digest: DisclosureDigest, disclosure: Disclosure) {
+        fun embed(digest: DisclosureDigest, disclosure: Disclosure.ObjectProperty) {
             val (name, value) = disclosure.claim()
             require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
             disclosures.remove(digest)
@@ -146,7 +155,10 @@ internal object RecreateClaims {
         // Replace each digest with the claim from the disclosure, if found
         // otherwise digest is probably decoy
         for (digest in claims.directDigests()) {
-            disclosures[digest]?.let { disclosure -> embed(digest, disclosure) }
+            disclosures[digest]?.let { disclosure ->
+                if (disclosure is Disclosure.ObjectProperty) embed(digest, disclosure)
+                else error("Found array element disclosure ${disclosure.value} within _sd claim")
+            }
         }
         // Remove _sd claim, if present
         resultingClaims.remove("_sd")
@@ -154,6 +166,28 @@ internal object RecreateClaims {
         return resultingClaims
     }
 }
+
+fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
+    arrayElementDigest(claims)?.let { digest ->
+
+        disclosures[digest]?.let { disclosure ->
+            when (disclosure) {
+                is Disclosure.ArrayElement -> {
+                    disclosures.remove(digest)
+                    disclosure.claim().value()
+                }
+
+                else -> error("Found an $disclosure within an selectively disclosed array element")
+            }
+        }
+    }
+
+internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
+    if (claims.size == 1)
+        claims["..."]?.takeIf { element -> element is JsonPrimitive }?.let {
+            DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull()
+        }
+    else null
 
 /**
  * Cet the [digests][DisclosureDigest] by looking for digests claim.
