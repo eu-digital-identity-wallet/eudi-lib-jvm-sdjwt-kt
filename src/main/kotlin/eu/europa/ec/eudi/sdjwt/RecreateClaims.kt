@@ -43,7 +43,7 @@ internal object RecreateClaims {
         val hashAlgorithm = claims.hashAlgorithm()
         return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
         else {
-            val containsDigests = disclosureDigests(claims).isNotEmpty()
+            val containsDigests = collectDigests(claims).isNotEmpty()
             if (disclosures.isEmpty() && !containsDigests) claims
             else error("Missing hash algorithm")
         }
@@ -92,21 +92,24 @@ internal object RecreateClaims {
     private fun embedDisclosuresIntoElement(
         disclosures: DisclosurePerDigest,
         jsonElement: JsonElement,
-    ): JsonElement =
-        when (jsonElement) {
+    ): JsonElement {
+        fun embedDisclosuresIntoArrayElement(e: JsonElement): JsonElement {
+            val sdArrayElement =
+                if (e is JsonObject) replaceArrayDigest(disclosures, e) ?: e
+                else e
+
+            return embedDisclosuresIntoElement(disclosures, sdArrayElement)
+        }
+        return when (jsonElement) {
             is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement)
             is JsonArray ->
                 jsonElement
-                    .map { element ->
-                        val sdArrayElement =
-                            if (element is JsonObject) replaceArrayDigest(disclosures, element)
-                            else null
-                        sdArrayElement ?: embedDisclosuresIntoElement(disclosures, element)
-                    }
+                    .map { element -> embedDisclosuresIntoArrayElement(element) }
                     .let { elements -> JsonArray(elements) }
 
             else -> jsonElement
         }
+    }
 
     /**
      * Embed disclosures into [claims]
@@ -164,22 +167,27 @@ internal object RecreateClaims {
     }
 }
 
-fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: Claims): JsonElement? =
-    claims.digest()?.let { digest ->
+fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
+    arrayElementDigest(claims)?.let { digest ->
+
         disclosures[digest]?.let { disclosure ->
-            if (disclosure is Disclosure.ArrayElement) {
-                disclosures.remove(digest)
-                disclosure.claim().value()
-            } else error("Found an $disclosure within an selectively disclosed array element")
+            when (disclosure) {
+                is Disclosure.ArrayElement -> {
+                    disclosures.remove(digest)
+                    disclosure.claim().value()
+                }
+
+                else -> error("Found an $disclosure within an selectively disclosed array element")
+            }
         }
     }
 
-private fun Claims.digest(): DisclosureDigest? =
-    takeIf { size == 1 }?.let { singleClaim ->
-        singleClaim["..."]?.takeIf { element -> element is JsonPrimitive }?.let {
+internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
+    if (claims.size == 1)
+        claims["..."]?.takeIf { element -> element is JsonPrimitive }?.let {
             DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull()
         }
-    }
+    else null
 
 /**
  * Cet the [digests][DisclosureDigest] by looking for digests claim.

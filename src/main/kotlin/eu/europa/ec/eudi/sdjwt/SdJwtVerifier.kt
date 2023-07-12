@@ -51,7 +51,7 @@ sealed interface VerificationError {
      * Failure to verify holder binding
      * @param details the specific problem
      */
-    data class HolderBindingFailed(val details: KeyBindingError) : VerificationError
+    data class KeyBindingFailed(val details: KeyBindingError) : VerificationError
 
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
@@ -222,7 +222,7 @@ sealed interface KeyBindingVerifier {
          */
         val MustBePresent: MustBePresentAndValid = MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
         private fun KeyBindingError.asException(): SdJwtVerificationException =
-            HolderBindingFailed(this).asException()
+            KeyBindingFailed(this).asException()
     }
 }
 
@@ -258,10 +258,11 @@ object SdJwtVerifier {
         // Check JWT signature
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
         val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
-        val digests = uniqueDigests(jwtClaims)
+        val disclosures = uniqueDisclosures(unverifiedDisclosures)
+        val digests = collectDigests(jwtClaims, disclosures)
 
         // Check Disclosures
-        val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
+        verifyDisclosures(hashAlgorithm, disclosures, digests)
 
         // Assemble it
         SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
@@ -295,8 +296,9 @@ object SdJwtVerifier {
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
         val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
-        val digests = uniqueDigests(jwtClaims)
-        val disclosures = verifyDisclosures(hashAlgorithm, unverifiedDisclosures, digests)
+        val disclosures = uniqueDisclosures(unverifiedDisclosures)
+        val digests = collectDigests(jwtClaims, disclosures)
+        verifyDisclosures(hashAlgorithm, disclosures, digests)
 
         // Check Holder binding
         val kbClaims = keyBindingVerifier.verify(jwtClaims, unverifiedKBJwt).getOrThrow()
@@ -339,31 +341,15 @@ private fun parseCombinedPresentation(unverifiedSdJwt: String): Triple<Jwt, List
  * Verify the disclosures
  *
  * @param hashAlgorithm
- * @param unverifiedDisclosures
+ * @param disclosures
  * @param digests
  * @return
  */
 private fun verifyDisclosures(
     hashAlgorithm: HashAlgorithm,
-    unverifiedDisclosures: List<String>,
+    disclosures: Set<Disclosure>,
     digests: Set<DisclosureDigest>,
-): Set<Disclosure> {
-    /**
-     * Checks that the [unverifiedDisclosures] are indeed [Disclosure] and that are unique
-     * @return the set of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUnqueDisclosures]
-     */
-    fun uniqueDisclosures(): Set<Disclosure> {
-        val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
-        maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
-            if (invalidDisclosures.isNotEmpty())
-                throw InvalidDisclosures(invalidDisclosures.toList()).asException()
-        }
-        return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
-            if (unverifiedDisclosures.size != disclosures.size) throw NonUnqueDisclosures.asException()
-        }
-    }
-
-    val disclosures = uniqueDisclosures()
+) {
     val calculatedDigestsPerDisclosure: Map<Disclosure, DisclosureDigest> =
         disclosures.associateWith { DisclosureDigest.digest(hashAlgorithm, it).getOrThrow() }
 
@@ -373,17 +359,22 @@ private fun verifyDisclosures(
             disclosuresMissingDigest.add(disclosure)
         }
     }
-
     if (disclosuresMissingDigest.isNotEmpty()) throw MissingDigests(disclosuresMissingDigest).asException()
-    return disclosures
 }
 
-private fun uniqueDigests(jwtClaims: Claims): Set<DisclosureDigest> {
-    // Get Digests
-    val digests = disclosureDigests(jwtClaims)
-    val uniqueDigests = digests.toSet()
-    if (uniqueDigests.size != digests.size) throw NonUniqueDisclosureDigests.asException()
-    return uniqueDigests
+/**
+ * Checks that the [unverifiedDisclosures] are indeed [Disclosure] and that are unique
+ * @return the set of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUnqueDisclosures]
+ */
+private fun uniqueDisclosures(unverifiedDisclosures: List<String>): Set<Disclosure> {
+    val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
+    maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
+        if (invalidDisclosures.isNotEmpty())
+            throw InvalidDisclosures(invalidDisclosures.toList()).asException()
+    }
+    return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
+        if (unverifiedDisclosures.size != disclosures.size) throw NonUnqueDisclosures.asException()
+    }
 }
 
 /**
@@ -400,13 +391,29 @@ private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
 }
 
 /**
+ * Collects [digests][DisclosureDigest] from both the JWT payload and the [disclosures][Disclosure].
+ * @param jwtClaims the JWT payload, of the SD-JWT
+ * @param disclosures the disclosures, of the SD-JWT
+ * @return digests from both the JWT payload and the [disclosures][Disclosure], assuring that they are unique
+ */
+private fun collectDigests(jwtClaims: Claims, disclosures: Set<Disclosure>): Set<DisclosureDigest> {
+    // Get Digests
+    val jwtDigests = collectDigests(jwtClaims)
+    val disclosureDigests = disclosures.map { d -> collectDigests(JsonObject(mapOf(d.claim()))) }.flatten()
+    val digests = jwtDigests + disclosureDigests
+    val uniqueDigests = digests.toSet()
+    if (uniqueDigests.size != digests.size) throw NonUniqueDisclosureDigests.asException()
+    return uniqueDigests
+}
+
+/**
  * Extracts all the [digests][DisclosureDigest] from the given [claims],
  * including also sub claims
  *
  * @param claims to use
  * @return the digests found in the given [claims]
  */
-internal fun disclosureDigests(claims: Claims): List<DisclosureDigest> {
+internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
     fun digestsOf(attribute: String, json: JsonElement): List<DisclosureDigest> =
         when {
             attribute == "_sd" && json is JsonArray -> json.mapNotNull { element ->
@@ -414,7 +421,11 @@ internal fun disclosureDigests(claims: Claims): List<DisclosureDigest> {
                 else null
             }
 
-            json is JsonObject -> disclosureDigests(json)
+            attribute == "..." && json is JsonPrimitive ->
+                DisclosureDigest.wrap(json.content).getOrNull()?.let { listOf(it) } ?: emptyList()
+
+            json is JsonObject -> collectDigests(json)
+            json is JsonArray -> json.map { if (it is JsonObject) collectDigests(it) else emptyList() }.flatten()
             else -> emptyList()
         }
     return claims.map { (attribute, json) -> digestsOf(attribute, json) }.flatten()

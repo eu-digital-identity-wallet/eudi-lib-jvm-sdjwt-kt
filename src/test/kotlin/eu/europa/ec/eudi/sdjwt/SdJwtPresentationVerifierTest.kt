@@ -84,7 +84,7 @@ class SdJwtPresentationVerifierTest {
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and invalid keyBinding verify should return InvalidHolderBindingJwt`() {
         verifyPresnetationExpectingError(
-            VerificationError.HolderBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
+            VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
             "$jwt~hb",

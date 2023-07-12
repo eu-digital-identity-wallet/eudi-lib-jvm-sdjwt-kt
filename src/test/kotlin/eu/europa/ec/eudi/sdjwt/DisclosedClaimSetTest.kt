@@ -249,7 +249,7 @@ class DisclosedClaimSetTest {
             sdEncoded: JsonObject,
             disclosures: Collection<Disclosure>,
         ) {
-            val hashes = disclosureDigests(sdEncoded)
+            val hashes = collectDigests(sdEncoded)
             // Hashes can be more than disclosures due to decoy
             if (disclosures.isNotEmpty()) {
                 assertTrue { hashes.size >= disclosures.size }

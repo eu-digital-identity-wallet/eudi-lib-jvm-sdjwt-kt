@@ -272,6 +272,18 @@ class SdArrayBuilder
         internal fun build(): List<SdArrayElement> = elements.toList()
     }
 
+fun SdArrayBuilder.sd(value: String) {
+    sd(JsonPrimitive(value))
+}
+
+fun SdArrayBuilder.sd(value: Number) {
+    sd(JsonPrimitive(value))
+}
+
+fun SdArrayBuilder.sd(value: Boolean) {
+    sd(JsonPrimitive(value))
+}
+
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
 internal annotation class SdJwtElementDsl
