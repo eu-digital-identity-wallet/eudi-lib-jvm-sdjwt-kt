@@ -14,7 +14,7 @@
 This is library offering a DSL (domain specific language) for defining how a set of claims should be made selectively
 disclosable.
 
-Library implements [SD-JWT draft4](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-04.html)
+Library implements [SD-JWT draft5](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html)
 is implemented in Kotlin, targeting JVM.
 
 Library's SD-JWT DSL leverages the DSL provided by 
