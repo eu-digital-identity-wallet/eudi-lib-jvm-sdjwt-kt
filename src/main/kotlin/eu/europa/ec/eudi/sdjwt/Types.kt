@@ -82,9 +82,14 @@ enum class HashAlgorithm(val alias: String) {
 sealed interface SdJwtElement {
     data class Plain(val claims: Claims) : SdJwtElement
     data class FlatDisclosed(val claims: Claims) : SdJwtElement
-    data class StructuredDisclosed(val claimName: String, val elements: List<SdJwtElement>) : SdJwtElement
     data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
-    data class Array(val claimName: String, val elements: List<SdArrayElement>) : SdJwtElement
+
+    sealed interface FlatNestable : SdJwtElement {
+        val claimName: String
+    }
+    data class StructuredDisclosed(override val claimName: String, val elements: List<SdJwtElement>) : FlatNestable
+    data class SelectivelyDisclosedArray(override val claimName: String, val elements: List<SdArrayElement>) : FlatNestable
+    data class FlatNested(val nested: FlatNestable) : SdJwtElement
 }
 
 sealed interface SdArrayElement {

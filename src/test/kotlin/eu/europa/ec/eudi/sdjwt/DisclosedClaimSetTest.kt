@@ -198,10 +198,11 @@ class DisclosedClaimSetTest {
                 plain(plainClaims)
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
             }
+            val numOfDecoys = 4
             val disclosedJsonObject = DisclosuresCreator(
                 hashAlgorithm,
                 SaltProvider.Default,
-                3,
+                numOfDecoys,
 
             ).discloseSdJwt(sdJwtElements).getOrThrow()
 
@@ -212,7 +213,7 @@ class DisclosedClaimSetTest {
              */
             fun assertJwtClaimSetSize() {
                 // otherClaims size +  "_sd_alg" + "_sd"
-                val expectedJwtClaimSetSize = plainClaims.size + 1 + claimsToBeDisclosed.size
+                val expectedJwtClaimSetSize = plainClaims.size + 1 + claimsToBeDisclosed.size + (if (numOfDecoys > 0) 1 else 0)
                 assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
             }
 

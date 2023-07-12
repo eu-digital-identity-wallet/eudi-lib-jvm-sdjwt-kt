@@ -35,7 +35,11 @@ val json = Json { prettyPrint = true }
 fun DisclosedClaims.print() {
     println("Found ${disclosures.size} disclosures")
     disclosures.forEach { d ->
-        println("\t - ${d.claim()}")
+        val kind = when (d) {
+            is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value()}"
+            is Disclosure.ObjectProperty -> "\t - Claim ${d.claim()}"
+        }
+        println(kind)
     }
     claimSet.also { println(json.encodeToString(it)) }
 }
