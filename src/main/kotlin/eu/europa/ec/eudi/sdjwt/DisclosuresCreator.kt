@@ -15,14 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-
-import eu.europa.ec.eudi.sdjwt.SdJsonElement.*
+import eu.europa.ec.eudi.sdjwt.SdJwtElement.*
 import kotlinx.serialization.json.*
 
 val DefaultDisclosureCreator: DisclosuresCreator = DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, 0)
 
 /**
- * A class for [disclosing][discloseObj] a set of [SD-JWT elements][SdJsonElement].
+ * A class for [disclosing][discloseObj] a set of [SD-JWT elements][SdJwtElement].
  * In this context, [outcome][DisclosedClaims] of the disclosure is the calculation
  * of a set of [disclosures][DisclosedClaims.disclosures] and a [set of claims][DisclosedClaims.claimSet]
  * to be included in the payload of the SD-JWT.
@@ -47,12 +46,12 @@ class DisclosuresCreator(
      * */
     private fun disclosuresAndDigests(
         claims: Claims,
-        allowNestedHashClaim: Boolean,
+        allowNestedDigests: Boolean,
     ): Pair<Set<Disclosure.ObjectProperty>, Set<DisclosureDigest>> {
         val digestPerDisclosure = mutableMapOf<Disclosure.ObjectProperty, DisclosureDigest>()
 
         for (claim in claims) {
-            val disclosure = Disclosure.objectProperty(saltProvider, claim.toPair(), allowNestedHashClaim).getOrThrow()
+            val disclosure = Disclosure.objectProperty(saltProvider, claim.toPair(), allowNestedDigests).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
             digestPerDisclosure[disclosure] = digest
         }
@@ -75,11 +74,10 @@ class DisclosuresCreator(
         if (digests.isEmpty()) JsonObject(emptyMap())
         else JsonObject(mapOf("_sd" to JsonArray(digests.map { JsonPrimitive(it.value) })))
 
-
     private fun discloseElement(sdClaim: SdClaim): DisclosedClaims {
         val (claimName, sdJsonElement) = sdClaim
 
-        fun flat(element: Flat, allowNestedHashClaim: Boolean = false): DisclosedClaims {
+        fun flat(element: SdOrPlain, allowNestedHashClaim: Boolean = false): DisclosedClaims {
             val claims = mapOf(claimName to element.content)
             return if (!element.sd) DisclosedClaims(emptySet(), JsonObject(claims))
             else {
@@ -103,26 +101,26 @@ class DisclosuresCreator(
 
         fun structuredObj(element: StructuredObj): DisclosedClaims {
             fun nest(cs: JsonObject): JsonObject = JsonObject(mapOf(claimName to cs))
-            val tmp = discloseObj(Obj(element.content))
-            return tmp.mapClaims { nest(it) }
+            val (ds, cs) = discloseObj(element.content)
+            return DisclosedClaims(ds, nest(cs))
         }
 
         fun recursiveArr(element: RecursiveArr): DisclosedClaims {
             val (ds1, cs1) = arr(element.content)
-            val nested = Flat(true, cs1[claimName]!!)
+            val nested = SdOrPlain(true, cs1[claimName]!!)
             val (ds2, cs2) = flat(nested)
             return DisclosedClaims(ds1 + ds2, cs2)
         }
 
         fun recursiveObj(element: RecursiveObj): DisclosedClaims {
             val (ds1, cs1) = discloseObj(element.content)
-            val nested = Flat(true, cs1)
+            val nested = SdOrPlain(true, cs1)
             val (ds2, cs2) = flat(nested, allowNestedHashClaim = true)
             return DisclosedClaims(ds1 + ds2, cs2)
         }
 
         return when (sdJsonElement) {
-            is Flat -> flat(sdJsonElement)
+            is SdOrPlain -> flat(sdJsonElement)
             is Arr -> arr(sdJsonElement)
             is Obj -> discloseObj(sdJsonElement)
             is StructuredObj -> structuredObj(sdJsonElement)
@@ -157,9 +155,6 @@ class DisclosuresCreator(
 
         return DisclosedClaims(accumulatedDisclosures, JsonObject(accumulatedJson))
     }
-
-
-
 
     /**
      * Calculates a [DisclosedClaims] for a given [SD-JWT element][sdJwtElements].

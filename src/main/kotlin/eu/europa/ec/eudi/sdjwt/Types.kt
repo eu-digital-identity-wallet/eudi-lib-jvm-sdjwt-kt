@@ -76,27 +76,6 @@ enum class HashAlgorithm(val alias: String) {
 }
 
 /**
- * A domain specific language for describing the payload of an SD-JWT
- */
-typealias SdClaim = Pair<String, SdJsonElement>
-
-sealed interface SdJsonElement {
-    data class Flat(val sd: Boolean, val content: JsonElement) : SdJsonElement {
-        init {
-            require(content != JsonNull || !sd) { "Json Null cannot be selectively disclosable" }
-        }
-    }
-
-    data class StructuredObj(val content: Obj) : SdJsonElement
-    data class RecursiveArr(val content: Arr) : SdJsonElement
-    data class RecursiveObj(val content: Obj) : SdJsonElement
-    class Obj(private val content: Map<String, SdJsonElement>) : SdJsonElement,
-        Map<String, SdJsonElement> by content
-
-    class Arr(private val content: List<Flat>) : SdJsonElement, List<Flat> by content
-}
-
-/**
  * Represent a selectively disclosed Json object and the calculated disclosures
  *
  * @param disclosures the disclosures calculated

@@ -104,12 +104,12 @@ sealed interface Disclosure {
          *
          * @param saltProvider the [SaltProvider] to be used. Defaults to [SaltProvider.Default]
          * @param claim the claim to be disclosed
-         * @param allowNestedHashClaim whether to allow the presence of nested hash claim (_sd)
+         * @param allowNestedDigests whether to allow the presence of nested hash claim (_sd)
          */
         internal fun objectProperty(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
-            allowNestedHashClaim: Boolean = false,
+            allowNestedDigests: Boolean = false,
         ): Result<ObjectProperty> {
             // Make sure that claim name is not _sd
             fun isValidAttributeName(attribute: String): Boolean = attribute != "_sd"
@@ -121,7 +121,7 @@ sealed interface Disclosure {
                     is JsonPrimitive -> json !is JsonNull
                     is JsonArray -> json.all { isValidJsonElement(it) }
                     is JsonObject -> json.entries.all {
-                        (isValidAttributeName(it.key) || allowNestedHashClaim) && isValidJsonElement(it.value)
+                        (isValidAttributeName(it.key) || allowNestedDigests) && isValidJsonElement(it.value)
                     }
                 }
             return runCatching {

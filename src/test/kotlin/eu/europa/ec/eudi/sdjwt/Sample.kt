@@ -82,7 +82,7 @@ fun main() {
 
         sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
-            structured("credentialSubject"){
+            structured("credentialSubject") {
                 sd(vcClaim)
             }
         }.serialize()

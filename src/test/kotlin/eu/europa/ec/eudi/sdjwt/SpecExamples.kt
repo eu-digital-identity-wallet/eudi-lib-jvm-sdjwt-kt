@@ -340,8 +340,6 @@ class SpecExamples {
 
     @Test
     fun `Example 4A`() = test("Example 4A", numOfDecoysLimit = 4, expectedDisclosuresNo = 10) {
-
-
         sdJwt {
             iss("https://pid-provider.memberstate.example.eu")
             iat(1541493724)
@@ -364,7 +362,7 @@ class SpecExamples {
                 sd("DE")
             }
 
-            structured("address") {
+            recursive("address") {
                 plain {
                     put("postal_code", "12345")
                     put("locality", "Irgendwo")
@@ -379,7 +377,7 @@ class SpecExamples {
         descr: String,
         numOfDecoysLimit: Int = 0,
         expectedDisclosuresNo: Int,
-        sdJwtElements: () -> SdJsonElement.Obj,
+        sdJwtElements: () -> SdJwtElement.Obj,
     ) {
         println(descr)
         val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = numOfDecoysLimit)

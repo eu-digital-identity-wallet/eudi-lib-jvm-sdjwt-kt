@@ -204,7 +204,7 @@ class DisclosedClaimSetTest {
                 SaltProvider.Default,
                 numOfDecoys,
 
-                ).discloseSdJwt(sdJwtElements).getOrThrow()
+            ).discloseSdJwt(sdJwtElements).getOrThrow()
 
             val (disclosures, jwtClaimSet) = disclosedJsonObject
 

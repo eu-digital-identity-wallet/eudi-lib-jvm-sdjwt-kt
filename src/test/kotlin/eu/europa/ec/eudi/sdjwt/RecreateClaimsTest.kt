@@ -36,7 +36,7 @@ class RecreateClaimsTest {
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdJwtElements: SdJsonElement.Obj): Claims {
+    private fun discloseAndRecreate(sdJwtElements: SdJwtElement.Obj): Claims {
         val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow()
         return RecreateClaims.recreateClaims(disclosedClaims).also {
             println(json.encodeToString(it))
@@ -126,11 +126,10 @@ class RecreateClaimsTest {
             recursive("rec") {
                 sd(subClaims)
             }
-
         }
 
         val expected = plainClaims + buildJsonObject {
-            put("recursively", subClaims)
+            put("rec", subClaims)
         }
 
         val actual = discloseAndRecreate(sdJwtElements)

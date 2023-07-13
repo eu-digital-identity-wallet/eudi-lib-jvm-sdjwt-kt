@@ -21,52 +21,70 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
+typealias SdClaim = Pair<String, SdJwtElement>
 
+/**
+ * A domain specific language for describing the payload of an SD-JWT
+ */
+sealed interface SdJwtElement {
 
-
-@SdJwtElementDsl
-class ObjBuilder @PublishedApi internal constructor() {
-    private val content = mutableMapOf<String, SdJsonElement>()
-
-    fun plain(name: String, value: JsonElement) {
-        content += (name to SdJsonElement.Flat(false, value))
+    /**
+     * Represents an [JsonElement] that is [either][sd] disclosed or not, as a whole.
+     * @param sd whether it is selectively disclosable or always disclosed (aka plain)
+     * @param content the json element. Cannot have a [JsonNull] selectively disclosable
+     *
+     */
+    data class SdOrPlain(val sd: Boolean, val content: JsonElement) : SdJwtElement {
+        init {
+            require(content != JsonNull || !sd) { "Json Null cannot be selectively disclosable" }
+        }
     }
-
-
-    fun sd(name: String, value: JsonElement) {
-        content += (name to SdJsonElement.Flat(true, value))
-    }
-
-    fun sd(name: String, value: SdJsonElement) {
-        content += (name to value)
-    }
-
-    @PublishedApi
-    internal fun build(): SdJsonElement.Obj = SdJsonElement.Obj(content)
-
+    class Obj(private val content: Map<String, SdJwtElement>) : SdJwtElement, Map<String, SdJwtElement> by content
+    class Arr(private val content: List<SdOrPlain>) : SdJwtElement, List<SdOrPlain> by content
+    data class StructuredObj(val content: Obj) : SdJwtElement
+    data class RecursiveObj(val content: Obj) : SdJwtElement
+    data class RecursiveArr(val content: Arr) : SdJwtElement
 }
 
+@SdJwtElementDsl
+class ObjBuilder
+    @PublishedApi
+    internal constructor() {
+        private val content = mutableMapOf<String, SdJwtElement>()
+
+        fun plain(name: String, value: JsonElement) {
+            content += (name to SdJwtElement.SdOrPlain(false, value))
+        }
+
+        fun sd(name: String, value: JsonElement) {
+            content += (name to SdJwtElement.SdOrPlain(true, value))
+        }
+
+        fun sd(name: String, value: SdJwtElement) {
+            content += (name to value)
+        }
+
+        @PublishedApi
+        internal fun build(): SdJwtElement.Obj = SdJwtElement.Obj(content)
+    }
+
 @OptIn(ExperimentalContracts::class)
-inline fun buildObj(builderAction: ObjBuilder.() -> Unit): SdJsonElement.Obj {
+inline fun buildObj(builderAction: ObjBuilder.() -> Unit): SdJwtElement.Obj {
     contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
     val b = ObjBuilder()
     b.builderAction()
     return b.build()
 }
 
-
-inline fun sdJwt(builderAction: ObjBuilder.() -> Unit): SdJsonElement.Obj {
-    return buildObj(builderAction)
-}
+inline fun sdJwt(builderAction: ObjBuilder.() -> Unit): SdJwtElement.Obj = buildObj(builderAction)
 
 @OptIn(ExperimentalContracts::class)
-inline fun buildArr(builderAction: (@SdJwtElementDsl MutableList<SdJsonElement.Flat>).() -> Unit): SdJsonElement.Arr {
+inline fun buildArr(builderAction: (@SdJwtElementDsl MutableList<SdJwtElement.SdOrPlain>).() -> Unit): SdJwtElement.Arr {
     contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
-    val content = mutableListOf<SdJsonElement.Flat>()
+    val content = mutableListOf<SdJwtElement.SdOrPlain>()
     content.builderAction()
-    return SdJsonElement.Arr(content.toList())
+    return SdJwtElement.Arr(content.toList())
 }
-
 
 fun ObjBuilder.sd(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
     sd(buildJsonObject(action))
@@ -88,7 +106,6 @@ fun ObjBuilder.sd(name: String, value: Boolean) {
     sd(name, JsonPrimitive(value))
 }
 
-
 fun ObjBuilder.plain(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
     plain(buildJsonObject(action))
 }
@@ -109,80 +126,65 @@ fun ObjBuilder.plain(name: String, value: Boolean) {
     plain(name, JsonPrimitive(value))
 }
 
-
-fun ObjBuilder.sdArray(name: String, action: (@SdJwtElementDsl MutableList<SdJsonElement.Flat>).() -> Unit) {
+fun ObjBuilder.sdArray(name: String, action: (@SdJwtElementDsl MutableList<SdJwtElement.SdOrPlain>).() -> Unit) {
     sd(name, buildArr(action))
 }
 
-
-
-
 fun ObjBuilder.structured(name: String, action: (@SdJwtElementDsl ObjBuilder).() -> Unit) {
     val obj = buildObj(action)
-    sd(name, SdJsonElement.StructuredObj(obj))
+    sd(name, SdJwtElement.StructuredObj(obj))
 }
 
-fun ObjBuilder.recursiveArr(name: String, action: (@SdJwtElementDsl MutableList<SdJsonElement.Flat>).() -> Unit) {
+fun ObjBuilder.recursiveArr(name: String, action: (@SdJwtElementDsl MutableList<SdJwtElement.SdOrPlain>).() -> Unit) {
     val arr = buildArr(action)
 
-    sd(name, SdJsonElement.RecursiveArr(arr))
+    sd(name, SdJwtElement.RecursiveArr(arr))
 }
 
 fun ObjBuilder.recursive(name: String, action: (@SdJwtElementDsl ObjBuilder).() -> Unit) {
     val obj = buildObj(action)
-    sd(name, SdJsonElement.RecursiveObj(obj))
+    sd(name, SdJwtElement.RecursiveObj(obj))
 }
 
-@Deprecated(message = "Remove it")
-fun ObjBuilder.recursiveOld(name: String, claims: Claims) {
-    val obj = buildObj{
-        sd(claims)
-    }
-    sd(name, SdJsonElement.RecursiveObj(obj))
-}
-
-
-fun MutableList<SdJsonElement.Flat>.sd(value: String) {
+fun MutableList<SdJwtElement.SdOrPlain>.sd(value: String) {
     sd(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.sd(value: Boolean) {
+fun MutableList<SdJwtElement.SdOrPlain>.sd(value: Boolean) {
     sd(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.sd(value: Number) {
+fun MutableList<SdJwtElement.SdOrPlain>.sd(value: Number) {
     sd(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.plain(value: String) {
+fun MutableList<SdJwtElement.SdOrPlain>.plain(value: String) {
     plain(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.plain(value: Boolean) {
+fun MutableList<SdJwtElement.SdOrPlain>.plain(value: Boolean) {
     plain(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.plain(value: Number) {
+fun MutableList<SdJwtElement.SdOrPlain>.plain(value: Number) {
     plain(JsonPrimitive(value))
 }
 
-fun MutableList<SdJsonElement.Flat>.sd(value: JsonElement) {
-    add(SdJsonElement.Flat(true, value))
+fun MutableList<SdJwtElement.SdOrPlain>.sd(value: JsonElement) {
+    add(SdJwtElement.SdOrPlain(true, value))
 }
 
-fun MutableList<SdJsonElement.Flat>.plain(value: JsonElement) {
-    add(SdJsonElement.Flat(false, value))
+fun MutableList<SdJwtElement.SdOrPlain>.plain(value: JsonElement) {
+    add(SdJwtElement.SdOrPlain(false, value))
 }
 
-fun MutableList<SdJsonElement.Flat>.sd(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+fun MutableList<SdJwtElement.SdOrPlain>.sd(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
     sd(buildJsonObject(action))
 }
 
-fun MutableList<SdJsonElement.Flat>.plain(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+fun MutableList<SdJwtElement.SdOrPlain>.plain(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
     plain(buildJsonObject(action))
 }
-
-
 
 //
 // JWT registered claims
@@ -201,13 +203,13 @@ fun ObjBuilder.sub(value: String) {
 fun ObjBuilder.iss(value: String) {
     plain("iss", value)
 }
+
 /**
  *  Adds the JWT publicly registered IAT claim (Issued At), in plain
  */
 fun ObjBuilder.iat(value: Long) {
     plain("iat", value)
 }
-
 
 /**
  *  Adds the JWT publicly registered IAT claim (Issued At), in plain
@@ -229,7 +231,6 @@ fun ObjBuilder.exp(value: Long) {
 fun ObjBuilder.exp(exp: Instant) {
     exp(exp.toEpochMilli())
 }
-
 
 /**
  * Adds the JWT publicly registered JTI claim, in plain
@@ -258,7 +259,6 @@ fun ObjBuilder.nbe(nbe: Long) {
 fun ObjBuilder.aud(aud: String) {
     plain("aud", aud)
 }
-
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
