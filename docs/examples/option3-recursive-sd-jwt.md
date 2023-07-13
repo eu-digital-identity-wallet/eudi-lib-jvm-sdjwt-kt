@@ -9,11 +9,13 @@ sdJwt {
     iat(1516239022)
     exp(1735689661)
 
-    recursively("address") {
-        put("street_address", "Schulstr. 12")
-        put("locality", "Schulpforta")
-        put("region", "Sachsen-Anhalt")
-        put("country", "DE")
+    recursive("address") {
+        sd {
+            put("street_address", "Schulstr. 12")
+            put("locality", "Schulpforta")
+            put("region", "Sachsen-Anhalt")
+            put("country", "DE")
+        }
     }
 }
 ```

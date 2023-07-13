@@ -15,8 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 
 /**
  * A claim is an attribute of an entity.
@@ -48,13 +47,13 @@ fun Claim.value(): JsonElement = second
 typealias Claims = Map<String, JsonElement>
 
 /**
- * Salt to be included in a [ClaimDisclosure] claim.
+ * Salt to be included in a [Disclosure] claim.
  * Check [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 typealias Salt = String
 
 /**
- * Hashing algorithms, used to produce the [DisclosureDigest] of a [ClaimDisclosure]
+ * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
  */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),
@@ -74,27 +73,6 @@ enum class HashAlgorithm(val alias: String) {
          */
         fun fromString(s: String): HashAlgorithm? = values().find { it.alias == s }
     }
-}
-
-/**
- * A domain specific language for describing the payload of an SD-JWT
- */
-sealed interface SdJwtElement {
-    data class Plain(val claims: Claims) : SdJwtElement
-    data class FlatDisclosed(val claims: Claims) : SdJwtElement
-    data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
-
-    sealed interface FlatNestable : SdJwtElement {
-        val claimName: String
-    }
-    data class StructuredDisclosed(override val claimName: String, val elements: List<SdJwtElement>) : FlatNestable
-    data class SelectivelyDisclosedArray(override val claimName: String, val elements: List<SdArrayElement>) : FlatNestable
-    data class FlatNested(val nested: FlatNestable) : SdJwtElement
-}
-
-sealed interface SdArrayElement {
-    data class Plain(val element: JsonElement) : SdArrayElement
-    data class SelectivelyDisclosed(val element: JsonElement) : SdArrayElement
 }
 
 /**

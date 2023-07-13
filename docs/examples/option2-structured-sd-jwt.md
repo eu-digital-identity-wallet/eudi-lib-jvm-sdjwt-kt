@@ -13,7 +13,7 @@ sdJwt {
     exp(1735689661)
 
     structured("address") {
-        flat {
+        sd {
             put("street_address", "Schulstr. 12")
             put("locality", "Schulpforta")
             put("region", "Sachsen-Anhalt")

@@ -54,64 +54,64 @@ Description of the example in the [specification Example 3: Complex Structured S
 
 ```kotlin
 sdJwt {
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
+    iss("https://example.com/issuer")
+    iat(1516239022)
+    exp(1735689661)
 
-            flat {
-                put("birth_middle_name", "Timotheus")
-                put("salutation", "Dr.")
-                put("msisdn", "49123456789")
+    sd {
+        put("birth_middle_name", "Timotheus")
+        put("salutation", "Dr.")
+        put("msisdn", "49123456789")
+    }
+    structured("verified_claims") {
+        structured("verification") {
+            plain {
+                put("trust_framework", "de_aml")
             }
-            structured("verified_claims") {
-                structured("verification") {
-                    plain {
-                        put("trust_framework", "de_aml")
-                    }
-                    flat {
-                        put("time", "2012-04-23T18:25Z")
-                        put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                    }
-                    sdArray("evidence") {
-                        sd {
-                            put("type", "document")
-                            put("method", "pipp")
-                            put("time", "2012-04-22T11:30Z")
-                            putJsonObject("document") {
-                                put("type", "idcard")
-                                putJsonObject("issuer") {
-                                    put("name", "Stadt Augsburg")
-                                    put("country", "DE")
-                                }
-                                put("number", "53554554")
-                                put("date_of_issuance", "2010-03-23")
-                                put("date_of_expiry", "2020-03-22")
-                            }
-                        }
-                    }
-                }
-                structured("claim") {
-                    flat {
-                        put("given_name", "Max")
-                        put("family_name", "Müller")
-                        putJsonArray("nationalities") {
-                            add("DE")
-                        }
-                        put("birthdate", "1956-01-28")
-                        putJsonObject("place_of_birth") {
-                            put("country", "IS")
-                            put("locality", "Þykkvabæjarklaustur")
-                        }
-                        putJsonObject("address") {
-                            put("locality", "Maxstadt")
-                            put("postal_code", "12344")
+            sd {
+                put("time", "2012-04-23T18:25Z")
+                put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
+            }
+            sdArray("evidence") {
+                sd {
+                    put("type", "document")
+                    put("method", "pipp")
+                    put("time", "2012-04-22T11:30Z")
+                    putJsonObject("document") {
+                        put("type", "idcard")
+                        putJsonObject("issuer") {
+                            put("name", "Stadt Augsburg")
                             put("country", "DE")
-                            put("street_address", "Weidenstraße 22")
                         }
+                        put("number", "53554554")
+                        put("date_of_issuance", "2010-03-23")
+                        put("date_of_expiry", "2020-03-22")
                     }
                 }
             }
         }
+        structured("claim") {
+            sd {
+                put("given_name", "Max")
+                put("family_name", "Müller")
+                putJsonArray("nationalities") {
+                    add("DE")
+                }
+                put("birthdate", "1956-01-28")
+                putJsonObject("place_of_birth") {
+                    put("country", "IS")
+                    put("locality", "Þykkvabæjarklaustur")
+                }
+                putJsonObject("address") {
+                    put("locality", "Maxstadt")
+                    put("postal_code", "12344")
+                    put("country", "DE")
+                    put("street_address", "Weidenstraße 22")
+                }
+            }
+        }
+    }
+}
 ```
 
 Produces

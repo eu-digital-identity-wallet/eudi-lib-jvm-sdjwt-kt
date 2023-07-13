@@ -34,7 +34,7 @@ class DisclosedClaimSetTest {
         fun `no sd-jwt with illegal attribute names`() {
             val invalidClaims = listOf(
                 sdJwt {
-                    flat { put("_sd", "foo") }
+                    sd { put("_sd", "foo") }
                 },
             )
 
@@ -106,8 +106,8 @@ class DisclosedClaimSetTest {
         ): DisclosedClaims {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plain(plainClaims)
-                flat(claimsToBeDisclosed)
+                plain(JsonObject(plainClaims))
+                sd(claimsToBeDisclosed)
             }
 
             val disclosedJsonObject = DisclosuresCreator(
@@ -195,8 +195,8 @@ class DisclosedClaimSetTest {
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plain(plainClaims)
-                claimsToBeDisclosed.forEach { c -> structured(c.key) { flat(c.value.jsonObject) } }
+                plain(JsonObject(plainClaims))
+                claimsToBeDisclosed.forEach { c -> structured(c.key) { sd(c.value.jsonObject) } }
             }
             val numOfDecoys = 4
             val disclosedJsonObject = DisclosuresCreator(
@@ -213,7 +213,8 @@ class DisclosedClaimSetTest {
              */
             fun assertJwtClaimSetSize() {
                 // otherClaims size +  "_sd_alg" + "_sd"
-                val expectedJwtClaimSetSize = plainClaims.size + 1 + claimsToBeDisclosed.size + (if (numOfDecoys > 0) 1 else 0)
+                val expectedJwtClaimSetSize =
+                    plainClaims.size + 1 + claimsToBeDisclosed.size
                 assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
             }
 

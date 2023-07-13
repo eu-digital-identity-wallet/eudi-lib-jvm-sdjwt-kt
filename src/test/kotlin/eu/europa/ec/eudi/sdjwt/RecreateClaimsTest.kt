@@ -36,7 +36,7 @@ class RecreateClaimsTest {
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdJwtElements: List<SdJwtElement>): Claims {
+    private fun discloseAndRecreate(sdJwtElements: SdJwtElement.Obj): Claims {
         val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow()
         return RecreateClaims.recreateClaims(disclosedClaims).also {
             println(json.encodeToString(it))
@@ -57,7 +57,7 @@ class RecreateClaimsTest {
 
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            flat(flatClaims)
+            sd(flatClaims)
         }
         val expected = JsonObject(plainClaims + flatClaims)
         val actual = discloseAndRecreate(sdJwtElements)
@@ -84,7 +84,7 @@ class RecreateClaimsTest {
             plain(plainClaims)
             structured("structured") {
                 plain(structuredPlainSubClaims)
-                flat(structuredSubClaims)
+                sd(structuredSubClaims)
             }
         }
 
@@ -110,7 +110,7 @@ class RecreateClaimsTest {
                 add(
                     buildJsonObject {
                         put("type", "work")
-                        put("street", "wotkStreet")
+                        put("street", "workStreet")
                     },
                 )
                 add(
@@ -123,11 +123,13 @@ class RecreateClaimsTest {
         }
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            recursively("recursively", subClaims)
+            recursive("rec") {
+                sd(subClaims)
+            }
         }
 
         val expected = plainClaims + buildJsonObject {
-            put("recursively", subClaims)
+            put("rec", subClaims)
         }
 
         val actual = discloseAndRecreate(sdJwtElements)

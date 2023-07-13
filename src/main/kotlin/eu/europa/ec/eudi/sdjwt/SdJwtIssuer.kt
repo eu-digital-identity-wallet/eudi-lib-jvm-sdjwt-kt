@@ -32,7 +32,7 @@ fun interface SdJwtIssuer<JWT> {
      */
     fun issue(
         disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
-        sdJwtElements: List<SdJwtElement>,
+        sdJwtElements: SdJwtElement.Obj,
     ): Result<SdJwt.Issuance<JWT>> = runCatching {
         val (disclosures, claimSet) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
         issue(disclosures, claimSet)

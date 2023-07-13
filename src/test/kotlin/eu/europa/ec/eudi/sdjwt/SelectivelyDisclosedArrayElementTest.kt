@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
@@ -29,7 +28,7 @@ class SelectivelyDisclosedArrayElementTest {
             iss("https://example.com/issuer")
             iat(1683000000)
             exp(1883000000)
-            flat {
+            sd {
                 put("given_name", "John")
                 put("family_name", "Doe")
                 put("email", "johndoe@example.com")
@@ -45,8 +44,8 @@ class SelectivelyDisclosedArrayElementTest {
                 put("updated_at", 1570000000)
             }
             sdArray("nationalities") {
-                plain(JsonPrimitive("US"))
-                sd(JsonPrimitive("DE"))
+                plain("US")
+                sd("DE")
             }
         }
 

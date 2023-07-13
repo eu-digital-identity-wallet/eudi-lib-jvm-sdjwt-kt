@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import java.security.MessageDigest
 
 /**
- * The hash of a [disclosure][ClaimDisclosure]
+ * The digest of a [disclosure][Disclosure]
  */
 @JvmInline
 value class DisclosureDigest private constructor(val value: String) {

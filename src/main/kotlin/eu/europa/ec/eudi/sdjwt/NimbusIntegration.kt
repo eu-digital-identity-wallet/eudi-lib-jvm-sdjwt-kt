@@ -117,7 +117,7 @@ inline fun sdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
-    builderAction: SdJwtElementsBuilder.() -> Unit,
+    builderAction: ObjBuilder.() -> Unit,
 ): SdJwt.Issuance<NimbusSignedJWT> =
     with(NimbusSdJwtIssuerFactory.createIssuer(signer, signAlgorithm)) {
         issue(disclosuresCreator, sdJwt(builderAction))

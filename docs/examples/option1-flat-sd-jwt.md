@@ -16,7 +16,7 @@ sdJwt {
     iat(1516239022)
     exp(1735689661)
 
-    flat {
+    sd {
         putJsonObject("address") {
             put("street_address", "Schulstr. 12")
             put("locality", "Schulpforta")
