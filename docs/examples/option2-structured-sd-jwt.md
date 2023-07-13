@@ -1,6 +1,6 @@
 # Option 2: Structured SD-JWT
 
-Check [specification Option 2: Structured SD-JWT](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-option-2-structured-sd-jwt)
+Check [specification Option 2: Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-option-2-structured-sd-jwt)
 
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
