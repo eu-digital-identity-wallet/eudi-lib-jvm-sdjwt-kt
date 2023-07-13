@@ -45,7 +45,7 @@ class DisclosuresCreator(
      *
      * @return disclosures and hashes, possibly including decoys
      * */
-    private fun disclosuresAndDigests(
+    internal fun disclosuresAndDigests(
         claims: Claims,
         allowNestedHashClaim: Boolean,
     ): Pair<Set<Disclosure.ObjectProperty>, Set<DisclosureDigest>> {
@@ -61,6 +61,14 @@ class DisclosuresCreator(
         val digests = digestPerDisclosure.values + decoys
 
         return digestPerDisclosure.keys to digests.toSortedSet(Comparator.comparing { it.value })
+    }
+
+    internal fun disclosureAndDigestArrayElement(e: JsonElement): Pair<Disclosure.ArrayElement, Set<DisclosureDigest>>{
+        val disclosure = Disclosure.arrayElement(saltProvider, e).getOrThrow()
+        val digest = DisclosureDigest.digest(hashAlgorithm,disclosure).getOrThrow()
+        val decoys = DecoyGen.Default.gen(hashAlgorithm, numOfDecoysLimit)
+        val digests =  (decoys + digest)
+        return disclosure to digests.toSortedSet(Comparator.comparing { it.value })
     }
 
     /**
