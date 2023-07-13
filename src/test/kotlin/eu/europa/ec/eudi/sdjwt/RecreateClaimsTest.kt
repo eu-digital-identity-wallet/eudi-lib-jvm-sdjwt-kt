@@ -123,7 +123,10 @@ class RecreateClaimsTest {
         }
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            recursivelyOld("recursively", subClaims)
+            recursive("rec") {
+                sd(subClaims)
+            }
+
         }
 
         val expected = plainClaims + buildJsonObject {

@@ -195,7 +195,7 @@ class SpecExamples {
             iat(1516239022)
             exp(1735689661)
 
-            recursively("address") {
+            recursive("address") {
                 sd {
                     put("street_address", "Schulstr. 12")
                     put("locality", "Schulpforta")
@@ -360,7 +360,7 @@ class SpecExamples {
                 put("is_over_65", false)
             }
 
-            structuredArray("nationalities") {
+            recursiveArr("nationalities") {
                 sd("DE")
             }
 

@@ -15,9 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 
 /**
  * A claim is an attribute of an entity.
@@ -49,13 +47,13 @@ fun Claim.value(): JsonElement = second
 typealias Claims = Map<String, JsonElement>
 
 /**
- * Salt to be included in a [ClaimDisclosure] claim.
+ * Salt to be included in a [Disclosure] claim.
  * Check [SD-JWT][https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-04#section-5.1.1.1]
  */
 typealias Salt = String
 
 /**
- * Hashing algorithms, used to produce the [DisclosureDigest] of a [ClaimDisclosure]
+ * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
  */
 enum class HashAlgorithm(val alias: String) {
     SHA_256("sha-256"),
@@ -83,18 +81,19 @@ enum class HashAlgorithm(val alias: String) {
 typealias SdClaim = Pair<String, SdJsonElement>
 
 sealed interface SdJsonElement {
-    data class SdAsAWhole(val sd: Boolean, val content: JsonElement) : SdJsonElement {
+    data class Flat(val sd: Boolean, val content: JsonElement) : SdJsonElement {
         init {
             require(content != JsonNull || !sd) { "Json Null cannot be selectively disclosable" }
         }
     }
-    data class Structured(val content: Obj) : SdJsonElement
-    data class StructuredArr(val arr: Arr): SdJsonElement
-    data class Recursive(val content: Obj) : SdJsonElement
+
+    data class StructuredObj(val content: Obj) : SdJsonElement
+    data class RecursiveArr(val content: Arr) : SdJsonElement
+    data class RecursiveObj(val content: Obj) : SdJsonElement
     class Obj(private val content: Map<String, SdJsonElement>) : SdJsonElement,
         Map<String, SdJsonElement> by content
 
-    class Arr(private val content: List<SdAsAWhole>) : SdJsonElement, List<SdAsAWhole> by content
+    class Arr(private val content: List<Flat>) : SdJsonElement, List<Flat> by content
 }
 
 /**
