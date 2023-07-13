@@ -4,9 +4,11 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
-
-
+typealias SdClaim = Pair<String, SdJsonElement>
 
 sealed interface SdJsonElement {
 
@@ -15,54 +17,16 @@ sealed interface SdJsonElement {
             require(content != JsonNull || !sd) { "Json Null cannot be selectively disclosable" }
         }
     }
-
     data class Structured(val content: Obj) : SdJsonElement
     data class Recursive(val content: Obj) : SdJsonElement
-
-
     class Obj(private val content: Map<String, SdJsonElement>) : SdJsonElement,
         Map<String, SdJsonElement> by content
 
     class Arr(private val content: List<SdAsAWhole>) : SdJsonElement, List<SdAsAWhole> by content
-
-}
-typealias SdClaim = Pair<String, SdJsonElement>
-
-
-fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: String) {
-    sd(JsonPrimitive(value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Boolean) {
-    sd(JsonPrimitive(value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Number) {
-    sd(JsonPrimitive(value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: String) {
-    plain(JsonPrimitive(value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Boolean) {
-    plain(JsonPrimitive(value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Number) {
-    plain(JsonPrimitive(value))
-}
-
-fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: JsonElement) {
-    add(SdJsonElement.SdAsAWhole(true, value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: JsonElement) {
-    add(SdJsonElement.SdAsAWhole(false, value))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.sd(action: (@SdJwtElementDsl JsonObjectBuilder).()->Unit) {
-    sd(buildJsonObject(action))
-}
-fun MutableList<SdJsonElement.SdAsAWhole>.plain(action: (@SdJwtElementDsl JsonObjectBuilder).()->Unit) {
-    plain(buildJsonObject(action))
 }
 
 
-fun example(): SdJsonElement.Obj {
+fun example4a(): SdJsonElement.Obj {
     return buildObj {
         sub("user_42")
         iss("https://example.com/issuer")
@@ -220,8 +184,18 @@ fun example3(): SdJsonElement.Obj {
 
 fun main() {
 
-    val sdJwt: SdJsonElement.Obj = example3()
-    DisclosuresCreator(numOfDecoysLimit = 0).create(sdJwt).also { it.print() }
+
+    val examples  = listOf(
+        option1(),
+        option2(),
+        //option3(),
+        example3(),
+        example4a()
+    )
+    examples.forEach {sdJwtElement->
+        DisclosuresCreator(numOfDecoysLimit = 0).create(sdJwtElement).also { it.print() }
+    }
+
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -282,16 +256,20 @@ fun DisclosuresCreator.create(sdJwt: SdJsonElement.Obj): DisclosedClaims {
 }
 
 
-inline fun buildArr(action: MutableList<SdJsonElement.SdAsAWhole>.() -> Unit): SdJsonElement.Arr {
+@OptIn(ExperimentalContracts::class)
+inline fun buildArr(builderAction: (@SdJwtElementDsl MutableList<SdJsonElement.SdAsAWhole>).() -> Unit): SdJsonElement.Arr {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
     val content = mutableListOf<SdJsonElement.SdAsAWhole>()
-    content.action()
+    content.builderAction()
     return SdJsonElement.Arr(content.toList())
 }
 
 
-inline fun buildObj(action: ObjBuilder.() -> Unit): SdJsonElement.Obj {
+@OptIn(ExperimentalContracts::class)
+inline fun buildObj(builderAction: ObjBuilder.() -> Unit): SdJsonElement.Obj {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
     val b = ObjBuilder()
-    b.action()
+    b.builderAction()
     return b.build()
 }
 
@@ -312,9 +290,8 @@ class ObjBuilder @PublishedApi internal constructor() {
     fun sd(name: String, value: SdJsonElement) {
         content += (name to value)
     }
-
-
-    fun build(): SdJsonElement.Obj = SdJsonElement.Obj(content)
+    @PublishedApi
+    internal fun build(): SdJsonElement.Obj = SdJsonElement.Obj(content)
 
 }
 
@@ -398,3 +375,37 @@ fun ObjBuilder.recursive(name: String, action: (@SdJwtElementDsl ObjBuilder).() 
 
 
 
+
+
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: String) {
+    sd(JsonPrimitive(value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Boolean) {
+    sd(JsonPrimitive(value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Number) {
+    sd(JsonPrimitive(value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: String) {
+    plain(JsonPrimitive(value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Boolean) {
+    plain(JsonPrimitive(value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Number) {
+    plain(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: JsonElement) {
+    add(SdJsonElement.SdAsAWhole(true, value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: JsonElement) {
+    add(SdJsonElement.SdAsAWhole(false, value))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(action: (@SdJwtElementDsl JsonObjectBuilder).()->Unit) {
+    sd(buildJsonObject(action))
+}
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(action: (@SdJwtElementDsl JsonObjectBuilder).()->Unit) {
+    plain(buildJsonObject(action))
+}
