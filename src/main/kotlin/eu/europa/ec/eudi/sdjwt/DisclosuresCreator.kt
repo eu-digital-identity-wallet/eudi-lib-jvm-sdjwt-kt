@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdJwtElement.*
+
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
@@ -63,81 +63,76 @@ class DisclosuresCreator(
         return digestPerDisclosure.keys to digests.toSortedSet(Comparator.comparing { it.value })
     }
 
-    internal fun disclosureAndDigestArrayElement(e: JsonElement): Pair<Disclosure.ArrayElement, Set<DisclosureDigest>>{
+    internal fun disclosureAndDigestArrayElement(e: JsonElement): Pair<Disclosure.ArrayElement, Set<DisclosureDigest>> {
         val disclosure = Disclosure.arrayElement(saltProvider, e).getOrThrow()
-        val digest = DisclosureDigest.digest(hashAlgorithm,disclosure).getOrThrow()
+        val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
         val decoys = DecoyGen.Default.gen(hashAlgorithm, numOfDecoysLimit)
-        val digests =  (decoys + digest)
+        val digests = (decoys + digest)
         return disclosure to digests.toSortedSet(Comparator.comparing { it.value })
     }
 
-    /**
-     * Discloses a single [sdJwtElement]
-     * @param sdJwtElement the element to disclose
-     * @return the [DisclosedClaims] for the given [sdJwtElement]
-     */
-    @OptIn(ExperimentalSerializationApi::class)
-    private fun discloseElement(sdJwtElement: SdJwtElement): DisclosedClaims {
-        fun plain(claims: Claims): DisclosedClaims =
-            if (claims.isEmpty()) DisclosedClaims.Empty
-            else DisclosedClaims(emptySet(), JsonObject(claims))
+    private fun sdClaim(digests: Set<DisclosureDigest>): JsonObject =
+        if (digests.isEmpty()) JsonObject(emptyMap())
+        else JsonObject(mapOf("_sd" to JsonArray(digests.map { JsonPrimitive(it.value) })))
 
-        fun flat(claims: Claims, allowNestedHashClaim: Boolean = false): DisclosedClaims {
-            val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
-            val hashClaims =
-                if (digests.isNotEmpty()) JsonObject(mapOf("_sd" to buildJsonArray { addAll(digests.map { it.value }) }))
-                else JsonObject(emptyMap())
-            return DisclosedClaims(disclosures, hashClaims)
-        }
+    private fun discloseElement(sdClaim: SdClaim): DisclosedClaims {
+        val (claimName, sdJsonElement) = sdClaim
 
-        fun structured(claimName: String, elements: List<SdJwtElement>): DisclosedClaims =
-            disclose(elements).mapClaims { claims -> buildJsonObject { put(claimName, claims) } }
-
-        fun recursively(claimName: String, claims: Claims): DisclosedClaims {
-            val (ds1, claimSet1) = flat(claims)
-            val (ds2, claimSet2) = flat(mapOf(claimName to claimSet1), allowNestedHashClaim = true)
-            return DisclosedClaims(ds1 + ds2, claimSet2)
-        }
-
-        fun array(claimName: String, elements: List<SdArrayElement>): DisclosedClaims {
-            return if (elements.isEmpty()) DisclosedClaims.Empty
-            else {
-                val ds = mutableSetOf<Disclosure.ArrayElement>()
-                val elements1 = elements.map { e ->
-                    when (e) {
-                        is SdArrayElement.Plain -> e.element
-                        is SdArrayElement.SelectivelyDisclosed -> {
-                            val disclosure = Disclosure.arrayElement(saltProvider, e.element).getOrThrow()
-                            val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
-                            ds += disclosure
-                            buildJsonObject { put("...", digest.value) }
-                        }
-                    }
+        fun arr(element: SdJsonElement.Arr): DisclosedClaims {
+            val ds = mutableSetOf<Disclosure>()
+            val es = element.flatMap {
+                if (!it.sd) listOf(it.content)
+                else {
+                    val (d, digs) = disclosureAndDigestArrayElement(it.content)
+                    ds += d
+                    digs.map { dig -> JsonObject(mapOf("..." to JsonPrimitive(dig.value))) }
                 }
-                DisclosedClaims(
-                    ds,
-                    buildJsonObject {
-                        putJsonArray(claimName) {
-                            addAll(elements1)
-                        }
-                    },
-                )
+            }
+            return DisclosedClaims(ds, JsonObject(mapOf(claimName to JsonArray(es))))
+        }
+
+        fun sdAsAWhole(element: SdJsonElement.SdAsAWhole): DisclosedClaims {
+            val claims = mapOf(claimName to element.content)
+            return if (!element.sd) DisclosedClaims(emptySet(), JsonObject(claims))
+            else {
+                val (disclosures, digests) = disclosuresAndDigests(claims, false)
+                return DisclosedClaims(disclosures, sdClaim(digests))
             }
         }
 
-        fun flatNested(nested: FlatNestable): DisclosedClaims {
-            val (ds1, cs1) = disclose(listOf(nested))
-            val (ds2, cs2) = flat(cs1, true)
-            return DisclosedClaims(ds1 + ds2, cs2)
+
+        fun structured(element: SdJsonElement.Structured): DisclosedClaims {
+
+
+
+            fun nest(cs: JsonObject): JsonObject {
+                return JsonObject( mapOf(claimName to cs))
+            }
+
+            val tmp = disclose(SdJsonElement.Obj(element.content))
+
+            return  tmp.mapClaims { nest(it) }
+
+
+        }
+        fun structuredArr(element: SdJsonElement.StructuredArr): DisclosedClaims {
+            val (ds1, cs1) = arr(element.arr)
+            val (ds2, cs2) = sdAsAWhole(SdJsonElement.SdAsAWhole(true, cs1[claimName]!!))
+            return DisclosedClaims(ds1+ds2, cs2)
+
         }
 
-        return when (sdJwtElement) {
-            is Plain -> plain(sdJwtElement.claims)
-            is FlatDisclosed -> flat(sdJwtElement.claims)
-            is StructuredDisclosed -> structured(sdJwtElement.claimName, sdJwtElement.elements)
-            is RecursivelyDisclosed -> recursively(sdJwtElement.claimName, sdJwtElement.claims)
-            is SelectivelyDisclosedArray -> array(sdJwtElement.claimName, sdJwtElement.elements)
-            is FlatNested -> flatNested(sdJwtElement.nested)
+        fun recursive(e: SdJsonElement.Recursive): DisclosedClaims {
+            TODO()
+        }
+
+        return when (sdJsonElement) {
+            is SdJsonElement.Arr -> arr(sdJsonElement)
+            is SdJsonElement.Obj -> disclose(sdJsonElement)
+            is SdJsonElement.SdAsAWhole -> sdAsAWhole(sdJsonElement)
+            is SdJsonElement.Structured -> structured(sdJsonElement)
+            is SdJsonElement.StructuredArr -> structuredArr(sdJsonElement)
+            is SdJsonElement.Recursive -> recursive(sdJsonElement)
         }
     }
 
@@ -146,17 +141,28 @@ class DisclosuresCreator(
      * @param sdJwtElements the set of elements to disclose
      * @return the [DisclosedClaims]
      */
-    private fun disclose(sdJwtElements: List<SdJwtElement>): DisclosedClaims {
+    private fun disclose(sdJwtElements: SdJsonElement.Obj): DisclosedClaims {
         val accumulatedDisclosures = mutableSetOf<Disclosure>()
         val accumulatedJson = mutableMapOf<String, JsonElement>()
 
         for (element in sdJwtElements) {
-            val (disclosures, json) = discloseElement(element)
+            val (disclosures, json) = discloseElement(element.toPair())
             accumulatedDisclosures += disclosures
-            accumulatedJson += json
+            add(accumulatedJson, json)
         }
 
         return DisclosedClaims(accumulatedDisclosures, JsonObject(accumulatedJson))
+    }
+
+    private fun add(a: MutableMap<String, JsonElement>, b: Claims) {
+        val aSd: List<JsonElement> = a["_sd"]?.jsonArray ?: emptyList()
+        val bSd: List<JsonElement> = b["_sd"]?.jsonArray ?: emptyList()
+        val sd = aSd + bSd
+        a += b
+        if (sd.isNotEmpty()) {
+            a["_sd"] = JsonArray(sd)
+        }
+
     }
 
     /**
@@ -178,7 +184,7 @@ class DisclosuresCreator(
      * @param sdJwtElements the contents of the SD-JWT
      * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
      */
-    fun discloseSdJwt(sdJwtElements: List<SdJwtElement>): Result<DisclosedClaims> = runCatching {
+    fun discloseSdJwt(sdJwtElements: SdJsonElement.Obj): Result<DisclosedClaims> = runCatching {
         disclose(sdJwtElements).addHashAlgClaim(hashAlgorithm)
     }
 }

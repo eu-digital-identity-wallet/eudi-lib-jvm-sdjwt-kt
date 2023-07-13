@@ -15,294 +15,254 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdJwtElement.FlatDisclosed
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import java.time.Instant
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-/**
- * Allows the convenient use of [SdJwtElementsBuilder]
- * @param builderAction the usage of the builder
- * @return the set of [SD-JWT elements][SdJwtElement]
- */
-@OptIn(ExperimentalContracts::class)
-inline fun sdJwt(builderAction: SdJwtElementsBuilder.() -> Unit): List<SdJwtElement> {
-    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
-    val v = SdJwtElementsBuilder()
-    v.builderAction()
-    return v.build()
-}
 
-/**
- * Builder for conveniently assembling
- * a set of [SD-JWT elements][SdJwtElement]
- */
+
+
 @SdJwtElementDsl
-class SdJwtElementsBuilder
-    @PublishedApi
-    internal constructor() {
+class ObjBuilder @PublishedApi internal constructor() {
+    private val content = mutableMapOf<String, SdJsonElement>()
 
-        /**
-         * Accumulates plain claims
-         */
-        private val plainClaims = mutableMapOf<String, JsonElement>()
-
-        /**
-         * Accumulates claims to be disclosed in flat manner
-         */
-        private val flatClaims = mutableMapOf<String, JsonElement>()
-
-        private val flatNested = mutableListOf<SdJwtElement.FlatNested>()
-
-        /**
-         * Claims to be disclosed in structured manner
-         */
-        private val structuredClaims = mutableListOf<SdJwtElement.StructuredDisclosed>()
-
-        /**
-         * Claims to be disclosed recursively
-         */
-        private val recursivelyClaims = mutableListOf<SdJwtElement.RecursivelyDisclosed>()
-
-        private val selectivelyDisclosedArrays = mutableListOf<SdJwtElement.SelectivelyDisclosedArray>()
-
-        /**
-         * Adds plain claims
-         * @param cs claims to add
-         */
-        fun plain(cs: Claims) {
-            plainClaims += cs
-        }
-
-        fun flat(cs: Claims) {
-            flatClaims += cs
-        }
-
-        fun flatNested(element: SdJwtElement.FlatNestable) {
-            flatNested += SdJwtElement.FlatNested(element)
-        }
-
-        fun sdArray(a: SdJwtElement.SelectivelyDisclosedArray) {
-            selectivelyDisclosedArrays += a
-        }
-
-        internal fun structured(s: SdJwtElement.StructuredDisclosed) {
-            structuredClaims += s
-        }
-
-        fun recursively(claimName: String, cs: Claims) {
-            recursively(SdJwtElement.RecursivelyDisclosed(claimName, cs))
-        }
-
-        internal fun recursively(r: SdJwtElement.RecursivelyDisclosed) {
-            recursivelyClaims += r
-        }
-
-        @PublishedApi
-        internal fun build(): List<SdJwtElement> =
-            buildList {
-                add(SdJwtElement.Plain(plainClaims))
-                addAll(selectivelyDisclosedArrays)
-                addAll(flatNested)
-                add(FlatDisclosed(flatClaims))
-                addAll(structuredClaims)
-                addAll(recursivelyClaims)
-            }
+    fun plain(name: String, value: JsonElement) {
+        content += (name to SdJsonElement.SdAsAWhole(false, value))
     }
 
-/**
- * Adds plain claims, using [JsonObjectBuilder]
- * @param builderAction a usage of [JsonObjectBuilder]
- */
-fun SdJwtElementsBuilder.plain(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
-    plain(buildJsonObject(builderAction))
+
+    fun sd(name: String, value: JsonElement) {
+        content += (name to SdJsonElement.SdAsAWhole(true, value))
+    }
+
+    fun sd(name: String, value: SdJsonElement) {
+        content += (name to value)
+    }
+
+    @PublishedApi
+    internal fun build(): SdJsonElement.Obj = SdJsonElement.Obj(content)
+
 }
+
+@OptIn(ExperimentalContracts::class)
+inline fun buildObj(builderAction: ObjBuilder.() -> Unit): SdJsonElement.Obj {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val b = ObjBuilder()
+    b.builderAction()
+    return b.build()
+}
+
+
+inline fun sdJwt(builderAction: ObjBuilder.() -> Unit): SdJsonElement.Obj {
+    return buildObj(builderAction)
+}
+
+@OptIn(ExperimentalContracts::class)
+inline fun buildArr(builderAction: (@SdJwtElementDsl MutableList<SdJsonElement.SdAsAWhole>).() -> Unit): SdJsonElement.Arr {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val content = mutableListOf<SdJsonElement.SdAsAWhole>()
+    content.builderAction()
+    return SdJsonElement.Arr(content.toList())
+}
+
+
+fun ObjBuilder.sd(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    sd(buildJsonObject(action))
+}
+
+fun ObjBuilder.sd(obj: Claims) {
+    obj.forEach { (k, v) -> sd(k, v) }
+}
+
+fun ObjBuilder.sd(name: String, value: String) {
+    sd(name, JsonPrimitive(value))
+}
+
+fun ObjBuilder.sd(name: String, value: Number) {
+    sd(name, JsonPrimitive(value))
+}
+
+fun ObjBuilder.sd(name: String, value: Boolean) {
+    sd(name, JsonPrimitive(value))
+}
+
+
+fun ObjBuilder.plain(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    plain(buildJsonObject(action))
+}
+
+fun ObjBuilder.plain(obj: Claims) {
+    obj.forEach { (k, v) -> plain(k, v) }
+}
+
+fun ObjBuilder.plain(name: String, value: String) {
+    plain(name, JsonPrimitive(value))
+}
+
+fun ObjBuilder.plain(name: String, value: Number) {
+    plain(name, JsonPrimitive(value))
+}
+
+fun ObjBuilder.plain(name: String, value: Boolean) {
+    plain(name, JsonPrimitive(value))
+}
+
+
+fun ObjBuilder.sdArray(name: String, action: (@SdJwtElementDsl MutableList<SdJsonElement.SdAsAWhole>).() -> Unit) {
+    sd(name, buildArr(action))
+}
+
+
+
+
+fun ObjBuilder.structured(name: String, action: (@SdJwtElementDsl ObjBuilder).() -> Unit) {
+    val obj = buildObj(action)
+    sd(name, SdJsonElement.Structured(obj))
+}
+
+fun ObjBuilder.structuredArray(name: String, action: (@SdJwtElementDsl MutableList<SdJsonElement.SdAsAWhole>).() -> Unit) {
+    val arr = buildArr(action)
+
+    sd(name, SdJsonElement.StructuredArr(arr))
+}
+
+fun ObjBuilder.recursively(name: String, action: (@SdJwtElementDsl ObjBuilder).() -> Unit) {
+    val obj = buildObj(action)
+    sd(name, SdJsonElement.Recursive(obj))
+}
+@Deprecated(message = "Remove it")
+fun ObjBuilder.recursivelyOld(name: String, action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    recursivelyOld(name, buildJsonObject(action))
+
+}
+@Deprecated(message = "Remove it")
+fun ObjBuilder.recursivelyOld(name: String, claims: Claims) {
+    val obj = buildObj{
+        sd(claims)
+    }
+    sd(name, SdJsonElement.Recursive(obj))
+}
+
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: String) {
+    sd(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Boolean) {
+    sd(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: Number) {
+    sd(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: String) {
+    plain(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Boolean) {
+    plain(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: Number) {
+    plain(JsonPrimitive(value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(value: JsonElement) {
+    add(SdJsonElement.SdAsAWhole(true, value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(value: JsonElement) {
+    add(SdJsonElement.SdAsAWhole(false, value))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.sd(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    sd(buildJsonObject(action))
+}
+
+fun MutableList<SdJsonElement.SdAsAWhole>.plain(action: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
+    plain(buildJsonObject(action))
+}
+
+
+
+//
+// JWT registered claims
+//
 
 /**
- * Adds flat claims, using [JsonObjectBuilder]
- * @param builderAction a usage of [JsonObjectBuilder]
+ * Adds the JWT publicly registered SUB claim (Subject), in plain
  */
-fun SdJwtElementsBuilder.flat(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
-    flat(buildJsonObject(builderAction))
-}
-
-fun SdJwtElementsBuilder.flatArray(claimName: String, builderAction: (@SdJwtElementDsl SdArrayBuilder).() -> Unit) {
-    flatNested(SdJwtElement.SelectivelyDisclosedArray(claimName, sdArray(builderAction)))
-}
-
-fun SdJwtElementsBuilder.flatStructured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
-    val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
-    flatNested(element)
-}
-
-fun SdJwtElementsBuilder.sdArray(claimName: String, builderAction: (@SdJwtElementDsl SdArrayBuilder).() -> Unit) {
-    val elements = sdArray(builderAction)
-    sdArray(SdJwtElement.SelectivelyDisclosedArray(claimName, elements))
-}
-
-/**
- * Adds a structured claim using, recursively, the builder
- * @param claimName the name of the structured claim
- * @param builderAction the usage of the builder
- */
-fun SdJwtElementsBuilder.structured(claimName: String, builderAction: SdJwtElementsBuilder.() -> Unit) {
-    val element = SdJwtElement.StructuredDisclosed(claimName, sdJwt(builderAction))
-    structured(element)
-}
-
-/**
- * Adds a structured claim where the given [flatSubClaims] will be flat disclosed.
- * That is the structured claim won't contain neither plain nor structured subclaims
- * @param claimName the name of the structured claim
- * @param flatSubClaims the usage of the builder
- */
-fun SdJwtElementsBuilder.structuredWithFlatClaims(claimName: String, flatSubClaims: Claims) {
-    val element = SdJwtElement.StructuredDisclosed(claimName, listOf(FlatDisclosed(flatSubClaims)))
-    structured(element)
-}
-
-/**
- * Adds recursively claims
- * @param claimName the name of the top-level claim
- * @param builderAction a usage of [JsonObjectBuilder]
- */
-fun SdJwtElementsBuilder.recursively(
-    claimName: String,
-    builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit,
-) {
-    val element = SdJwtElement.RecursivelyDisclosed(claimName, buildJsonObject(builderAction))
-    recursively(element)
-}
-
-/**
- * Adds the JWT publicly registered JTI claim, in plain
- */
-fun SdJwtElementsBuilder.jti(jti: String) {
-    plain(buildJsonObject { put("jti", jti) })
+fun ObjBuilder.sub(value: String) {
+    plain("sub", value)
 }
 
 /**
  * Adds the JWT publicly registered ISS claim (Issuer), in plain
  */
-fun SdJwtElementsBuilder.iss(issuer: String) {
-    plain(buildJsonObject { put("iss", issuer) })
+fun ObjBuilder.iss(value: String) {
+    plain("iss", value)
+}
+/**
+ *  Adds the JWT publicly registered IAT claim (Issued At), in plain
+ */
+fun ObjBuilder.iat(value: Long) {
+    plain("iat", value)
+}
+
+
+/**
+ *  Adds the JWT publicly registered IAT claim (Issued At), in plain
+ */
+fun ObjBuilder.iat(iat: Instant) {
+    iat(iat.toEpochMilli())
 }
 
 /**
- * Adds the JWT publicly registered SUB claim (Subject), in plain
+ *  Adds the JWT publicly registered EXP claim (Expires), in plain
  */
-fun SdJwtElementsBuilder.sub(subject: String) {
-    plain(buildJsonObject { put("sub", subject) })
+fun ObjBuilder.exp(value: Long) {
+    plain("exp", value)
+}
+
+/**
+ *  Adds the JWT publicly registered EXP claim (Expires), in plain
+ */
+fun ObjBuilder.exp(exp: Instant) {
+    exp(exp.toEpochMilli())
+}
+
+
+/**
+ * Adds the JWT publicly registered JTI claim, in plain
+ */
+fun ObjBuilder.jti(value: String) {
+    plain("jti", value)
 }
 
 /**
  *  Adds the JWT publicly registered NBE claim (Not before), in plain
  */
-fun SdJwtElementsBuilder.nbe(nbe: Instant) {
+fun ObjBuilder.nbe(nbe: Instant) {
     nbe(nbe.epochSecond)
 }
 
 /**
  *  Adds the JWT publicly registered NBE claim (Not before), in plain
  */
-fun SdJwtElementsBuilder.nbe(nbe: Long) {
-    plain(buildJsonObject { put("nbe", nbe) })
-}
-
-/**
- *  Adds the JWT publicly registered IAT claim (Issued At), in plain
- */
-fun SdJwtElementsBuilder.iat(iat: Instant) {
-    iat(iat.toEpochMilli())
-}
-
-/**
- *  Adds the JWT publicly registered IAT claim (Issued At), in plain
- */
-fun SdJwtElementsBuilder.iat(iat: Long) {
-    plain(buildJsonObject { put("iat", iat) })
-}
-
-/**
- *  Adds the JWT publicly registered EXP claim (Expires), in plain
- */
-fun SdJwtElementsBuilder.exp(exp: Instant) {
-    exp(exp.toEpochMilli())
-}
-
-/**
- *  Adds the JWT publicly registered EXP claim (Expires), in plain
- */
-fun SdJwtElementsBuilder.exp(exp: Long) {
-    plain(buildJsonObject { put("exp", exp) })
+fun ObjBuilder.nbe(nbe: Long) {
+    plain("nbe", nbe)
 }
 
 /**
  * Adds the JWT publicly registered AUD claim (single Audience), in plain
  */
-fun SdJwtElementsBuilder.aud(aud: String) {
-    plain(buildJsonObject { put("aud", aud) })
+fun ObjBuilder.aud(aud: String) {
+    plain("aud", aud)
 }
 
-/**
- * Adds the JWT publicly registered AUD claim (multiple Audience), in plain
- */
-@OptIn(ExperimentalSerializationApi::class)
-fun SdJwtElementsBuilder.aud(aud: Collection<String>) {
-    when {
-        aud.size == 1 -> aud(aud.first())
-        aud.size > 1 -> plain {
-            buildJsonObject {
-                putJsonArray("aud") { buildJsonArray { addAll(aud) } }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalContracts::class)
-inline fun sdArray(builderAction: SdArrayBuilder.() -> Unit): List<SdArrayElement> {
-    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
-    val v = SdArrayBuilder()
-    v.builderAction()
-    return v.build()
-}
-
-@SdJwtElementDsl
-class SdArrayBuilder
-    @PublishedApi
-    internal constructor() {
-
-        private val elements = mutableListOf<SdArrayElement>()
-
-        fun plain(element: JsonElement) {
-            elements.add(SdArrayElement.Plain(element))
-        }
-
-        fun sd(element: JsonElement) {
-            elements.add(SdArrayElement.SelectivelyDisclosed(element))
-        }
-
-        @PublishedApi
-        internal fun build(): List<SdArrayElement> = elements.toList()
-    }
-
-fun SdArrayBuilder.sd(value: String) {
-    sd(JsonPrimitive(value))
-}
-
-fun SdArrayBuilder.sd(value: Number) {
-    sd(JsonPrimitive(value))
-}
-
-fun SdArrayBuilder.sd(value: Boolean) {
-    sd(JsonPrimitive(value))
-}
-fun SdArrayBuilder.sd(builderAction: (@SdJwtElementDsl JsonObjectBuilder).() -> Unit) {
-    sd(buildJsonObject(builderAction))
-}
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)

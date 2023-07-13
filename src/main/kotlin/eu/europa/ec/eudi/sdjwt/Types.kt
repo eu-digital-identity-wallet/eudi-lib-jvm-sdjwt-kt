@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -79,22 +80,21 @@ enum class HashAlgorithm(val alias: String) {
 /**
  * A domain specific language for describing the payload of an SD-JWT
  */
-sealed interface SdJwtElement {
-    data class Plain(val claims: Claims) : SdJwtElement
-    data class FlatDisclosed(val claims: Claims) : SdJwtElement
-    data class RecursivelyDisclosed(val claimName: String, val claims: Claims) : SdJwtElement
+typealias SdClaim = Pair<String, SdJsonElement>
 
-    sealed interface FlatNestable : SdJwtElement {
-        val claimName: String
+sealed interface SdJsonElement {
+    data class SdAsAWhole(val sd: Boolean, val content: JsonElement) : SdJsonElement {
+        init {
+            require(content != JsonNull || !sd) { "Json Null cannot be selectively disclosable" }
+        }
     }
-    data class StructuredDisclosed(override val claimName: String, val elements: List<SdJwtElement>) : FlatNestable
-    data class SelectivelyDisclosedArray(override val claimName: String, val elements: List<SdArrayElement>) : FlatNestable
-    data class FlatNested(val nested: FlatNestable) : SdJwtElement
-}
+    data class Structured(val content: Obj) : SdJsonElement
+    data class StructuredArr(val arr: Arr): SdJsonElement
+    data class Recursive(val content: Obj) : SdJsonElement
+    class Obj(private val content: Map<String, SdJsonElement>) : SdJsonElement,
+        Map<String, SdJsonElement> by content
 
-sealed interface SdArrayElement {
-    data class Plain(val element: JsonElement) : SdArrayElement
-    data class SelectivelyDisclosed(val element: JsonElement) : SdArrayElement
+    class Arr(private val content: List<SdAsAWhole>) : SdJsonElement, List<SdAsAWhole> by content
 }
 
 /**

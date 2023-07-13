@@ -82,7 +82,9 @@ fun main() {
 
         sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain(jwtClaims)
-            structuredWithFlatClaims("credentialSubject", vcClaim)
+            structured("credentialSubject"){
+                sd(vcClaim)
+            }
         }.serialize()
 
     val verification = verifyIssuance(sdJwt, issuerPubKey)

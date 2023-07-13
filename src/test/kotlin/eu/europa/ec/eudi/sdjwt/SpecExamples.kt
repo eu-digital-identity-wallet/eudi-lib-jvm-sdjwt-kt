@@ -16,10 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
@@ -35,7 +32,7 @@ class SpecExamples {
             iat(1516239022)
             exp(1735689661)
 
-            flat {
+            sd {
                 put("given_name", "John")
                 put("family_name", "Doe")
                 put("email", "johndoe@example.com")
@@ -160,7 +157,7 @@ class SpecExamples {
             iat(1516239022)
             exp(1735689661)
 
-            flat {
+            sd {
                 putJsonObject("address") {
                     put("street_address", "Schulstr. 12")
                     put("locality", "Schulpforta")
@@ -180,7 +177,7 @@ class SpecExamples {
             exp(1735689661)
 
             structured("address") {
-                flat {
+                sd {
                     put("street_address", "Schulstr. 12")
                     put("locality", "Schulpforta")
                     put("region", "Sachsen-Anhalt")
@@ -199,10 +196,12 @@ class SpecExamples {
             exp(1735689661)
 
             recursively("address") {
-                put("street_address", "Schulstr. 12")
-                put("locality", "Schulpforta")
-                put("region", "Sachsen-Anhalt")
-                put("country", "DE")
+                sd {
+                    put("street_address", "Schulstr. 12")
+                    put("locality", "Schulpforta")
+                    put("region", "Sachsen-Anhalt")
+                    put("country", "DE")
+                }
             }
         }
     }
@@ -215,7 +214,7 @@ class SpecExamples {
                 iat(1516239022)
                 exp(1735689661)
 
-                flat {
+                sd {
                     put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                     put("given_name", "太郎")
                     put("family_name", "山田")
@@ -283,7 +282,7 @@ class SpecExamples {
             iat(1516239022)
             exp(1735689661)
 
-            flat {
+            sd {
                 put("birth_middle_name", "Timotheus")
                 put("salutation", "Dr.")
                 put("msisdn", "49123456789")
@@ -293,7 +292,7 @@ class SpecExamples {
                     plain {
                         put("trust_framework", "de_aml")
                     }
-                    flat {
+                    sd {
                         put("time", "2012-04-23T18:25Z")
                         put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
                     }
@@ -316,7 +315,7 @@ class SpecExamples {
                     }
                 }
                 structured("claim") {
-                    flat {
+                    sd {
                         put("given_name", "Max")
                         put("family_name", "Müller")
                         putJsonArray("nationalities") {
@@ -341,16 +340,7 @@ class SpecExamples {
 
     @Test
     fun `Example 4A`() = test("Example 4A", numOfDecoysLimit = 4, expectedDisclosuresNo = 10) {
-        val d1 = """
-            WyItNmhDZVJFV3JjRWg0Q2JzQ2RjVTVRIiwgImFkZHJlc3MiLCB7Il9zZCI6
-            IFsiOHo4ejlYOWpVdGI5OWdqZWpDd0ZBR3o0YXFsSGYtc0NxUTZlTV9xbXBV
-            USIsICJDeHE0ODcyVVhYbmdHVUxUX2tsOGZkd1ZGa3lLNkFKZlBaTHk3TDVf
-            MGtJIiwgImxjMk8weER4WXdiZ2M4cjJERXc3eWhfSURXZXhXOENiZ3R6WVBR
-            RlJpNGMiXSwgInBvc3RhbF9jb2RlIjogIjEyMzQ1IiwgImxvY2FsaXR5Ijog
-            IklyZ2VuZHdvIiwgInN0cmVldF9hZGRyZXNzIjogIlNvbm5lbnN0cmFzc2Ug
-            MjMiLCAiY291bnRyeV9jb2RlIjogIkRFIn1d
-        """.trimIndent().removeNewLine()
-        Disclosure.wrap(d1).getOrThrow().also { println(it.claim()) }
+
 
         sdJwt {
             iss("https://pid-provider.memberstate.example.eu")
@@ -360,7 +350,7 @@ class SpecExamples {
                 put("type", "PersonIdentificationData")
             }
 
-            flat {
+            sd {
                 put("first_name", "Erika")
                 put("family_name", "Mustermann")
                 put("birth_family_name", "Schmidt")
@@ -370,11 +360,11 @@ class SpecExamples {
                 put("is_over_65", false)
             }
 
-            flatArray("nationalities") {
+            structuredArray("nationalities") {
                 sd("DE")
             }
 
-            flatStructured("address") {
+            structured("address") {
                 plain {
                     put("postal_code", "12345")
                     put("locality", "Irgendwo")
@@ -389,7 +379,7 @@ class SpecExamples {
         descr: String,
         numOfDecoysLimit: Int = 0,
         expectedDisclosuresNo: Int,
-        sdJwtElements: () -> List<SdJwtElement>,
+        sdJwtElements: () -> SdJsonElement.Obj,
     ) {
         println(descr)
         val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = numOfDecoysLimit)

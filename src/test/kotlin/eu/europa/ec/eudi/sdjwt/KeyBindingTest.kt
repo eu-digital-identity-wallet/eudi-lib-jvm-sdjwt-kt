@@ -199,7 +199,7 @@ class SampleIssuer(private val issuerKey: ECKey) {
                 exp(exp)
                 cnf(holderPubKey)
                 structured("credentialSubject") {
-                    flat(credential)
+                    sd(credential)
                 }
             }
         return sdJwtIssuer.issue(sdJwtElements = sdJwtElements).fold(
@@ -218,7 +218,7 @@ class SampleIssuer(private val issuerKey: ECKey) {
      * This is the issuer convention of including holder's pub key to SD-JWT
      * @see extractHolderPubKey for its dual function
      */
-    private fun SdJwtElementsBuilder.cnf(jwk: JWK) {
+    private fun ObjBuilder.cnf(jwk: JWK) {
         plain {
             putJsonObject("cnf") {
                 put("jwk", jwk.asJsonObject())
