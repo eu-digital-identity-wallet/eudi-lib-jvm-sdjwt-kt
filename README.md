@@ -59,7 +59,7 @@ val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKey
     exp(1735689661)
 
     structured("address") {
-        flat {
+        sd {
             put("street_address", "Schulstr. 12")
             put("locality", "Schulpforta")
             put("region", "Sachsen-Anhalt")
@@ -165,7 +165,7 @@ val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKey
     exp(1735689661)
 
     structured("address") {
-        flat {
+        sd {
             put("street_address", "Schulstr. 12")
             put("locality", "Schulpforta")
             put("region", "Sachsen-Anhalt")

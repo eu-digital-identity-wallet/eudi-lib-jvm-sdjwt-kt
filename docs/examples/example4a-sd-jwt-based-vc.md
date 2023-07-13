@@ -35,7 +35,7 @@ sdJwt {
         put("type", "PersonIdentificationData")
     }
 
-    flat {
+    sd {
         put("first_name", "Erika")
         put("family_name", "Mustermann")
         put("birth_family_name", "Schmidt")
@@ -45,11 +45,11 @@ sdJwt {
         put("is_over_65", false)
     }
 
-    flatArray("nationalities") {
+    recursiveArr("nationalities") {
         sd("DE")
     }
 
-    flatStructured("address") {
+    recursive("address") {
         plain {
             put("postal_code", "12345")
             put("locality", "Irgendwo")

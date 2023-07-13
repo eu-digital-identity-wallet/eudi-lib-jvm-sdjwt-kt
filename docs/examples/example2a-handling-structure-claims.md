@@ -21,12 +21,11 @@ Description of the example in the [specification Example 2a: Handling Structured
 
 ```kotlin
 sdJwt {
-
     iss("https://example.com/issuer")
     iat(1516239022)
     exp(1735689661)
 
-    flat {
+    sd {
         put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
         put("given_name", "太郎")
         put("family_name", "山田")
