@@ -101,11 +101,17 @@ fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: JsonElement) = add(PlainJsonElement(value))
 fun SdArrayBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
+inline fun <reified E> SdArrayBuilder.plain(claims: E) {
+    plain(Json.encodeToJsonElement(claims))
+}
 fun SdArrayBuilder.sd(value: String) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Number) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: JsonElement) = add(SdJsonElement(value))
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
+inline fun <reified E> SdArrayBuilder.sd(claims: E) {
+    sd(Json.encodeToJsonElement(claims))
+}
 
 //
 // Methods for building sd array
@@ -119,15 +125,22 @@ fun SdObjectBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(val
 fun SdObjectBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(obj: Claims) = obj.forEach { (k, v) -> sd(k, v) }
+inline fun <reified E> SdObjectBuilder.sd(claims: E) {
+    sd(Json.encodeToJsonElement(claims).jsonObject)
+}
 fun SdObjectBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
 fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(obj: Claims) = obj.forEach { (k, v) -> plain(k, v) }
+inline fun <reified E> SdObjectBuilder.plain(claims: E) {
+    plain(Json.encodeToJsonElement(claims).jsonObject)
+}
 fun SdObjectBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
 fun SdObjectBuilder.sdArray(name: String, action: SdArrayBuilder.() -> Unit) {
     sd(name, buildSdArray(action))
 }
+
 fun SdObjectBuilder.structured(name: String, action: (SdObjectBuilder).() -> Unit) {
     val obj = buildSdObject(action)
     sd(name, StructuredSdObject(obj))
@@ -136,6 +149,7 @@ fun SdObjectBuilder.recursiveArr(name: String, action: SdArrayBuilder.() -> Unit
     val arr = buildSdArray(action)
     sd(name, RecursiveSdArray(arr))
 }
+
 fun SdObjectBuilder.recursive(name: String, action: (SdObjectBuilder).() -> Unit) {
     val obj = buildSdObject(action)
     sd(name, RecursiveSdObject(obj))
