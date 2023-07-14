@@ -113,6 +113,7 @@ class DisclosedClaimSetTest {
             val disclosedJsonObject = DisclosuresCreator(
                 hashAlgorithm,
                 SaltProvider.Default,
+                DecoyGen.Default,
                 4,
             ).discloseSdJwt(sdJwtElements).getOrThrow()
 
@@ -202,6 +203,7 @@ class DisclosedClaimSetTest {
             val disclosedJsonObject = DisclosuresCreator(
                 hashAlgorithm,
                 SaltProvider.Default,
+                DecoyGen.Default,
                 numOfDecoys,
 
             ).discloseSdJwt(sdJwtElements).getOrThrow()
