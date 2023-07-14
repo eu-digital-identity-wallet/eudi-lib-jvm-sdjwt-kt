@@ -27,14 +27,14 @@ fun interface SdJwtIssuer<JWT> {
      *
      * @param disclosuresCreator specifies the details of producing disclosures & hashes, such as [HashAlgorithm],
      * decoys to use etc.
-     * @param sdJwtElements the contents of the SD-JWT
+     * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
     fun issue(
         disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
-        sdJwtElements: SdJwtElement.Obj,
+        sdElements: SdElement.SdObject,
     ): Result<SdJwt.Issuance<JWT>> = runCatching {
-        val (disclosures, claimSet) = disclosuresCreator.discloseSdJwt(sdJwtElements).getOrThrow()
+        val (disclosures, claimSet) = disclosuresCreator.discloseSdJwt(sdElements).getOrThrow()
         issue(disclosures, claimSet)
     }
 

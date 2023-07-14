@@ -27,6 +27,7 @@ sealed interface Disclosure {
 
     /**
      * Decodes and extracts the disclosed claim
+     *
      * @return the disclosed claim
      */
     fun claim(): Claim {
