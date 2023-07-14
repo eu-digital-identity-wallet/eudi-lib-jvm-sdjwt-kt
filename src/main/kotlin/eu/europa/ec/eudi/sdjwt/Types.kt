@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * A claim is an attribute of an entity.
@@ -76,6 +77,8 @@ enum class HashAlgorithm(val alias: String) {
 }
 
 typealias Jwt = String
+
+typealias UnsignedSdJwt = SdJwt.Issuance<JsonObject>
 
 /**
  * A parameterized representation of the SD-JWT

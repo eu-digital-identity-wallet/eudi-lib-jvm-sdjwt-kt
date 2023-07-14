@@ -158,7 +158,7 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(Sd(value))
  *   }
  * }
  * ```
-*/
+ */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
 inline fun <reified E> SdArrayBuilder.sd(claims: E) {
     sd(Json.encodeToJsonElement(claims))
@@ -309,3 +309,14 @@ fun SdObjectBuilder.aud(vararg aud: String) {
         else -> plain("aud", JsonArray(aud.map { JsonPrimitive(it) }))
     }
 }
+
+/**
+ * Adds the confirmation claim (cnf) as a plain (always disclosable) which
+ * contains the [jwk]
+ *
+ * No checks are performed for the [jwk]
+ *
+ * @param jwk the key to put in confirmation claim.
+ */
+fun SdObjectBuilder.cnf(jwk: JsonObject) =
+    plain("cnf", buildJsonObject { put("jwk", jwk) })

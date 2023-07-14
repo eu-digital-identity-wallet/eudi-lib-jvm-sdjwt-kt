@@ -134,7 +134,7 @@ fun interface JwtSignatureVerifier {
     }
 
     companion object {
-        val NoSignatureValidation: JwtSignatureVerifier by lazy { noSignatureValidation() }
+        internal val NoSignatureValidation: JwtSignatureVerifier by lazy { noSignatureValidation() }
     }
 }
 

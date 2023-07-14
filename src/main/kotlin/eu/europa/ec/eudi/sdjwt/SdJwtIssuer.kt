@@ -16,31 +16,34 @@
 package eu.europa.ec.eudi.sdjwt
 
 /**
+ * Signs an SD-JWT
+ *
+ * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
+ **/
+typealias SignSdJwt<SIGNED_JWT> = (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
+
+/**
  * Representation of a function capable of producing a [issuance SD-JWT][SdJwt.Issuance]
  *
- *  @param JWT the type representing the JWT part of the SD-JWT
+ * @param sdJwtFactory factory for un-signed SD-JWT
+ * @param signSdJwt signer
+ * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  */
-fun interface SdJwtIssuer<JWT> {
+class SdJwtIssuer<SIGNED_JWT>(
+    private val sdJwtFactory: SdJwtFactory,
+    private val signSdJwt: SignSdJwt<SIGNED_JWT>,
+) {
 
     /**
      * Issues an SD-JWT
      *
-     * @param sdJwtFactory specifies the details of producing disclosures & hashes, such as [HashAlgorithm],
-     * decoys to use etc.
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    fun issue(
-        sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
-        sdElements: SdElement.SdObject,
-    ): Result<SdJwt.Issuance<JWT>> = runCatching {
+    fun issue(sdElements: SdElement.SdObject): Result<SdJwt.Issuance<SIGNED_JWT>> = runCatching {
         val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
-        sign(unsignedSdJwt)
+        signSdJwt(unsignedSdJwt)
     }
 
-    /**
-     * Signs an SD-JWT
-     * @param unSignedSdJwt the unsigned SD-JWT
-     **/
-    fun sign(unSignedSdJwt: UnsignedSdJwt): SdJwt.Issuance<JWT>
+    companion object
 }
