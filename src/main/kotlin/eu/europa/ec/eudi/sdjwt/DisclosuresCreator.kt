@@ -77,26 +77,31 @@ class DisclosuresCreator(
     private fun discloseElement(sdClaim: SdClaim): DisclosedClaims {
         val (claimName, sdJsonElement) = sdClaim
 
-        fun flat(element: SdOrPlain, allowNestedHashClaim: Boolean = false): DisclosedClaims {
+        fun plain(element: Plain): DisclosedClaims =
+            DisclosedClaims(emptySet(), JsonObject(mapOf(claimName to element.content)))
+
+        fun selectivelyDisclosed(
+            element: SelectivelyDisclosed,
+            allowNestedHashClaim: Boolean = false
+        ): DisclosedClaims {
             val claims = mapOf(claimName to element.content)
-            return if (!element.sd) DisclosedClaims(emptySet(), JsonObject(claims))
-            else {
-                val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
-                return DisclosedClaims(disclosures, digestsClaim(digests))
-            }
+            val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
+            return DisclosedClaims(disclosures, digestsClaim(digests))
+
         }
 
         fun arr(element: Arr): DisclosedClaims {
-            val ds = mutableSetOf<Disclosure>()
-            val es = element.flatMap {
-                if (!it.sd) listOf(it.content)
-                else {
-                    val (d, digs) = disclosureAndDigestArrayElement(it.content)
-                    ds += d
-                    digs.map { dig -> JsonObject(mapOf("..." to JsonPrimitive(dig.value))) }
+            val disclosures = mutableSetOf<Disclosure>()
+            fun handle(item: SdOrPlain): List<JsonElement> = when (item) {
+                is Plain -> listOf(item.content)
+                is SelectivelyDisclosed -> {
+                    val (ds, digests) = disclosureAndDigestArrayElement(item.content)
+                    disclosures += ds
+                    digests.map { dig -> JsonObject(mapOf("..." to JsonPrimitive(dig.value))) }
                 }
             }
-            return DisclosedClaims(ds, JsonObject(mapOf(claimName to JsonArray(es))))
+            val claims = JsonObject(mapOf(claimName to JsonArray(element.flatMap { handle(it) })))
+            return DisclosedClaims(disclosures,claims)
         }
 
         fun structuredObj(element: StructuredObj): DisclosedClaims {
@@ -107,20 +112,21 @@ class DisclosuresCreator(
 
         fun recursiveArr(element: RecursiveArr): DisclosedClaims {
             val (ds1, cs1) = arr(element.content)
-            val nested = SdOrPlain(true, cs1[claimName]!!)
-            val (ds2, cs2) = flat(nested)
+            val nested = SelectivelyDisclosed(cs1[claimName]!!)
+            val (ds2, cs2) = selectivelyDisclosed(nested)
             return DisclosedClaims(ds1 + ds2, cs2)
         }
 
         fun recursiveObj(element: RecursiveObj): DisclosedClaims {
             val (ds1, cs1) = discloseObj(element.content)
-            val nested = SdOrPlain(true, cs1)
-            val (ds2, cs2) = flat(nested, allowNestedHashClaim = true)
+            val nested = SelectivelyDisclosed(cs1)
+            val (ds2, cs2) = selectivelyDisclosed(nested, allowNestedHashClaim = true)
             return DisclosedClaims(ds1 + ds2, cs2)
         }
 
         return when (sdJsonElement) {
-            is SdOrPlain -> flat(sdJsonElement)
+            is Plain -> plain(sdJsonElement)
+            is SelectivelyDisclosed -> selectivelyDisclosed(sdJsonElement)
             is Arr -> arr(sdJsonElement)
             is Obj -> discloseObj(sdJsonElement)
             is StructuredObj -> structuredObj(sdJsonElement)
@@ -134,7 +140,7 @@ class DisclosuresCreator(
      * @param obj the set of elements to disclose
      * @return the [DisclosedClaims]
      */
-    private fun discloseObj(obj: Obj): DisclosedClaims {
+    fun discloseObj(obj: Obj): DisclosedClaims {
         val accumulatedDisclosures = mutableSetOf<Disclosure>()
         val accumulatedJson = mutableMapOf<String, JsonElement>()
 

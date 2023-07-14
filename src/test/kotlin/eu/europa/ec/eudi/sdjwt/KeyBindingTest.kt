@@ -195,8 +195,8 @@ class SampleIssuer(private val issuerKey: ECKey) {
         val sdJwtElements =
             sdJwt {
                 iss(iss)
-                iat(iat)
-                exp(exp)
+                iat(iat.toEpochMilli())
+                exp(exp.toEpochMilli())
                 cnf(holderPubKey)
                 structured("credentialSubject") {
                     sd(credential)
