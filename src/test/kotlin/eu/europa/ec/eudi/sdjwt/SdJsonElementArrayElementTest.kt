@@ -20,7 +20,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 
-class SelectivelyDisclosedArrayElementTest {
+class SdJsonElementArrayElementTest {
     @Test
     fun simple() {
         val sdJwtElements = sdJwt {

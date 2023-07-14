@@ -36,8 +36,8 @@ class RecreateClaimsTest {
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdJwtElements: SdJwtElement.Obj): Claims {
-        val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow()
+    private fun discloseAndRecreate(sdElements: SdElement.SdObject): Claims {
+        val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdElements).getOrThrow()
         return RecreateClaims.recreateClaims(disclosedClaims).also {
             println(json.encodeToString(it))
         }
