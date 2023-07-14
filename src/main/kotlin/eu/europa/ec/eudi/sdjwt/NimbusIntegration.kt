@@ -34,13 +34,22 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 // Signature Verification support
 //
 
-internal fun noSignatureValidation(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
-    try {
-        val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-        signedJwt.jwtClaimsSet.asClaims()
-    } catch (e: ParseException) {
-        null
+val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier by lazy {
+    JwtSignatureVerifier { unverifiedJwt ->
+        try {
+            val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+            parsedJwt.jwtClaimsSet.asClaims()
+        } catch (e: ParseException) {
+            null
+        }
     }
+}
+
+/**
+ * Indicates that  presentation SD-JWT must have key binding. Νο signature validation is performed
+ */
+val KeyBindingVerifier.Companion.MustBePresent: KeyBindingVerifier.MustBePresentAndValid by lazy {
+    KeyBindingVerifier.MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
 }
 
 fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
