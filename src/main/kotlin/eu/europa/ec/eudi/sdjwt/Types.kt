@@ -15,7 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * A claim is an attribute of an entity.
@@ -75,39 +76,9 @@ enum class HashAlgorithm(val alias: String) {
     }
 }
 
-/**
- * Represent a selectively disclosed Json object and the calculated disclosures
- *
- * @param disclosures the disclosures calculated
- * @param claimSet the JSON object that contains the hashed disclosures and possible plain claims
- */
-data class DisclosedClaims(val disclosures: Set<Disclosure>, val claimSet: JsonObject) {
-
-    fun mapClaims(f: (JsonObject) -> JsonObject): DisclosedClaims = DisclosedClaims(disclosures, f(claimSet))
-
-    companion object {
-
-        /**
-         * A []DisclosedClaims] with no disclosures adn with an empty claim set
-         */
-        val Empty: DisclosedClaims = DisclosedClaims(emptySet(), JsonObject(emptyMap()))
-
-        /**
-         * Adds two [DisclosedClaims] producing a new [DisclosedClaims] which contains
-         * the combined set of disclosures and claim sets
-         * @param a the first  [DisclosedClaims]
-         * @param b the second  [DisclosedClaims]
-         * @return a new [DisclosedClaims] which contains the combined set of disclosures and claim sets
-         */
-        fun add(a: DisclosedClaims, b: DisclosedClaims): DisclosedClaims {
-            val disclosures = a.disclosures + b.disclosures
-            val claimSet = JsonObject(a.claimSet + b.claimSet)
-            return DisclosedClaims(disclosures, claimSet)
-        }
-    }
-}
-
 typealias Jwt = String
+
+typealias UnsignedSdJwt = SdJwt.Issuance<JsonObject>
 
 /**
  * A parameterized representation of the SD-JWT

@@ -32,7 +32,7 @@ fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject>
 }
 
 val json = Json { prettyPrint = true }
-fun DisclosedClaims.print() {
+fun UnsignedSdJwt.print() {
     println("Found ${disclosures.size} disclosures")
     disclosures.forEach { d ->
         val kind = when (d) {
@@ -41,7 +41,7 @@ fun DisclosedClaims.print() {
         }
         println(kind)
     }
-    claimSet.also { println(json.encodeToString(it)) }
+    jwt.also { println(json.encodeToString(it)) }
 }
 
 fun String.removeNewLine(): String = replace("\n", "")

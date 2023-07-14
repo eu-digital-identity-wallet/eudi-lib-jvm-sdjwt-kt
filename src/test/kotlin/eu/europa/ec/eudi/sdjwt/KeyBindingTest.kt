@@ -135,7 +135,6 @@ data class SampleCredential(
 )
 
 fun SampleCredential.asJsonObject(): JsonObject = json.encodeToJsonElement(this).jsonObject
-fun JWK.asJsonObject(): JsonObject = json.parseToJsonElement(toJSONString()).jsonObject
 
 /**
  * Sample issuer
@@ -155,7 +154,7 @@ class SampleIssuer(private val issuerKey: ECKey) {
      * Also, demonstrates the customization of the [JWSHeader] by adding
      * [jwtType] (as "typ" claim) and "kid" claim
      */
-    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> = NimbusSdJwtIssuerFactory.createIssuer(
+    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> = SdJwtIssuer.nimbus(
         signer = ECDSASigner(issuerKey),
         signAlgorithm = signAlgorithm,
     ) {
@@ -212,18 +211,6 @@ class SampleIssuer(private val issuerKey: ECKey) {
                 throw exception
             },
         )
-    }
-
-    /**
-     * This is the issuer convention of including holder's pub key to SD-JWT
-     * @see extractHolderPubKey for its dual function
-     */
-    private fun SdObjectBuilder.cnf(jwk: JWK) {
-        plain {
-            putJsonObject("cnf") {
-                put("jwk", jwk.asJsonObject())
-            }
-        }
     }
 
     /**

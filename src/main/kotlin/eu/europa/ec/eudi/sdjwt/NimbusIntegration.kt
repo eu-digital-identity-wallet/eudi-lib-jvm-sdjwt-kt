@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.jwk.JWK
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
@@ -28,18 +30,31 @@ import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 
-fun noSignatureValidation(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
-    try {
-        val signedJwt = NimbusSignedJWT.parse(jwt)
-        signedJwt.jwtClaimsSet.asClaims()
-    } catch (e: ParseException) {
-        null
+//
+// Signature Verification support
+//
+
+val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier by lazy {
+    JwtSignatureVerifier { unverifiedJwt ->
+        try {
+            val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+            parsedJwt.jwtClaimsSet.asClaims()
+        } catch (e: ParseException) {
+            null
+        }
     }
 }
 
-fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+/**
+ * Indicates that  presentation SD-JWT must have key binding. Νο signature validation is performed
+ */
+val KeyBindingVerifier.Companion.MustBePresent: KeyBindingVerifier.MustBePresentAndValid by lazy {
+    KeyBindingVerifier.MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
+}
+
+fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
-        val signedJwt = NimbusSignedJWT.parse(jwt)
+        val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
         if (!signedJwt.verify(this)) null
         else signedJwt.jwtClaimsSet.asClaims()
     } catch (e: ParseException) {
@@ -49,9 +64,13 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifi
     }
 }
 
-fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
-    process(jwt, null).asClaims()
+fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
+    process(unverifiedJwt, null).asClaims()
 }
+
+//
+// JSON Support
+//
 
 fun NimbusJWTClaimsSet.asClaims(): Claims =
     toPayload().toBytes().run {
@@ -59,26 +78,85 @@ fun NimbusJWTClaimsSet.asClaims(): Claims =
         Json.parseToJsonElement(s).jsonObject
     }
 
+private fun JWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSONString()).jsonObject
+
+//
+// DSL additions
+//
+
 /**
+ * Adds the confirmation claim (cnf) as a plain (always disclosable) which
+ * contains the [jwk]
  *
+ * @param jwk the key to put in confirmation claim
  */
-object NimbusSdJwtIssuerFactory {
+fun SdObjectBuilder.cnf(jwk: JWK) = cnf(jwk.asJsonObject())
+
+/**
+ * A variation of [sdJwt] which produces signed SD-JWT
+ * @param sdJwtFactory factory for creating the unsigned SD-JWT
+ * @param signer the signer that will sign the SD-JWT
+ * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+ *
+ * @return signed SD-JWT
+ *
+ * @see SdJwtIssuer.Companion.nimbus which in addition allows customization of JWS Header
+ */
+inline fun signedSdJwt(
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+    builderAction: SdObjectBuilder.() -> Unit,
+): SdJwt.Issuance<NimbusSignedJWT> {
+    val issuer = SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlgorithm)
+    val sdJwtElements = sdJwt(builderAction)
+    return issuer.issue(sdJwtElements).getOrThrow()
+}
+
+/**
+ * Factory method for creating a [SdJwtIssuer] that uses Nimbus
+ *
+ * @param sdJwtFactory factory for creating the unsigned SD-JWT
+ * @param signer the signer that will sign the SD-JWT
+ * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+ * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+ *
+ * @return [SdJwtIssuer] that uses Nimbus
+ *
+ * @see SdJwtFactory.Default
+ */
+fun SdJwtIssuer.Companion.nimbus(
+    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+): SdJwtIssuer<NimbusSignedJWT> =
+    NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
+
+private object NimbusSdJwtIssuerFactory {
 
     private const val allowSymmetric = true
 
     /**
-     * Factory method for creating a [SdJwtIssuer]
+     * Factory method for creating a [SdJwtIssuer] that uses Nimbus
      *
+     * @param sdJwtFactory factory for creating the unsigned SD-JWT
      * @param signer the signer that will sign the SD-JWT
      * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
-     * @return a [SdJwtIssuer]
+     * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+     *
+     * @return [SdJwtIssuer] that uses Nimbus
+     *
+     * @see SdJwtFactory.Default
      */
     fun createIssuer(
+        sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-    ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer { disclosures, claims ->
+    ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
 
+        val (claims, disclosures) = unsignedSdJwt
         require(allowSymmetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
         val header = with(NimbusJWSHeader.Builder(signAlgorithm)) {
             jwsHeaderCustomization()
@@ -109,16 +187,3 @@ fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String
     is SdJwt.Issuance<JWT> -> toCombinedIssuanceFormat(NimbusJWT::serialize)
     is SdJwt.Presentation<JWT, HB_JWT> -> toCombinedPresentationFormat(NimbusJWT::serialize, NimbusJWT::serialize)
 }
-
-/**
- *
- */
-inline fun sdJwt(
-    signer: NimbusJWSSigner,
-    signAlgorithm: NimbusJWSAlgorithm,
-    disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
-    builderAction: SdObjectBuilder.() -> Unit,
-): SdJwt.Issuance<NimbusSignedJWT> =
-    with(NimbusSdJwtIssuerFactory.createIssuer(signer, signAlgorithm)) {
-        issue(disclosuresCreator, sdJwt(builderAction))
-    }.getOrThrow()

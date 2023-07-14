@@ -18,23 +18,12 @@ package eu.europa.ec.eudi.sdjwt
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.util.*
-
-val jwk = JWK.parse(
-    """
-      {
-      "kty": "RSA",
-      "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-      "e": "AQAB"
-    }
-    """.trimIndent(),
-)
 
 val jwtVcPayload = """{
   "iss": "https://example.com",
@@ -84,7 +73,7 @@ fun main() {
 
     val sdJwt: String =
 
-        sdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+        signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
             plain {
                 put("iss", "https://example.com")
                 put("jti", "http://example.com/credentials/3732")

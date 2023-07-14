@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.MustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
@@ -133,9 +132,7 @@ fun interface JwtSignatureVerifier {
         this.checkSignature(jwt)?.let { claims -> if (additionalCondition(claims)) claims else null }
     }
 
-    companion object {
-        val NoSignatureValidation: JwtSignatureVerifier by lazy { noSignatureValidation() }
-    }
+    companion object
 }
 
 /**
@@ -217,10 +214,7 @@ sealed interface KeyBindingVerifier {
         KeyBindingVerifier
 
     companion object {
-        /**
-         * Indicates that  presentation SD-JWT must have key binding. Νο signature validation is performed
-         */
-        val MustBePresent: MustBePresentAndValid = MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
+
         private fun KeyBindingError.asException(): SdJwtVerificationException =
             KeyBindingFailed(this).asException()
     }

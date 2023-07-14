@@ -30,16 +30,17 @@ import kotlinx.serialization.json.*
  * @return the claims that were used to produce the SD-JWT
  */
 fun <JWT> SdJwt<JWT, *>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
-    val disclosedClaims = DisclosedClaims(disclosures, JsonObject(claimsOf(jwt)))
-    return RecreateClaims.recreateClaims(disclosedClaims)
+    val disclosedClaims = JsonObject(claimsOf(jwt))
+    return RecreateClaims.recreateClaims(disclosedClaims, disclosures)
 }
+
+fun UnsignedSdJwt.recreateClaims() = recreateClaims { it }
 
 private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
-internal object RecreateClaims {
+private object RecreateClaims {
 
-    internal fun recreateClaims(disclosedClaims: DisclosedClaims): Claims {
-        val (disclosures, claims) = disclosedClaims
+    fun recreateClaims(claims: Claims, disclosures: Set<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm()
         return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
         else {
