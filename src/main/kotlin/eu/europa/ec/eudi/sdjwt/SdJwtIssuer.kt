@@ -25,23 +25,22 @@ fun interface SdJwtIssuer<JWT> {
     /**
      * Issues an SD-JWT
      *
-     * @param disclosuresCreator specifies the details of producing disclosures & hashes, such as [HashAlgorithm],
+     * @param sdJwtFactory specifies the details of producing disclosures & hashes, such as [HashAlgorithm],
      * decoys to use etc.
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
     fun issue(
-        disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
+        sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
         sdElements: SdElement.SdObject,
     ): Result<SdJwt.Issuance<JWT>> = runCatching {
-        val (disclosures, claimSet) = disclosuresCreator.discloseSdJwt(sdElements).getOrThrow()
-        issue(disclosures, claimSet)
+        val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
+        sign(unsignedSdJwt)
     }
 
     /**
-     * Issues an SD-JWT
-     * @param disclosures the disclosures to include
-     * @param claimSet the claims to include in the JWT payload of the SD-JWT
-     */
-    fun issue(disclosures: Set<Disclosure>, claimSet: Claims): SdJwt.Issuance<JWT>
+     * Signs an SD-JWT
+     * @param unSignedSdJwt the unsigned SD-JWT
+     **/
+    fun sign(unSignedSdJwt: UnsignedSdJwt): SdJwt.Issuance<JWT>
 }

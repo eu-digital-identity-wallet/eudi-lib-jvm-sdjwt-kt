@@ -19,20 +19,19 @@ import eu.europa.ec.eudi.sdjwt.SdElement.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 
-val DefaultDisclosureCreator: DisclosuresCreator =
-    DisclosuresCreator(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, 0)
+typealias UnsignedSdJwt = SdJwt.Issuance<JsonObject>
 
 /**
  * A class for [disclosing][encodeObj] a set of [SD-JWT elements][SdElement].
- * In this context, [outcome][DisclosedClaims] of the disclosure is the calculation
- * of a set of [disclosures][DisclosedClaims.disclosures] and a [set of claims][DisclosedClaims.claimSet]
+ * In this context, [outcome][UnsignedSdJwt] of the disclosure is the calculation
+ * of a set of [disclosures][Disclosure] and a [set of claims][Claims]
  * to be included in the payload of the SD-JWT.
  *
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
  * @param numOfDecoysLimit the upper limit of the decoys to generate
  */
-class DisclosuresCreator(
+class SdJwtFactory(
     private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     private val saltProvider: SaltProvider = SaltProvider.Default,
     private val decoyGen: DecoyGen = DecoyGen.Default,
@@ -50,18 +49,18 @@ class DisclosuresCreator(
      *  for the given claim
      */
     @OptIn(ExperimentalSerializationApi::class)
-    private fun encodeClaim(claimName: String, claimValue: SdElement): DisclosedClaims {
-        fun encodePlain(plain: Plain): DisclosedClaims =
-            DisclosedClaims(emptySet(), JsonObject(mapOf(claimName to plain.content)))
+    private fun encodeClaim(claimName: String, claimValue: SdElement): UnsignedSdJwt {
+        fun encodePlain(plain: Plain): UnsignedSdJwt =
+            UnsignedSdJwt(JsonObject(mapOf(claimName to plain.content)), emptySet())
 
-        fun encodeSd(sd: Sd, allowNestedDigests: Boolean = false): DisclosedClaims {
+        fun encodeSd(sd: Sd, allowNestedDigests: Boolean = false): UnsignedSdJwt {
             val claim = claimName to sd.content
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
             val digestAndDecoys = (decoys() + digest).sorted()
-            return DisclosedClaims(setOf(disclosure), digestAndDecoys.asDigestsClaim())
+            return UnsignedSdJwt(digestAndDecoys.asDigestsClaim(), setOf(disclosure))
         }
 
-        fun encodeSdArray(sdArray: SdArray): DisclosedClaims {
+        fun encodeSdArray(sdArray: SdArray): UnsignedSdJwt {
             val disclosures = mutableSetOf<Disclosure>()
             val digests = mutableSetOf<DisclosureDigest>()
             val plainElements = mutableListOf<JsonElement>()
@@ -82,27 +81,27 @@ class DisclosuresCreator(
                     addAll((digests + decoys()).sorted().map { it.asDigestClaim() })
                 }
             }
-            return DisclosedClaims(disclosures, claim)
+            return UnsignedSdJwt(claim, disclosures)
         }
 
-        fun encodeStructuredSdObject(structuredSdObject: StructuredSdObject): DisclosedClaims {
+        fun encodeStructuredSdObject(structuredSdObject: StructuredSdObject): UnsignedSdJwt {
             fun nest(cs: JsonObject): JsonObject = JsonObject(mapOf(claimName to cs))
-            val (ds, cs) = encodeObj(structuredSdObject.content)
-            return DisclosedClaims(ds, nest(cs))
+            val (cs, ds) = encodeObj(structuredSdObject.content)
+            return UnsignedSdJwt(nest(cs), ds)
         }
 
-        fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): DisclosedClaims {
-            val (ds1, cs1) = encodeSdArray(recursiveSdArray.content)
+        fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): UnsignedSdJwt {
+            val (cs1, ds1) = encodeSdArray(recursiveSdArray.content)
             val nested = Sd(cs1[claimName]!!)
-            val (ds2, cs2) = encodeSd(nested)
-            return DisclosedClaims(ds1 + ds2, cs2)
+            val (cs2, ds2) = encodeSd(nested)
+            return UnsignedSdJwt(cs2, ds1 + ds2)
         }
 
-        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): DisclosedClaims {
-            val (ds1, cs1) = encodeObj(recursiveSdObject.content)
+        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): UnsignedSdJwt {
+            val (cs1, ds1) = encodeObj(recursiveSdObject.content)
             val nested = Sd(cs1)
-            val (ds2, cs2) = encodeSd(nested, allowNestedDigests = true)
-            return DisclosedClaims(ds1 + ds2, cs2)
+            val (cs2, ds2) = encodeSd(nested, allowNestedDigests = true)
+            return UnsignedSdJwt(cs2, ds1 + ds2)
         }
 
         return when (claimValue) {
@@ -119,9 +118,9 @@ class DisclosuresCreator(
     /**
      * Encodes a set of  [SD-JWT element][sdObject]
      * @param sdObject the set of elements to disclose
-     * @return the [DisclosedClaims]
+     * @return the [UnsignedSdJwt]
      */
-    private fun encodeObj(sdObject: SdObject): DisclosedClaims {
+    private fun encodeObj(sdObject: SdObject): UnsignedSdJwt {
         val accumulatedDisclosures = mutableSetOf<Disclosure>()
         val accumulatedJson = mutableMapOf<String, JsonElement>()
 
@@ -135,21 +134,21 @@ class DisclosuresCreator(
         }
 
         for ((claimName, claimValue) in sdObject) {
-            val (disclosures, json) = encodeClaim(claimName, claimValue)
+            val (json, disclosures) = encodeClaim(claimName, claimValue)
             accumulatedDisclosures += disclosures
             addToClaimsMergeSds(json)
         }
 
-        return DisclosedClaims(accumulatedDisclosures, JsonObject(accumulatedJson))
+        return UnsignedSdJwt(JsonObject(accumulatedJson), accumulatedDisclosures)
     }
 
     /**
-     * Calculates a [DisclosedClaims] for a given [SD-JWT element][sdJwtElements].
+     * Calculates a [UnsignedSdJwt] for a given [SD-JWT element][sdJwtElements].
      *
      * @param sdJwtElements the contents of the SD-JWT
-     * @return the [DisclosedClaims] for the given [SD-JWT element][sdJwtElements]
+     * @return the [UnsignedSdJwt] for the given [SD-JWT element][sdJwtElements]
      */
-    fun discloseSdJwt(sdJwtElements: SdObject): Result<DisclosedClaims> = runCatching {
+    fun createSdJwt(sdJwtElements: SdObject): Result<UnsignedSdJwt> = runCatching {
         encodeObj(sdJwtElements).addHashAlgClaim(hashAlgorithm)
     }
 
@@ -160,15 +159,13 @@ class DisclosuresCreator(
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
-     * @return a new [DisclosedClaims] with an updated [DisclosedClaims.claimSet] to
+     * @return a new [UnsignedSdJwt] with an updated [Claims] to
      * contain the hash algorithm claim, if disclosures are present
      */
-    private fun DisclosedClaims.addHashAlgClaim(h: HashAlgorithm): DisclosedClaims =
-        if (disclosures.isEmpty()) this
-        else mapClaims { claims ->
-            val hashAlgorithmClaim = "_sd_alg" to JsonPrimitive(h.alias)
-            JsonObject(claims + hashAlgorithmClaim)
-        }
+    private fun UnsignedSdJwt.addHashAlgClaim(h: HashAlgorithm): UnsignedSdJwt {
+        return if (disclosures.isEmpty()) this
+        else copy(jwt = JsonObject(jwt + ("_sd_alg" to JsonPrimitive(h.alias))))
+    }
 
     private fun Set<DisclosureDigest>.asDigestsClaim(): JsonObject =
         if (isEmpty()) JsonObject(emptyMap())
@@ -181,15 +178,23 @@ class DisclosuresCreator(
     private fun objectPropertyDisclosure(
         claim: Claim,
         allowNestedDigests: Boolean,
-    ): Pair<Disclosure.ObjectProperty, DisclosureDigest> {
+    ): Pair<Disclosure, DisclosureDigest> {
         val disclosure = Disclosure.objectProperty(saltProvider, claim, allowNestedDigests).getOrThrow()
         val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
         return disclosure to digest
     }
 
-    private fun arrayElementDisclosure(jsonElement: JsonElement): Pair<Disclosure.ArrayElement, DisclosureDigest> {
+    private fun arrayElementDisclosure(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
         val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
         val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
         return disclosure to digest
+    }
+
+    companion object {
+        val Default: SdJwtFactory =
+            SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, 0)
+
+        fun of(hashAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): SdJwtFactory =
+            SdJwtFactory(hashAlgorithm, numOfDecoysLimit = numOfDecoysLimit)
     }
 }

@@ -77,8 +77,9 @@ object NimbusSdJwtIssuerFactory {
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-    ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer { disclosures, claims ->
+    ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer { unsignedSdJwt ->
 
+        val (claims, disclosures) = unsignedSdJwt
         require(allowSymmetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
         val header = with(NimbusJWSHeader.Builder(signAlgorithm)) {
             jwsHeaderCustomization()
@@ -113,12 +114,12 @@ fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String
 /**
  *
  */
-inline fun sdJwt(
+inline fun signedSdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
-    disclosuresCreator: DisclosuresCreator = DefaultDisclosureCreator,
+    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
     builderAction: SdObjectBuilder.() -> Unit,
 ): SdJwt.Issuance<NimbusSignedJWT> =
     with(NimbusSdJwtIssuerFactory.createIssuer(signer, signAlgorithm)) {
-        issue(disclosuresCreator, sdJwt(builderAction))
+        issue(sdJwtFactory, sdJwt(builderAction))
     }.getOrThrow()

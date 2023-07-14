@@ -49,11 +49,11 @@ class SdJsonElementArrayElementTest {
             }
         }
 
-        val disclosedClaims = DisclosuresCreator().discloseSdJwt(sdJwtElements).getOrThrow().also {
-            println(json.encodeToString(it.claimSet))
+        val sdJwt = SdJwtFactory().createSdJwt(sdJwtElements).getOrThrow().also {
+            println(json.encodeToString(it.jwt))
         }
 
-        RecreateClaims.recreateClaims(disclosedClaims).also {
+        sdJwt.recreateClaims({ it }).also {
             println(json.encodeToString(it))
         }
     }

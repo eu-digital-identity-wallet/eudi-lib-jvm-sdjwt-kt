@@ -38,9 +38,9 @@ class DisclosedClaimSetTest {
                 },
             )
 
-            val disclosuresCreator = DisclosuresCreator(numOfDecoysLimit = 0)
+            val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = 0)
             invalidClaims.forEach { sdJwt ->
-                val result = disclosuresCreator.discloseSdJwt(sdJwt)
+                val result = sdJwtFactory.createSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
             }
         }
@@ -103,21 +103,21 @@ class DisclosedClaimSetTest {
         private fun testFlatDisclosure(
             plainClaims: Map<String, JsonElement>,
             claimsToBeDisclosed: Map<String, JsonElement>,
-        ): DisclosedClaims {
+        ): UnsignedSdJwt {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
                 plain(JsonObject(plainClaims))
                 sd(claimsToBeDisclosed)
             }
 
-            val disclosedJsonObject = DisclosuresCreator(
+            val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,
                 SaltProvider.Default,
                 DecoyGen.Default,
                 4,
-            ).discloseSdJwt(sdJwtElements).getOrThrow()
+            ).createSdJwt(sdJwtElements).getOrThrow()
 
-            val (disclosures, jwtClaimSet) = disclosedJsonObject
+            val (jwtClaimSet, disclosures) = disclosedJsonObject
 
             /**
              * Verifies the expected size of the jwt claim set
@@ -200,15 +200,15 @@ class DisclosedClaimSetTest {
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { sd(c.value.jsonObject) } }
             }
             val numOfDecoys = 4
-            val disclosedJsonObject = DisclosuresCreator(
+            val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,
                 SaltProvider.Default,
                 DecoyGen.Default,
                 numOfDecoys,
 
-            ).discloseSdJwt(sdJwtElements).getOrThrow()
+            ).createSdJwt(sdJwtElements).getOrThrow()
 
-            val (disclosures, jwtClaimSet) = disclosedJsonObject
+            val (jwtClaimSet, disclosures) = disclosedJsonObject
 
             /**
              * Verifies the expected size of the jwt claim set
