@@ -75,13 +75,12 @@ class DisclosuresCreator(
         else JsonObject(mapOf("_sd" to JsonArray(digests.map { JsonPrimitive(it.value) })))
 
     private fun discloseClaim(claimName: String, claimValue: SdElement): DisclosedClaims {
-
         fun plain(plainJsonElement: PlainJsonElement): DisclosedClaims =
             DisclosedClaims(emptySet(), JsonObject(mapOf(claimName to plainJsonElement.content)))
 
         fun selectiveDisclosed(
             sdJsonElement: SdJsonElement,
-            allowNestedHashClaim: Boolean = false
+            allowNestedHashClaim: Boolean = false,
         ): DisclosedClaims {
             val claims = mapOf(claimName to sdJsonElement.content)
             val (disclosures, digests) = disclosuresAndDigests(claims, allowNestedHashClaim)
@@ -99,7 +98,7 @@ class DisclosuresCreator(
                 }
             }
             val claims = JsonObject(mapOf(claimName to JsonArray(sdArr.flatMap { handle(it) })))
-            return DisclosedClaims(disclosures,claims)
+            return DisclosedClaims(disclosures, claims)
         }
 
         fun structuredObj(structuredSdObject: StructuredSdObject): DisclosedClaims {
@@ -121,7 +120,6 @@ class DisclosuresCreator(
             val (ds2, cs2) = selectiveDisclosed(nested, allowNestedHashClaim = true)
             return DisclosedClaims(ds1 + ds2, cs2)
         }
-
 
         return when (claimValue) {
             is PlainJsonElement -> plain(claimValue)
