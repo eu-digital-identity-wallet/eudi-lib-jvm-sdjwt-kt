@@ -95,7 +95,7 @@ val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
 val issued: SdJwt.Issuance<JwtAndClaims> =
   SdJwtVerifier.verifyIssuance(
-    jwtSignatureVerifier = jwtVerifier,
+    jwtSignatureVerifier = jwtSignatureVerifier,
     unverifiedSdJwt = unverifiedSdJwt
   ).getOrThrow()
 val (jwtAndClaims, disclosures) = issued
@@ -116,7 +116,7 @@ import com.nimbusds.jose.crypto.ECDSAVerifier
 
 val unverifiedSdJwt: String = "..."
 val issuerPubKey: ECPublicKey
-val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
+val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
 //
 // The following demonstrates verification of presentation
@@ -124,7 +124,7 @@ val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 //
 val sdJwt: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
     SdJwtVerifier.verifyPresentation(
-      jwtSignatureVerifier = jwtSignatureVerifier = jwtVerifier,
+      jwtSignatureVerifier = jwtSignatureVerifier,
       keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
       unverifiedSdJwt = unverifiedSdJwt
     ).getOrThrow()
