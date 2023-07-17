@@ -17,14 +17,14 @@ disclosable.
 Library implements [SD-JWT draft5](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html)
 is implemented in Kotlin, targeting JVM.
 
-Library's SD-JWT DSL leverages the DSL provided by 
-[KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements 
+Library's SD-JWT DSL leverages the DSL provided by
+[KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements
 
 ## Use cases supported
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT (in Combined Issuance Format)
-- [Holder Verification](#holder-verification): As Holder verify a SD-JWT (in Combined Issuance Format) issued by an Issuer
-- [Holder Presentation](#holder-presentation): As Holder create a SD-JWT for presentation (in Combined Presentation Format)
+- [Holder Verification](#holder-verification): As Holder verify a SD-JWT (in Combined Issuance Format) issued by an
+  Issuer
 - [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT (in Combined Presentation Format)
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
@@ -40,7 +40,8 @@ To issue a SD-JWT, an `Issuer` should have:
 In the example bellow, Issuer decides to issue an SD-JWT as follows:
 
 - Includes in plain standard JWT claims (`sub`,`iss`, `iat`, `exp`)
-- Makes selectively disclosable a claim named `address` using structured disclosure. This allows to individually disclose every sub-claim of `address`
+- Makes selectively disclosable a claim named `address` using structured disclosure. This allows to individually
+  disclose every sub-claim of `address`
 - Uses his RSA key pair to sign the SD-JWT
 
 ```kotlin
@@ -51,22 +52,23 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val iss = "Issuer"
 val issuerKeyPair: RSAKey
-val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
-    
-    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-    iss("https://example.com/issuer")
-    iat(1516239022)
-    exp(1735689661)
+val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
+  signedSdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
 
-    structured("address") {
-        sd {
-            put("street_address", "Schulstr. 12")
-            put("locality", "Schulpforta")
-            put("region", "Sachsen-Anhalt")
-            put("country", "DE")
+        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        iss("https://example.com/issuer")
+        iat(1516239022)
+        exp(1735689661)
+
+        structured("address") {
+            sd {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
+            }
         }
-    }
-}.serialize()
+    }.serialize()
 
 ```
 
@@ -77,42 +79,26 @@ issuance scenario, including adding to the SD-JWT, holder public key, to leverag
 
 In this case the SD-JWT is expected to be in Combined Issuance format.
 
-`Holder` must know: 
+`Holder` must know:
+
 - the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
 
 ```kotlin
-import eu.europa.ec.eudi.sdjwt.*
-import com.nimbusds.jose.jwk.*
+
 import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.jwk.*
+import eu.europa.ec.eudi.sdjwt.*
 
 val unverifiedSdJwt: String = "..."
 val issuerPubKey: ECPublicKey
-val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
+val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
-val issued: SdJwt.Issuance<JwtAndClaims> = SdJwtVerifier.verifyIssuance(jwtVerifier, unverifiedSdJwt).getOrThrow()
+val issued: SdJwt.Issuance<JwtAndClaims> =
+  SdJwtVerifier.verifyIssuance(
+    jwtSignatureVerifier = jwtVerifier,
+    unverifiedSdJwt = unverifiedSdJwt
+  ).getOrThrow()
 val (jwtAndClaims, disclosures) = issued
-```
-
-## Holder Presentation
-
-To create a presentation SD-JWT, a `Holder` must:
-
-- Have an issued SD-JWT
-- Know whether verifier to whom the presentation is for, requires Key Binding or not
-
-In the following example, `Holder` presents only `street_address` and `country` without Holder Binding 
-
-```kotlin
-
-//
-//  The SD-JWT that holder has an issued SD-JWT
-val issued: SdJwt.Issuance<JwtAndClaims> 
-val whatToDisclose : (Claim)->Boolean = {claim -> claim.name() in listOf("street_address", "country")}
-
-
-val presentation: SdJwt.Presentation<JwtAndClaims, Nothing> = issued.present(criteria = whatToDisclose)
-val combinedPresentationFormat: String = presentation.toCombinedPresentationFormat({it.first}, {it})
-
 ```
 
 ## Presentation Verification
@@ -128,7 +114,7 @@ import eu.europa.ec.eudi.sdjwt.*
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.crypto.ECDSAVerifier
 
-val unverifiedSdJwt : String ="..."
+val unverifiedSdJwt: String = "..."
 val issuerPubKey: ECPublicKey
 val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 
@@ -136,63 +122,63 @@ val jwtVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
 // The following demonstrates verification of presentation
 // without Key Binding JWT
 //
-val sdJwt : SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
+val sdJwt: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
     SdJwtVerifier.verifyPresentation(
-        jwtVerifier = jwtVerifier,
-        holderBindingVerifier = HolderBindingVerifier.MustNotBePresent,
-        sdJwt = unverifiedSdJwt
+      jwtSignatureVerifier = jwtSignatureVerifier = jwtVerifier,
+      keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
+      unverifiedSdJwt = unverifiedSdJwt
     ).getOrThrow()
 
 ```
+
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
 presentation scenario which includes key binding
-
 
 ## Recreate original claims
 
 Given an `SdJwt`, either issuance or presentation, the original claims used to produce the SD-JWT can be
-recreated. This includes the claims that are always disclosed (included in the JWT part of the SD-JWT) having 
+recreated. This includes the claims that are always disclosed (included in the JWT part of the SD-JWT) having
 the digests replaced by selectively disclosable claims found in disclosures.
 
 ```kotlin
 val iss = "Issuer"
 val issuerKeyPair: RSAKey
-val sdJwt : SdJwt.Issuance<NimbusSignedJWT> = sdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
+  signedSdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
 
-    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-    iss("https://example.com/issuer")
-    iat(1516239022)
-    exp(1735689661)
+        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        iss("https://example.com/issuer")
+        iat(1516239022)
+        exp(1735689661)
 
-    structured("address") {
-        sd {
-            put("street_address", "Schulstr. 12")
-            put("locality", "Schulpforta")
-            put("region", "Sachsen-Anhalt")
-            put("country", "DE")
+        structured("address") {
+            sd {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
+            }
         }
     }
-}
-val claims: Claims = sdJwt.recreateClaims{ jwt -> jwt.asClaims() }
+val claims: Claims = sdJwt.recreateClaims { jwt -> jwt.asClaims() }
 ```
 
 The claims contents would be
 
 ```json
 {
-   "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
-   "iss": "https://example.com/issuer",
-   "iat": 1516239022,
-   "exp": 1735689661,
-   "address" : {
-        "street_address": "Schulstr. 12",
-        "locality": "Schulpforta",
-        "region": "Sachsen-Anhalt",
-        "country": "DE"
-   }
+  "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
+  "iss": "https://example.com/issuer",
+  "iat": 1516239022,
+  "exp": 1735689661,
+  "address": {
+    "street_address": "Schulstr. 12",
+    "locality": "Schulpforta",
+    "region": "Sachsen-Anhalt",
+    "country": "DE"
+  }
 }
 ```
-
 
 ## DSL Examples
 
@@ -216,8 +202,6 @@ All examples assume that we have the following claim set
 - [Example 2a: Handling Structured Claims](docs/examples/example2a-handling-structure-claims.md)
 - [Example 3: Complex Structured SD-JWT](docs/examples/example3-complex-structured.md)
 - [Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example4a-sd-jwt-based-vc.md)
-
-
 
 ## How to contribute
 

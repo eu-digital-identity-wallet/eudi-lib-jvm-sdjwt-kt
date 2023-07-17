@@ -252,6 +252,10 @@ private object NimbusSdJwtIssuerFactory {
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
 
+//
+// Serialization
+//
+
 /**
  * Serializes a [SdJwt] into either Combined Issuance or Combined Presentation format
  * depending on the case
