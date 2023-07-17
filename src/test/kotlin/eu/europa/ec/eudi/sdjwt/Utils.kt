@@ -45,3 +45,30 @@ fun UnsignedSdJwt.print() {
 }
 
 fun String.removeNewLine(): String = replace("\n", "")
+
+/**
+ * Creates a [presentation SD-JWT][SdJwt.Presentation]
+ *
+ * @param keyBindingJwt optional, the Holder Binding JWT to include
+ * @param selectivelyDisclose a predicate of the [claims][SdJwt.Issuance.disclosures]
+ * to be selectively disclosed into the presentation
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @param KB_JWT the type representing the Key Binding part of the SD-JWT
+ * @return the presentation
+ *
+ * @receiver the [issued SD-JWT][SdJwt.Issuance] from which the presentation will be created
+ */
+fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
+    keyBindingJwt: KB_JWT? = null,
+    selectivelyDisclose: (Claim) -> Boolean,
+): SdJwt.Presentation<JWT, KB_JWT> =
+    SdJwt.Presentation(
+        jwt,
+        disclosures.filter { disclosure ->
+            when (disclosure) {
+                is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                is Disclosure.ObjectProperty -> selectivelyDisclose(disclosure.claim())
+            }
+        }.toSet(),
+        keyBindingJwt,
+    )
