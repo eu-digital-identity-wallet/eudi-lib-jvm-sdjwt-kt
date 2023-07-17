@@ -215,7 +215,7 @@ sealed interface KeyBindingVerifier {
 
     companion object {
 
-        private fun KeyBindingError.asException(): SdJwtVerificationException =
+        internal fun KeyBindingError.asException(): SdJwtVerificationException =
             KeyBindingFailed(this).asException()
     }
 }
