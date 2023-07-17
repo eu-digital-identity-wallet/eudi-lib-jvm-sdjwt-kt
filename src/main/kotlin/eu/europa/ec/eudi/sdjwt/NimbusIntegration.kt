@@ -15,7 +15,16 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.JWSKeySelector
+import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import com.nimbusds.jwt.proc.JWTProcessor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -46,10 +55,79 @@ val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier b
 }
 
 /**
- * Indicates that  presentation SD-JWT must have key binding. Νο signature validation is performed
+ * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present and it's indeed a JWT
+ * without performing signature validation
+ *
+ * <em>Should not be used in production</em>
  */
 val KeyBindingVerifier.Companion.MustBePresent: KeyBindingVerifier.MustBePresentAndValid by lazy {
     KeyBindingVerifier.MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
+}
+
+/**
+ * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
+ * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
+ * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+ * If provided, Key Binding JWT payload should contain the challenge as is.
+ *
+ * @see keyBindingJWTProcess
+ */
+fun KeyBindingVerifier.Companion.mustBePresentAndValid(
+    holderPubKeyExtractor: (Claims) -> JWK? = HolderPubKeyInConfirmationClaim,
+    challenge: Claims? = null,
+): KeyBindingVerifier.MustBePresentAndValid {
+    val keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier = { sdJwtClaims ->
+        holderPubKeyExtractor(sdJwtClaims)?.let { holderPubKey ->
+            val holderPubKeyJWK = holderPubKey.toPublicJWK()
+            val challengeClaimSet: JWTClaimsSet = JWTClaimsSet.parse(challenge.toString())
+            keyBindingJWTProcess(holderPubKeyJWK, challengeClaimSet).asJwtVerifier()
+        } ?: throw KeyBindingError.MissingHolderPubKey.asException()
+    }
+    return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
+}
+
+/**
+ * Creates a [JWTProcessor] suitable for verifying the Key Binding JWT
+ * Enforces the following rules:
+ * - The header contains typ claim equal to `kb+jwt`
+ * - The header contains the signing algorithm claim
+ * - The JWT must be signed by the given [holderPubKey]
+ * - If the challenge is provided it should present in JWT payload
+ * - Claims `aud`, `iat` and `nonce`must be present to the JWT payload
+ *
+ * @param holderPubKey the public key of the holder
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+ * If provided, Key Binding JWT payload should contain the challenge as is.
+ * @return
+ */
+fun keyBindingJWTProcess(holderPubKey: JWK, challenge: JWTClaimsSet? = null): JWTProcessor<SecurityContext> =
+    DefaultJWTProcessor<SecurityContext>().apply {
+        jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("kb+jwt"))
+        jwsKeySelector = JWSKeySelector { header, context ->
+            val algorithm = header.algorithm
+            val nestedSelector =
+                SingleKeyJWSKeySelector<SecurityContext>(algorithm, holderPubKey.toECKey().toECPublicKey())
+            nestedSelector.selectJWSKeys(header, context)
+        }
+        jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
+            challenge ?: JWTClaimsSet.Builder().build(),
+            setOf("aud", "iat", "nonce"),
+        )
+    }
+
+/**
+ * This is a dual of [cnf] function
+ * Obtains holder's pub key from claims
+ *
+ * @return the holder's pub key, if found
+ */
+val HolderPubKeyInConfirmationClaim: (Claims) -> JWK? = { claims ->
+
+    claims["cnf"]
+        ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
+        ?.let { jwk -> if (jwk is JsonObject) jwk else null }
+        ?.let { jwk -> runCatching { JWK.parse(jwk.toString()) }.getOrNull() }
 }
 
 fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
