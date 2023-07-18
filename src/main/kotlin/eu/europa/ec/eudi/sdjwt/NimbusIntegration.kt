@@ -43,6 +43,12 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 // Signature Verification support
 //
 
+/**
+ * Adds a [JwtSignatureVerifier], to the companion object, which just checks/parses the JWT,
+ * without performing signature validation.
+ *
+ * <em>Should not be used in production use cases</em>
+ */
 val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier by lazy {
     JwtSignatureVerifier { unverifiedJwt ->
         try {
@@ -130,6 +136,13 @@ val HolderPubKeyInConfirmationClaim: (Claims) -> JWK? = { claims ->
         ?.let { jwk -> runCatching { JWK.parse(jwk.toString()) }.getOrNull() }
 }
 
+/**
+ * An adapter that converts a [NimbusJWSVerifier] into a [JwtSignatureVerifier]
+ * @return a [JwtSignatureVerifier]using the validation logic provided by [NimbusJWSVerifier]
+ * @receiver the [NimbusJWSVerifier] to convert into a [JwtSignatureVerifier]
+ *
+ * @see NimbusJWTProcessor.asJwtVerifier
+ */
 fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
@@ -142,6 +155,13 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifi
     }
 }
 
+/**
+ * An adapter that converts a [NimbusJWTProcessor] into a [JwtSignatureVerifier]
+ *
+ * @return a [JwtSignatureVerifier] using the validation logic provided by [NimbusJWTProcessor]
+ * @receiver the Nimbus processor to convert into [JwtSignatureVerifier]
+ * @see NimbusJWSVerifier.asJwtVerifier
+ */
 fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     process(unverifiedJwt, null).asClaims()
 }
@@ -150,6 +170,10 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
 // JSON Support
 //
 
+/**
+ * An adapter that transforms the [payload][JWTClaimsSet] of a [Nimbus JWT][NimbusJWT]
+ * to a KotlinX Serialization combatible representation
+ */
 fun NimbusJWTClaimsSet.asClaims(): Claims =
     toPayload().toBytes().run {
         val s: String = this.decodeToString()
@@ -240,8 +264,8 @@ private object NimbusSdJwtIssuerFactory {
             jwsHeaderCustomization()
             build()
         }
-        val jwt = NimbusSignedJWT(header, NimbusJWTClaimsSet.parse(claims.toString())).apply { sign(signer) }
-        SdJwt.Issuance(jwt, disclosures)
+        val signedJwt = NimbusSignedJWT(header, NimbusJWTClaimsSet.parse(claims.toString())).apply { sign(signer) }
+        SdJwt.Issuance(signedJwt, disclosures)
     }
 
     /**

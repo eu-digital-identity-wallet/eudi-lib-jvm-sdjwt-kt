@@ -112,7 +112,7 @@ sealed interface SdJwt<out JWT, out KB_JWT> {
      * The SD-JWT as it is produced by the holder and presented to the verifier
      * @param jwt the JWT part of the SD-JWT
      * @param disclosures the disclosures that holder decided to disclose to the verifier
-     * @param keyBindingJwt optional Holder Binding JWT
+     * @param keyBindingJwt optional Key Binding JWT
      */
     data class Presentation<JWT, KB_JWT>(
         override val jwt: JWT,
