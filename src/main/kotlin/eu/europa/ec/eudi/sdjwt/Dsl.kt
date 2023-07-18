@@ -20,6 +20,8 @@ import kotlinx.serialization.json.*
 
 /**
  * A domain specific language for describing the payload of a SD-JWT
+ *
+ * @see sdJwt for defining the claims of an SD-JWT
  */
 sealed interface SdElement {
 
@@ -39,7 +41,7 @@ sealed interface SdElement {
      */
     data class Sd(val content: JsonElement) : SdOrPlain {
         init {
-            require(content != JsonNull)
+            require(content != JsonNull) { "Null cannot be selectively disclosable" }
         }
     }
 
@@ -77,16 +79,21 @@ sealed interface SdElement {
 internal annotation class SdElementDsl
 
 /**
- * [SdArray] is actually a [List] of [SdOrPlain]
+ * [SdArray] is actually a [List] of [elements][SdOrPlain]
  *
  * So we can use as builder a [MutableList]
+ *
+ * @see buildSdArray
  */
 typealias SdArrayBuilder = (@SdElementDsl MutableList<SdOrPlain>)
 
 /**
- * [SdObject] is actually a [Map] of [SdElement]
+ * [SdObject] is actually a [Map] of [elements][SdElement]
  *
  * So we can use as a builder [MutableMap]
+ *
+ * @see sdJwt
+ * @see buildSdObject
  */
 typealias SdObjectBuilder = (@SdElementDsl MutableMap<String, SdElement>)
 typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
@@ -94,7 +101,24 @@ typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
 //
 // Methods for building sd array
 //
-
+/**
+ * A convenient method for building a [SdArray] given a [builderAction]
+ * ```
+ * val arr = buildSdArray{
+ *    // adds non-selectively disclosable primitive
+ *    plain("DE")
+ *    // adds selectively disclosable primitive
+ *    sd("GR")
+ *    // add selectively disclosable object
+ *    sd {
+ *     put("over_18", true)
+ *     put("over_25", false)
+ *    }
+ * }
+ * ```
+ *
+ * @return the [SdArray] described by the [builderAction]
+ */
 inline fun buildSdArray(builderAction: SdArrayBuilder.() -> Unit): SdArray = SdArray(buildList(builderAction))
 fun SdArrayBuilder.plain(value: String) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
@@ -126,6 +150,14 @@ fun SdArrayBuilder.plain(value: JsonElement) = add(Plain(value))
  * ```
  */
 fun SdArrayBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
+
+/**
+ * Adds into an [SdArray] an element [claims] that will be translated into a
+ * set of claims, in plain, using KotlinX Serialization
+ *
+ * @param claims an instance of a kotlin class serializable via KotlinX Serialization
+ * @receiver the builder to which the [claims] will be added
+ */
 inline fun <reified E> SdArrayBuilder.plain(claims: E) {
     plain(Json.encodeToJsonElement(claims))
 }
@@ -160,6 +192,14 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(Sd(value))
  * ```
  */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
+
+/**
+ * Adds into an [SdArray] an element [claims] that will be translated into a
+ * set of claims, all of them individually selectively disclosable, using KotlinX Serialization
+ *
+ * @param claims an instance of a kotlin class serializable via KotlinX Serialization
+ * @receiver the builder to which the [claims] will be added
+ */
 inline fun <reified E> SdArrayBuilder.sd(claims: E) {
     sd(Json.encodeToJsonElement(claims))
 }
@@ -188,6 +228,29 @@ fun SdObjectBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(val
 fun SdObjectBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(obj: Claims) = obj.forEach { (k, v) -> sd(k, v) }
+
+/**
+ * Adds into an [SdObject] an element [claims] that will be translated into a
+ * set of claims, each of them selectively disclosable individually, using KotlinX Serialization
+ *
+ * ```
+ * @Serializable
+ * data class Address(@SerialName("street_address") val streetAddress: String, @SerialName("postal_code") val postalCode: String)
+ * val myAddress = Address("street", "15235")
+ *
+ * sdJwt {
+ *    sd(myAddress)
+ *    // is equivalent to
+ *    sd {
+ *       put("street_address", "street")
+ *       put("postal_code", "15235")
+ *    }
+ * }
+ * ```
+ *
+ * @param claims an instance of a kotlin class serializable via KotlinX Serialization
+ * @receiver the builder to which the [claims] will be added
+ */
 inline fun <reified E> SdObjectBuilder.sd(claims: E) {
     sd(Json.encodeToJsonElement(claims).jsonObject)
 }
@@ -219,6 +282,29 @@ fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimiti
 fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(obj: Claims) = obj.forEach { (k, v) -> plain(k, v) }
+
+/**
+ * Adds into an [SdObject] an element [claims] that will be translated into a
+ * set of claims, in plain, using KotlinX Serialization
+ *
+ * ```
+ * @Serializable
+ * data class Address(@SerialName("street_address") val streetAddress: String, @SerialName("postal_code") val postalCode: String)
+ * val myAddress = Address("street", "15235")
+ *
+ * sdJwt {
+ *    plain(myAddress)
+ *    // is equivalent to
+ *    plain {
+ *       put("street_address", "street")
+ *       put("postal_code", "15235")
+ *    }
+ * }
+ * ```
+ *
+ * @param claims an instance of a kotlin class serializable via KotlinX Serialization
+ * @receiver the builder to which the [claims] will be added
+ */
 inline fun <reified E> SdObjectBuilder.plain(claims: E) {
     plain(Json.encodeToJsonElement(claims).jsonObject)
 }
