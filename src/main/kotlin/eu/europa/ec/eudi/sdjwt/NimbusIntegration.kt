@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.text.ParseException
+import java.time.Instant
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
@@ -260,11 +262,7 @@ private object NimbusSdJwtIssuerFactory {
 
         val (claims, disclosures) = unsignedSdJwt
         require(allowSymmetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
-        val header = with(NimbusJWSHeader.Builder(signAlgorithm)) {
-            jwsHeaderCustomization()
-            build()
-        }
-        val signedJwt = NimbusSignedJWT(header, NimbusJWTClaimsSet.parse(claims.toString())).apply { sign(signer) }
+        val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         SdJwt.Issuance(signedJwt, disclosures)
     }
 
@@ -292,4 +290,62 @@ private object NimbusSdJwtIssuerFactory {
 fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
     is SdJwt.Issuance<JWT> -> toCombinedIssuanceFormat(NimbusJWT::serialize)
     is SdJwt.Presentation<JWT, HB_JWT> -> toCombinedPresentationFormat(NimbusJWT::serialize, NimbusJWT::serialize)
+}
+
+/**
+ * Creates an enveloped representation of the SD-JWT
+ * This produces a JWT (not SD-JWT) which includes the following claims:
+ * - `iat`
+ * - `nonce`
+ * - `aud`
+ * - `_sd_jwt`
+ *
+ * @param issuedAt issuance time of the envelope JWT. It will be included as `iat` claim
+ * @param audience the audience of the envelope JWT. It will be included as `aud` claim
+ * @param nonce the nonce of the envelope JWT. It will be included as `nonce` claim
+ * @param serializeJwt a way to serialize the JWT part of the [SdJwt.Presentation]. Will be used to
+ * produce the Combined Presentation format.
+ * @param signer a way to sign the claims of the envelope JWT
+ * @param signAlgorithm the algorithm to use
+ * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT (presentation) to be enveloped. If it contains [SdJwt.Presentation.keyBindingJwt]
+ * it will be removed.
+ * @return a JWT (not SD-JWT) as described above
+ */
+fun <JWT> SdJwt.Presentation<JWT, *>.toEnvelopedFormat(
+    issuedAt: Instant,
+    nonce: String,
+    audience: String,
+    serializeJwt: (JWT) -> String,
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+): Result<NimbusSignedJWT> {
+    val sign = sign(signer, signAlgorithm, jwsHeaderCustomization)
+    return toEnvelopedFormat(issuedAt, nonce, audience, serializeJwt, sign)
+}
+
+/**
+ * Creates a function that given some [Claims] signs them producing a [NimbusSignedJWT]
+ *
+ * @param signer a way to sign the claims of the envelope JWT
+ * @param signAlgorithm the algorithm to use
+ * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+ *
+ * @return a function that given some [Claims] signs them producing a [NimbusSignedJWT]
+ */
+private fun sign(
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+): (Claims) -> Result<NimbusSignedJWT> = { claims ->
+    runCatching {
+        val jwsHeader = with(JWSHeader.Builder(signAlgorithm)) {
+            jwsHeaderCustomization()
+            build()
+        }
+        val jwtClaimSet = NimbusJWTClaimsSet.parse(claims.toString())
+        NimbusSignedJWT(jwsHeader, jwtClaimSet).apply { sign(signer) }
+    }
 }
