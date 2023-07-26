@@ -19,7 +19,7 @@ import eu.europa.ec.eudi.sdjwt.SdElement.*
 import kotlinx.serialization.json.*
 
 /**
- * A domain specific language for describing the payload of a SD-JWT
+ * A domain-specific language for describing the payload of a SD-JWT
  *
  * @see sdJwt for defining the claims of an SD-JWT
  */
@@ -46,7 +46,7 @@ sealed interface SdElement {
     }
 
     /**
-     * Selectively disclosable claims that will be encoded with flat option
+     * Selectively disclosable claims that will be encoded with the flat option
      *
      * Each of its claims could be always or selectively disclosable
      */
@@ -59,17 +59,17 @@ sealed interface SdElement {
     class SdArray(private val content: List<SdOrPlain>) : SdElement, List<SdOrPlain> by content
 
     /**
-     * Selectively disclosable claims that will be encoded with structured option
+     * Selectively disclosable claims that will be encoded with the structured option
      */
     data class StructuredSdObject(val content: SdObject) : SdElement
 
     /**
-     * Selectively disclosable claims that will be encoded with recursive option
+     * Selectively disclosable claims that will be encoded with the recursive option
      */
     data class RecursiveSdObject(val content: SdObject) : SdElement
 
     /**
-     * Selectively disclosable array that will be encoded with recursive option
+     * Selectively disclosable array that will be encoded with the recursive option
      */
     data class RecursiveSdArray(val content: SdArray) : SdElement
 }
@@ -99,7 +99,7 @@ typealias SdObjectBuilder = (@SdElementDsl MutableMap<String, SdElement>)
 typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
 
 //
-// Methods for building sd array
+// Methods for building sd arrays
 //
 /**
  * A convenient method for building a [SdArray] given a [builderAction]
@@ -205,7 +205,7 @@ inline fun <reified E> SdArrayBuilder.sd(claims: E) {
 }
 
 //
-// Methods for building sd array
+// Methods for building sd arrays
 //
 
 /**
@@ -356,45 +356,91 @@ fun SdObjectBuilder.recursive(name: String, action: (SdObjectBuilder).() -> Unit
 //
 
 /**
+ * Represents a build action that puts a claim into a container
+ * such as a [JsonObject] or [SdElement.SdObject].
+ *
+ * Thus, this alias represent an action of [JsonObjectBuilder] or/and
+ * [SdObjectBuilder] respectively
+ */
+private typealias BuilderAction<V> = (String, V) -> Unit
+
+private fun sub(value: String, action: BuilderAction<String>) = action("sub", value)
+private fun iss(value: String, action: BuilderAction<String>) = action("iss", value)
+private fun iat(value: Long, action: BuilderAction<Long>) = action("iat", value)
+private fun exp(value: Long, action: BuilderAction<Long>) = action("exp", value)
+private fun jti(value: String, action: BuilderAction<String>) = action("jti", value)
+private fun nbe(value: Long, action: BuilderAction<Long>) = action("nbe", value)
+private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (aud.size) {
+    0 -> {}
+    1 -> action("aud", JsonPrimitive(aud[0]))
+    else -> action("aud", JsonArray(aud.map { JsonPrimitive(it) }))
+}
+/**
+ * Adds the JWT publicly registered SUB claim (Subject)
+ */
+fun JsonObjectBuilder.sub(value: String) = sub(value, this::put)
+/**
+ * Adds the JWT publicly registered ISS claim (Issuer)
+ */
+fun JsonObjectBuilder.iss(value: String) = iss(value, this::put)
+/**
+ *  Adds the JWT publicly registered IAT claim (Issued At)
+ */
+fun JsonObjectBuilder.iat(value: Long) = iat(value, this::put)
+/**
+ *  Adds the JWT publicly registered EXP claim (Expires)
+ */
+fun JsonObjectBuilder.exp(value: Long) = exp(value, this::put)
+
+/**
+ * Adds the JWT publicly registered JTI claim
+ */
+fun JsonObjectBuilder.jti(value: String) = jti(value, this::put)
+
+/**
+ *  Adds the JWT publicly registered NBE claim (Not before)
+ */
+fun JsonObjectBuilder.nbe(value: Long) = nbe(value, this::put)
+
+/**
+ * Adds the JWT publicly registered AUD claim (single Audience)
+ */
+fun JsonObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::put)
+
+/**
  * Adds the JWT publicly registered SUB claim (Subject), in plain
  */
-fun SdObjectBuilder.sub(value: String) = plain("sub", value)
+fun SdObjectBuilder.sub(value: String) = sub(value, this::plain)
 
 /**
  * Adds the JWT publicly registered ISS claim (Issuer), in plain
  */
-fun SdObjectBuilder.iss(value: String) = plain("iss", value)
+fun SdObjectBuilder.iss(value: String) = iss(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered IAT claim (Issued At), in plain
  */
-fun SdObjectBuilder.iat(value: Long) = plain("iat", value)
+fun SdObjectBuilder.iat(value: Long) = iat(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered EXP claim (Expires), in plain
  */
-fun SdObjectBuilder.exp(value: Long) = plain("exp", value)
+fun SdObjectBuilder.exp(value: Long) = exp(value, this::plain)
 
 /**
  * Adds the JWT publicly registered JTI claim, in plain
  */
-fun SdObjectBuilder.jti(value: String) = plain("jti", value)
+fun SdObjectBuilder.jti(value: String) = jti(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered NBE claim (Not before), in plain
  */
-fun SdObjectBuilder.nbe(nbe: Long) = plain("nbe", nbe)
+fun SdObjectBuilder.nbe(value: Long) = nbe(value, this::plain)
 
 /**
  * Adds the JWT publicly registered AUD claim (single Audience), in plain
  */
-fun SdObjectBuilder.aud(vararg aud: String) {
-    when (aud.size) {
-        0 -> {}
-        1 -> plain("aud", aud[0])
-        else -> plain("aud", JsonArray(aud.map { JsonPrimitive(it) }))
-    }
-}
+fun SdObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::plain)
 
 /**
  * Adds the confirmation claim (cnf) as a plain (always disclosable) which
