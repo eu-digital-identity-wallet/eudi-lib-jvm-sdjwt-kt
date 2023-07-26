@@ -94,7 +94,7 @@ fun KeyBindingVerifier.Companion.mustBePresentAndValid(
 }
 
 /**
- * Creates a [JWTProcessor] suitable for verifying the Key Binding JWT
+ * Creates a [NimbusJWTProcessor] suitable for verifying the Key Binding JWT
  * Enforces the following rules:
  * - The header contains typ claim equal to `kb+jwt`
  * - The header contains the signing algorithm claim
@@ -171,7 +171,7 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
 //
 
 /**
- * An adapter that transforms the [payload][JWTClaimsSet] of a [Nimbus JWT][NimbusJWT]
+ * An adapter that transforms the [payload][NimbusJWTClaimsSet] of a [Nimbus JWT][NimbusJWT]
  * to a KotlinX Serialization compatible representation
  */
 fun NimbusJWTClaimsSet.asClaims(): Claims =
