@@ -375,18 +375,22 @@ private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (a
     1 -> action("aud", JsonPrimitive(aud[0]))
     else -> action("aud", JsonArray(aud.map { JsonPrimitive(it) }))
 }
+
 /**
  * Adds the JWT publicly registered SUB claim (Subject)
  */
 fun JsonObjectBuilder.sub(value: String) = sub(value, this::put)
+
 /**
  * Adds the JWT publicly registered ISS claim (Issuer)
  */
 fun JsonObjectBuilder.iss(value: String) = iss(value, this::put)
+
 /**
  *  Adds the JWT publicly registered IAT claim (Issued At)
  */
 fun JsonObjectBuilder.iat(value: Long) = iat(value, this::put)
+
 /**
  *  Adds the JWT publicly registered EXP claim (Expires)
  */
