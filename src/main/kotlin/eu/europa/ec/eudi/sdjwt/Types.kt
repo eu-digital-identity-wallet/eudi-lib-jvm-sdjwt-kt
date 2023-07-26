@@ -120,3 +120,14 @@ sealed interface SdJwt<out JWT, out KB_JWT> {
         val keyBindingJwt: KB_JWT?,
     ) : SdJwt<JWT, KB_JWT>
 }
+
+/**
+ * Drops the [key binding JWT][SdJwt.Presentation.keyBindingJwt]
+ *
+ * @receiver the presentation SD-JWT
+ * @return a presentation SD-JWT that keeps the [JWT][SdJwt.Presentation.jwt] and the
+ * [disclosures][SdJwt.Presentation.disclosures] of the original SD-JWT, without
+ * keybinding JWT
+ */
+fun <JWT> SdJwt.Presentation<JWT, *>.noKeyBinding(): SdJwt.Presentation<JWT, Nothing> =
+    SdJwt.Presentation(jwt, disclosures, null)
