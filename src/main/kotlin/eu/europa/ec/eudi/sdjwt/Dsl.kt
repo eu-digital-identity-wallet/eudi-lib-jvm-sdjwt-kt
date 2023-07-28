@@ -371,7 +371,7 @@ private fun exp(value: Long, action: BuilderAction<Long>) = action("exp", value)
 private fun jti(value: String, action: BuilderAction<String>) = action("jti", value)
 private fun nbe(value: Long, action: BuilderAction<Long>) = action("nbe", value)
 private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (aud.size) {
-    0 -> {}
+    0 -> Unit
     1 -> action("aud", JsonPrimitive(aud[0]))
     else -> action("aud", JsonArray(aud.map { JsonPrimitive(it) }))
 }
