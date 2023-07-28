@@ -11,7 +11,7 @@
 
 ## Overview
 
-This is library offering a DSL (domain specific language) for defining how a set of claims should be made selectively
+This is a library offering a DSL (domain-specific language) for defining how a set of claims should be made selectively
 disclosable.
 
 Library implements [SD-JWT draft5](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html)
@@ -25,7 +25,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT (in Combined Issuance Format)
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT (in Combined Issuance Format) issued by an
   Issuer
-- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT (in Combined Presentation Format)
+- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT in Combined Presentation Format or in Envelope Format
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
 ## Issuance
@@ -41,7 +41,7 @@ In the example bellow, Issuer decides to issue an SD-JWT as follows:
 
 - Includes in plain standard JWT claims (`sub`,`iss`, `iat`, `exp`)
 - Makes selectively disclosable a claim named `address` using structured disclosure. This allows to individually
-  disclose every sub-claim of `address`
+  disclose every subclaim of `address`
 - Uses his RSA key pair to sign the SD-JWT
 
 ```kotlin
@@ -71,13 +71,12 @@ val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
     }.serialize()
 
 ```
-
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
 issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
 
 ## Holder Verification
 
-In this case the SD-JWT is expected to be in Combined Issuance format.
+In this case, the SD-JWT is expected to be in Combined Issuance format.
 
 `Holder` must know:
 
@@ -103,10 +102,12 @@ val (jwtAndClaims, disclosures) = issued
 
 ## Presentation Verification
 
-In this case the SD-JWT is expected to be in Combined Presentation format.
+### In combined presentation format
+
+In this case, the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
 to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
-know a how the public key of the Holder was included into the SD-JWT and which algorithm
+know a how the public key of the Holder was included in the SD-JWT and which algorithm
 the Holder used to sign the `Key Binding JWT`
 
 ```kotlin
@@ -131,8 +132,43 @@ val sdJwt: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
 
 ```
 
-Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
 presentation scenario which includes key binding
+
+### In envelope format
+
+In this case, the SD-JWT is expected to be in envelope format.
+Verifier should know
+- the public key of the Issuer and the algorithm used by the Issuer to sign the SD-JWT. 
+- the public key and the signing algorithm used by the Holder to sign the envelope JWT, since the envelope acts 
+  like a proof of possession (replacing the key binding JWT) 
+
+
+```kotlin
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.jwk.*
+import eu.europa.ec.eudi.sdjwt.*
+import java.time.Clock
+import java.time.Duration
+
+val unverifiedEnvelopeJwt: String = "..."
+// This is the SD-JWT issuer's key
+val issuerPubKey: ECPublicKey
+val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
+// This is the envelope JWT issuer (the holder) key 
+val holderPubKey: ECPublicKey
+val envelopeJwtVerifier = ECDSAVerifier(holderPubKey).asJwtVerifier()
+
+val sdJwt : SdJwt.Presentation<JwtAndClaims, Nothing> = 
+    SdJwtVerifier.verifyEnvelopedPresentation(
+        sdJwtSignatureVerifier = jwtSignatureVerifier,
+        envelopeJwtVerifier = envelopeJwtVerifier,
+        clock = Clock.systemDefaultZone(),
+        iatOffset = Duration.ofSeconds(10),
+        expectedAudience = "verifier's client id",
+        unverifiedEnvelopeJwt
+    ).getOrThrow()
+```
 
 ## Recreate original claims
 
