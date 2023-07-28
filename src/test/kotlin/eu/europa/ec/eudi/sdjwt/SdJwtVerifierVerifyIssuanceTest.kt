@@ -20,7 +20,7 @@ import org.junit.jupiter.api.fail
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class SdJwtIssuanceVerifierTest {
+class SdJwtVerifierVerifyIssuanceTest {
 
     @Test
     fun simple() {
@@ -137,7 +137,7 @@ class SdJwtIssuanceVerifierTest {
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() {
         verifyIssuanceExpectingError(
-            VerificationError.NonUnqueDisclosures,
+            VerificationError.NonUniqueDisclosures,
             JwtSignatureVerifier.NoSignatureValidation,
             "$jwt~$d1~$d1~",
         )
