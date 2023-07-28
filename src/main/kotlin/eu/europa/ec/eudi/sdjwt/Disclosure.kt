@@ -126,12 +126,12 @@ sealed interface Disclosure {
                     }
                 }
             return runCatching {
-                if (!isValidAttributeName(claim.name())) {
-                    throw IllegalArgumentException("Given claim should not contain an attribute named _sd")
+                require(isValidAttributeName(claim.name())) {
+                    "Given claim should not contain an attribute named _sd"
                 }
 
-                if (!isValidJsonElement(claim.value())) {
-                    throw IllegalArgumentException("Claim should not contain a null value or an JSON object with attribute named _sd")
+                require(isValidJsonElement(claim.value())) {
+                    "Claim should not contain a null value or an JSON object with attribute named _sd"
                 }
 
                 // Create a Json Array [salt, claimName, claimValue]
