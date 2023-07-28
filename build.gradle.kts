@@ -66,7 +66,7 @@ tasks.jar {
 tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
-     }
+    }
 }
 
 val ktlintVersion = "0.49.1"
