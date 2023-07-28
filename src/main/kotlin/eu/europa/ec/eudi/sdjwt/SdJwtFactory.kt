@@ -126,7 +126,7 @@ class SdJwtFactory(
 
         fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): UnsignedSdJwt {
             val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray.content)
-            val wrapper = Sd(contentClaims[claimName]!!)
+            val wrapper = Sd(checkNotNull(contentClaims[claimName]))
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
             val disclosures = contentDisclosures + wrapperDisclosures
             return UnsignedSdJwt(wrapperClaim, disclosures)
