@@ -5,6 +5,11 @@
 ## Table of contents
 
 * [Overview](#overview)
+* [Use cases supported](#use-cases-supported)
+  * [Issuance](#issuance)
+  * [Holder Verification](#holder-verification)
+  * [Presentation Verification](#presentation-verification)
+  * [Recreate initial claims](#recreate-original-claims)
 * [DSL Examples](#dsl-examples)
 * [How to contribute](#how-to-contribute)
 * [License](#license)
@@ -71,7 +76,7 @@ val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
     }.serialize()
 
 ```
-Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for more advanced
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
 issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
 
 ## Holder Verification
