@@ -144,7 +144,6 @@ class SdJwtFactory(
             is Plain -> encodePlain(claimValue)
             is Sd -> encodeSd(claimValue)
             is SdArray -> encodeSdArray(claimValue)
-            is SdObject -> encodeObj(claimValue)
             is StructuredSdObject -> encodeStructuredSdObject(claimValue)
             is RecursiveSdArray -> encodeRecursiveSdArray(claimValue)
             is RecursiveSdObject -> encodeRecursiveSdObject(claimValue)

@@ -40,7 +40,7 @@ class SdJwtIssuer<SIGNED_JWT>(
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    fun issue(sdElements: SdElement.SdObject): Result<SdJwt.Issuance<SIGNED_JWT>> = runCatching {
+    fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>> = runCatching {
         val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
         signSdJwt(unsignedSdJwt)
     }

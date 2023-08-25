@@ -16,7 +16,10 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
@@ -358,7 +361,7 @@ class SpecExamples {
                 put("is_over_65", false)
             }
 
-            recursiveArr("nationalities") {
+            recursiveArray("nationalities") {
                 sd("DE")
             }
 
@@ -377,7 +380,7 @@ class SpecExamples {
         descr: String,
         numOfDecoysLimit: Int = 0,
         expectedDisclosuresNo: Int,
-        sdElements: () -> SdElement.SdObject,
+        sdElements: () -> SdObject,
     ) {
         println(descr)
         val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = numOfDecoysLimit)
