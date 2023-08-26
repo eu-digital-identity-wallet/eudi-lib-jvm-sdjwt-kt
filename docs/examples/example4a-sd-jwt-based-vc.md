@@ -45,7 +45,7 @@ sdJwt {
         put("is_over_65", false)
     }
 
-    recursiveArr("nationalities") {
+    recursiveArray("nationalities") {
         sd("DE")
     }
 
