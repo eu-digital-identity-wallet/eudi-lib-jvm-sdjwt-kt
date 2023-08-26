@@ -16,8 +16,9 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.SdElement.*
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
+
+private typealias EncodedSdElement = Pair<JsonObject, Set<Disclosure>>
 
 /**
  * Factory for creating an [UnsignedSdJwt]
@@ -40,7 +41,8 @@ class SdJwtFactory(
      * @return the [UnsignedSdJwt] for the given [SD-JWT element][sdJwtElements]
      */
     fun createSdJwt(sdJwtElements: SdObject): Result<UnsignedSdJwt> = runCatching {
-        encodeObj(sdJwtElements).addHashAlgClaim(hashAlgorithm)
+        val (jwtClaimSet, disclosures) = encodeObj(sdJwtElements).addHashAlgClaim(hashAlgorithm)
+        UnsignedSdJwt(jwtClaimSet, disclosures)
     }
 
     /**
@@ -48,7 +50,7 @@ class SdJwtFactory(
      * @param sdObject the set of elements to disclose
      * @return the [UnsignedSdJwt]
      */
-    private fun encodeObj(sdObject: SdObject): UnsignedSdJwt {
+    private fun encodeObj(sdObject: SdObject): EncodedSdElement {
         val disclosures = mutableSetOf<Disclosure>()
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
@@ -67,7 +69,7 @@ class SdJwtFactory(
         }
         val sdObjectClaims = JsonObject(encodedClaims)
 
-        return UnsignedSdJwt(sdObjectClaims, disclosures)
+        return sdObjectClaims to disclosures
     }
 
     /**
@@ -80,64 +82,48 @@ class SdJwtFactory(
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    @OptIn(ExperimentalSerializationApi::class)
-    private fun encodeClaim(claimName: String, claimValue: SdElement): UnsignedSdJwt {
-        fun encodePlain(plain: Plain): UnsignedSdJwt =
-            UnsignedSdJwt(JsonObject(mapOf(claimName to plain.content)), emptySet())
+    private fun encodeClaim(claimName: String, claimValue: SdElement): EncodedSdElement {
+        fun encodePlain(plain: Plain): EncodedSdElement {
+            val plainClaim = JsonObject(mapOf(claimName to plain.content))
+            return plainClaim to emptySet()
+        }
 
-        fun encodeSd(sd: Sd, allowNestedDigests: Boolean = false): UnsignedSdJwt {
+        fun encodeSd(sd: Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
             val claim = claimName to sd.content
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
             val digestAndDecoys = (decoys() + digest).sorted()
             val sdClaim = digestAndDecoys.sdClaim()
-            return UnsignedSdJwt(sdClaim, setOf(disclosure))
+            return sdClaim to setOf(disclosure)
         }
 
-        fun encodeSdArray(sdArray: SdArray): UnsignedSdJwt {
-            val disclosures = mutableSetOf<Disclosure>()
-            val digests = mutableSetOf<DisclosureDigest>()
-            val plainElements = mutableListOf<JsonElement>()
-
-            for (element in sdArray) {
-                when (element) {
-                    is Plain -> plainElements += element.content
-                    is Sd -> {
-                        val (disclosure, digest) = arrayElementDisclosure(element.content)
-                        disclosures += disclosure
-                        digests += digest
-                    }
-                }
-            }
-
-            val arrayClaim = buildJsonObject {
-                putJsonArray(claimName) {
-                    addAll(plainElements)
-                    addAll((digests + decoys()).sorted().map { it.asDigestClaim() })
-                }
-            }
-            return UnsignedSdJwt(arrayClaim, disclosures)
+        fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
+            val (disclosures, digests, plainElements) = arrayElementsDisclosure(sdArray)
+            val digestAndDecoys = (decoys() + digests).sorted()
+            val allElements = JsonArray(plainElements + digestAndDecoys.map { it.asDigestClaim() })
+            val arrayClaim = JsonObject(mapOf(claimName to allElements))
+            return arrayClaim to disclosures
         }
 
-        fun encodeStructuredSdObject(structuredSdObject: StructuredSdObject): UnsignedSdJwt {
+        fun encodeStructuredSdObject(structuredSdObject: StructuredSdObject): EncodedSdElement {
             val (encodedSubClaims, disclosures) = encodeObj(structuredSdObject.content)
             val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
-            return UnsignedSdJwt(structuredSdClaim, disclosures)
+            return structuredSdClaim to disclosures
         }
 
-        fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): UnsignedSdJwt {
+        fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray.content)
             val wrapper = Sd(checkNotNull(contentClaims[claimName]))
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
             val disclosures = contentDisclosures + wrapperDisclosures
-            return UnsignedSdJwt(wrapperClaim, disclosures)
+            return wrapperClaim to disclosures
         }
 
-        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): UnsignedSdJwt {
+        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject.content)
             val wrapper = Sd(contentClaims)
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
             val disclosures = contentDisclosures + wrapperDisclosures
-            return UnsignedSdJwt(wrapperClaim, disclosures)
+            return wrapperClaim to disclosures
         }
 
         return when (claimValue) {
@@ -157,12 +143,16 @@ class SdJwtFactory(
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
-     * @return a new [UnsignedSdJwt] with an updated [Claims] to
+     * @return a new [EncodedSdElement] with an updated [Claims] to
      * contain the hash algorithm claim, if disclosures are present
      */
-    private fun UnsignedSdJwt.addHashAlgClaim(h: HashAlgorithm): UnsignedSdJwt {
+    private fun EncodedSdElement.addHashAlgClaim(h: HashAlgorithm): EncodedSdElement {
+        val (jwtClaimSet, disclosures) = this
         return if (disclosures.isEmpty()) this
-        else copy(jwt = JsonObject(jwt + ("_sd_alg" to JsonPrimitive(h.alias))))
+        else {
+            val newClaimSet = JsonObject(jwtClaimSet + ("_sd_alg" to JsonPrimitive(h.alias)))
+            newClaimSet to disclosures
+        }
     }
 
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
@@ -184,10 +174,28 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementDisclosure(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
-        val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
-        val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
-        return disclosure to digest
+    private fun arrayElementsDisclosure(sdArray: SdArray): Triple<Set<Disclosure>, Set<DisclosureDigest>, List<JsonElement>> {
+        fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
+            val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
+            val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
+            return disclosure to digest
+        }
+
+        val disclosures = mutableSetOf<Disclosure>()
+        val digests = mutableSetOf<DisclosureDigest>()
+        val plainElements = mutableListOf<JsonElement>()
+
+        for (element in sdArray) {
+            when (element) {
+                is Plain -> plainElements += element.content
+                is Sd -> {
+                    val (disclosure, digest) = disclosureOf(element.content)
+                    disclosures += disclosure
+                    digests += digest
+                }
+            }
+        }
+        return Triple(disclosures, digests, plainElements)
     }
 
     companion object {
