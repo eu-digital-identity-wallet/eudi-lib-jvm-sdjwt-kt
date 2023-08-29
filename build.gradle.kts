@@ -8,6 +8,7 @@ object Meta {
         "scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
 }
 plugins {
+    id("org.owasp.dependencycheck") version "8.3.1"
     id("org.sonarqube") version "4.3.0.3225"
     kotlin("jvm") version "1.8.21"
     kotlin("plugin.serialization") version "1.8.21"
