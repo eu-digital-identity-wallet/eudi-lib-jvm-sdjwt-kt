@@ -16,6 +16,7 @@ plugins {
     `java-library`
     `maven-publish`
     signing
+    jacoco
 }
 
 java.sourceCompatibility = JavaVersion.VERSION_17
@@ -60,6 +61,12 @@ tasks.jar {
                 "Implementation-Version" to project.version,
             ),
         )
+    }
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
     }
 }
 

@@ -19,6 +19,13 @@ import eu.europa.ec.eudi.sdjwt.SdElement.*
 import kotlinx.serialization.json.*
 
 /**
+ * Selectively disclosable claims that will be encoded with the flat option
+ *
+ * Each of its claims could be always or selectively disclosable
+ */
+class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElement> by content
+
+/**
  * A domain-specific language for describing the payload of a SD-JWT
  *
  * @see sdJwt for defining the claims of an SD-JWT
@@ -44,13 +51,6 @@ sealed interface SdElement {
             require(content != JsonNull) { "Null cannot be selectively disclosable" }
         }
     }
-
-    /**
-     * Selectively disclosable claims that will be encoded with the flat option
-     *
-     * Each of its claims could be always or selectively disclosable
-     */
-    class SdObject(private val content: Map<String, SdElement>) : SdElement, Map<String, SdElement> by content
 
     /**
      * Selectively disclosable array
@@ -341,7 +341,7 @@ fun SdObjectBuilder.structured(name: String, action: (SdObjectBuilder).() -> Uni
     sd(name, StructuredSdObject(obj))
 }
 
-fun SdObjectBuilder.recursiveArr(name: String, action: SdArrayBuilder.() -> Unit) {
+fun SdObjectBuilder.recursiveArray(name: String, action: SdArrayBuilder.() -> Unit) {
     val arr = buildSdArray(action)
     sd(name, RecursiveSdArray(arr))
 }
@@ -357,7 +357,7 @@ fun SdObjectBuilder.recursive(name: String, action: (SdObjectBuilder).() -> Unit
 
 /**
  * Represents a build action that puts a claim into a container
- * such as a [JsonObject] or [SdElement.SdObject].
+ * such as a [JsonObject] or [SdObject].
  *
  * Thus, this alias represent an action of [JsonObjectBuilder] or/and
  * [SdObjectBuilder] respectively
@@ -371,7 +371,7 @@ private fun exp(value: Long, action: BuilderAction<Long>) = action("exp", value)
 private fun jti(value: String, action: BuilderAction<String>) = action("jti", value)
 private fun nbe(value: Long, action: BuilderAction<Long>) = action("nbe", value)
 private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (aud.size) {
-    0 -> {}
+    0 -> Unit
     1 -> action("aud", JsonPrimitive(aud[0]))
     else -> action("aud", JsonArray(aud.map { JsonPrimitive(it) }))
 }

@@ -37,7 +37,7 @@ fun UnsignedSdJwt.print() {
     disclosures.forEach { d ->
         val kind = when (d) {
             is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value()}"
-            is Disclosure.ObjectProperty -> "\t - Claim ${d.claim()}"
+            is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim()}"
         }
         println(kind)
     }
