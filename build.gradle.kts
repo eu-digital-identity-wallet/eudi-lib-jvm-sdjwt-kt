@@ -28,7 +28,7 @@ repositories {
     mavenLocal()
 }
 
-val kotlinxSerializationVersion = "1.5.1"
+val kotlinxSerializationVersion = "1.6.0"
 val nimbusJoseJwtVersion = "9.31"
 
 dependencies {
