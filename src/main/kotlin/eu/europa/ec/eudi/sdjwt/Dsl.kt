@@ -26,6 +26,37 @@ import kotlinx.serialization.json.*
 class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElement> by content
 
 /**
+ * Adds to then current [SdObject] another [SDObject] producing
+ * a new [SdObject] containing the merged claims.
+ *
+ * If the two [SdObject] contain claims with common names, then the resulting [SdObject]
+ * will preserve the claim valus of [that]
+ *
+ * ```
+ *   val sdObj1 = buildSdObject {
+ *      sd{
+ *          put("a", "foo")
+ *          put("b", "bar")
+ *      }
+ *   }
+ *
+ *   val sdObj2 = buildSdObject {
+ *      plain {
+ *          put("a", "ddd")
+ *      }
+ *   }
+ *
+ *   sdObj1 + sdObj2 // will contain "a" to Plain("ddd") and "b" to Sd("bar")
+ *
+ * ```
+ * @param that the other [SdObject]
+ * @receiver the current [SdObject]
+ * @return a new [SdObject] as described above
+ */
+operator fun SdObject.plus(that: SdObject): SdObject =
+    SdObject((this as Map<String, SdElement>) + (that as Map<String, SdElement>))
+
+/**
  * A domain-specific language for describing the payload of a SD-JWT
  *
  * @see sdJwt for defining the claims of an SD-JWT
