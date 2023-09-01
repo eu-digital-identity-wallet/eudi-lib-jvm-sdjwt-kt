@@ -369,7 +369,7 @@ private fun iss(value: String, action: BuilderAction<String>) = action("iss", va
 private fun iat(value: Long, action: BuilderAction<Long>) = action("iat", value)
 private fun exp(value: Long, action: BuilderAction<Long>) = action("exp", value)
 private fun jti(value: String, action: BuilderAction<String>) = action("jti", value)
-private fun nbe(value: Long, action: BuilderAction<Long>) = action("nbe", value)
+private fun nbf(value: Long, action: BuilderAction<Long>) = action("nbf", value)
 private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (aud.size) {
     0 -> Unit
     1 -> action("aud", JsonPrimitive(aud[0]))
@@ -402,9 +402,9 @@ fun JsonObjectBuilder.exp(value: Long) = exp(value, this::put)
 fun JsonObjectBuilder.jti(value: String) = jti(value, this::put)
 
 /**
- *  Adds the JWT publicly registered NBE claim (Not before)
+ *  Adds the JWT publicly registered NBF claim (Not before)
  */
-fun JsonObjectBuilder.nbe(value: Long) = nbe(value, this::put)
+fun JsonObjectBuilder.nbf(value: Long) = nbf(value, this::put)
 
 /**
  * Adds the JWT publicly registered AUD claim (single Audience)
@@ -439,7 +439,7 @@ fun SdObjectBuilder.jti(value: String) = jti(value, this::plain)
 /**
  *  Adds the JWT publicly registered NBE claim (Not before), in plain
  */
-fun SdObjectBuilder.nbe(value: Long) = nbe(value, this::plain)
+fun SdObjectBuilder.nbf(value: Long) = nbf(value, this::plain)
 
 /**
  * Adds the JWT publicly registered AUD claim (single Audience), in plain
