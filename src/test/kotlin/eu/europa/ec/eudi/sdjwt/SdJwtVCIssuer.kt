@@ -89,10 +89,10 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
                 require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
                 exp(exp.epochSecond)
             }
-            notUseBefore?.let { calculateNbe ->
-                val nbe = calculateNbe(iat)
-                require(nbe.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
-                nbe(nbe.epochSecond)
+            notUseBefore?.let { calculateNbf ->
+                val nbf = calculateNbf(iat)
+                require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
+                nbf(nbf.epochSecond)
             }
         }
 
