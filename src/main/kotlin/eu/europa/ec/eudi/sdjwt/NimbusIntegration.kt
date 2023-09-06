@@ -237,7 +237,7 @@ fun SdJwtIssuer.Companion.nimbus(
 
 private object NimbusSdJwtIssuerFactory {
 
-    private const val allowSymmetric = true
+    private const val AllowAssymetric = true
 
     /**
      * Factory method for creating a [SdJwtIssuer] that uses Nimbus
@@ -259,7 +259,7 @@ private object NimbusSdJwtIssuerFactory {
     ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
 
         val (claims, disclosures) = unsignedSdJwt
-        require(allowSymmetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
+        require(AllowAssymetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
         val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         SdJwt.Issuance(signedJwt, disclosures)
     }
@@ -289,7 +289,7 @@ private object NimbusSdJwtIssuerFactory {
     /**
      * Indicates whether an [NimbusJWSAlgorithm] is asymmetric
      * @receiver the algorithm to check
-     * @return true if algorithm is asymmetric.
+     * @return true if the algorithm is asymmetric.
      */
     private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
@@ -308,8 +308,8 @@ private object NimbusSdJwtIssuerFactory {
  * @return the SD-JWT in either  Combined Issuance or Combined Presentation format depending on the case
  */
 fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
-    is SdJwt.Issuance<JWT> -> toCombinedIssuanceFormat(NimbusJWT::serialize)
-    is SdJwt.Presentation<JWT, HB_JWT> -> toCombinedPresentationFormat(NimbusJWT::serialize, NimbusJWT::serialize)
+    is SdJwt.Issuance<JWT> -> serialize(NimbusJWT::serialize)
+    is SdJwt.Presentation<JWT, HB_JWT> -> serialize(NimbusJWT::serialize, NimbusJWT::serialize)
 }
 
 /**

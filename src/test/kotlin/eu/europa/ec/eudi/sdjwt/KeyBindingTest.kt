@@ -275,7 +275,7 @@ class HolderActor(private val holderKey: ECKey) {
         holderDebug("Presenting credentials ...")
         val keyBindingJwt = keyBindingJwt(verifierQuery.challenge.asJson())
         return credentialSdJwt!!.present(keyBindingJwt, verifierQuery.whatToDisclose)
-            .toCombinedPresentationFormat({ it }, { it })
+            .serialize({ it }, { it })
     }
 
     private fun keyBindingJwt(verifierChallenge: JsonObject): String =

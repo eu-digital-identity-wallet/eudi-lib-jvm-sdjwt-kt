@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
@@ -232,7 +233,7 @@ typealias JwtAndClaims = Pair<Jwt, Claims>
 object SdJwtVerifier {
 
     /**
-     * Verifies an SD-JWT in Combined Issuance Format
+     * Verifies an SD-JWT (in non enveloped, simple format0
      * Typically, this is useful to Holder that wants to verify an issued SD-JWT
      *
      * @param jwtSignatureVerifier the verification the SD-JWT signature.
@@ -248,7 +249,7 @@ object SdJwtVerifier {
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures) = parseCombinedIssuance(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
 
         // Check JWT signature
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
@@ -288,7 +289,7 @@ object SdJwtVerifier {
     ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
         // Parse
         val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
-            parseCombinedPresentation(unverifiedSdJwt)
+            parse(unverifiedSdJwt)
 
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
@@ -353,33 +354,32 @@ object SdJwtVerifier {
 }
 
 /**
- * Parses an SD-JWT, assuming Combined Issuance Format
+ * Parses an SD-JWT
  * @param unverifiedSdJwt the SD-JWT to be verified
- * @return the JWT and the list of disclosures (as string), or raises [ParsingError]
- * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
+ * @return the JWT and the list of disclosures. Raises a [ParsingError] or [UnexpectedKeyBindingJwt]
+ * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed. It can raise also
+ *  [UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
  */
-private fun parseCombinedIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
-    val parts = unverifiedSdJwt.split('~')
-    if (parts.size <= 1) throw ParsingError.asException()
-    val jwt = parts[0]
-    val ds = parts.drop(1).filter { it.isNotBlank() }
+private fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
+    val (jwt, ds, kbJwt) = parse(unverifiedSdJwt)
+    if (null != kbJwt) throw UnexpectedKeyBindingJwt.asException()
     return jwt to ds
 }
 
 /**
- * Parses an SD-JWT, assuming Combined Presentation Format
+ * Parses an SD-JWT
  * @param unverifiedSdJwt the SD-JWT to be verified
- * @return the JWT and the list of disclosures and the Holder Binding JWT (as string), or raises [ParsingError]
+ * @return the JWT and the list of disclosures and the Key Binding JWT (as string), or raises [ParsingError]
  * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
  */
-private fun parseCombinedPresentation(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
+private fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
     val parts = unverifiedSdJwt.split('~')
     if (parts.size <= 1) throw ParsingError.asException()
     val jwt = parts[0]
     val containsKeyBinding = !unverifiedSdJwt.endsWith('~')
     val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
-    val hbJwt = if (containsKeyBinding) parts.last() else null
-    return Triple(jwt, ds, hbJwt)
+    val kbJwt = if (containsKeyBinding) parts.last() else null
+    return Triple(jwt, ds, kbJwt)
 }
 
 /**

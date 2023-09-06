@@ -24,7 +24,16 @@ class SdJwtVerifierVerifyIssuanceTest {
 
     @Test
     fun simple() {
-        verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1")
+        verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1~")
+    }
+
+    @Test
+    fun `when sd-jwt doesn't end in ~ raise UnexpectedKeyBindingJwt`() {
+        verifyIssuanceExpectingError(
+            VerificationError.KeyBindingFailed(KeyBindingError.UnexpectedKeyBindingJwt),
+            JwtSignatureVerifier.NoSignatureValidation,
+            "$jwt~$d1",
+        )
     }
 
     private fun verifyIssuanceSuccess(
