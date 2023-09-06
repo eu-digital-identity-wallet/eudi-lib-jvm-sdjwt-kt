@@ -15,10 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-// import com.danubetech.verifiablecredentials.CredentialSubject
-// import com.danubetech.verifiablecredentials.VerifiableCredential
-// import com.danubetech.verifiablecredentials.jsonld.VerifiableCredentialContexts
-// import foundation.identity.jsonld.JsonLDUtils
+
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.net.URI
