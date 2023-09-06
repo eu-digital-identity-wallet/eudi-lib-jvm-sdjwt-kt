@@ -63,8 +63,8 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
     fun issue(request: SdJwtVCIssuanceRequest): String {
         val now = now()
         val sdJwtSpec = request.verifiableCredentialAt(now) + request.standardClaimsAt(now)
-        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow().also { it.prettyPrint({ jwt -> jwt.jwtClaimsSet.asClaims() }) }
-        return issuedSdJwt.toCombinedIssuanceFormat { it.serialize() }
+        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow().also { it.prettyPrint { jwt -> jwt.jwtClaimsSet.asClaims() } }
+        return issuedSdJwt.serialize()
     }
 
     private fun now(): ZonedDateTime = ZonedDateTime.ofInstant(config.clock.instant(), config.clock.zone)
