@@ -9,7 +9,7 @@ object Meta {
 }
 plugins {
     id("org.owasp.dependencycheck") version "8.3.1"
-    id("org.sonarqube") version "4.3.0.3225"
+    id("org.sonarqube") version "4.3.1.3277"
     kotlin("jvm") version "1.8.21"
     kotlin("plugin.serialization") version "1.8.21"
     id("com.diffplug.spotless") version "6.21.0"
