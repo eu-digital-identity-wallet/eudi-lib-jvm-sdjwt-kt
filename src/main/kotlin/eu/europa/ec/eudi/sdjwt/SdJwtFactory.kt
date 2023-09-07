@@ -97,9 +97,15 @@ class SdJwtFactory(
         }
 
         fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
-            val (disclosures, digests, plainElements) = arrayElementsDisclosure(sdArray)
-            val digestAndDecoys = (decoys() + digests).sorted()
-            val allElements = JsonArray(plainElements + digestAndDecoys.map { it.asDigestClaim() })
+            val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(sdArray)
+            val allElements = JsonArray(
+                plainOrDigestElements.map {
+                    when (it) {
+                        is PlainOrDigest.Dig -> it.value.asDigestClaim()
+                        is PlainOrDigest.Plain -> it.value
+                    }
+                },
+            )
             val arrayClaim = JsonObject(mapOf(claimName to allElements))
             return arrayClaim to disclosures
         }
@@ -174,7 +180,7 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementsDisclosure(sdArray: SdArray): Triple<Set<Disclosure>, Set<DisclosureDigest>, List<JsonElement>> {
+    private fun arrayElementsDisclosure(sdArray: SdArray): Pair<Set<Disclosure>, List<PlainOrDigest>> {
         fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
             val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
@@ -182,20 +188,19 @@ class SdJwtFactory(
         }
 
         val disclosures = mutableSetOf<Disclosure>()
-        val digests = mutableSetOf<DisclosureDigest>()
-        val plainElements = mutableListOf<JsonElement>()
+        val plainOrDigestElements = mutableListOf<PlainOrDigest>()
 
         for (element in sdArray) {
             when (element) {
-                is Plain -> plainElements += element.content
+                is Plain -> plainOrDigestElements += PlainOrDigest.Plain(element.content)
                 is Sd -> {
                     val (disclosure, digest) = disclosureOf(element.content)
                     disclosures += disclosure
-                    digests += digest
+                    plainOrDigestElements += PlainOrDigest.Dig(digest)
                 }
             }
         }
-        return Triple(disclosures, digests, plainElements)
+        return disclosures to plainOrDigestElements
     }
 
     companion object {
@@ -206,4 +211,9 @@ class SdJwtFactory(
         fun of(hashAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): SdJwtFactory =
             SdJwtFactory(hashAlgorithm, numOfDecoysLimit = numOfDecoysLimit)
     }
+}
+
+private sealed interface PlainOrDigest {
+    data class Plain(val value: JsonElement) : PlainOrDigest
+    data class Dig(val value: DisclosureDigest) : PlainOrDigest
 }
