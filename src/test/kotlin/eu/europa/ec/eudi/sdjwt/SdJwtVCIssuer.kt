@@ -88,7 +88,7 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
         verifiableCredential(iat)
 
     /**
-     * According to SD-JWT-VC there are some registered JWT claims
+     * According to SD-JWT-VC,there are some registered JWT claims
      * that must always be disclosable (plain claims).
      * Mandatory claims are: `type`, `iss`, `iat`, `cnf`
      * Optional claims are: `sub`, `exp`, `nbf`
@@ -146,22 +146,26 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
 
 class SdJwtVCIssuerTest {
 
-    private val issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
-    private val config = IssuerConfig(issuerName = URL("https://example.com"), issuerKey = issuerKey)
-    private val issuingService = SdJwtVCIssuer(config)
-    private val holderKey = RSAKeyGenerator(2048).keyID("babis-kid-0").generate()
-    private val aliceIdentity = IdentityCredential(
-        givenName = "Alice",
-        familyName = "In wonderland",
-        email = "alice@foo.com",
-        phoneNumber = "+30-1111111",
+    private val fixedClock: Clock = Clock.fixed(Instant.ofEpochSecond(1683000000), Clock.systemDefaultZone().zone)
+    private val issuerCfg = IssuerConfig(
+        issuerName = URL("https://example.com/issuer"),
+        issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate(),
+        clock = fixedClock,
+    )
+    private val issuingService = SdJwtVCIssuer(issuerCfg)
+    private val holderKey = RSAKeyGenerator(2048).keyID("johnDoe-kid-0").generate()
+    private val johnDoeIdentity = IdentityCredential(
+        givenName = "John",
+        familyName = "Doe",
+        email = "johndoe@example.com",
+        phoneNumber = "+1-202-555-0101",
         address = Address(
-            streetAddress = "some street",
-            locality = "some locality",
-            region = "some region",
-            country = "Wonderland",
+            streetAddress = "123 Main St",
+            locality = "Anytown",
+            region = "Anystate",
+            country = "US",
         ),
-        birthDate = LocalDate.of(1974, 2, 11),
+        birthDate = LocalDate.of(1940, 1, 1),
     )
 
     @Test
@@ -171,9 +175,9 @@ class SdJwtVCIssuerTest {
         //
         val request = SdJwtVCIssuanceRequest(
             type = "IdentityCredential",
-            verifiableCredential = { iat -> aliceIdentity.asSdObjectAt(iat) },
+            verifiableCredential = { iat -> johnDoeIdentity.asSdObjectAt(iat) },
             holderPubKey = holderKey.toPublicJWK(),
-            expiresAt = { iat -> iat.plusYears(10).with(LocalTime.MIDNIGHT).toInstant() },
+            expiresAt = { iat -> iat.plusYears(2).with(LocalTime.MIDNIGHT).toInstant() },
         )
         val issuedSdJwt: String = issuingService.issue(request).also { println(it) }
 
@@ -184,7 +188,7 @@ class SdJwtVCIssuerTest {
             Assertions.assertDoesNotThrow(
                 ThrowingSupplier {
                     SdJwtVerifier.verifyIssuance(
-                        jwtSignatureVerifier = ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
+                        jwtSignatureVerifier = ECDSAVerifier(issuerCfg.issuerKey.toECPublicKey()).asJwtVerifier(),
                         unverifiedSdJwt = issuedSdJwt,
                     ).getOrThrow()
                 },
@@ -196,13 +200,13 @@ class SdJwtVCIssuerTest {
                 SignedJWT.parse(verified.jwt.first).header
             },
         )
-        assertEquals(config.issuerKey.keyID, jwsHeader.keyID)
+        assertEquals(issuerCfg.issuerKey.keyID, jwsHeader.keyID)
         assertEquals(JOSEObjectType("vc+sd-jwt"), jwsHeader.type)
 
         // Check claims
         val claims = verified.jwt.second
         assertEquals(request.type, claims["type"]?.jsonPrimitive?.contentOrNull)
-        assertEquals(config.issuerName.toExternalForm(), claims["iss"]?.jsonPrimitive?.contentOrNull)
+        assertEquals(issuerCfg.issuerName.toExternalForm(), claims["iss"]?.jsonPrimitive?.contentOrNull)
         assertNotNull(claims["iat"]?.jsonPrimitive)
         assertNotNull(claims["exp"]?.jsonPrimitive)
         assertNotNull(claims["cnf"]?.jsonObject)
@@ -232,7 +236,7 @@ data class IdentityCredential(
  * A function (time dependant) that maps the [IdentityCredential]
  * into a [SD-JWT specification][SdObject].
  *
- * Basically, reflects the issuer's decision of which claims are always or selectively disclosable
+ * Basically, it reflects the issuer's decision of which claims are always or selectively disclosable
  */
 fun IdentityCredential.asSdObjectAt(iat: ZonedDateTime): SdObject =
     sdJwt {
