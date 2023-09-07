@@ -26,6 +26,37 @@ import kotlinx.serialization.json.*
 class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElement> by content
 
 /**
+ * Adds to then current [SdObject] another [SdObject] producing
+ * a new [SdObject] containing the merged claims.
+ *
+ * If the two [SdObject] contain claims with common names, then the resulting [SdObject]
+ * will preserve the claims of [that]
+ *
+ * ```
+ *   val sdObj1 = buildSdObject {
+ *      sd{
+ *          put("a", "foo")
+ *          put("b", "bar")
+ *      }
+ *   }
+ *
+ *   val sdObj2 = buildSdObject {
+ *      plain {
+ *          put("a", "ddd")
+ *      }
+ *   }
+ *
+ *   sdObj1 + sdObj2 // will contain "a" to Plain("ddd") and "b" to Sd("bar")
+ *
+ * ```
+ * @param that the other [SdObject]
+ * @receiver the current [SdObject]
+ * @return a new [SdObject] as described above
+ */
+operator fun SdObject.plus(that: SdObject): SdObject =
+    SdObject((this as Map<String, SdElement>) + (that as Map<String, SdElement>))
+
+/**
  * A domain-specific language for describing the payload of a SD-JWT
  *
  * @see sdJwt for defining the claims of an SD-JWT
@@ -53,7 +84,7 @@ sealed interface SdElement {
     }
 
     /**
-     * Selectively disclosable array
+     * A selectively disclosable array
      * Each of its elements could be always or selectively disclosable
      */
     class SdArray(private val content: List<SdOrPlain>) : SdElement, List<SdOrPlain> by content
@@ -269,8 +300,8 @@ inline fun <reified E> SdObjectBuilder.sd(claims: E) {
  *       put("phone_number_verified", true)
  *       putJsonObject("address") {
  *           put("street_address", "123 Main St")
- *           put("locality", "Anytown")
- *           put("region", "Anystate")
+ *           put("locality", "Any town")
+ *           put("region", "Any state")
  *           put("country", "US")
  *       }
  *   }
@@ -323,8 +354,8 @@ inline fun <reified E> SdObjectBuilder.plain(claims: E) {
  *       put("phone_number_verified", true)
  *       putJsonObject("address") {
  *           put("street_address", "123 Main St")
- *           put("locality", "Anytown")
- *           put("region", "Anystate")
+ *           put("locality", "Any town")
+ *           put("region", "Any state")
  *           put("country", "US")
  *       }
  *   }
@@ -377,7 +408,7 @@ private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (a
 }
 
 /**
- * Adds the JWT publicly registered SUB claim (Subject)
+ * Adds the JWT publicly registered subclaim (Subject)
  */
 fun JsonObjectBuilder.sub(value: String) = sub(value, this::put)
 
@@ -412,7 +443,7 @@ fun JsonObjectBuilder.nbf(value: Long) = nbf(value, this::put)
 fun JsonObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::put)
 
 /**
- * Adds the JWT publicly registered SUB claim (Subject), in plain
+ * Adds the JWT publicly registered subclaim (Subject), in plain
  */
 fun SdObjectBuilder.sub(value: String) = sub(value, this::plain)
 

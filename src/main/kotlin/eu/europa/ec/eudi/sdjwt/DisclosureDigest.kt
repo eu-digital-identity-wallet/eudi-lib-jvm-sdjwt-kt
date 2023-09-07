@@ -26,7 +26,8 @@ value class DisclosureDigest private constructor(val value: String) {
 
         /**
          * Wraps the given [string][s] into [DisclosureDigest]
-         * It expects that the given input is base64-url encoded. If not an exception is thrown
+         * It expects that the given input is base64-url encoded.
+         * If not, an exception is thrown
          *
          * @param s the value to wrap
          * @return the [DisclosureDigest] if the given input represents a valid base64 encoded string

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
@@ -32,16 +33,22 @@ fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject>
 }
 
 val json = Json { prettyPrint = true }
-fun UnsignedSdJwt.print() {
-    println("Found ${disclosures.size} disclosures")
+private fun JsonElement.pretty(): String = json.encodeToString(this)
+fun <JWT> SdJwt<JWT, *>.prettyPrint(f: (JWT) -> Claims) {
+    val type = when (this) {
+        is SdJwt.Issuance -> "issuance"
+        is SdJwt.Presentation -> "presentation"
+    }
+    println("SD-JWT of $type type with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
         val kind = when (d) {
-            is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value()}"
-            is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim()}"
+            is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
+            is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
         }
         println(kind)
     }
-    jwt.also { println(json.encodeToString(it)) }
+    println("SD-JWT payload")
+    f(jwt).also { println(json.encodeToString(it)) }
 }
 
 fun String.removeNewLine(): String = replace("\n", "")
