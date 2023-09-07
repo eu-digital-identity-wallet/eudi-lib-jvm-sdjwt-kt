@@ -146,7 +146,6 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
 
 class SdJwtVCIssuerTest {
 
-
     private val issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
     private val config = IssuerConfig(issuerName = URL("https://example.com"), issuerKey = issuerKey)
     private val issuingService = SdJwtVCIssuer(config)
@@ -182,19 +181,21 @@ class SdJwtVCIssuerTest {
         // Verify SD-JWT (as Holder)
         //
         val verified: SdJwt.Issuance<JwtAndClaims> =
-            Assertions.assertDoesNotThrow(ThrowingSupplier {
-
-                SdJwtVerifier.verifyIssuance(
-                    jwtSignatureVerifier = ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
-                    unverifiedSdJwt = issuedSdJwt,
-                ).getOrThrow()
-
-            })
+            Assertions.assertDoesNotThrow(
+                ThrowingSupplier {
+                    SdJwtVerifier.verifyIssuance(
+                        jwtSignatureVerifier = ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
+                        unverifiedSdJwt = issuedSdJwt,
+                    ).getOrThrow()
+                },
+            )
 
         // Check Header
-        val jwsHeader = Assertions.assertDoesNotThrow(ThrowingSupplier {
-            SignedJWT.parse(verified.jwt.first).header
-        })
+        val jwsHeader = Assertions.assertDoesNotThrow(
+            ThrowingSupplier {
+                SignedJWT.parse(verified.jwt.first).header
+            },
+        )
         assertEquals(config.issuerKey.keyID, jwsHeader.keyID)
         assertEquals(JOSEObjectType("vc+sd-jwt"), jwsHeader.type)
 
@@ -206,7 +207,6 @@ class SdJwtVCIssuerTest {
         assertNotNull(claims["exp"]?.jsonPrimitive)
         assertNotNull(claims["cnf"]?.jsonObject)
     }
-
 }
 
 data class Address(
