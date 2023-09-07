@@ -25,10 +25,12 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.*
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.function.ThrowingSupplier
 import java.net.URL
 import java.time.*
 import java.time.temporal.ChronoField
@@ -43,6 +45,18 @@ data class IssuerConfig(
     val signAlg: JWSAlgorithm = JWSAlgorithm.ES256,
 )
 
+/**
+ * Represents a request placed to the issuer, for issuing an SD-JWT
+ * @param type The type of the credential
+ * @param subject The subject of the SD-JWT. If provided, it will populate the `sub` JWT claim (always disclosable)
+ * @param verifiableCredential function that given a point in time returns the verifiable credential expressed
+ * as a [SD-JWT specification][SdObject]
+ * @param holderPubKey the public key of the holder. Will be included as an always disclosable claim under `cnf`
+ * @param expiresAt a function that given a point in time (`iat`) returns the expiration time. If provided,
+ * it will be used to populate the `exp` JWT Claim (always disclosable)
+ * @param notUseBefore a function that given a point in time (`iat`) returns the "not use before" time. If provided,
+ *  * it will be used to populate the `nbf` JWT Claim (always disclosable)
+ */
 data class SdJwtVCIssuanceRequest(
     val type: String,
     val subject: String? = null,
@@ -56,14 +70,15 @@ data class SdJwtVCIssuanceRequest(
  * An SD-JWT issuer according to SD-JWT VC
  *
  *
- * https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html#I-D.looker-oauth-jwt-cwt-status-list
+ * See [SD-JWT-VC](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html)
  */
 class SdJwtVCIssuer(private val config: IssuerConfig) {
 
     fun issue(request: SdJwtVCIssuanceRequest): String {
         val now = now()
         val sdJwtSpec = request.verifiableCredentialAt(now) + request.standardClaimsAt(now)
-        val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow().also { it.prettyPrint { jwt -> jwt.jwtClaimsSet.asClaims() } }
+        val issuedSdJwt =
+            issuer.issue(sdJwtSpec).getOrThrow().also { it.prettyPrint { jwt -> jwt.jwtClaimsSet.asClaims() } }
         return issuedSdJwt.serialize()
     }
 
@@ -73,27 +88,32 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
         verifiableCredential(iat)
 
     /**
-     * According to SD-JWT VC there are some registered JWT claims
+     * According to SD-JWT-VC there are some registered JWT claims
      * that must always be disclosable (plain claims).
-     * Mandatory claims are: iss, iat, cnf
-     * Optional claims are: sub, exp, nbe
+     * Mandatory claims are: `type`, `iss`, `iat`, `cnf`
+     * Optional claims are: `sub`, `exp`, `nbf`
+     *
+     * **See** [here](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html#name-registered-jwt-claims)
      */
     private fun SdJwtVCIssuanceRequest.standardClaimsAt(iat: ZonedDateTime): SdObject =
         buildSdObject {
-            iss(config.issuerName.toExternalForm())
-            iat(iat.toInstant().epochSecond)
+            plain {
+                put("type", type)
+                iss(config.issuerName.toExternalForm())
+                iat(iat.toInstant().epochSecond)
+                subject?.let { sub(it) }
+                expiresAt?.let { provider ->
+                    val exp = provider(iat)
+                    require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
+                    exp(exp.epochSecond)
+                }
+                notUseBefore?.let { calculateNbf ->
+                    val nbf = calculateNbf(iat)
+                    require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
+                    nbf(nbf.epochSecond)
+                }
+            }
             cnf(holderPubKey)
-            subject?.let { sub(it) }
-            expiresAt?.let { provider ->
-                val exp = provider(iat)
-                require(exp.epochSecond > iat.toInstant().epochSecond) { "exp should be after iat" }
-                exp(exp.epochSecond)
-            }
-            notUseBefore?.let { calculateNbf ->
-                val nbf = calculateNbf(iat)
-                require(nbf.epochSecond > iat.toInstant().epochSecond) { "nbe should be after iat" }
-                nbf(nbf.epochSecond)
-            }
         }
 
     /**
@@ -107,10 +127,12 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
      */
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {
         // SD-JWT VC requires no decoys
+
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = config.hashAlgorithm, numOfDecoysLimit = 0)
         val signer = ECDSASigner(config.issuerKey)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, config.signAlg) {
             // SD-JWT VC requires the kid & typ header attributes
+            // Check [here](https://vcstuff.github.io/draft-terbu-sd-jwt-vc/draft-ietf-oauth-sd-jwt-vc-00/draft-ietf-oauth-sd-jwt-vc.html#name-header-parameters)
             keyID(config.issuerKey.keyID)
             type(JOSEObjectType("vc+sd-jwt"))
         }
@@ -118,9 +140,74 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
 }
 
 //
-// Example
+// Example Usage
 //
 //
+
+class SdJwtVCIssuerTest {
+
+
+    private val issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
+    private val config = IssuerConfig(issuerName = URL("https://example.com"), issuerKey = issuerKey)
+    private val issuingService = SdJwtVCIssuer(config)
+    private val holderKey = RSAKeyGenerator(2048).keyID("babis-kid-0").generate()
+    private val aliceIdentity = IdentityCredential(
+        givenName = "Alice",
+        familyName = "In wonderland",
+        email = "alice@foo.com",
+        phoneNumber = "+30-1111111",
+        address = Address(
+            streetAddress = "some street",
+            locality = "some locality",
+            region = "some region",
+            country = "Wonderland",
+        ),
+        birthDate = LocalDate.of(1974, 2, 11),
+    )
+
+    @Test
+    fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() {
+        //
+        // Issue of SD-JWT according to SD-JWT VC
+        //
+        val request = SdJwtVCIssuanceRequest(
+            type = "IdentityCredential",
+            verifiableCredential = { iat -> aliceIdentity.asSdObjectAt(iat) },
+            holderPubKey = holderKey.toPublicJWK(),
+            expiresAt = { iat -> iat.plusYears(10).with(LocalTime.MIDNIGHT).toInstant() },
+        )
+        val issuedSdJwt: String = issuingService.issue(request).also { println(it) }
+
+        //
+        // Verify SD-JWT (as Holder)
+        //
+        val verified: SdJwt.Issuance<JwtAndClaims> =
+            Assertions.assertDoesNotThrow(ThrowingSupplier {
+
+                SdJwtVerifier.verifyIssuance(
+                    jwtSignatureVerifier = ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
+                    unverifiedSdJwt = issuedSdJwt,
+                ).getOrThrow()
+
+            })
+
+        // Check Header
+        val jwsHeader = Assertions.assertDoesNotThrow(ThrowingSupplier {
+            SignedJWT.parse(verified.jwt.first).header
+        })
+        assertEquals(config.issuerKey.keyID, jwsHeader.keyID)
+        assertEquals(JOSEObjectType("vc+sd-jwt"), jwsHeader.type)
+
+        // Check claims
+        val claims = verified.jwt.second
+        assertEquals(request.type, claims["type"]?.jsonPrimitive?.contentOrNull)
+        assertEquals(config.issuerName.toExternalForm(), claims["iss"]?.jsonPrimitive?.contentOrNull)
+        assertNotNull(claims["iat"]?.jsonPrimitive)
+        assertNotNull(claims["exp"]?.jsonPrimitive)
+        assertNotNull(claims["cnf"]?.jsonObject)
+    }
+
+}
 
 data class Address(
     val streetAddress: String,
@@ -129,6 +216,9 @@ data class Address(
     val country: String,
 )
 
+/**
+ * A class that represents some kind of credential data
+ */
 data class IdentityCredential(
     val givenName: String,
     val familyName: String,
@@ -138,6 +228,12 @@ data class IdentityCredential(
     val birthDate: LocalDate,
 )
 
+/**
+ * A function (time dependant) that maps the [IdentityCredential]
+ * into a [SD-JWT specification][SdObject].
+ *
+ * Basically, reflects the issuer's decision of which claims are always or selectively disclosable
+ */
 fun IdentityCredential.asSdObjectAt(iat: ZonedDateTime): SdObject =
     sdJwt {
         sd {
@@ -160,56 +256,3 @@ fun IdentityCredential.asSdObjectAt(iat: ZonedDateTime): SdObject =
             put("is_over_65", age >= 65)
         }
     }
-
-fun main() {
-    val issuerKey = ECKeyGenerator(Curve.P_256).keyID("issuer-kid-0").generate()
-    val config = IssuerConfig(issuerName = URL("https://example.com"), issuerKey = issuerKey)
-    val issuingService = SdJwtVCIssuer(config)
-    val holderKey = RSAKeyGenerator(2048).keyID("babis-kid-0").generate()
-    val aliceIdentity = IdentityCredential(
-        givenName = "Alice",
-        familyName = "Routis",
-        email = "alice@foo.com",
-        phoneNumber = "+30-1111111",
-        address = Address(
-            streetAddress = "some street",
-            locality = "some locality",
-            region = "some region",
-            country = "Wonderland",
-        ),
-        birthDate = LocalDate.of(1974, 2, 11),
-    )
-
-    //
-    // Issue of SD-JWT according to SD-JWT VC
-    //
-    val request = SdJwtVCIssuanceRequest(
-        type = "IdentityCredential",
-        verifiableCredential = { iat -> aliceIdentity.asSdObjectAt(iat) },
-        holderPubKey = holderKey.toPublicJWK(),
-        expiresAt = { iat -> iat.plusYears(10).with(LocalTime.MIDNIGHT).toInstant() },
-    )
-    val issuedSdJwt: String = issuingService.issue(request).also { println(it) }
-
-    //
-    // Verify SD-JWT (as Holder)
-    //
-    val verified: SdJwt.Issuance<JwtAndClaims> = SdJwtVerifier.verifyIssuance(
-        jwtSignatureVerifier = ECDSAVerifier(issuerKey.toECPublicKey()).asJwtVerifier(),
-        unverifiedSdJwt = issuedSdJwt,
-    ).getOrThrow()
-
-    //
-    // Recreate claims
-    //
-    verified.recreateClaims { it.second }.also {
-        val jsonObj = JsonObject(it)
-        println(json.encodeToString(jsonObj))
-    }
-
-    //
-    // As Holder present is_over_18
-    verified
-        .present<JwtAndClaims, Nothing> { claim -> claim.name() == "is_over_18" }
-        .also { x -> x.prettyPrint { it.second } }
-}
