@@ -279,7 +279,7 @@ class SpecExamples {
     }
 
     @Test
-    fun `Example 3 Complex Structured`() = test("Example 3 Complex Structured", expectedDisclosuresNo = 12) {
+    fun `Example 3 Complex Structured`() = test("Example 3 Complex Structured", expectedDisclosuresNo = 16) {
         sdJwt {
             iss("https://example.com/issuer")
             iat(1516239022)
@@ -300,19 +300,21 @@ class SpecExamples {
                         put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
                     }
                     sdArray("evidence") {
-                        sd {
-                            put("type", "document")
-                            put("method", "pipp")
-                            put("time", "2012-04-22T11:30Z")
-                            putJsonObject("document") {
-                                put("type", "idcard")
-                                putJsonObject("issuer") {
-                                    put("name", "Stadt Augsburg")
-                                    put("country", "DE")
+                        sd2 {
+                            sd {
+                                put("type", "document")
+                                put("method", "pipp")
+                                put("time", "2012-04-22T11:30Z")
+                                putJsonObject("document") {
+                                    put("type", "idcard")
+                                    putJsonObject("issuer") {
+                                        put("name", "Stadt Augsburg")
+                                        put("country", "DE")
+                                    }
+                                    put("number", "53554554")
+                                    put("date_of_issuance", "2010-03-23")
+                                    put("date_of_expiry", "2020-03-22")
                                 }
-                                put("number", "53554554")
-                                put("date_of_issuance", "2010-03-23")
-                                put("date_of_expiry", "2020-03-22")
                             }
                         }
                     }

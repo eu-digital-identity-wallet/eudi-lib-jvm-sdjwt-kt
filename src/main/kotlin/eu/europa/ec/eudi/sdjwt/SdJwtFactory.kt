@@ -192,11 +192,18 @@ class SdJwtFactory(
 
         for (element in sdArray) {
             when (element) {
-                is Plain -> plainOrDigestElements += PlainOrDigest.Plain(element.content)
-                is Sd -> {
+                is SdOrPlain.PLainArrEl -> plainOrDigestElements += PlainOrDigest.Plain(element.content)
+                is SdOrPlain.SdArrayEl -> {
                     val (disclosure, digest) = disclosureOf(element.content)
                     disclosures += disclosure
                     plainOrDigestElements += PlainOrDigest.Dig(digest)
+                }
+                is SdOrPlain.SdObjArrayEl -> {
+                    val (json, ds)= encodeObj(element.content)
+                    val (ds2, dig) = disclosureOf(json)
+                    disclosures +=( ds+ ds2)
+                    plainOrDigestElements += PlainOrDigest.Dig(dig)
+
                 }
             }
         }
