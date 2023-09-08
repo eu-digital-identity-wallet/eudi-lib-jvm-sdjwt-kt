@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdElement.*
+import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
 import kotlinx.serialization.json.*
 
 /**
@@ -23,7 +23,7 @@ import kotlinx.serialization.json.*
  *
  * Each of its claims could be always or selectively disclosable
  */
-class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElement> by content
+class SdObject(private val content: Map<String, SdObjectElement>) : Map<String, SdObjectElement> by content
 
 /**
  * Adds to then current [SdObject] another [SdObject] producing
@@ -54,55 +54,88 @@ class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElem
  * @return a new [SdObject] as described above
  */
 operator fun SdObject.plus(that: SdObject): SdObject =
-    SdObject((this as Map<String, SdElement>) + (that as Map<String, SdElement>))
+    SdObject((this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>))
 
 /**
- * A domain-specific language for describing the payload of a SD-JWT
- *
- * @see sdJwt for defining the claims of an SD-JWT
+ * A [JsonElement] that is either always or selectively disclosable
  */
-sealed interface SdElement {
-
-    /**
-     * Represents a [JsonElement] that is either selectively disclosable or not
-     */
-    sealed interface SdOrPlain : SdElement
-
+sealed interface DisclosableJsonElement {
     /**
      * A [JsonElement] that is always disclosable
-     * @param
      */
-    data class Plain(val content: JsonElement) : SdOrPlain
+    @JvmInline
+    value class Plain(val value: JsonElement) : DisclosableJsonElement
 
     /**
-     * A [JsonElement] that is selectively disclosable
+     * A [JsonElement] that is selectively disclosable (as a whole)
      */
-    data class Sd(val content: JsonElement) : SdOrPlain {
+    @JvmInline
+    value class Sd(val value: JsonElement) : DisclosableJsonElement {
         init {
-            require(content != JsonNull) { "Null cannot be selectively disclosable" }
+            require(value != JsonNull) { "Null cannot be selectively disclosable" }
         }
     }
+}
+
+/**
+ * The elements of a selectively disclosable array
+ */
+sealed interface SdArrayElement {
+    /**
+     * An element which contains any [JsonElement] that is either always or selectively (as a whole) disclosable
+     */
+    @JvmInline
+    value class Disclosable(val disclosable: DisclosableJsonElement) : SdArrayElement
+
+    /**
+     * An element that is a selectively disclosable object
+     */
+    @JvmInline
+    value class DisclosableObj(val sdObject: SdObject) : SdArrayElement
+
+    companion object {
+        fun plain(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Plain(content))
+        fun sd(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Sd(content))
+        fun sd(obj: SdObject): SdArrayElement = DisclosableObj(obj)
+    }
+}
+
+/**
+ * The elements within a [disclosable object][SdObject]
+ */
+sealed interface SdObjectElement {
+
+    data class Disclosable(val disclosable: DisclosableJsonElement) : SdObjectElement
 
     /**
      * A selectively disclosable array
      * Each of its elements could be always or selectively disclosable
      */
-    class SdArray(private val content: List<SdOrPlain>) : SdElement, List<SdOrPlain> by content
-
-    /**
-     * Selectively disclosable claims that will be encoded with the structured option
-     */
-    data class StructuredSdObject(val content: SdObject) : SdElement
-
-    /**
-     * Selectively disclosable claims that will be encoded with the recursive option
-     */
-    data class RecursiveSdObject(val content: SdObject) : SdElement
+    class SdArray(private val content: List<SdArrayElement>) : SdObjectElement, List<SdArrayElement> by content
 
     /**
      * Selectively disclosable array that will be encoded with the recursive option
      */
-    data class RecursiveSdArray(val content: SdArray) : SdElement
+    data class RecursiveSdArray(val content: SdArray) : SdObjectElement
+
+    /**
+     * Selectively disclosable claims that will be encoded with the structured option
+     */
+    data class StructuredSdObject(val content: SdObject) : SdObjectElement
+
+    /**
+     * Selectively disclosable claims that will be encoded with the recursive option
+     */
+    data class RecursiveSdObject(val content: SdObject) : SdObjectElement
+
+    companion object {
+        fun plain(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Plain(content))
+        fun sd(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Sd(content))
+        fun sdRec(obj: SdObject): RecursiveSdObject = RecursiveSdObject(obj)
+        fun sdStruct(obj: SdObject): StructuredSdObject = StructuredSdObject(obj)
+        fun sd(es: List<SdArrayElement>): SdArray = SdArray(es)
+        fun sdRec(es: List<SdArrayElement>): RecursiveSdArray = RecursiveSdArray(sd(es))
+    }
 }
 
 @DslMarker
@@ -110,23 +143,23 @@ sealed interface SdElement {
 internal annotation class SdElementDsl
 
 /**
- * [SdArray] is actually a [List] of [elements][SdOrPlain]
+ * [SdArray] is actually a [List] of [elements][SdArrayElement]
  *
  * So we can use as builder a [MutableList]
  *
  * @see buildSdArray
  */
-typealias SdArrayBuilder = (@SdElementDsl MutableList<SdOrPlain>)
+typealias SdArrayBuilder = (@SdElementDsl MutableList<SdArrayElement>)
 
 /**
- * [SdObject] is actually a [Map] of [elements][SdElement]
+ * [SdObject] is actually a [Map] of [elements][SdObjectElement]
  *
  * So we can use as a builder [MutableMap]
  *
  * @see sdJwt
  * @see buildSdObject
  */
-typealias SdObjectBuilder = (@SdElementDsl MutableMap<String, SdElement>)
+typealias SdObjectBuilder = (@SdElementDsl MutableMap<String, SdObjectElement>)
 typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
 
 //
@@ -154,7 +187,7 @@ inline fun buildSdArray(builderAction: SdArrayBuilder.() -> Unit): SdArray = SdA
 fun SdArrayBuilder.plain(value: String) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
-fun SdArrayBuilder.plain(value: JsonElement) = add(Plain(value))
+fun SdArrayBuilder.plain(value: JsonElement) = add(SdArrayElement.plain(value))
 
 /**
  * Adds a plain claim to a [SdArray] using KotlinX Serialization DSL
@@ -196,7 +229,7 @@ inline fun <reified E> SdArrayBuilder.plain(claims: E) {
 fun SdArrayBuilder.sd(value: String) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Number) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
-fun SdArrayBuilder.sd(value: JsonElement) = add(Sd(value))
+fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
 
 /**
  * Adds a selectively disclosable claim to a [SdArray] using KotlinX Serialization DSL
@@ -223,6 +256,9 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(Sd(value))
  * ```
  */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
+fun SdArrayBuilder.buildSdObject(action: SdObjectBuilder.() -> Unit) {
+    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(action)))
+}
 
 /**
  * Adds into an [SdArray] an element [claims] that will be translated into a
@@ -252,9 +288,9 @@ inline fun sdJwt(builderAction: SdObjectBuilder.() -> Unit): SdObject = buildSdO
  * @return the [SdObject]
  */
 inline fun buildSdObject(builderAction: SdObjectBuilder.() -> Unit): SdObject = SdObject(buildMap(builderAction))
-fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, Plain(element))
-fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, Sd(element))
-fun SdObjectBuilder.sd(name: String, element: SdElement) = put(name, element)
+fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, SdObjectElement.plain(element))
+fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, SdObjectElement.sd(element))
+fun SdObjectBuilder.sd(name: String, element: SdObjectElement) = put(name, element)
 fun SdObjectBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))

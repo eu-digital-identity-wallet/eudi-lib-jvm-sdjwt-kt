@@ -1,6 +1,7 @@
 # Example 3: Complex Structured SD-JWT
 
-Description of the example in the [specification Example 3: Complex Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-example-3-complex-structure)
+Description of the example in
+the [specification Example 3: Complex Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-example-3-complex-structure)
 
 ```json
 {
@@ -73,19 +74,21 @@ sdJwt {
                 put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
             }
             sdArray("evidence") {
-                sd {
-                    put("type", "document")
-                    put("method", "pipp")
-                    put("time", "2012-04-22T11:30Z")
-                    putJsonObject("document") {
-                        put("type", "idcard")
-                        putJsonObject("issuer") {
-                            put("name", "Stadt Augsburg")
-                            put("country", "DE")
+                buildSdObject {
+                    sd {
+                        put("type", "document")
+                        put("method", "pipp")
+                        put("time", "2012-04-22T11:30Z")
+                        putJsonObject("document") {
+                            put("type", "idcard")
+                            putJsonObject("issuer") {
+                                put("name", "Stadt Augsburg")
+                                put("country", "DE")
+                            }
+                            put("number", "53554554")
+                            put("date_of_issuance", "2010-03-23")
+                            put("date_of_expiry", "2020-03-22")
                         }
-                        put("number", "53554554")
-                        put("date_of_issuance", "2010-03-23")
-                        put("date_of_expiry", "2020-03-22")
                     }
                 }
             }
@@ -118,35 +121,35 @@ Produces
 
 ```json
 {
-  "_sd": [
-    "-aSznId9mWM8ocuQolCllsxVggq1-vHW4OtnhUtVmWw",
-    "IKbrYNn3vA7WEFrysvbdBJjDDU_EvQIr0W18vTRpUSg",
-    "otkxuT14nBiwzNJ3MPaOitOl9pVnXOaEHal_xkyNfKI"
-  ],
   "iss": "https://example.com/issuer",
-  "iat": 1683000000,
-  "exp": 1883000000,
+  "iat": 1516239022,
+  "exp": 1735689661,
+  "_sd": [
+    "e721Y5f8a7UafHeYHjofP0PksjAjGly427g4K9Y2IDY",
+    "RS9M66sj3vjsrIx-zjxt2GYN-IXh1mp7gZM8IcKz1Hw",
+    "e3kvApJpIzydJta22dnac57t6cuAw3sA3rOAoK3Nx0c"
+  ],
   "verified_claims": {
     "verification": {
-      "_sd": [
-        "7h4UE9qScvDKodXVCuoKfKBJpVBfXMF_TmAGVaZe3Sc",
-        "vTwe3raHIFYgFA3xaUD2aMxFz5oDo8iBu05qKlOg9Lw"
-      ],
       "trust_framework": "de_aml",
+      "_sd": [
+        "Ol6N4PybIYvifJQFDbEOCYg2jE83G0RM13QAvsbwQwQ",
+        "vWV9mMyl4WEIHDbZ1orOwySRYSKP5PCz6Pj9judzPzI"
+      ],
       "evidence": [
         {
-          "...": "tYJ0TDucyZZCRMbROG4qRO5vkPSFRxFhUELc18CSl3k"
+          "...": "dReKrsxrGJNG_tTkBOfH0OFamvToQKdZQZ08fYInwa4"
         }
       ]
     },
-    "claims": {
+    "claim": {
       "_sd": [
-        "RiOiCn6_w5ZHaadkQMrcQJf0Jte5RwurRs54231DTlo",
-        "S_498bbpKzB6Eanftss0xc7cOaoneRr3pKr7NdRmsMo",
-        "WNA-UNK7F_zhsAb9syWO6IIQ1uHlTmOU8r8CvJ0cIMk",
-        "Wxh_sV3iRH9bgrTBJi-aYHNCLt-vjhX1sd-igOf_9lk",
-        "_O-wJiH3enSB4ROHntToQT8JmLtz-mhO2f1c89XoerQ",
-        "hvDXhwmGcJQsBCA2OtjuLAcwAMpDsaU0nkovcKOqWNE"
+        "rbeL22IRL38aijG-nHAoRtkBZnsvhVkHncnfwt-59dQ",
+        "cHcYBiORFHT9I3P4YzQ7969KetRcMDJSDgnClHWZeqQ",
+        "TKqhzCiFSMv9M6yE_VMH5MbVuu9CMYaNA8R-rBDxetM",
+        "kQJrRi98XuDCVeIQXzTIaX4GnOmU9Uy9oaSM1Fus-2w",
+        "ckaGOiFPV28CJagP5yd95ZpyG0FlbdLNl1PsvYtrrlU",
+        "TFWqSmViXraZT6OsasGMpxgcmmh-SSrM6eV8jRdO6_I"
       ]
     }
   },
@@ -188,24 +191,31 @@ and the following disclosures (salt omitted):
 
 ```json 
 {
-  "document": {"type": "idcard",
-    "issuer": {"name": "Stadt Augsburg", "country": "DE"},
-    "number": "53554554", "date_of_issuance": "2010-03-23",
-    "date_of_expiry": "2020-03-22"}
+  "document": {
+    "type": "idcard",
+    "issuer": {
+      "name": "Stadt Augsburg",
+      "country": "DE"
+    },
+    "number": "53554554",
+    "date_of_issuance": "2010-03-23",
+    "date_of_expiry": "2020-03-22"
+  }
 }
 ```
 
 Array Entry:
+
 ```json 
 {
-  "Pc33JM2LchcU_lHggv_ufQ": {"_sd":
-  ["9wpjVPWuD7PK0nsQDL8B06lmdgV3LVybhHydQpTNyLI",
-    "G5EnhOAOoU9X_6QMNvzFXjpEA_Rc-AEtm1bG_wcaKIk",
-    "IhwFrWUB63RcZq9yvgZ0XPc7Gowh3O2kqXeBIswg1B4",
-    "WpxQ4HSoEtcTmCCKOeDslB_emucYLz2oO8oHNr1bEVQ"]}
+  "_sd": [
+    "_wMV8jj_6UgLLAgpmak6fkN8u6bWh3w_cntpWYTdTTo",
+    "Dva3soYW0kuETAM1MmhGBc5ZqFZK6HWkALGnOQQNa0s",
+    "UOqJdECC1vax_Jo6D6nIlP0PW18cmL2zc64lWNQ0eIk",
+    "QYpAb_BMD968wU6OpK_5XE92RVCnKIAdKz-lWaj3eHs"
+  ]
 }
 ```
-
 
 ```json 
 {
@@ -215,13 +225,15 @@ Array Entry:
 
 ```json 
 {
-  "family_name": "M\u00fcller"
+  "family_name": "Müller"
 }
 ```
 
 ```json 
 {
-  "nationalities": ["DE"]
+  "nationalities": [
+    "DE"
+  ]
 }
 ```
 
@@ -233,16 +245,21 @@ Array Entry:
 
 ```json 
 {
-  "place_of_birth":  {"country": "IS", 
-    "locality": "\u00deykkvab\u00e6jarklaustur"}
+  "place_of_birth": {
+    "country": "IS",
+    "locality": "Þykkvabæjarklaustur"
+  }
 }
 ```
 
 ```json 
 {
-  "address": {"locality":
-  "Maxstadt", "postal_code": "12344", "country": "DE",
-    "street_address": "Weidenstra\u00dfe 22"}
+  "address": {
+    "locality": "Maxstadt",
+    "postal_code": "12344",
+    "country": "DE",
+    "street_address": "Weidenstra\u00dfe 22"
+  }
 }
 ```
 
