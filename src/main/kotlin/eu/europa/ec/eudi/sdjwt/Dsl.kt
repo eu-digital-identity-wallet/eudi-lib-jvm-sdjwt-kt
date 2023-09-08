@@ -56,25 +56,22 @@ class SdObject(private val content: Map<String, SdElement>) : Map<String, SdElem
 operator fun SdObject.plus(that: SdObject): SdObject =
     SdObject((this as Map<String, SdElement>) + (that as Map<String, SdElement>))
 
-
 /**
  * Represents a [JsonElement] that is either selectively disclosable or not
  */
 sealed interface SdOrPlain {
-    data class PLainArrEl(val content: JsonElement): SdOrPlain
-    data class SdArrayEl(val content: JsonElement): SdOrPlain
+    data class PLainArrEl(val content: JsonElement) : SdOrPlain
+    data class SdArrayEl(val content: JsonElement) : SdOrPlain
 
-    data class SdObjArrayEl(val content: SdObject): SdOrPlain
-
+    data class SdObjArrayEl(val content: SdObject) : SdOrPlain
 }
+
 /**
  * A domain-specific language for describing the payload of a SD-JWT
  *
  * @see sdJwt for defining the claims of an SD-JWT
  */
 sealed interface SdElement {
-
-
 
     /**
      * A [JsonElement] that is always disclosable
@@ -205,7 +202,6 @@ fun SdArrayBuilder.sd(value: String) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Number) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
 fun SdArrayBuilder.sd(value: JsonElement) = add(SdOrPlain.SdArrayEl(value))
-
 
 /**
  * Adds a selectively disclosable claim to a [SdArray] using KotlinX Serialization DSL

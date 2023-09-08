@@ -199,11 +199,10 @@ class SdJwtFactory(
                     plainOrDigestElements += PlainOrDigest.Dig(digest)
                 }
                 is SdOrPlain.SdObjArrayEl -> {
-                    val (json, ds)= encodeObj(element.content)
+                    val (json, ds) = encodeObj(element.content)
                     val (ds2, dig) = disclosureOf(json)
-                    disclosures +=( ds+ ds2)
+                    disclosures += (ds + ds2)
                     plainOrDigestElements += PlainOrDigest.Dig(dig)
-
                 }
             }
         }
