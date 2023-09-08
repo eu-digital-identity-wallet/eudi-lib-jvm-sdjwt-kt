@@ -210,9 +210,6 @@ class SdJwtFactory(
                     disclosures += (ds + ds2)
                     plainOrDigestElements += PlainOrDigest.Dig(dig)
                 }
-                is SdArrayElement.DisclosableArr -> {
-                    TODO("Consider how to implement this")
-                }
             }
         }
         return disclosures to plainOrDigestElements

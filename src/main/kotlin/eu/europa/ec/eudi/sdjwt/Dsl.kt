@@ -93,17 +93,10 @@ sealed interface SdArrayElement {
     @JvmInline
     value class DisclosableObj(val sdObject: SdObject) : SdArrayElement
 
-    /**
-     * An element that is a selectively disclosable array
-     */
-    @JvmInline
-    value class DisclosableArr(val arr: SdArray) : SdArrayElement
-
     companion object {
         fun plain(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Plain(content))
         fun sd(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Sd(content))
         fun sd(obj: SdObject): SdArrayElement = DisclosableObj(obj)
-        fun sd(arr: SdArray): SdArrayElement = DisclosableArr(arr)
     }
 }
 
@@ -265,11 +258,6 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
 fun SdArrayBuilder.buildSdObject(action: SdObjectBuilder.() -> Unit) {
     add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(action)))
-}
-
-fun SdArrayBuilder.buildSdArray(action: SdArrayBuilder.() -> Unit) {
-    val array = eu.europa.ec.eudi.sdjwt.buildSdArray(action)
-    add(SdArrayElement.sd(array))
 }
 
 /**
