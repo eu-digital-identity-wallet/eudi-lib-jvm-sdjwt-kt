@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdElement.*
+import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
 import kotlinx.serialization.json.*
 
 private typealias EncodedSdElement = Pair<JsonObject, Set<Disclosure>>
@@ -82,14 +82,14 @@ class SdJwtFactory(
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    private fun encodeClaim(claimName: String, claimValue: SdElement): EncodedSdElement {
-        fun encodePlain(plain: Plain): EncodedSdElement {
-            val plainClaim = JsonObject(mapOf(claimName to plain.content))
+    private fun encodeClaim(claimName: String, claimValue: SdObjectElement): EncodedSdElement {
+        fun encodePlain(plain: DisclosableJsonElement.Plain): EncodedSdElement {
+            val plainClaim = JsonObject(mapOf(claimName to plain.value))
             return plainClaim to emptySet()
         }
 
-        fun encodeSd(sd: Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
-            val claim = claimName to sd.content
+        fun encodeSd(sd: DisclosableJsonElement.Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
+            val claim = claimName to sd.value
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
             val digestAndDecoys = (decoys() + digest).sorted()
             val sdClaim = digestAndDecoys.sdClaim()
@@ -118,7 +118,7 @@ class SdJwtFactory(
 
         fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray.content)
-            val wrapper = Sd(checkNotNull(contentClaims[claimName]))
+            val wrapper = DisclosableJsonElement.Sd(checkNotNull(contentClaims[claimName]))
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
@@ -126,15 +126,17 @@ class SdJwtFactory(
 
         fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject.content)
-            val wrapper = Sd(contentClaims)
+            val wrapper = DisclosableJsonElement.Sd(contentClaims)
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
         }
 
         return when (claimValue) {
-            is Plain -> encodePlain(claimValue)
-            is Sd -> encodeSd(claimValue)
+            is Disclosable -> when (val disclosable = claimValue.disclosable) {
+                is DisclosableJsonElement.Plain -> encodePlain(disclosable)
+                is DisclosableJsonElement.Sd -> encodeSd(disclosable)
+            }
             is SdArray -> encodeSdArray(claimValue)
             is StructuredSdObject -> encodeStructuredSdObject(claimValue)
             is RecursiveSdArray -> encodeRecursiveSdArray(claimValue)
@@ -192,17 +194,24 @@ class SdJwtFactory(
 
         for (element in sdArray) {
             when (element) {
-                is SdOrPlain.PLainArrEl -> plainOrDigestElements += PlainOrDigest.Plain(element.content)
-                is SdOrPlain.SdArrayEl -> {
-                    val (disclosure, digest) = disclosureOf(element.content)
-                    disclosures += disclosure
-                    plainOrDigestElements += PlainOrDigest.Dig(digest)
+                is SdArrayElement.Disclosable -> {
+                    when (val v = element.disclosable) {
+                        is DisclosableJsonElement.Plain -> plainOrDigestElements += PlainOrDigest.Plain(v.value)
+                        is DisclosableJsonElement.Sd -> {
+                            val (disclosure, digest) = disclosureOf(v.value)
+                            disclosures += disclosure
+                            plainOrDigestElements += PlainOrDigest.Dig(digest)
+                        }
+                    }
                 }
-                is SdOrPlain.SdObjArrayEl -> {
-                    val (json, ds) = encodeObj(element.content)
+                is SdArrayElement.DisclosableObj -> {
+                    val (json, ds) = encodeObj(element.sdObject)
                     val (ds2, dig) = disclosureOf(json)
                     disclosures += (ds + ds2)
                     plainOrDigestElements += PlainOrDigest.Dig(dig)
+                }
+                is SdArrayElement.DisclosableArr -> {
+                    TODO("Consider how to implement this")
                 }
             }
         }
