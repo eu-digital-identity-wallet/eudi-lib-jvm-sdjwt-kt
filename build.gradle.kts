@@ -29,7 +29,7 @@ repositories {
 }
 
 val kotlinxSerializationVersion = "1.6.0"
-val nimbusJoseJwtVersion = "9.31"
+val nimbusJoseJwtVersion = "9.34"
 
 dependencies {
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
