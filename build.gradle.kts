@@ -11,7 +11,7 @@ plugins {
     id("org.owasp.dependencycheck") version "8.4.0"
     id("org.sonarqube") version "4.3.1.3277"
     kotlin("jvm") version "1.8.21"
-    kotlin("plugin.serialization") version "1.8.21"
+    kotlin("plugin.serialization") version "1.9.10"
     id("com.diffplug.spotless") version "6.21.0"
     `java-library`
     `maven-publish`
