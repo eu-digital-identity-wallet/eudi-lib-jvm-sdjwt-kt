@@ -1,3 +1,5 @@
+import kotlin.jvm.optionals.getOrNull
+
 object Meta {
     const val ORG_URL = "https://github.com/eu-digital-identity-wallet"
     const val PROJ_DESCR = "Implementation of SD-JWT"
@@ -8,18 +10,18 @@ object Meta {
         "scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
 }
 plugins {
-    id("org.owasp.dependencycheck") version "8.4.0"
-    id("org.sonarqube") version "4.3.1.3277"
-    kotlin("jvm") version "1.8.21"
-    kotlin("plugin.serialization") version "1.8.21"
-    id("com.diffplug.spotless") version "6.21.0"
+    base
     `java-library`
     `maven-publish`
     signing
     jacoco
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.sonarqube)
+    alias(libs.plugins.dependencycheck)
 }
-
-java.sourceCompatibility = JavaVersion.VERSION_17
 
 extra["isReleaseVersion"] = !version.toString().endsWith("SNAPSHOT")
 
@@ -28,21 +30,23 @@ repositories {
     mavenLocal()
 }
 
-val kotlinxSerializationVersion = "1.6.0"
-val nimbusJoseJwtVersion = "9.35"
-
 dependencies {
-    api("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
-    api("com.nimbusds:nimbus-jose-jwt:$nimbusJoseJwtVersion")
+    api(libs.kotlinx.serialization.json)
+    api(libs.nimbus.jose.jwt)
     testImplementation(kotlin("test"))
 }
 
 java {
     withSourcesJar()
     withJavadocJar()
+    val javaVersion = getVersionFromCatalog("java")
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
 }
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain {
+        val javaVersion = getVersionFromCatalog("java")
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
+    }
 }
 
 testing {
@@ -142,4 +146,13 @@ signing {
     val signingPassword: String? by project
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications["library"])
+}
+
+fun getVersionFromCatalog(lookup: String): String {
+    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+    return versionCatalog
+        .findVersion(lookup)
+        .getOrNull()
+        ?.requiredVersion
+        ?: throw GradleException("Version '$lookup' is not specified in the version catalog")
 }
