@@ -74,8 +74,8 @@ tasks.jacocoTestReport {
     }
 }
 
-val ktlintVersion = "0.49.1"
 spotless {
+    val ktlintVersion = getVersionFromCatalog("ktlintVersion")
     kotlin {
         ktlint(ktlintVersion)
         licenseHeaderFile("FileHeader.txt")
