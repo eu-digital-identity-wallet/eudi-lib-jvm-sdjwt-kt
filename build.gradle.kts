@@ -9,6 +9,7 @@ object Meta {
     const val PROJ_SSH_URL =
         "scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
 }
+
 plugins {
     base
     `java-library`
@@ -39,13 +40,23 @@ dependencies {
 java {
     withSourcesJar()
     withJavadocJar()
-    val javaVersion = getVersionFromCatalog("java")
-    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
 }
+
 kotlin {
     jvmToolchain {
-        val javaVersion = getVersionFromCatalog("java")
-        languageVersion.set(JavaLanguageVersion.of(javaVersion))
+        languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
+    }
+}
+
+spotless {
+    val ktlintVersion = libs.versions.ktlintVersion.get()
+    kotlin {
+        ktlint(ktlintVersion)
+        licenseHeaderFile("FileHeader.txt")
+    }
+    kotlinGradle {
+        ktlint(ktlintVersion)
     }
 }
 
@@ -57,6 +68,12 @@ testing {
     }
 }
 
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+    }
+}
+
 tasks.jar {
     manifest {
         attributes(
@@ -65,23 +82,6 @@ tasks.jar {
                 "Implementation-Version" to project.version,
             ),
         )
-    }
-}
-
-tasks.jacocoTestReport {
-    reports {
-        xml.required.set(true)
-    }
-}
-
-spotless {
-    val ktlintVersion = getVersionFromCatalog("ktlintVersion")
-    kotlin {
-        ktlint(ktlintVersion)
-        licenseHeaderFile("FileHeader.txt")
-    }
-    kotlinGradle {
-        ktlint(ktlintVersion)
     }
 }
 
@@ -146,13 +146,4 @@ signing {
     val signingPassword: String? by project
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications["library"])
-}
-
-fun getVersionFromCatalog(lookup: String): String {
-    val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-    return versionCatalog
-        .findVersion(lookup)
-        .getOrNull()
-        ?.requiredVersion
-        ?: throw GradleException("Version '$lookup' is not specified in the version catalog")
 }
