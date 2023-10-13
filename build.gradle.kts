@@ -3,7 +3,7 @@ import kotlin.jvm.optionals.getOrNull
 object Meta {
     const val ORG_URL = "https://github.com/eu-digital-identity-wallet"
     const val PROJ_DESCR = "Implementation of SD-JWT"
-    const val PROJ_BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
+    const val PROJ_BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
     const val PROJ_GIT_URL =
         "scm:git:git@github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
     const val PROJ_SSH_URL =
