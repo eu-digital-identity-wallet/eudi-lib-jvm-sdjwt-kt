@@ -3,13 +3,7 @@ import org.jetbrains.dokka.gradle.DokkaTask
 import java.net.URL
 
 object Meta {
-    const val ORG_URL = "https://github.com/eu-digital-identity-wallet"
-    const val PROJ_DESCR = "Implementation of SD-JWT"
-    const val PROJ_BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
-    const val PROJ_GIT_URL =
-        "scm:git:git@github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
-    const val PROJ_SSH_URL =
-        "scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt.git"
+    const val BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
 }
 
 plugins {
@@ -24,9 +18,8 @@ plugins {
     alias(libs.plugins.spotless)
     alias(libs.plugins.sonarqube)
     alias(libs.plugins.dependencycheck)
+    alias(libs.plugins.maven.publish)
 }
-
-extra["isReleaseVersion"] = !version.toString().endsWith("SNAPSHOT")
 
 repositories {
     mavenCentral()
@@ -40,7 +33,6 @@ dependencies {
 }
 
 java {
-    withSourcesJar()
     sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
 }
 
@@ -97,7 +89,7 @@ tasks.withType<DokkaTask>().configureEach {
 
             documentedVisibilities.set(setOf(DokkaConfiguration.Visibility.PUBLIC, DokkaConfiguration.Visibility.PROTECTED))
 
-            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URL("${Meta.PROJ_BASE_URL}/tree/$it/src") }
+            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URL("${Meta.BASE_URL}/tree/$it/src") }
             remoteSourceUrl
                 ?.let {
                     sourceLink {
@@ -110,72 +102,11 @@ tasks.withType<DokkaTask>().configureEach {
     }
 }
 
-val javadocJar = tasks.register<Jar>("javadocJar") {
-    dependsOn(tasks.dokkaHtml)
-    from(tasks.dokkaHtml.flatMap { it.outputDirectory })
-    archiveClassifier.set("javadoc")
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("library") {
-            from(components["java"])
-            artifacts + artifact(javadocJar)
-            pom {
-                name.set(project.name)
-                description.set(Meta.PROJ_DESCR)
-                url.set(Meta.PROJ_BASE_URL)
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                scm {
-                    connection.set(Meta.PROJ_GIT_URL)
-                    developerConnection.set(Meta.PROJ_SSH_URL)
-                    url.set(Meta.PROJ_BASE_URL)
-                }
-                issueManagement {
-                    system.set("github")
-                    url.set(Meta.PROJ_BASE_URL + "/issues")
-                }
-                ciManagement {
-                    system.set("github")
-                    url.set(Meta.PROJ_BASE_URL + "/actions")
-                }
-                developers {
-                    organization {
-                        url.set(Meta.ORG_URL)
-                    }
-                }
-            }
+mavenPublishing {
+    pom {
+        ciManagement {
+            system = "github"
+            url = "${Meta.BASE_URL}/actions"
         }
     }
-    repositories {
-
-        val sonaUri =
-            if ((extra["isReleaseVersion"]) as Boolean) {
-                "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            } else {
-                "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            }
-
-        maven {
-            name = "sonatype"
-            url = uri(sonaUri)
-            credentials(PasswordCredentials::class)
-        }
-    }
-}
-
-signing {
-    setRequired({
-        (project.extra["isReleaseVersion"] as Boolean) && gradle.taskGraph.hasTask("publish")
-    })
-    val signingKeyId: String? by project
-    val signingKey: String? by project
-    val signingPassword: String? by project
-    useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-    sign(publishing.publications["library"])
 }
