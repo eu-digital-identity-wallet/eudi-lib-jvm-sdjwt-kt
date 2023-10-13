@@ -1,4 +1,6 @@
-import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.dokka.DokkaConfiguration
+import org.jetbrains.dokka.gradle.DokkaTask
+import java.net.URL
 
 object Meta {
     const val ORG_URL = "https://github.com/eu-digital-identity-wallet"
@@ -39,7 +41,6 @@ dependencies {
 
 java {
     withSourcesJar()
-    withJavadocJar()
     sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
 }
 
@@ -85,10 +86,41 @@ tasks.jar {
     }
 }
 
+tasks.withType<DokkaTask>().configureEach {
+    dokkaSourceSets {
+        named("main") {
+            // used as project name in the header
+            moduleName.set("EUDI SD-JWT")
+
+            // contains descriptions for the module and the packages
+            includes.from("Module.md")
+
+            documentedVisibilities.set(setOf(DokkaConfiguration.Visibility.PUBLIC, DokkaConfiguration.Visibility.PROTECTED))
+
+            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URL("${Meta.PROJ_BASE_URL}/tree/$it/src") }
+            remoteSourceUrl
+                ?.let {
+                    sourceLink {
+                        localDirectory.set(projectDir.resolve("src"))
+                        remoteUrl.set(it)
+                        remoteLineSuffix.set("#L")
+                    }
+                }
+        }
+    }
+}
+
+val javadocJar = tasks.register<Jar>("javadocJar") {
+    dependsOn(tasks.dokkaHtml)
+    from(tasks.dokkaHtml.flatMap { it.outputDirectory })
+    archiveClassifier.set("javadoc")
+}
+
 publishing {
     publications {
         create<MavenPublication>("library") {
             from(components["java"])
+            artifacts + artifact(javadocJar)
             pom {
                 name.set(project.name)
                 description.set(Meta.PROJ_DESCR)
