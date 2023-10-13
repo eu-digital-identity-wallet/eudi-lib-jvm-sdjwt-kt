@@ -8,7 +8,7 @@ java = "17"
 kotlinxSerialization = "1.6.0"
 nimbusJoseWwt = "9.35"
 ktlintVersion = "0.50.0"
-sonarqube = "4.3.1.3277"
+sonarqube = "4.4.1.3373"
 dependencycheck = "8.4.0"
 maven-publish = "0.25.3"
 
