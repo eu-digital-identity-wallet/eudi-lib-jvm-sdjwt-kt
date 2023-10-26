@@ -1,11 +1,12 @@
-name: Gitleaks Secrets Scan
+name: Secret Scanning - Gitleaks
 on:
   push:
-    branches: [ 'main', 'release/*' ]
+    branches: [ 'main', 'release/*', 'feature/*', 'fix/*', 'refactor/*' ]
     tags: [ v* ]
   workflow_dispatch:
+
 jobs:
-  Credentials_Scanning:
+  Secret-Scanning:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
