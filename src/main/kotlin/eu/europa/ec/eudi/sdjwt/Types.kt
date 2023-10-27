@@ -72,7 +72,7 @@ enum class HashAlgorithm(val alias: String) {
          * @param s a string with the alias of the algorithm
          * @return either a matching [HashAlgorithm] or null
          */
-        fun fromString(s: String): HashAlgorithm? = values().find { it.alias == s }
+        fun fromString(s: String): HashAlgorithm? = entries.find { it.alias == s }
     }
 }
 
