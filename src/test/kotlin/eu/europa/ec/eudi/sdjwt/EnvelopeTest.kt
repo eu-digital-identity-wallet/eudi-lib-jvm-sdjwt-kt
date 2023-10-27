@@ -62,13 +62,13 @@ class EnvelopeTest {
         SdJwt.Presentation(sdJwt.jwt.first, sdJwt.disclosures, null)
     }
 
-    fun key(): ECKey =
+    private fun key(): ECKey =
         ECKeyGenerator(Curve.P_384)
             .keyID("id")
             .keyUse(KeyUse.SIGNATURE)
             .generate()
 
-    val unverifiedSdJwt = """
+    private val unverifiedSdJwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
             DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
             TVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHb

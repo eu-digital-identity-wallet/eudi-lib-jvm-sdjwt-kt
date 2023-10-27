@@ -53,7 +53,7 @@ class SdJsonElementArrayElementTest {
             println(json.encodeToString(it.jwt))
         }
 
-        sdJwt.recreateClaims({ it }).also {
+        sdJwt.recreateClaims { it }.also {
             println(json.encodeToString(it))
         }
     }
