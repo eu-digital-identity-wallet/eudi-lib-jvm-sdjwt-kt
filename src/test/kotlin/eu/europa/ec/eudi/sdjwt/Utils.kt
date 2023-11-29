@@ -32,7 +32,10 @@ fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject>
     return otherClaims to claimToBeDisclosed
 }
 
-val json = Json { prettyPrint = true }
+val json = Json {
+    prettyPrint = true
+    ignoreUnknownKeys = true
+}
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 fun <JWT> SdJwt<JWT, *>.prettyPrint(f: (JWT) -> Claims) {
     val type = when (this) {

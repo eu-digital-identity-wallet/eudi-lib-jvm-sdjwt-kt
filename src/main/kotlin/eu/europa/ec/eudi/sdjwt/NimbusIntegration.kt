@@ -16,9 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.proc.SecurityContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.*
 import java.text.ParseException
 import java.time.Instant
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
@@ -61,7 +59,7 @@ val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier b
 }
 
 /**
- * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present and it's indeed a JWT
+ * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present, and it's indeed a JWT
  * without performing signature validation
  *
  * <em>Should not be used in production</em>
@@ -107,7 +105,10 @@ fun KeyBindingVerifier.Companion.mustBePresentAndValid(
  * If provided, Key Binding JWT payload should contain the challenge as is.
  * @return
  */
-fun keyBindingJWTProcess(holderPubKey: NimbusJWK, challenge: NimbusJWTClaimsSet? = null): NimbusJWTProcessor<SecurityContext> =
+fun keyBindingJWTProcess(
+    holderPubKey: NimbusJWK,
+    challenge: NimbusJWTClaimsSet? = null,
+): NimbusJWTProcessor<SecurityContext> =
     NimbusDefaultJWTProcessor<SecurityContext>().apply {
         jwsTypeVerifier = NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt"))
         jwsKeySelector = NimbusJWSKeySelector { header, context ->
@@ -310,6 +311,33 @@ private object NimbusSdJwtIssuerFactory {
 fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
     is SdJwt.Issuance<JWT> -> serialize(NimbusJWT::serialize)
     is SdJwt.Presentation<JWT, HB_JWT> -> serialize(NimbusJWT::serialize, NimbusJWT::serialize)
+}
+
+/**
+ * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+ * In addition to the General & Flattened representations defined in the RFC7515,
+ * the result JSON contains a JSON array with the disclosures of the [SdJwt]
+ *
+ * Please note that this serialization option cannot be used to convey the key binding JWT
+ * of a [SdJwt.Presentation]
+ *
+ * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+ * representation as defined in RFC7515
+ * @receiver the [SdJwt] to serialize
+ *
+ * @return a JSON object either general or flattened according to RFC7515 having an additional
+ * disclosures array as per SD-JWT extension
+ */
+fun SdJwt<NimbusSignedJWT, *>.asJwsJsonObject(option: JwsSerializationOption = JwsSerializationOption.Flattened): JsonObject {
+    return asJwsJsonObject(option) { jwt ->
+        val parts = jwt.parsedParts
+        checkNotNull(parts) { "It seems that the jwt is not signed" }
+        val (header, payload, signature) = jwt.parsedParts.map { part ->
+            checkNotNull(part)
+            part.toString()
+        }
+        Triple(header, payload, signature)
+    }
 }
 
 /**
