@@ -159,7 +159,7 @@ class IssuerActor(private val issuerKey: ECKey) {
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType("example+sd-jwt")
     private val iss: String by lazy {
-        "did:jwk:${JwtBase64.encodeString(issuerKey.toPublicJWK().toJSONString())}"
+        "did:jwk:${JwtBase64.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }
     private val expirationPeriod: Period = Period.ofMonths(12)
 
