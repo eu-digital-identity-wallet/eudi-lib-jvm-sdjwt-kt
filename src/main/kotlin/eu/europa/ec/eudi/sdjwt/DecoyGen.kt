@@ -42,7 +42,7 @@ fun interface DecoyGen {
 
     /**
      * Produces a set of decoy [DisclosureDigest]
-     * The number of decoys is random up to [numOfDecoysLimit]
+     * The number of decoys is random and up to [numOfDecoysLimit]
      *
      * @param hashingAlgorithm the algorithm to be used for producing the decoy
      * @param numOfDecoysLimit the upper limit of the decoys to generate

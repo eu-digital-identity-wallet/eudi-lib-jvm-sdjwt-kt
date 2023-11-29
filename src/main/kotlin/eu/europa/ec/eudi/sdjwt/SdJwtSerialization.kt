@@ -159,14 +159,22 @@ fun <JWT> SdJwt<JWT, *>.asJwsJsonObject(
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject {
     val (protected, payload, signature) = getParts(jwt)
+    return option.jwsJsonObject(protected, payload, signature, disclosures.map { it.value }.toSet())
+}
 
+internal fun JwsSerializationOption.jwsJsonObject(
+    protected: String,
+    payload: String,
+    signature: String,
+    disclosures: Set<String>,
+): JsonObject {
     fun JsonObjectBuilder.putProtectedAndSignature() {
         put("protected", protected)
         put("signature", signature)
     }
     return buildJsonObject {
         put("payload", payload)
-        when (option) {
+        when (this@jwsJsonObject) {
             JwsSerializationOption.General -> {
                 val element = buildJsonObject { putProtectedAndSignature() }
                 put("signatures", JsonArray(listOf(element)))
@@ -174,6 +182,6 @@ fun <JWT> SdJwt<JWT, *>.asJwsJsonObject(
 
             JwsSerializationOption.Flattened -> putProtectedAndSignature()
         }
-        put("disclosures", JsonArray(disclosures.map { JsonPrimitive(it.value) }))
+        put("disclosures", JsonArray(disclosures.map { JsonPrimitive(it) }))
     }
 }

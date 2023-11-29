@@ -22,7 +22,7 @@ import kotlinx.serialization.json.JsonObject
  * A claim is an attribute of an entity.
  * The claim name, or key, as it would be used in a regular JWT body.
  * The claim value, as it would be used in a regular JWT body.
- * The value MAY be of any type that is allowed in
+ * The value MAY be of any type allowed in
  * JSON, including numbers, strings, booleans, arrays, and objects
  *
  */
@@ -36,7 +36,7 @@ fun Claim.name(): String = first
 
 /**
  * The claim value, as it would be used in a regular JWT body.
- *  The value MAY be of any type that is allowed in JSON
+ *  The value MAY be of any type allowed in JSON
  * @return the value of the claim
  */
 fun Claim.value(): JsonElement = second

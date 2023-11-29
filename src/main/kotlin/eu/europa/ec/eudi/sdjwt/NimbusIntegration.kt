@@ -42,7 +42,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 //
 
 /**
- * Adds a [JwtSignatureVerifier], to the companion object, which just checks/parses the JWT,
+ * A [JwtSignatureVerifier] is added to the companion object, which just checks/parses the JWT,
  * without performing signature validation.
  *
  * <em>Should not be used in production use cases</em>
@@ -238,8 +238,6 @@ fun SdJwtIssuer.Companion.nimbus(
 
 private object NimbusSdJwtIssuerFactory {
 
-    private const val AllowAssymetric = true
-
     /**
      * Factory method for creating a [SdJwtIssuer] that uses Nimbus
      *
@@ -260,7 +258,7 @@ private object NimbusSdJwtIssuerFactory {
     ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
 
         val (claims, disclosures) = unsignedSdJwt
-        require(AllowAssymetric || signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
+        require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
         val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         SdJwt.Issuance(signedJwt, disclosures)
     }
@@ -306,7 +304,7 @@ private object NimbusSdJwtIssuerFactory {
  * @param JWT the type representing the JWT part of the SD-JWT
  * @param HB_JWT the type representing the Holder Binding part of the SD
  * @receiver the SD-JWT to be serialized
- * @return the SD-JWT in either  Combined Issuance or Combined Presentation format depending on the case
+ * @return the SD-JWT in either Combined Issuance or Combined Presentation format depending on the case
  */
 fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
     is SdJwt.Issuance<JWT> -> serialize(NimbusJWT::serialize)
