@@ -36,16 +36,12 @@ sealed interface VerificationError {
     /**
      * SD-JWT is not in Combined Issuance of Presentation format
      */
-    object ParsingError : VerificationError {
-        override fun toString(): String = "ParsingError"
-    }
+    data object ParsingError : VerificationError
 
     /**
      * SD-JWT contains in invalid JWT
      */
-    object InvalidJwt : VerificationError {
-        override fun toString(): String = "InvalidJwt"
-    }
+    data object InvalidJwt : VerificationError
 
     /**
      * Failure to verify holder binding
@@ -62,23 +58,17 @@ sealed interface VerificationError {
      * SD-JWT contains a JWT which is missing or contains an invalid
      * Hashing Algorithm claim
      */
-    object MissingOrUnknownHashingAlgorithm : VerificationError {
-        override fun toString(): String = "MissingOrUnknownHashingAlgorithm"
-    }
+    data object MissingOrUnknownHashingAlgorithm : VerificationError
 
     /**
      * SD-JWT contains non-unique disclosures
      */
-    object NonUniqueDisclosures : VerificationError {
-        override fun toString(): String = "NonUniqueDisclosures"
-    }
+    data object NonUniqueDisclosures : VerificationError
 
     /**
      * SD-JWT contains a JWT which has non unique digests
      */
-    object NonUniqueDisclosureDigests : VerificationError {
-        override fun toString(): String = "NonUniqueDisclosureDigests"
-    }
+    data object NonUniqueDisclosureDigests : VerificationError
 
     /**
      * SD-JWT doesn't contain digests for the [disclosures]
@@ -145,30 +135,22 @@ sealed interface KeyBindingError {
      * Indicates that the pub key of the holder cannot be located
      * in SD-JWT, JWT claims
      */
-    object MissingHolderPubKey : KeyBindingError {
-        override fun toString(): String = "MissingHolderPubKey"
-    }
+    data object MissingHolderPubKey : KeyBindingError
 
     /**
      * SD-JWT contains in invalid Key Binding JWT
      */
-    object InvalidKeyBindingJwt : KeyBindingError {
-        override fun toString(): String = "InvalidKeyBindingJwt"
-    }
+    data object InvalidKeyBindingJwt : KeyBindingError
 
     /**
      * SD-JWT contains a Key Binding JWT, but this was not expected
      */
-    object UnexpectedKeyBindingJwt : KeyBindingError {
-        override fun toString(): String = "UnexpectedKeyBindingJwt"
-    }
+    data object UnexpectedKeyBindingJwt : KeyBindingError
 
     /**
      * SD-JWT lacks a Key Binding JWT, which was expected
      */
-    object MissingKeyBindingJwt : KeyBindingError {
-        override fun toString(): String = "MissingKeyBindingJwt"
-    }
+    data object MissingKeyBindingJwt : KeyBindingError
 }
 
 /**
@@ -200,7 +182,7 @@ sealed interface KeyBindingVerifier {
     /**
      * Indicates that a presentation SD-JWT must not have holder binding
      */
-    object MustNotBePresent : KeyBindingVerifier
+    data object MustNotBePresent : KeyBindingVerifier
 
     /**
      * Indicates that a presentation SD-JWT must have holder binding
@@ -233,11 +215,11 @@ typealias JwtAndClaims = Pair<Jwt, Claims>
 object SdJwtVerifier {
 
     /**
-     * Verifies an SD-JWT (in non enveloped, simple format0
+     * Verifies an SD-JWT (in non enveloped, simple format)
      * Typically, this is useful to Holder that wants to verify an issued SD-JWT
      *
      * @param jwtSignatureVerifier the verification the SD-JWT signature.
-     * In order to provide an implementation of this,
+     * To provide an implementation of this,
      * Holder should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT
      * @param unverifiedSdJwt the SD-JWT to be verified
@@ -250,7 +232,53 @@ object SdJwtVerifier {
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Parse
         val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
+        verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
+    }
 
+    /**
+     * Verifies an SD-JWT in JWS JSON general of flattened format as defined by RFC7515 and extended by SD-JWT
+     * specification
+     *
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT
+     *
+     * @param jwtSignatureVerifier the verification the SD-JWT signature.
+     * To provide an implementation of this,
+     * Holder should be aware of the public key and the signing algorithm that the Issuer
+     * used to sign the SD-JWT
+     * @param unverifiedSdJwt the SD-JWT to be verified.
+     * A JSON Object that is expected to be in general
+     * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
+     * @return the verified SD-JWT, if valid.
+     * Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
+     */
+    fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: JsonObject,
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
+        val (unverifiedJwt, unverifiedDisclosures) = parseJWSJson(unverifiedSdJwt)
+        verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
+    }
+
+    /**
+     * Implementation of the verification for an issued SD-JWT which is independent of the serialization
+     * format used.
+     *
+     * @param jwtSignatureVerifier the verification the SD-JWT signature.
+     * To provide an implementation of this,
+     * Holder should be aware of the public key and the signing algorithm that the Issuer
+     * used to sign the SD-JWT
+     * @param unverifiedJwt the JWT of the SD-JWT
+     * @param unverifiedDisclosures the disclosures of the SD-JWT
+     * @return the verified SD-JWT, if valid.
+     * Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
+     */
+    private fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedJwt: Jwt,
+        unverifiedDisclosures: List<String>,
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Check JWT signature
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
         val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
@@ -269,7 +297,7 @@ object SdJwtVerifier {
      * Typically, this is useful to Verifier that wants to verify presentation SD-JWT communicated by Holder
      *
      * @param jwtSignatureVerifier the verification of SD-JWT signature.
-     * In order to provide an implementation of this,
+     * To provide an implementation of this,
      * Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT.
      * @param keyBindingVerifier specifies whether a Holder Binding JWT is expected or not.
@@ -288,8 +316,7 @@ object SdJwtVerifier {
         unverifiedSdJwt: String,
     ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
-            parse(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = parse(unverifiedSdJwt)
 
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
@@ -308,12 +335,12 @@ object SdJwtVerifier {
 
     /**
      * Verifies an SD-JWT, which is expected to be in envelope format, that is to contain
-     * at least the  `iat`, `nonce`, `aud` and `_sd_jwt` claims.
+     * at least the  `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims.
      * If the verification succeeds, the returned SD-JWT will not have a key binding JWT
      * since the envelope acts like a proof of possession.
      *
      * @param envelopeJwtVerifier the verification of the envelope JWT signature.
-     * In order to provide an implementation of this,
+     * To provide an implementation of this,
      * Verifier should be aware of the public key and the signing algorithm that the Holder
      * used to sign the envelope
      * @param clock the Verifier's clock. Will be used to validate iat claim of the envelope
@@ -321,11 +348,11 @@ object SdJwtVerifier {
      * is considered valid
      * @param expectedAudience the expected content of the aud claim.
      * @param sdJwtSignatureVerifier the verification of the SD-JWT signature.
-     * In order to provide an implementation of this,
+     * To provide an implementation of this,
      * Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT.
      * @param unverifiedEnvelopeJwt the JWT to verify.
-     * Expected to be a valid JWT containing the `iat`, `nonce`, `aud` and `_sd_jwt` claims, at least
+     * Expected to be a valid JWT containing the `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims, at least
      * @return the presentation SD-JWT.If the verification succeeds, the SD-JWT will not have a key binding JWT
      * since the envelope acts like a proof of possession.
      * Expected errors are reported via a [SdJwtVerificationException]
@@ -346,7 +373,8 @@ object SdJwtVerifier {
             .and { claims -> isValid(claims) }
             .verify(unverifiedEnvelopeJwt)
             .getOrThrow()
-        val unverifiedSdJwt = claims["_sd_jwt"]!!.jsonPrimitive.contentOrNull!!
+        val unverifiedSdJwt = with(ClaimValidations) { claims.envelopSdJwt() }
+        checkNotNull(unverifiedSdJwt) { "Cannot be null" }
         verifyPresentation(sdJwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
             .getOrThrow()
             .noKeyBinding()
@@ -380,6 +408,46 @@ private fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
     val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
     val kbJwt = if (containsKeyBinding) parts.last() else null
     return Triple(jwt, ds, kbJwt)
+}
+
+/**
+ * Extracts from [unverifiedSdJwt] the JWT and the disclosures
+ *
+ * @param unverifiedSdJwt a JSON Object that is expected to be in general or flatten form as defined in RFC7515 and
+ * extended by SD-JWT specification.
+ * @return the jwt and the disclosures (unverified).
+ * @throws IllegalArgumentException if the given JSON Object is not compliant
+ */
+private fun parseJWSJson(unverifiedSdJwt: Claims): Pair<Jwt, List<String>> {
+    fun JsonElement.stringContentOrNull() = if (this is JsonPrimitive && isString) contentOrNull else null
+    val unverifiedJwt = run {
+        // selects the JsonObject that contains the pair of "protected" & "signature" claims
+        // According to RFC7515 General format this could be in "signatures" json array or
+        // in flatten format this could be the given root element itself
+        val signatureContainer = unverifiedSdJwt["signatures"]
+            ?.takeIf { it is JsonArray }
+            ?.jsonArray
+            ?.firstOrNull()
+            ?.takeIf { it is JsonObject }
+            ?.jsonObject
+            ?: unverifiedSdJwt
+
+        val protected = signatureContainer["protected"]?.stringContentOrNull()
+        val signature = signatureContainer["signature"]?.stringContentOrNull()
+        val payload = unverifiedSdJwt["payload"]?.stringContentOrNull()
+        requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
+        requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
+        requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
+        "$protected.$payload.$signature"
+    }
+    // SD-JWT specification extends RFC7515 with a "disclosures" top-level json array
+    val unverifiedDisclosures = unverifiedSdJwt["disclosures"]
+        ?.takeIf { element -> element is JsonArray }
+        ?.jsonArray
+        ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
+        ?.mapNotNull { element -> element.stringContentOrNull() }
+        ?: emptyList()
+    return unverifiedJwt to unverifiedDisclosures
 }
 
 /**
@@ -488,7 +556,7 @@ object ClaimValidations {
 
     /**
      * Retrieves the contents of the _sd_jwt claim, when all the following conditions are being met
-     * - _sd_jwt claim is present
+     * - _sd_jwt or _js_sd_jwt claim is present
      * - nonce claim is present
      * - iat is present, and valid
      * - aud claim contains an expected value
@@ -496,13 +564,28 @@ object ClaimValidations {
      * @receiver the claims to check
      * @return the _sd_jwt claim
      */
-    fun Claims.envelopSdJwt(clock: Clock, iatOffset: Duration, expectedAudience: String): String? =
-        primitiveClaim("_sd_jwt")?.contentOrNull?.let { sdJwt ->
+    fun Claims.envelopSdJwt(clock: Clock, iatOffset: Duration, expectedAudience: String): String? {
+        return envelopSdJwt().let { sdJwt ->
             fun validAud() = aud().contains(expectedAudience)
             fun validIat() = iat(clock, iatOffset) != null
             fun hasNonce() = !nonce().isNullOrEmpty()
             sdJwt.takeIf { validAud() && validIat() && hasNonce() }
         }
+    }
+
+    fun Claims.envelopSdJwt(): String? {
+        fun combinedFormat() = primitiveClaim(ENVELOPED_SD_JWT_IN_COMBINED_FROM)?.contentOrNull
+        fun jwsJsonFormat() = objectClaim(ENVELOPED_SD_JWT_IN_JWS_JSON)?.let { jwsJson ->
+            try {
+                val (jwt, disclosures) = parseJWSJson(jwsJson)
+                val serializedDisclosures = concatDisclosureValues(disclosures) { it }
+                "$jwt$serializedDisclosures~"
+            } catch (t: Throwable) {
+                null
+            }
+        }
+        return combinedFormat() ?: jwsJsonFormat()
+    }
 
     /**
      * Retrieves the aud claim
@@ -542,4 +625,7 @@ object ClaimValidations {
 
     fun Claims.primitiveClaim(name: String): JsonPrimitive? =
         get(name)?.let { element -> if (element is JsonPrimitive) element else null }
+
+    fun Claims.objectClaim(name: String): JsonObject? =
+        get(name)?.let { element -> if (element is JsonObject) element else null }
 }

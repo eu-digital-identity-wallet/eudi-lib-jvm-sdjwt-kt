@@ -48,7 +48,7 @@ fun interface SaltProvider {
         fun randomSaltProvider(numberOfBytes: Int): SaltProvider =
             SaltProvider {
                 val randomByteArray: ByteArray = ByteArray(numberOfBytes).also { secureRandom.nextBytes(it) }
-                JwtBase64.encodeString(randomByteArray)
+                JwtBase64.encode(randomByteArray)
             }
     }
 }

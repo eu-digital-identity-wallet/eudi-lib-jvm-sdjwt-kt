@@ -19,7 +19,7 @@ import kotlinx.serialization.json.*
 
 /**
  * Recreates the claims, used to produce the SD-JWT
- * That are :
+ * That are:
  * - The plain claims found into the [SdJwt.jwt]
  * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
  *   be replaced by [Disclosure.claim]
@@ -191,8 +191,8 @@ internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
     else null
 
 /**
- * Cet the [digests][DisclosureDigest] by looking for digests claim.
- * This should be an array, of digests, under "_sd" name.
+ * Cet the [digests][DisclosureDigest] by looking for digest claim.
+ * This should be an array of digests, under "_sd" name.
  *
  * No recursive involved. Just the immediate digests.
  *

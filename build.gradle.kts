@@ -39,6 +39,9 @@ java {
 kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
+        compilerOptions {
+            optIn = listOf("kotlin.io.encoding.ExperimentalEncodingApi")
+        }
     }
 }
 
