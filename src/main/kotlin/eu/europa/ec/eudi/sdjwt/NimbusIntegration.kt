@@ -349,8 +349,7 @@ fun SdJwt<NimbusSignedJWT, *>.asJwsJsonObject(option: JwsSerializationOption = J
  * @param issuedAt issuance time of the envelope JWT. It will be included as `iat` claim
  * @param audience the audience of the envelope JWT. It will be included as `aud` claim
  * @param nonce the nonce of the envelope JWT. It will be included as `nonce` claim
- * @param serializeJwt a way to serialize the JWT part of the [SdJwt.Presentation]. Will be used to
- * produce the Combined Presentation format.
+ * @param envelopOption
  * @param signer a way to sign the claims of the envelope JWT
  * @param signAlgorithm the algorithm to use
  * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
@@ -359,17 +358,17 @@ fun SdJwt<NimbusSignedJWT, *>.asJwsJsonObject(option: JwsSerializationOption = J
  * it will be removed.
  * @return a JWT (not SD-JWT) as described above
  */
-fun <JWT> SdJwt.Presentation<JWT, *>.toEnvelopedFormat(
+fun <JWT> SdJwt<JWT, *>.toEnvelopedFormat(
     issuedAt: Instant,
     nonce: String,
     audience: String,
-    serializeJwt: (JWT) -> String,
+    envelopOption: EnvelopOption<JWT>,
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
 ): Result<NimbusSignedJWT> {
     val sign = sign(signer, signAlgorithm, jwsHeaderCustomization)
-    return toEnvelopedFormat(issuedAt, nonce, audience, serializeJwt, sign)
+    return toEnvelopedFormat(issuedAt, nonce, audience, envelopOption, sign)
 }
 
 /**
@@ -397,7 +396,7 @@ fun <JWT> SdJwt.Presentation<JWT, *>.toEnvelopedFormat(
     issuedAt: Instant,
     nonce: String,
     audience: String,
-    serializeJwt: (JWT) -> String,
+    envelopOption: EnvelopOption<JWT>,
     signingKey: NimbusJWK,
     signAlgorithm: NimbusJWSAlgorithm,
     jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
@@ -407,7 +406,7 @@ fun <JWT> SdJwt.Presentation<JWT, *>.toEnvelopedFormat(
         issuedAt = issuedAt,
         nonce = nonce,
         audience = audience,
-        serializeJwt = serializeJwt,
+        envelopOption,
         signer = signer,
         signAlgorithm = signAlgorithm,
         jwsHeaderCustomization = jwsHeaderCustomization,

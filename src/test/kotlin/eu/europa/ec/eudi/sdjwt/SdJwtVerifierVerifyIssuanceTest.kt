@@ -210,7 +210,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
             val mutable = toMutableMap()
-            mutable["dislosures"] = JsonArray(listOf("d1", "d2").map { JsonPrimitive(it) })
+            mutable["disclosures"] = JsonArray(listOf("d1", "d2").map { JsonPrimitive(it) })
             JsonObject(mutable)
         }
         verifyIssuanceExpectingError(
@@ -241,7 +241,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
             val mutable = toMutableMap()
-            mutable["dislosures"] = JsonArray(listOf(d1, d1).map { JsonPrimitive(it) })
+            mutable["disclosures"] = JsonArray(listOf(d1, d1).map { JsonPrimitive(it) })
             JsonObject(mutable)
         }
         verifyIssuanceExpectingError(

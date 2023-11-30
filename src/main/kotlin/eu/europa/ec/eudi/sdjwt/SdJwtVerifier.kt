@@ -335,7 +335,7 @@ object SdJwtVerifier {
 
     /**
      * Verifies an SD-JWT, which is expected to be in envelope format, that is to contain
-     * at least the  `iat`, `nonce`, `aud` and `_sd_jwt` claims.
+     * at least the  `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims.
      * If the verification succeeds, the returned SD-JWT will not have a key binding JWT
      * since the envelope acts like a proof of possession.
      *
@@ -352,7 +352,7 @@ object SdJwtVerifier {
      * Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT.
      * @param unverifiedEnvelopeJwt the JWT to verify.
-     * Expected to be a valid JWT containing the `iat`, `nonce`, `aud` and `_sd_jwt` claims, at least
+     * Expected to be a valid JWT containing the `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims, at least
      * @return the presentation SD-JWT.If the verification succeeds, the SD-JWT will not have a key binding JWT
      * since the envelope acts like a proof of possession.
      * Expected errors are reported via a [SdJwtVerificationException]
@@ -373,7 +373,8 @@ object SdJwtVerifier {
             .and { claims -> isValid(claims) }
             .verify(unverifiedEnvelopeJwt)
             .getOrThrow()
-        val unverifiedSdJwt = claims["_sd_jwt"]!!.jsonPrimitive.contentOrNull!!
+        val unverifiedSdJwt = with(ClaimValidations) { claims.envelopSdJwt() }
+        checkNotNull(unverifiedSdJwt) { "Cannot be null" }
         verifyPresentation(sdJwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
             .getOrThrow()
             .noKeyBinding()
@@ -417,7 +418,7 @@ private fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
  * @return the jwt and the disclosures (unverified).
  * @throws IllegalArgumentException if the given JSON Object is not compliant
  */
-private fun parseJWSJson(unverifiedSdJwt: JsonObject): Pair<Jwt, List<String>> {
+private fun parseJWSJson(unverifiedSdJwt: Claims): Pair<Jwt, List<String>> {
     fun JsonElement.stringContentOrNull() = if (this is JsonPrimitive && isString) contentOrNull else null
     val unverifiedJwt = run {
         // selects the JsonObject that contains the pair of "protected" & "signature" claims
@@ -440,7 +441,7 @@ private fun parseJWSJson(unverifiedSdJwt: JsonObject): Pair<Jwt, List<String>> {
         "$protected.$payload.$signature"
     }
     // SD-JWT specification extends RFC7515 with a "disclosures" top-level json array
-    val unverifiedDisclosures = unverifiedSdJwt["dislosures"]
+    val unverifiedDisclosures = unverifiedSdJwt["disclosures"]
         ?.takeIf { element -> element is JsonArray }
         ?.jsonArray
         ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
@@ -555,7 +556,7 @@ object ClaimValidations {
 
     /**
      * Retrieves the contents of the _sd_jwt claim, when all the following conditions are being met
-     * - _sd_jwt claim is present
+     * - _sd_jwt or _js_sd_jwt claim is present
      * - nonce claim is present
      * - iat is present, and valid
      * - aud claim contains an expected value
@@ -563,13 +564,28 @@ object ClaimValidations {
      * @receiver the claims to check
      * @return the _sd_jwt claim
      */
-    fun Claims.envelopSdJwt(clock: Clock, iatOffset: Duration, expectedAudience: String): String? =
-        primitiveClaim("_sd_jwt")?.contentOrNull?.let { sdJwt ->
+    fun Claims.envelopSdJwt(clock: Clock, iatOffset: Duration, expectedAudience: String): String? {
+        return envelopSdJwt().let { sdJwt ->
             fun validAud() = aud().contains(expectedAudience)
             fun validIat() = iat(clock, iatOffset) != null
             fun hasNonce() = !nonce().isNullOrEmpty()
             sdJwt.takeIf { validAud() && validIat() && hasNonce() }
         }
+    }
+
+    fun Claims.envelopSdJwt(): String? {
+        fun combinedFormat() = primitiveClaim(ENVELOPED_SD_JWT_IN_COMBINED_FROM)?.contentOrNull
+        fun jwsJsonFormat() = objectClaim(ENVELOPED_SD_JWT_IN_JWS_JSON)?.let { jwsJson ->
+            try {
+                val (jwt, disclosures) = parseJWSJson(jwsJson)
+                val serializedDisclosures = concatDisclosureValues(disclosures) { it }
+                "$jwt$serializedDisclosures~"
+            } catch (t: Throwable) {
+                null
+            }
+        }
+        return combinedFormat() ?: jwsJsonFormat()
+    }
 
     /**
      * Retrieves the aud claim
@@ -609,4 +625,7 @@ object ClaimValidations {
 
     fun Claims.primitiveClaim(name: String): JsonPrimitive? =
         get(name)?.let { element -> if (element is JsonPrimitive) element else null }
+
+    fun Claims.objectClaim(name: String): JsonObject? =
+        get(name)?.let { element -> if (element is JsonObject) element else null }
 }
