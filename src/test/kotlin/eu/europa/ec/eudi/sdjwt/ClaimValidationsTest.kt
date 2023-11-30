@@ -30,7 +30,7 @@ class ClaimValidationsTest {
     private val iatOffset = Duration.ofSeconds(30)
 
     @Test
-    fun `check sdJwt happy path`() = with(ClaimValidations) {
+    fun `check sdJwt happy path with combined form`() = with(ClaimValidations) {
         val iat = Instant.ofEpochSecond(now.minusSeconds(iatOffset.toSeconds() - 10).epochSecond)
         val sdJwt = "foo"
         val clientId = "clientId"
@@ -39,6 +39,58 @@ class ClaimValidationsTest {
             put("nonce", "nonce")
             put("aud", JsonArray(listOf(clientId, "foo").map { JsonPrimitive(it) }))
             put("_sd_jwt", sdJwt)
+        }
+        assertEquals(sdJwt, claims.envelopSdJwt(clock, iatOffset, clientId))
+    }
+
+    @Test
+    fun `check sdJwt happy path with JwsJson Flatten`() = with(ClaimValidations) {
+        val iat = Instant.ofEpochSecond(now.minusSeconds(iatOffset.toSeconds() - 10).epochSecond)
+        val header = "header"
+        val payload = "paylaod"
+        val signature = "signature"
+        val ds = listOf("d1", "d2")
+        val sdJwt = "$header.$payload.$signature${concatDisclosureValues(ds){it}}~"
+        val clientId = "clientId"
+        val claims = buildJsonObject {
+            iat(iat.epochSecond)
+            put("nonce", "nonce")
+            put("aud", JsonArray(listOf(clientId, "foo").map { JsonPrimitive(it) }))
+            putJsonObject("_js_sd_jwt") {
+                put("payload", payload)
+                put("protected", header)
+                put("signature", signature)
+                put("disclosures", JsonArray(ds.map { JsonPrimitive(it) }))
+            }
+        }
+        assertEquals(sdJwt, claims.envelopSdJwt(clock, iatOffset, clientId))
+    }
+
+    @Test
+    fun `check sdJwt happy path with JwsJson General`() = with(ClaimValidations) {
+        val iat = Instant.ofEpochSecond(now.minusSeconds(iatOffset.toSeconds() - 10).epochSecond)
+        val header = "header"
+        val payload = "paylaod"
+        val signature = "signature"
+        val ds = listOf("d1", "d2")
+        val sdJwt = "$header.$payload.$signature${concatDisclosureValues(ds){it}}~"
+        val clientId = "clientId"
+        val claims = buildJsonObject {
+            iat(iat.epochSecond)
+            put("nonce", "nonce")
+            put("aud", JsonArray(listOf(clientId, "foo").map { JsonPrimitive(it) }))
+            putJsonObject("_js_sd_jwt") {
+                put("payload", payload)
+                putJsonArray("signatures") {
+                    add(
+                        buildJsonObject {
+                            put("protected", header)
+                            put("signature", signature)
+                        },
+                    )
+                }
+                put("disclosures", JsonArray(ds.map { JsonPrimitive(it) }))
+            }
         }
         assertEquals(sdJwt, claims.envelopSdJwt(clock, iatOffset, clientId))
     }

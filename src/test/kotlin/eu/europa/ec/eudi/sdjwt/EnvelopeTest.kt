@@ -39,7 +39,7 @@ class EnvelopeTest {
             issuedAt = iat,
             nonce = nonce,
             audience = aud,
-            serializeJwt = { it },
+            envelopOption = EnvelopOption.Combined({ it }),
             signingKey = key(),
             signAlgorithm = JWSAlgorithm.ES384,
         ).getOrThrow().jwtClaimsSet

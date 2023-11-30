@@ -92,7 +92,7 @@ class SdJwtVerifierVerifyEnvelopedPresentationTest {
             iat,
             "nonce",
             verifierClientId,
-            { it },
+            EnvelopOption.Combined { it },
             holderKey,
             holderAlg,
         ).getOrThrow()

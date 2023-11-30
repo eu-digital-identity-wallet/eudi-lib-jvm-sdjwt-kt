@@ -64,7 +64,7 @@ sealed interface Disclosure {
             }
 
         internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatching {
-            val base64Decoded = JwtBase64.decodeString(disclosure)
+            val base64Decoded = JwtBase64.decode(disclosure).decodeToString()
             val array = Json.decodeFromString<JsonArray>(base64Decoded)
             when (array.size) {
                 3 -> {
@@ -95,7 +95,7 @@ sealed interface Disclosure {
             }
             val jsonArrayStr = jsonArray.toString()
             // Base64-url-encoded
-            val encoded = JwtBase64.encodeString(jsonArrayStr)
+            val encoded = JwtBase64.encode(jsonArrayStr.encodeToByteArray())
             ArrayElement(encoded)
         }
 
@@ -142,7 +142,7 @@ sealed interface Disclosure {
                 }
                 val jsonArrayStr = jsonArray.toString()
                 // Base64-url-encoded
-                val encoded = JwtBase64.encodeString(jsonArrayStr)
+                val encoded = JwtBase64.encode(jsonArrayStr.encodeToByteArray())
                 ObjectProperty(encoded)
             }
         }
