@@ -273,20 +273,21 @@ class HolderActor(private val holderKey: ECKey) {
 
     fun present(verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
-        val keyBindingJwt = keyBindingJwt(verifierQuery.challenge.asJson())
-        return credentialSdJwt!!.present(keyBindingJwt, verifierQuery.whatToDisclose)
-            .serialize({ it }, { it })
+        return credentialSdJwt!!.present(
+            { it.keyBindingJwt(verifierQuery.challenge.asJson()) },
+            verifierQuery.whatToDisclose,
+        ).serialize({ it }, { it })
     }
 
-    private fun keyBindingJwt(verifierChallenge: JsonObject): String =
+    private fun SdJwt.Presentation<Jwt, Nothing>.keyBindingJwt(verifierChallenge: JsonObject): Jwt =
         SignedJWT(
             JWSHeader.Builder(keyBindingSigningAlgorithm)
                 .type(JOSEObjectType("kb+jwt"))
                 .keyID(holderKey.keyID)
                 .build(),
-            JWTClaimsSet.parse(
-                verifierChallenge.toString(),
-            ),
+            JWTClaimsSet.Builder(JWTClaimsSet.parse(verifierChallenge.toString()))
+                .claim("_sd_hash", sdHash { it }.getOrThrow())
+                .build(),
         ).apply {
             sign(ECDSASigner(holderKey))
         }.serialize()

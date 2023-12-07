@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
+@OptIn(ExperimentalEncodingApi::class)
 object JwtBase64 {
 
     fun decode(value: String): ByteArray = Base64.UrlSafe.decode(value)

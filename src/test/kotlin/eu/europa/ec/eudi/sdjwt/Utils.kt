@@ -36,6 +36,7 @@ val json = Json {
     prettyPrint = true
     ignoreUnknownKeys = true
 }
+
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 fun <JWT> SdJwt<JWT, *>.prettyPrint(f: (JWT) -> Claims) {
     val type = when (this) {
@@ -57,9 +58,14 @@ fun <JWT> SdJwt<JWT, *>.prettyPrint(f: (JWT) -> Claims) {
 fun String.removeNewLine(): String = replace("\n", "")
 
 /**
+ * A function to generate the KeyBinding JWT of an SdJwt.Presentation
+ */
+typealias GenerateKeyBindingJwt<JWT, KB_JWT> = (SdJwt.Presentation<JWT, Nothing>) -> KB_JWT
+
+/**
  * Creates a [presentation SD-JWT][SdJwt.Presentation]
  *
- * @param keyBindingJwt optional, the Holder Binding JWT to include
+ * @param generateKeyBindingJwt function to generate the Holder Binding JWT to include
  * @param selectivelyDisclose a predicate of the [claims][SdJwt.Issuance.disclosures]
  * to be selectively disclosed into the presentation
  * @param JWT the type representing the JWT part of the SD-JWT
@@ -69,7 +75,7 @@ fun String.removeNewLine(): String = replace("\n", "")
  * @receiver the [issued SD-JWT][SdJwt.Issuance] from which the presentation will be created
  */
 fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
-    keyBindingJwt: KB_JWT? = null,
+    generateKeyBindingJwt: GenerateKeyBindingJwt<JWT, KB_JWT>,
     selectivelyDisclose: (Claim) -> Boolean,
 ): SdJwt.Presentation<JWT, KB_JWT> =
     SdJwt.Presentation(
@@ -80,5 +86,7 @@ fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
                 is Disclosure.ObjectProperty -> selectivelyDisclose(disclosure.claim())
             }
         }.toSet(),
-        keyBindingJwt,
-    )
+        null,
+    ).let {
+        it.withKeyBinding(generateKeyBindingJwt(it))
+    }

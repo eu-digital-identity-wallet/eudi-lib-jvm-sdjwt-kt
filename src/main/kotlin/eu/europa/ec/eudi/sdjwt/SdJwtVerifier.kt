@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -151,6 +152,16 @@ sealed interface KeyBindingError {
      * SD-JWT lacks a Key Binding JWT, which was expected
      */
     data object MissingKeyBindingJwt : KeyBindingError
+
+    /**
+     * SD-JWT has a Key Binding JWT that lacks an '_sd_hash' claim.
+     */
+    data object MissingSdHash : KeyBindingError
+
+    /**
+     * SD-JWT contains a Key Binding JWT that contains an invalid '_sd_hash' claim.
+     */
+    data object InvalidSdHash : KeyBindingError
 }
 
 /**
@@ -327,6 +338,11 @@ object SdJwtVerifier {
 
         // Check Holder binding
         val kbClaims = keyBindingVerifier.verify(jwtClaims, unverifiedKBJwt).getOrThrow()
+
+        // Check integrity protection
+        kbClaims?.let {
+            verifyIntegrity(hashAlgorithm, unverifiedJwt, unverifiedDisclosures, it)
+        }
 
         // Assemble it
         val holderBindingJwtAndClaims = unverifiedKBJwt?.let { hb -> kbClaims?.let { cs -> hb to cs } }
@@ -522,6 +538,37 @@ private fun collectDigests(jwtClaims: Claims, disclosures: Set<Disclosure>): Set
     val uniqueDigests = digests.toSet()
     if (uniqueDigests.size != digests.size) throw NonUniqueDisclosureDigests.asException()
     return uniqueDigests
+}
+
+/**
+ * Verifies that the [Key Binding Claims][keybindingClaims] of a Presentation contain an '_sd_hash' claim that
+ * corresponds to the [base64url-encoded][JwtBase64.encode] [hash digest][hashAlgorithm] over the
+ * [Issuer-signed JWT][sdJwt] and the [selected Disclosures][disclosures].
+ * @throws SdJwtVerificationException with either [MissingSdHash] or [InvalidSdHash] in case of verification failure
+ */
+private fun verifyIntegrity(
+    hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+    sdJwt: Jwt,
+    disclosures: List<String>,
+    keybindingClaims: Claims,
+) {
+    fun Claims.sdHash() =
+        get("_sd_hash")
+            ?.let {
+                runCatching {
+                    JwtBase64.decode(it.jsonPrimitive.content)
+                }.getOrElse { throw InvalidSdHash.asException() }
+            } ?: throw MissingSdHash.asException()
+
+    val sdHash = keybindingClaims.sdHash()
+
+    val serialized = listOf(sdJwt, *disclosures.toTypedArray()).joinToString(separator = "~", postfix = "~")
+    val expectedSdHash =
+        MessageDigest.getInstance(hashAlgorithm.alias.uppercase()).digest(serialized.encodeToByteArray())
+
+    if (!expectedSdHash.contentEquals(sdHash)) {
+        throw InvalidSdHash.asException()
+    }
 }
 
 /**

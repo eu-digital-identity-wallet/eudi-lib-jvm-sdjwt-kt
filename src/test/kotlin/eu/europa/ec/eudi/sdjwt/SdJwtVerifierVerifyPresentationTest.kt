@@ -82,7 +82,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and invalid keyBinding verify should return InvalidHolderBindingJwt`() {
+    fun `when sd-jwt has an valid jwt, no disclosures and invalid keyBinding verify should return InvalidKeyBindingJwt`() {
         verifyPresnetationExpectingError(
             VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
             JwtSignatureVerifier.NoSignatureValidation,
@@ -92,11 +92,21 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and valid keyBinding verify should return Valid`() {
-        verifySuccess(
+    fun `when sd-jwt has an valid jwt, no disclosures and keyBinding with no '_sd_hash' verify should return MissingSdHash`() {
+        verifyPresnetationExpectingError(
+            VerificationError.KeyBindingFailed(KeyBindingError.MissingSdHash),
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
             "$jwt~$jwt",
+        )
+    }
+
+    @Test
+    fun `when sd-jwt has an valid jwt, no disclosures valid keyBinding with '_sd_hash' verify should return Valid`() {
+        verifySuccess(
+            JwtSignatureVerifier.NoSignatureValidation,
+            KeyBindingVerifier.MustBePresent,
+            "$jwt~$kbWithoutD1",
         )
     }
 
@@ -130,11 +140,21 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures and valid keyBinding verify should return Valid`() {
-        verifySuccess(
+    fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding with no '_sd_hash' verify should return MissingSdHash`() {
+        verifyPresnetationExpectingError(
+            VerificationError.KeyBindingFailed(KeyBindingError.MissingSdHash),
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
             "$jwt~$d1~$jwt",
+        )
+    }
+
+    @Test
+    fun `when sd-jwt has an valid jwt, valid disclosures and valid keyBinding with '_sd_hash' verify should return Valid`() {
+        verifySuccess(
+            JwtSignatureVerifier.NoSignatureValidation,
+            KeyBindingVerifier.MustBePresent,
+            "$jwt~$d1~$kbWithD1",
         )
     }
 
@@ -185,5 +205,17 @@ class SdJwtVerifierVerifyPresentationTest {
             F3IiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIlNjaHVsc3RyLiAxMiIsIC
             Jsb2NhbGl0eSI6ICJTY2h1bHBmb3J0YSIsICJyZWdpb24iOiAiU2FjaHNlbi1BbmhhbH
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
+    """.trimIndent().removeNewLine()
+
+    private val kbWithoutD1 = """
+            eyJhbGciOiJFUzI1NiJ9.eyJfc2RfaGFzaCI6Ik9rUWRrQ1RTcURabmtoay0zVklTWWx
+            HNGltTUNxU3NPX3VRX2l2cUIyeGsifQ.Xlp_qJY98ai_-opnOY-BEkChEs5RClVmhhPP
+            ZbztSKzTpgVSFzxO3ImgMtdwrmBOPZK4xUaZMCS6XslAlx4txA    
+    """.trimIndent().removeNewLine()
+
+    private val kbWithD1 = """
+            eyJhbGciOiJFUzI1NiJ9.eyJfc2RfaGFzaCI6InZRRG9JWkpYS1lwQmxGbEhfWDNKbEx
+            QOEptNjgwajRyZ21nVHdyY19pTHMifQ.AqUpigoS8QkUfU5zNpYtDtgmOLBZ3PErP-Ow
+            X8ZJtVmfI0ZKnEB1qUHyY8tjmtBNEzODSCI0ZQViLT0R_PkShw
     """.trimIndent().removeNewLine()
 }

@@ -137,14 +137,11 @@ class SpecExamples {
             jogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogI
             kFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5ST
             jl3IiwgImdpdmVuX25hbWUiLCAiSm9obiJd~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNB
-            IiwgIlVTIl0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI
-            6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWV
-            yIiwgImlhdCI6IDE2ODgxNjA0ODN9.tKnLymr8fQfupOgvMgBK3GCEIDEzhgta4MgnxY
-            m9fWGMkqrz2R5PSkv0I-AXKXtIF6bdZRbjL-t43vC87jVoZQ
+            IiwgIlVTIl0~
         """.trimIndent().removeNewLine()
         SdJwtVerifier.verifyPresentation(
             JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustBePresent,
+            KeyBindingVerifier.MustNotBePresent,
             unverifiedSdJwt,
         ).fold(
             onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
