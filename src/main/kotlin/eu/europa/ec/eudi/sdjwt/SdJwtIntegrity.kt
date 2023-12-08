@@ -68,10 +68,8 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
             hashAlgorithm: HashAlgorithm,
             sdJwt: SdJwt.Presentation<JWT, *>,
             serializeJwt: (JWT) -> String,
-        ): Result<SdJwtIntegrity> = runCatching {
-            val serialized = sdJwt.noKeyBinding().serialize(serializeJwt)
-            digest(hashAlgorithm, serialized)
-        }
+        ): Result<SdJwtIntegrity> =
+            digestSerialized(hashAlgorithm, sdJwt.noKeyBinding().serialize(serializeJwt))
 
         /**
          * Calculates the [integrity][SdJwtIntegrity] of an already serialized [presentation][sdJwt] using the provided
@@ -85,15 +83,10 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
                 } else {
                     removeRange(lastIndexOf("~") + 1, length)
                 }
-            digest(hashAlgorithm, value.noKeyBinding())
-        }
 
-        /**
-         * Calculates the [integrity][SdJwtIntegrity] of a [value] using the provided [hashing algorithm][hashAlgorithm].
-         */
-        private fun digest(hashAlgorithm: HashAlgorithm, value: String): SdJwtIntegrity {
-            val digest = MessageDigest.getInstance(hashAlgorithm.alias.uppercase()).digest(value.encodeToByteArray())
-            return SdJwtIntegrity(digest)
+            val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
+            val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
+            SdJwtIntegrity(digest)
         }
 
         /**
