@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import java.security.MessageDigest
 
 /**
  * A claim is an attribute of an entity.
@@ -132,23 +131,6 @@ sealed interface SdJwt<out JWT, out KB_JWT> {
  */
 fun <JWT> SdJwt.Presentation<JWT, *>.noKeyBinding(): SdJwt.Presentation<JWT, Nothing> =
     SdJwt.Presentation(jwt, disclosures, null)
-
-/**
- * Generates the hash digest of this [SdJwt.Presentation].
- *
- * @receiver the SD-JWT to hash
- * @param hashAlgorithm] the [HashAlgorithm] to use for generating the hash
- * @param JWT the type representing the JWT part of the SD-JWT
- * @param serializeJwt a function to serialize the [JWT]
- * @return the base64url-encoded hash digest
- */
-fun <JWT> SdJwt.Presentation<JWT, Nothing>.sdHash(
-    hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-    serializeJwt: (JWT) -> String,
-): Result<String> = runCatching {
-    val digest = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
-    JwtBase64.encode(digest.digest(serialize(serializeJwt).encodeToByteArray()))
-}
 
 /**
  * Adds a [key binding JWT][SdJwt.Presentation.keyBindingJwt]

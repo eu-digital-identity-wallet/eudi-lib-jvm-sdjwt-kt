@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
-import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -154,14 +153,9 @@ sealed interface KeyBindingError {
     data object MissingKeyBindingJwt : KeyBindingError
 
     /**
-     * SD-JWT has a Key Binding JWT that lacks an '_sd_hash' claim.
+     * SD-JWT contains a Key Binding JWT that contains no or an invalid '_sd_hash' claim.
      */
-    data object MissingSdHash : KeyBindingError
-
-    /**
-     * SD-JWT contains a Key Binding JWT that contains an invalid '_sd_hash' claim.
-     */
-    data object InvalidSdHash : KeyBindingError
+    data object MissingOrInvalidIntegrity : KeyBindingError
 }
 
 /**
@@ -340,8 +334,8 @@ object SdJwtVerifier {
         val kbClaims = keyBindingVerifier.verify(jwtClaims, unverifiedKBJwt).getOrThrow()
 
         // Check integrity protection
-        kbClaims?.let {
-            verifyIntegrity(hashAlgorithm, unverifiedJwt, unverifiedDisclosures, it)
+        kbClaims?.let { keyBindingClaims ->
+            verifyIntegrity(hashAlgorithm, unverifiedSdJwt, keyBindingClaims)
         }
 
         // Assemble it
@@ -541,35 +535,20 @@ private fun collectDigests(jwtClaims: Claims, disclosures: Set<Disclosure>): Set
 }
 
 /**
- * Verifies that the [Key Binding Claims][keybindingClaims] of a Presentation contain an '_sd_hash' claim that
+ * Verifies that the [Key Binding Claims][keybindingClaims] of a Presentation contains an '_sd_hash' claim that
  * corresponds to the [base64url-encoded][JwtBase64.encode] [hash digest][hashAlgorithm] over the
- * [Issuer-signed JWT][sdJwt] and the [selected Disclosures][disclosures].
- * @throws SdJwtVerificationException with either [MissingSdHash] or [InvalidSdHash] in case of verification failure
+ * [Issuer-signed JWT][unverifiedSdJwt] and the selected Disclosures.
+ * @throws SdJwtVerificationException with [MissingOrInvalidIntegrity] in case of verification failure
  */
 private fun verifyIntegrity(
-    hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-    sdJwt: Jwt,
-    disclosures: List<String>,
+    hashAlgorithm: HashAlgorithm,
+    unverifiedSdJwt: String,
     keybindingClaims: Claims,
-) {
-    fun Claims.sdHash() =
-        get("_sd_hash")
-            ?.let {
-                runCatching {
-                    JwtBase64.decode(it.jsonPrimitive.content)
-                }.getOrElse { throw InvalidSdHash.asException() }
-            } ?: throw MissingSdHash.asException()
-
-    val sdHash = keybindingClaims.sdHash()
-
-    val serialized = listOf(sdJwt, *disclosures.toTypedArray()).joinToString(separator = "~", postfix = "~")
-    val expectedSdHash =
-        MessageDigest.getInstance(hashAlgorithm.alias.uppercase()).digest(serialized.encodeToByteArray())
-
-    if (!expectedSdHash.contentEquals(sdHash)) {
-        throw InvalidSdHash.asException()
-    }
-}
+) = runCatching {
+    val actualIntegrity = SdJwtIntegrity.extract(keybindingClaims).getOrThrow()
+    val expectedIntegrity = SdJwtIntegrity.digestSerialized(hashAlgorithm, unverifiedSdJwt).getOrThrow()
+    require(actualIntegrity == expectedIntegrity)
+}.getOrElse { throw MissingOrInvalidIntegrity.asException() }
 
 /**
  * Extracts all the [digests][DisclosureDigest] from the given [claims],

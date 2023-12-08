@@ -92,9 +92,9 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and keyBinding with no '_sd_hash' verify should return MissingSdHash`() {
+    fun `when sd-jwt has an valid jwt, no disclosures and keyBinding without '_sd_hash' verify fails with MissingOrInvalidIntegrity`() {
         verifyPresnetationExpectingError(
-            VerificationError.KeyBindingFailed(KeyBindingError.MissingSdHash),
+            VerificationError.KeyBindingFailed(KeyBindingError.MissingOrInvalidIntegrity),
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
             "$jwt~$jwt",
@@ -140,9 +140,9 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding with no '_sd_hash' verify should return MissingSdHash`() {
+    fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without '_sd_hash' verify fails with MissingOrInvalidIntegrity`() {
         verifyPresnetationExpectingError(
-            VerificationError.KeyBindingFailed(KeyBindingError.MissingSdHash),
+            VerificationError.KeyBindingFailed(KeyBindingError.MissingOrInvalidIntegrity),
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
             "$jwt~$d1~$jwt",
