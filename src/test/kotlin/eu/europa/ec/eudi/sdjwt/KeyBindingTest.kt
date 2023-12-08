@@ -286,7 +286,7 @@ class HolderActor(private val holderKey: ECKey) {
                 .keyID(holderKey.keyID)
                 .build(),
             JWTClaimsSet.Builder(JWTClaimsSet.parse(verifierChallenge.toString()))
-                .claim("_sd_hash", digest(HashAlgorithm.SHA_256) { it }.getOrThrow().value)
+                .claim("_sd_hash", digest())
                 .build(),
         ).apply {
             sign(ECDSASigner(holderKey))
@@ -295,6 +295,9 @@ class HolderActor(private val holderKey: ECKey) {
     private fun holderDebug(s: String) {
         println("Holder: $s")
     }
+
+    private fun SdJwt.Presentation<Jwt, Nothing>.digest(): String =
+        digest(HashAlgorithm.SHA_256) { it }.getOrThrow().value
 }
 
 class VerifierActor(private val clientId: String, private val whatToDisclose: (Claim) -> Boolean) {
