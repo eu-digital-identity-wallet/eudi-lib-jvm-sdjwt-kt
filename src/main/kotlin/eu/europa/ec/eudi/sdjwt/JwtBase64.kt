@@ -25,5 +25,7 @@ object JwtBase64 {
 
     // Since the complement character "=" is optional,
     // we can remove it to save some bits in the HTTP header
-    fun encode(value: ByteArray): String = Base64.UrlSafe.encode(value).replace("=", "")
+    fun encode(value: ByteArray): String = removePadding(Base64.UrlSafe.encode(value))
+
+    fun removePadding(value: String): String = value.replace("=", "")
 }

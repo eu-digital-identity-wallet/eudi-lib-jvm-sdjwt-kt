@@ -286,7 +286,7 @@ class HolderActor(private val holderKey: ECKey) {
                 .keyID(holderKey.keyID)
                 .build(),
             JWTClaimsSet.Builder(JWTClaimsSet.parse(verifierChallenge.toString()))
-                .claim("_sd_hash", SdJwtDigest.digest(HashAlgorithm.SHA_256, this) { it }.getOrThrow().serialize())
+                .claim("_sd_hash", SdJwtDigest.digest(HashAlgorithm.SHA_256, this) { it }.getOrThrow().value)
                 .build(),
         ).apply {
             sign(ECDSASigner(holderKey))

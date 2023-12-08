@@ -19,32 +19,10 @@ import java.security.MessageDigest
 
 /**
  * The digest of a [presentation][SdJwt.Presentation].
+ * It contains the base64-url encoded digest of a presentation with all padding characters removed.
  */
-class SdJwtDigest private constructor(private val value: ByteArray) {
-
-    /**
-     * Gets the base64-url encoded value of this [SdJwtDigest].
-     *
-     * @return the base64-url encoded value of this digest
-     */
-    fun serialize(): String = JwtBase64.encode(value)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as SdJwtDigest
-
-        return value.contentEquals(other.value)
-    }
-
-    override fun hashCode(): Int {
-        return value.contentHashCode()
-    }
-
-    override fun toString(): String {
-        return "SdJwtIntegrity(value=${serialize()})"
-    }
+@JvmInline
+value class SdJwtDigest private constructor(val value: String) {
 
     companion object {
 
@@ -52,11 +30,13 @@ class SdJwtDigest private constructor(private val value: ByteArray) {
          * Wraps the given [value] to a [SdJwtDigest].
          * The [value] is expected to be base64-url encoded.
          *
-         * @param value the base64-url encoded distest value to wrap
+         * @param value the base64-url encoded digest value to wrap
          * @return the wrapped value
          */
         fun wrap(value: String): Result<SdJwtDigest> = runCatching {
-            SdJwtDigest(JwtBase64.decode(value))
+            val clean = JwtBase64.removePadding(value)
+            JwtBase64.decode(clean)
+            SdJwtDigest(clean)
         }
 
         /**
@@ -94,7 +74,7 @@ class SdJwtDigest private constructor(private val value: ByteArray) {
 
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
             val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
-            SdJwtDigest(digest)
+            SdJwtDigest(JwtBase64.encode(digest))
         }
     }
 }
