@@ -59,6 +59,22 @@ fun <JWT> SdJwt.Presentation<JWT, Nothing>.serialize(
 ): String = this@serialize.serialize(serializeJwt) { it }
 
 /**
+ * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation].
+ *
+ * @receiver the SD-JWT for which to calculate the digest
+ * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+ * @param serializeJwt serialization function for [JWT]
+ * @param JWT the type of the JWT the [SdJwt.Presentation] contains
+ * @return the calculated digest
+ */
+fun <JWT> SdJwt.Presentation<JWT, *>.digest(
+    hashAlgorithm: HashAlgorithm,
+    serializeJwt: (JWT) -> String,
+): Result<SdJwtDigest> = runCatching {
+    SdJwtDigest.digest(hashAlgorithm, noKeyBinding().serialize(serializeJwt)).getOrThrow()
+}
+
+/**
  * Concatenates the given disclosures into a single string, separated by
  * `~`. The string also starts with "~".
  *

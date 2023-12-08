@@ -40,30 +40,13 @@ value class SdJwtDigest private constructor(val value: String) {
         }
 
         /**
-         * Calculates the [integrity][SdJwtDigest] of a [presentation][sdJwt] using the provided
-         * [hashing algorithm][hashAlgorithm].
+         * Calculates the [integrity][SdJwtDigest] of serialized [presentation][sdJwt].
          *
          * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
-         * @param sdJwt the [SdJwt.Presentation] for which to calculate the digest
-         * @param serializeJwt serialization function for [JWT]
-         * @param JWT the type of the JWT the [SdJwt.Presentation] contains
+         * @param value the serialized SD-JWT to calculate the digest for
          * @return the calculated digest
          */
-        fun <JWT> digest(
-            hashAlgorithm: HashAlgorithm,
-            sdJwt: SdJwt.Presentation<JWT, *>,
-            serializeJwt: (JWT) -> String,
-        ): Result<SdJwtDigest> =
-            digestSerialized(hashAlgorithm, sdJwt.noKeyBinding().serialize(serializeJwt))
-
-        /**
-         * Calculates the [integrity][SdJwtDigest] of an already serialized [presentation][sdJwt] using the provided
-         * [hashing algorithm][hashAlgorithm].
-         *
-         * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
-         * @return the calculated digest
-         */
-        fun digestSerialized(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
+        fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
             require(value.contains("~"))
             fun String.noKeyBinding() =
                 if (endsWith("~")) {

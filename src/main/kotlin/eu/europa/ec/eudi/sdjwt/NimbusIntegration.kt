@@ -312,6 +312,17 @@ fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String
 }
 
 /**
+ * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation] that contains a [NimbusJWT].
+ *
+ * @receiver the SD-JWT for which to calculate the digest
+ * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+ * @param JWT the type of the JWT the [SdJwt.Presentation] contains
+ * @return the calculated digest
+ */
+fun <JWT : NimbusJWT> SdJwt.Presentation<JWT, *>.digest(hashAlgorithm: HashAlgorithm): Result<SdJwtDigest> =
+    digest(hashAlgorithm, NimbusJWT::serialize)
+
+/**
  * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
  * In addition to the General & Flattened representations defined in the RFC7515,
  * the result JSON contains a JSON array with the disclosures of the [SdJwt]
