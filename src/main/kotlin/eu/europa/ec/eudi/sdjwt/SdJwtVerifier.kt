@@ -545,8 +545,8 @@ private fun verifyIntegrity(
     unverifiedSdJwt: String,
     keybindingClaims: Claims,
 ) = runCatching {
-    val actualIntegrity = SdJwtIntegrity.wrap(keybindingClaims["_sd_hash"]!!.jsonPrimitive.content).getOrThrow()
-    val expectedIntegrity = SdJwtIntegrity.digestSerialized(hashAlgorithm, unverifiedSdJwt).getOrThrow()
+    val actualIntegrity = SdJwtDigest.wrap(keybindingClaims["_sd_hash"]!!.jsonPrimitive.content).getOrThrow()
+    val expectedIntegrity = SdJwtDigest.digestSerialized(hashAlgorithm, unverifiedSdJwt).getOrThrow()
     require(actualIntegrity == expectedIntegrity)
 }.getOrElse { throw MissingOrInvalidIntegrity.asException() }
 

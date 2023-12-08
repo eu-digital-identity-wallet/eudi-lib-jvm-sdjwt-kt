@@ -18,12 +18,14 @@ package eu.europa.ec.eudi.sdjwt
 import java.security.MessageDigest
 
 /**
- * The integrity of a [presentation][SdJwt.Presentation].
+ * The digest of a [presentation][SdJwt.Presentation].
  */
-class SdJwtIntegrity private constructor(private val value: ByteArray) {
+class SdJwtDigest private constructor(private val value: ByteArray) {
 
     /**
-     * Returns the base64-url encoded value of this [SdJwtIntegrity].
+     * Gets the base64-url encoded value of this [SdJwtDigest].
+     *
+     * @return the base64-url encoded value of this digest
      */
     fun serialize(): String = JwtBase64.encode(value)
 
@@ -31,7 +33,7 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as SdJwtIntegrity
+        other as SdJwtDigest
 
         return value.contentEquals(other.value)
     }
@@ -47,29 +49,41 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
     companion object {
 
         /**
-         * Wraps the given [value] to a [SdJwtIntegrity].
+         * Wraps the given [value] to a [SdJwtDigest].
          * The [value] is expected to be base64-url encoded.
+         *
+         * @param value the base64-url encoded distest value to wrap
+         * @return the wrapped value
          */
-        fun wrap(value: String): Result<SdJwtIntegrity> = runCatching {
-            SdJwtIntegrity(JwtBase64.decode(value))
+        fun wrap(value: String): Result<SdJwtDigest> = runCatching {
+            SdJwtDigest(JwtBase64.decode(value))
         }
 
         /**
-         * Calculates the [integrity][SdJwtIntegrity] of a [presentation][sdJwt] using the provided
+         * Calculates the [integrity][SdJwtDigest] of a [presentation][sdJwt] using the provided
          * [hashing algorithm][hashAlgorithm].
+         *
+         * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+         * @param sdJwt the [SdJwt.Presentation] for which to calculate the digest
+         * @param serializeJwt serialization function for [JWT]
+         * @param JWT the type of the JWT the [SdJwt.Presentation] contains
+         * @return the calculated digest
          */
         fun <JWT> digest(
             hashAlgorithm: HashAlgorithm,
             sdJwt: SdJwt.Presentation<JWT, *>,
             serializeJwt: (JWT) -> String,
-        ): Result<SdJwtIntegrity> =
+        ): Result<SdJwtDigest> =
             digestSerialized(hashAlgorithm, sdJwt.noKeyBinding().serialize(serializeJwt))
 
         /**
-         * Calculates the [integrity][SdJwtIntegrity] of an already serialized [presentation][sdJwt] using the provided
+         * Calculates the [integrity][SdJwtDigest] of an already serialized [presentation][sdJwt] using the provided
          * [hashing algorithm][hashAlgorithm].
+         *
+         * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+         * @return the calculated digest
          */
-        fun digestSerialized(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtIntegrity> = runCatching {
+        fun digestSerialized(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
             require(value.contains("~"))
             fun String.noKeyBinding() =
                 if (endsWith("~")) {
@@ -80,7 +94,7 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
 
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
             val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
-            SdJwtIntegrity(digest)
+            SdJwtDigest(digest)
         }
     }
 }
