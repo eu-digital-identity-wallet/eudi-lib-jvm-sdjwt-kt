@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.jsonPrimitive
 import java.security.MessageDigest
 
 /**
@@ -46,11 +45,6 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
     }
 
     companion object {
-
-        /**
-         * Name of the Claim where [SdJwtIntegrity] is, in a KeyBinding JWT.
-         */
-        const val CLAIM_NAME = "_sd_hash"
 
         /**
          * Wraps the given [value] to a [SdJwtIntegrity].
@@ -87,15 +81,6 @@ class SdJwtIntegrity private constructor(private val value: ByteArray) {
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
             val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
             SdJwtIntegrity(digest)
-        }
-
-        /**
-         * Extracts the [SdJwtIntegrity Claim][CLAIM_NAME] from the provided set of [claims] and [wraps][wrap] it in
-         * an [SdJwtIntegrity].
-         */
-        fun extract(claims: Claims): Result<SdJwtIntegrity> = runCatching {
-            val claim = claims[CLAIM_NAME]!!
-            wrap(claim.jsonPrimitive.content).getOrThrow()
         }
     }
 }
