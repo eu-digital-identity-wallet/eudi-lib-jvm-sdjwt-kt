@@ -599,7 +599,7 @@ object ClaimValidations {
         fun jwsJsonFormat() = objectClaim(ENVELOPED_SD_JWT_IN_JWS_JSON)?.let { jwsJson ->
             try {
                 val (jwt, disclosures) = parseJWSJson(jwsJson)
-                val serializedDisclosures = concatDisclosureValues(disclosures) { it }
+                val serializedDisclosures = disclosures.concat { it }
                 "$jwt$serializedDisclosures~"
             } catch (t: Throwable) {
                 null

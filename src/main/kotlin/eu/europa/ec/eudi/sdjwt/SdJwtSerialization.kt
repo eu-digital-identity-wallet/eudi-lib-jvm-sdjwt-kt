@@ -41,9 +41,10 @@ fun <JWT> SdJwt<JWT>.serialize(
  * @receiver the disclosures to concatenate
  * @return the string as described above
  */
-internal fun Iterable<Disclosure>.concat(): String = concatDisclosureValues(this, Disclosure::value)
-internal fun <T> concatDisclosureValues(vs: Iterable<T>, get: (T) -> String): String =
-    vs.fold("") { acc, disclosure -> "$acc~${get(disclosure)}" }
+private fun List<Disclosure>.concat(): String = concat(Disclosure::value)
+
+internal fun <T> List<T>.concat(get: (T) -> String): String =
+    joinToString(separator = "~", prefix = "~", transform = get)
 
 /**
  * Option on how to embed an SD-JWT in an envelope
