@@ -191,6 +191,7 @@ sealed interface KeyBindingVerifier {
                             ?.takeIf { element -> element is JsonPrimitive && element.isString }
                             ?.jsonPrimitive
                             ?.contentOrNull
+                            ?.let { JwtBase64.removePadding(it) }
                         expectedDigest.value == sdHash
                     }
                     ?: throw InvalidKeyBindingJwt.asException()
