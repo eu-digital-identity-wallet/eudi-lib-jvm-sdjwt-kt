@@ -49,7 +49,7 @@ import kotlin.test.assertNotNull
  * This is an advanced test.
  *
  * It demonstrates the issuance, holder verification, holder presentation and presentation verification
- * use cases, including holder binding.
+ * use cases, including key binding.
  *
  *
  */
@@ -207,7 +207,7 @@ class IssuerActor(private val issuerKey: ECKey) {
 
     /**
      * This is the main function of the issuer, which issues the SD-JWT
-     * @param holderPubKey the holder pub key. It will be included in plain into SD-JWT, to leverage holder binding
+     * @param holderPubKey the holder pub key. It will be included in plain into SD-JWT, to leverage key binding
      * @param credential the credential
      * @return the issued SD-JWT
      */

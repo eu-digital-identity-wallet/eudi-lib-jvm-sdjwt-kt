@@ -44,7 +44,7 @@ sealed interface VerificationError {
     data object InvalidJwt : VerificationError
 
     /**
-     * Failure to verify holder binding
+     * Failure to verify key binding
      * @param details the specific problem
      */
     data class KeyBindingFailed(val details: KeyBindingError) : VerificationError
@@ -127,7 +127,7 @@ fun interface JwtSignatureVerifier {
 }
 
 /**
- * Errors related to Holder Binding
+ * Errors related to Key Binding
  */
 sealed interface KeyBindingError {
 
@@ -154,10 +154,10 @@ sealed interface KeyBindingError {
 }
 
 /**
- * This represents the two kinds of Holder Binding verification
+ * This represents the two kinds of Key Binding verification
  *
- * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a [SdJwt.Presentation.keyBindingJwt]
- * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid [SdJwt.Presentation.keyBindingJwt]
+ * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a Key Binding
+ * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid Key Binding
  */
 sealed interface KeyBindingVerifier {
 
@@ -203,12 +203,12 @@ sealed interface KeyBindingVerifier {
         }
 
     /**
-     * Indicates that a presentation SD-JWT must not have holder binding
+     * Indicates that a presentation SD-JWT must not have key binding
      */
     data object MustNotBePresent : KeyBindingVerifier
 
     /**
-     * Indicates that a presentation SD-JWT must have holder binding
+     * Indicates that a presentation SD-JWT must have key binding
      *
      * @param keyBindingVerifierProvider this is a function to extract of the JWT part of the SD-JWT,
      * the public key of the Holder and create [JwtSignatureVerifier] to be used for validating the
@@ -323,12 +323,12 @@ object SdJwtVerifier {
      * To provide an implementation of this,
      * Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT.
-     * @param keyBindingVerifier specifies whether a Holder Binding JWT is expected or not.
+     * @param keyBindingVerifier specifies whether a Key Binding JWT is expected or not.
      * In the case that it is expected, Verifier should be aware of how the Issuer has chosen to include the
      * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and [holder binding JWT]
+     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
