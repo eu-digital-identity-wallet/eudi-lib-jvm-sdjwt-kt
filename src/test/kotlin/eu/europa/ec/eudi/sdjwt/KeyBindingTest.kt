@@ -153,6 +153,10 @@ data class VerifierChallenge(
     val iat: Long,
 ) {
     fun asJson(): JsonObject = Json.encodeToJsonElement(this).jsonObject
+
+    companion object {
+        operator fun invoke(nonce: String, aud: String, iat: Instant) = VerifierChallenge(nonce, aud, iat.epochSecond)
+    }
 }
 
 @Serializable
@@ -218,8 +222,8 @@ class IssuerActor(private val issuerKey: ECKey) {
         val sdJwtElements =
             sdJwt {
                 iss(iss)
-                iat(iat.toEpochMilli())
-                exp(exp.toEpochMilli())
+                iat(iat.epochSecond)
+                exp(exp.epochSecond)
                 cnf(holderPubKey)
                 structured("credentialSubject") {
                     sd(credential)
@@ -266,7 +270,7 @@ class HolderActor(holderKey: ECKey) {
         }
     }
 
-    public fun pubKey(): JWK = keyBindingSigner.publicKey
+    fun pubKey(): JWK = keyBindingSigner.publicKey
 
     /**
      * Keeps the issued credential
@@ -319,12 +323,8 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: (C
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<Jwt>? = null
     fun query(): VerifierQuery = VerifierQuery(
-        challenge = VerifierChallenge(
-            nonce = Random.nextBytes(10).toString(),
-            aud = clientId,
-            iat = Instant.now().toEpochMilli(),
-        ),
-        whatToDisclose = whatToDisclose,
+        VerifierChallenge(Random.nextBytes(10).toString(), clientId, Instant.now()),
+        whatToDisclose,
     ).also { lastChallenge = it.challenge.asJson() }
 
     fun acceptPresentation(
