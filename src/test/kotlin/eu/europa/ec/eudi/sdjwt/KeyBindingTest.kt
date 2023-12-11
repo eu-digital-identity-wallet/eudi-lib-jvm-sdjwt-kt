@@ -18,7 +18,9 @@ package eu.europa.ec.eudi.sdjwt
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -27,6 +29,7 @@ import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
+import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
@@ -105,7 +108,7 @@ class KeyBindingTest {
             countries = listOf("GR", "DE"),
         )
 
-        // Issuer should know holder pub key, to included within SD-JWT
+        // Issuer should know holder's public key
 
         val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
             val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
@@ -252,15 +255,24 @@ class IssuerActor(private val issuerKey: ECKey) {
  * This is a sample holder capable of keeping a [credential][credentialSdJwt] issued by [IssuerActor]
  * and responding to [VerifierActor] query
  */
-class HolderActor(private val holderKey: ECKey) {
+class HolderActor(holderKey: ECKey) {
 
-    private val keyBindingSigningAlgorithm = JWSAlgorithm.ES256
+    private val keyBindingSigner: KeyBindingSigner by lazy {
+        val actualSigner = ECDSASigner(holderKey)
+        object : KeyBindingSigner {
+            override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
+            override val publicKey: JWK = holderKey.toPublicJWK()
+            override fun getJCAContext(): JCAContext = actualSigner.jcaContext
+            override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = actualSigner.sign(p0, p1)
+        }
+    }
+
+    public fun pubKey(): JWK = keyBindingSigner.publicKey
 
     /**
      * Keeps the issued credential
      */
     private var credentialSdJwt: SdJwt.Issuance<Jwt>? = null
-    fun pubKey(): ECKey = holderKey.toPublicJWK()
 
     fun storeCredential(issuerJwtSignatureVerifier: JwtSignatureVerifier, sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
@@ -288,28 +300,45 @@ class HolderActor(private val holderKey: ECKey) {
                     is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
                 }
             }.toSet()
-            SdJwt.Presentation(jwt, disclosures, null).serialize { it }
+            SdJwt.Presentation(jwt, disclosures, null)
         }
 
-        val kbJwt = run {
-            val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
-            SignedJWT(
-                JWSHeader.Builder(keyBindingSigningAlgorithm)
-                    .type(JOSEObjectType("kb+jwt"))
-                    .keyID(holderKey.keyID)
-                    .build(),
-                with(JWTClaimsSet.Builder()) {
-                    audience(verifierQuery.challenge.aud)
-                    claim("nonce", verifierQuery.challenge.nonce)
-                    issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
-                    claim("_sd_hash", sdJwtDigest.value)
-                    build()
-                },
-            ).apply {
-                sign(ECDSASigner(holderKey))
-            }.serialize()
+        return presentationSdJwt.serializeWithKeyBinding({ it }, hashAlgorithm, keyBindingSigner) {
+            audience(verifierQuery.challenge.aud)
+            claim("nonce", verifierQuery.challenge.nonce)
+            issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
         }
+    }
 
+    interface KeyBindingSigner : JWSSigner {
+        val signAlgorithm: JWSAlgorithm
+        val publicKey: JWK
+        override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = mutableSetOf(signAlgorithm)
+    }
+
+    fun <JWT> SdJwt.Presentation<JWT, Nothing>.serializeWithKeyBinding(
+        jwtSerializer: (JWT) -> String,
+        hashAlgorithm: HashAlgorithm,
+        keyBindingSigner: KeyBindingSigner,
+        claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+    ): String {
+        // Serialize the presentation SD-JWT with no Key binding
+        val presentationSdJwt = serialize(jwtSerializer)
+        // Calculate its digest
+        val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+        // Create the Key Binding JWT, sign it and serialize it
+        val kbJwt = SignedJWT(
+            JWSHeader.Builder(keyBindingSigner.signAlgorithm)
+                .type(JOSEObjectType("kb+jwt"))
+                .keyID(keyBindingSigner.publicKey.keyID)
+                .build(),
+            with(JWTClaimsSet.Builder()) {
+                claimSetBuilderAction()
+                claim("_sd_hash", sdJwtDigest.value)
+                build()
+            },
+        ).apply { sign(keyBindingSigner) }.serialize()
+        // concatenate the two parts together
         return "$presentationSdJwt$kbJwt"
     }
 
