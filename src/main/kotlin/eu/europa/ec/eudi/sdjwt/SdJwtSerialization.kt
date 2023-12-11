@@ -128,17 +128,12 @@ fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(
     val envelopedClaims = otherClaims.toMutableMap()
     when (envelopOption) {
         is EnvelopOption.Combined<JWT> -> {
-            val sdJwtInCombined = when (this) {
-                is SdJwt.Issuance<JWT> -> serialize(envelopOption.serializeJwt)
-                is SdJwt.Presentation<JWT> -> serialize(envelopOption.serializeJwt)
-            }
+            val sdJwtInCombined = serialize(envelopOption.serializeJwt)
             envelopedClaims[ENVELOPED_SD_JWT_IN_COMBINED_FROM] = JsonPrimitive(sdJwtInCombined)
         }
 
         is EnvelopOption.JwsJson<JWT> -> {
-            val sdJwtWithNoKB = this
-            val sdJwtInJwsJson =
-                sdJwtWithNoKB.asJwsJsonObject(envelopOption.jwsSerializationOption, envelopOption.getParts)
+            val sdJwtInJwsJson = asJwsJsonObject(envelopOption.jwsSerializationOption, envelopOption.getParts)
             envelopedClaims[ENVELOPED_SD_JWT_IN_JWS_JSON] = sdJwtInJwsJson
         }
     }
