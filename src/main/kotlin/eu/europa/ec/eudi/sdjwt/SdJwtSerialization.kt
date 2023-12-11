@@ -112,12 +112,11 @@ const val ENVELOPED_SD_JWT_IN_JWS_JSON = "_js_sd_jwt"
  * the claim `_sd_jwt` or `_js_sd_jwt` depending on the [envelopOption]
  *
  * @param otherClaims claims to be included in the envelope JWT, except "_sd_jwt"
- * @param envelopOption option of how to nest the SD-JWT into the envelop
+ * @param envelopOption option of how to nest the SD-JWT into the envelope
  * @param signEnvelop a way to sign the claims of the envelope JWT
  * @param JWT the type representing the JWT part of the SD-JWT
  * @param ENVELOPED_JWT the type representing the envelope JWT
- * @receiver the SD-JWT (presentation) to be enveloped. If it contains [SdJwt.Presentation.keyBindingJwt]
- * it will be removed.
+ * @receiver the SD-JWT (presentation) to be enveloped.
  * @return a JWT (not SD-JWT) as described above
  */
 fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(

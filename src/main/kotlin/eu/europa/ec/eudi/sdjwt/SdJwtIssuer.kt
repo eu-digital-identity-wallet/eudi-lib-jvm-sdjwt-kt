@@ -23,9 +23,9 @@ package eu.europa.ec.eudi.sdjwt
 typealias SignSdJwt<SIGNED_JWT> = (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
 
 /**
- * Representation of a function capable of producing a [issuance SD-JWT][SdJwt.Issuance]
+ * Representation of a function capable of producing an [issuance SD-JWT][SdJwt.Issuance]
  *
- * @param sdJwtFactory factory for un-signed SD-JWT
+ * @param sdJwtFactory factory for unsigned SD-JWT
  * @param signSdJwt signer
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  */

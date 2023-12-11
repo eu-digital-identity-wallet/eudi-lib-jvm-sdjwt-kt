@@ -42,7 +42,7 @@ value class SdJwtDigest private constructor(val value: String) {
         /**
          * Calculates the [integrity][SdJwtDigest] of serialized [presentation][sdJwt].
          *
-         * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+         * @param hashAlgorithm the [HashAlgorithm] to be used for the calculation of the digest
          * @param value the serialized SD-JWT to calculate the digest for
          * @return the calculated digest
          */

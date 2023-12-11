@@ -385,7 +385,7 @@ class SpecExamples {
         val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = numOfDecoysLimit)
         val disclosedClaimsResult = sdJwtFactory.createSdJwt(sdElements())
         val disclosedClaims = assertDoesNotThrow { disclosedClaimsResult.getOrThrow() }
-        disclosedClaims.run { prettyPrint({ it }) }
+        disclosedClaims.run { prettyPrint { it } }
         assertEquals(expectedDisclosuresNo, disclosedClaims.disclosures.size)
         println("=====================================")
     }

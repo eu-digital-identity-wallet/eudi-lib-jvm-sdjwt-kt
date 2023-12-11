@@ -192,7 +192,7 @@ class IssuerActor(private val issuerKey: ECKey) {
      * This is an advanced [JwtSignatureVerifier] backed by Nimbus [DefaultJWTProcessor]
      * Verifies that the header of JWT contains typ claim equal to [jwtType].
      * Checks the signature of the JWT using issuers pub key and [signAlgorithm].
-     * Makes sures that claims : "iss", "iat", "exp" and "cnf" are present
+     * Makes sure that claims : "iss", "iat", "exp" and "cnf" are present
      */
     fun jwtVerifier(): JwtSignatureVerifier =
         DefaultJWTProcessor<SecurityContext>().apply {

@@ -168,7 +168,7 @@ private object RecreateClaims {
     }
 }
 
-fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
+private fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
     arrayElementDigest(claims)?.let { digest ->
 
         disclosures[digest]?.let { disclosure ->

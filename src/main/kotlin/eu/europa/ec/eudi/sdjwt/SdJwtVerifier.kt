@@ -157,7 +157,7 @@ sealed interface KeyBindingError {
  * This represents the two kinds of Key Binding verification
  *
  * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a Key Binding
- * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid Key Binding
+ * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a valid Key Binding
  */
 sealed interface KeyBindingVerifier {
 
@@ -349,7 +349,7 @@ object SdJwtVerifier {
 
         // Check Key binding
         val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
-        val kbClaims = keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
+        keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
 
         // Assemble it
         SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures)
