@@ -26,37 +26,13 @@ import java.time.Instant
  * @receiver the SD-JWT to serialize
  * @return the serialized format of the SD-JWT
  */
-fun <JWT> SdJwt.Issuance<JWT>.serialize(
+fun <JWT> SdJwt<JWT, Nothing>.serialize(
     serializeJwt: (JWT) -> String,
 ): String {
     val serializedJwt = serializeJwt(jwt)
     val serializedDisclosures = disclosures.concat()
     return "$serializedJwt$serializedDisclosures~"
 }
-
-/**
- * Serializes an [SdJwt.Presentation]
- *
- * @param serializeJwt a function to serialize the [JWT]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @param serializeKeyBindingJwt a function to serialize the [KB_JWT]
- * @param KB_JWT the type representing the Key Binding part of the SD
- * @receiver the SD-JWT to serialize
- * @return the serialized format of the SD-JWT
- */
-fun <JWT, KB_JWT> SdJwt.Presentation<JWT, KB_JWT>.serialize(
-    serializeJwt: (JWT) -> String,
-    serializeKeyBindingJwt: (KB_JWT) -> String,
-): String {
-    val serializedJwt = serializeJwt(jwt)
-    val serializedDisclosures = disclosures.concat()
-    val serializedKbJwt = keyBindingJwt?.run(serializeKeyBindingJwt) ?: ""
-    return "$serializedJwt$serializedDisclosures~$serializedKbJwt"
-}
-
-fun <JWT> SdJwt.Presentation<JWT, Nothing>.serialize(
-    serializeJwt: (JWT) -> String,
-): String = this@serialize.serialize(serializeJwt) { it }
 
 /**
  * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation].

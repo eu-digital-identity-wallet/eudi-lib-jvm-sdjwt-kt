@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.Period
 import java.time.temporal.ChronoUnit
+import java.util.*
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -105,7 +106,11 @@ class KeyBindingTest {
         )
 
         // Issuer should know holder pub key, to included within SD-JWT
-        val issuedSdJwt: String = issuer.issue(holder.pubKey(), emailCredential).serialize()
+
+        val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
+            val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
+            hashAlg to serialize()
+        }
 
         // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
         // Holder expects to find algorithm inside SD-JWT, header
@@ -114,7 +119,7 @@ class KeyBindingTest {
         // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
         // Also Holder should know what verifier wants to be presented
         val verifierQuery = verifier.query()
-        val presentedSdJwt: String = holder.present(verifierQuery)
+        val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
 
         // Verifier should know/trust the issuer.
         // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
@@ -271,33 +276,43 @@ class HolderActor(private val holderKey: ECKey) {
         )
     }
 
-    fun present(verifierQuery: VerifierQuery): String {
+    fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
-        return credentialSdJwt!!.present(
-            { it.keyBindingJwt(verifierQuery.challenge.asJson()) },
-            verifierQuery.whatToDisclose,
-        ).serialize({ it }, { it })
-    }
 
-    private fun SdJwt.Presentation<Jwt, Nothing>.keyBindingJwt(verifierChallenge: JsonObject): Jwt =
-        SignedJWT(
+        val issuanceSdJwt = checkNotNull(credentialSdJwt)
+        val jwt = issuanceSdJwt.jwt
+        val disclosures = issuanceSdJwt.disclosures.filter { disclosure ->
+            when (disclosure) {
+                is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
+            }
+        }.toSet()
+
+        val presentationSdJwt = SdJwt.Presentation(jwt, disclosures, null)
+        val tempSerialize = presentationSdJwt.serialize { it }
+        val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, tempSerialize).getOrThrow()
+        val kbJwt = SignedJWT(
             JWSHeader.Builder(keyBindingSigningAlgorithm)
                 .type(JOSEObjectType("kb+jwt"))
                 .keyID(holderKey.keyID)
                 .build(),
-            JWTClaimsSet.Builder(JWTClaimsSet.parse(verifierChallenge.toString()))
-                .claim("_sd_hash", digest())
-                .build(),
+            with(JWTClaimsSet.Builder()) {
+                audience(verifierQuery.challenge.aud)
+                claim("nonce", verifierQuery.challenge.nonce)
+                issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+                claim("_sd_hash", sdJwtDigest.value)
+                build()
+            },
         ).apply {
             sign(ECDSASigner(holderKey))
-        }.serialize()
+        }. serialize()
+
+        return "$tempSerialize$kbJwt"
+    }
 
     private fun holderDebug(s: String) {
         println("Holder: $s")
     }
-
-    private fun SdJwt.Presentation<Jwt, Nothing>.digest(): String =
-        digest(HashAlgorithm.SHA_256) { it }.getOrThrow().value
 }
 
 class VerifierActor(private val clientId: String, private val whatToDisclose: (Claim) -> Boolean) {

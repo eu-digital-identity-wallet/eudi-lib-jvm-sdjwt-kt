@@ -302,14 +302,11 @@ private object NimbusSdJwtIssuerFactory {
  * depending on the case
  *
  * @param JWT the type representing the JWT part of the SD-JWT
- * @param HB_JWT the type representing the Holder Binding part of the SD
  * @receiver the SD-JWT to be serialized
  * @return the SD-JWT in either Combined Issuance or Combined Presentation format depending on the case
  */
-fun <JWT : NimbusJWT, HB_JWT : NimbusJWT> SdJwt<JWT, HB_JWT>.serialize(): String = when (this) {
-    is SdJwt.Issuance<JWT> -> serialize(NimbusJWT::serialize)
-    is SdJwt.Presentation<JWT, HB_JWT> -> serialize(NimbusJWT::serialize, NimbusJWT::serialize)
-}
+fun <JWT : NimbusJWT> SdJwt<JWT, Nothing>.serialize(): String =
+    serialize(NimbusJWT::serialize)
 
 /**
  * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation] that contains a [NimbusJWT].
