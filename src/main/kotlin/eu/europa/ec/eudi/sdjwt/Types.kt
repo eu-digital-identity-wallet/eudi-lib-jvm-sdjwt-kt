@@ -95,7 +95,7 @@ sealed interface SdJwt<out JWT> {
     /**
      * The disclosures of the SD-JWT
      */
-    val disclosures: Set<Disclosure>
+    val disclosures: List<Disclosure>
 
     /**
      * The SD-JWT as it is produced by the issuer and handed-over to the holder
@@ -104,7 +104,7 @@ sealed interface SdJwt<out JWT> {
      */
     data class Issuance<JWT>(
         override val jwt: JWT,
-        override val disclosures: Set<Disclosure>,
+        override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
 
     /**
@@ -114,6 +114,6 @@ sealed interface SdJwt<out JWT> {
      */
     data class Presentation<JWT>(
         override val jwt: JWT,
-        override val disclosures: Set<Disclosure>,
+        override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
 }

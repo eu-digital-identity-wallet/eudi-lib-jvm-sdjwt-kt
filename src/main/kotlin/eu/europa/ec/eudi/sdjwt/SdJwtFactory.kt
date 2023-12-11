@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
 import kotlinx.serialization.json.*
 
-private typealias EncodedSdElement = Pair<JsonObject, Set<Disclosure>>
+private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
 
 /**
  * Factory for creating an [UnsignedSdJwt]
@@ -51,7 +51,7 @@ class SdJwtFactory(
      * @return the [UnsignedSdJwt]
      */
     private fun encodeObj(sdObject: SdObject): EncodedSdElement {
-        val disclosures = mutableSetOf<Disclosure>()
+        val disclosures = mutableListOf<Disclosure>()
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
         fun add(encodedClaim: Claims) {
@@ -85,7 +85,7 @@ class SdJwtFactory(
     private fun encodeClaim(claimName: String, claimValue: SdObjectElement): EncodedSdElement {
         fun encodePlain(plain: DisclosableJsonElement.Plain): EncodedSdElement {
             val plainClaim = JsonObject(mapOf(claimName to plain.value))
-            return plainClaim to emptySet()
+            return plainClaim to emptyList()
         }
 
         fun encodeSd(sd: DisclosableJsonElement.Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
@@ -93,7 +93,7 @@ class SdJwtFactory(
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
             val digestAndDecoys = (decoys() + digest).sorted()
             val sdClaim = digestAndDecoys.sdClaim()
-            return sdClaim to setOf(disclosure)
+            return sdClaim to listOf(disclosure)
         }
 
         fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
@@ -137,6 +137,7 @@ class SdJwtFactory(
                 is DisclosableJsonElement.Plain -> encodePlain(disclosable)
                 is DisclosableJsonElement.Sd -> encodeSd(disclosable)
             }
+
             is SdArray -> encodeSdArray(claimValue)
             is StructuredSdObject -> encodeStructuredSdObject(claimValue)
             is RecursiveSdArray -> encodeRecursiveSdArray(claimValue)
@@ -182,14 +183,14 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementsDisclosure(sdArray: SdArray): Pair<Set<Disclosure>, List<PlainOrDigest>> {
+    private fun arrayElementsDisclosure(sdArray: SdArray): Pair<List<Disclosure>, List<PlainOrDigest>> {
         fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
             val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
             return disclosure to digest
         }
 
-        val disclosures = mutableSetOf<Disclosure>()
+        val disclosures = mutableListOf<Disclosure>()
         val plainOrDigestElements = mutableListOf<PlainOrDigest>()
 
         for (element in sdArray) {
@@ -204,6 +205,7 @@ class SdJwtFactory(
                         }
                     }
                 }
+
                 is SdArrayElement.DisclosableObj -> {
                     val (json, ds) = encodeObj(element.sdObject)
                     val (ds2, dig) = disclosureOf(json)

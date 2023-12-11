@@ -486,7 +486,7 @@ private fun parseJWSJson(unverifiedSdJwt: Claims): Pair<Jwt, List<String>> {
  */
 private fun verifyDisclosures(
     hashAlgorithm: HashAlgorithm,
-    disclosures: Set<Disclosure>,
+    disclosures: List<Disclosure>,
     digestFoundInSdJwt: Set<DisclosureDigest>,
 ) {
     val calculatedDigestsPerDisclosure: Map<Disclosure, DisclosureDigest> =
@@ -503,16 +503,16 @@ private fun verifyDisclosures(
 
 /**
  * Checks that the [unverifiedDisclosures] are indeed [Disclosure] and that are unique
- * @return the set of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
+ * @return the list of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
  */
-private fun uniqueDisclosures(unverifiedDisclosures: List<String>): Set<Disclosure> {
+private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
     val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
     maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
         if (invalidDisclosures.isNotEmpty())
             throw InvalidDisclosures(invalidDisclosures.toList()).asException()
     }
-    return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
-        if (unverifiedDisclosures.size != disclosures.size) throw NonUniqueDisclosures.asException()
+    return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
+        if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
     }
 }
 
@@ -535,7 +535,7 @@ private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
  * @param disclosures the disclosures, of the SD-JWT
  * @return digests from both the JWT payload and the [disclosures][Disclosure], assuring that they are unique
  */
-private fun collectDigests(jwtClaims: Claims, disclosures: Set<Disclosure>): Set<DisclosureDigest> {
+private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Set<DisclosureDigest> {
     // Get Digests
     val jwtDigests = collectDigests(jwtClaims)
     val disclosureDigests = disclosures.map { d -> collectDigests(JsonObject(mapOf(d.claim()))) }.flatten()

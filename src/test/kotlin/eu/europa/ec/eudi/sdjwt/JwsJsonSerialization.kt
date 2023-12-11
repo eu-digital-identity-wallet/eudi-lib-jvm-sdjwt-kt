@@ -25,7 +25,7 @@ import kotlin.test.assertEquals
 
 class TrObj private constructor(
     val jwt: SignedJWT,
-    val disclosures: Set<Disclosure>,
+    val disclosures: List<Disclosure>,
 ) {
 
     companion object {
@@ -61,14 +61,14 @@ class TrObj private constructor(
 
                     TrObj(
                         SignedJWT(Base64URL(signature.protected), Base64URL(payload), Base64URL(signature.signature)),
-                        disclosures = disclosures.map { Disclosure.wrap(it).getOrThrow() }.toSet(),
+                        disclosures = disclosures.map { Disclosure.wrap(it).getOrThrow() },
                     )
                 }
             } catch (t: Throwable) {
                 Json.decodeFromString<Flattened>(s).run {
                     TrObj(
                         SignedJWT(Base64URL(protected), Base64URL(payload), Base64URL(signature)),
-                        disclosures = disclosures.map { Disclosure.wrap(it).getOrThrow() }.toSet(),
+                        disclosures = disclosures.map { Disclosure.wrap(it).getOrThrow() },
                     )
                 }
             }

@@ -40,7 +40,7 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
 private object RecreateClaims {
 
-    fun recreateClaims(claims: Claims, disclosures: Set<Disclosure>): Claims {
+    fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm()
         return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
         else {
@@ -64,7 +64,7 @@ private object RecreateClaims {
      */
     private fun replaceDigestsWithDisclosures(
         hashAlgorithm: HashAlgorithm,
-        disclosures: Set<Disclosure>,
+        disclosures: List<Disclosure>,
         claims: Claims,
     ): JsonObject {
         // Recalculate digests, using the hash algorithm

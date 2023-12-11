@@ -82,7 +82,7 @@ class SdJwtVerifierVerifyEnvelopedPresentationTest {
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
     """.trimIndent().removeNewLine()
 
-    private val sdJwt = SdJwt.Presentation(jwt, setOf(Disclosure.wrap(d1).getOrThrow()))
+    private val sdJwt = SdJwt.Presentation(jwt, listOf(Disclosure.wrap(d1).getOrThrow()))
     private val holderKey = genKey("holder")
     private val holderAlg = JWSAlgorithm.ES256
     private val verifierClientId = "The verifier"

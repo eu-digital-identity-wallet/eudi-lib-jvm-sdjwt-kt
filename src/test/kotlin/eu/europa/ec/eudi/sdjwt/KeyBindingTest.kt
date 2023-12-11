@@ -302,7 +302,7 @@ class HolderActor(holderKey: ECKey) {
                     is Disclosure.ArrayElement -> true // TODO Figure out what to do
                     is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
                 }
-            }.toSet()
+            }
             SdJwt.Presentation(jwt, disclosures)
         }
 
