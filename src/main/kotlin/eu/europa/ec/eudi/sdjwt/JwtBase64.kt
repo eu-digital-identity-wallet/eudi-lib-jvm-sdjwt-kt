@@ -16,12 +16,16 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
+@OptIn(ExperimentalEncodingApi::class)
 object JwtBase64 {
 
     fun decode(value: String): ByteArray = Base64.UrlSafe.decode(value)
 
     // Since the complement character "=" is optional,
     // we can remove it to save some bits in the HTTP header
-    fun encode(value: ByteArray): String = Base64.UrlSafe.encode(value).replace("=", "")
+    fun encode(value: ByteArray): String = removePadding(Base64.UrlSafe.encode(value))
+
+    fun removePadding(value: String): String = value.replace("=", "")
 }

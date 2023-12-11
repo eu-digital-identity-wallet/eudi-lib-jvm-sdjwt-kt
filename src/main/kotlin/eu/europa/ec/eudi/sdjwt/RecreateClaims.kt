@@ -29,7 +29,7 @@ import kotlinx.serialization.json.*
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT, *>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
     val disclosedClaims = JsonObject(claimsOf(jwt))
     return RecreateClaims.recreateClaims(disclosedClaims, disclosures)
 }
@@ -40,7 +40,7 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
 private object RecreateClaims {
 
-    fun recreateClaims(claims: Claims, disclosures: Set<Disclosure>): Claims {
+    fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm()
         return if (hashAlgorithm != null) replaceDigestsWithDisclosures(hashAlgorithm, disclosures, claims - "_sd_alg")
         else {
@@ -64,7 +64,7 @@ private object RecreateClaims {
      */
     private fun replaceDigestsWithDisclosures(
         hashAlgorithm: HashAlgorithm,
-        disclosures: Set<Disclosure>,
+        disclosures: List<Disclosure>,
         claims: Claims,
     ): JsonObject {
         // Recalculate digests, using the hash algorithm
@@ -168,7 +168,7 @@ private object RecreateClaims {
     }
 }
 
-fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
+private fun replaceArrayDigest(disclosures: DisclosurePerDigest, claims: JsonObject): JsonElement? =
     arrayElementDigest(claims)?.let { digest ->
 
         disclosures[digest]?.let { disclosure ->

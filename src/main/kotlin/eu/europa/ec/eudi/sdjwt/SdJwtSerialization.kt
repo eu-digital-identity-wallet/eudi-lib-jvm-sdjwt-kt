@@ -19,14 +19,14 @@ import kotlinx.serialization.json.*
 import java.time.Instant
 
 /**
- * Serializes an [SdJwt.Issuance]
+ * Serializes an [SdJwt] in combined format without key binding
  *
  * @param serializeJwt a function to serialize the [JWT]
  * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to serialize
  * @return the serialized format of the SD-JWT
  */
-fun <JWT> SdJwt.Issuance<JWT>.serialize(
+fun <JWT> SdJwt<JWT>.serialize(
     serializeJwt: (JWT) -> String,
 ): String {
     val serializedJwt = serializeJwt(jwt)
@@ -35,39 +35,16 @@ fun <JWT> SdJwt.Issuance<JWT>.serialize(
 }
 
 /**
- * Serializes an [SdJwt.Presentation]
- *
- * @param serializeJwt a function to serialize the [JWT]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @param serializeKeyBindingJwt a function to serialize the [KB_JWT]
- * @param KB_JWT the type representing the Key Binding part of the SD
- * @receiver the SD-JWT to serialize
- * @return the serialized format of the SD-JWT
- */
-fun <JWT, KB_JWT> SdJwt.Presentation<JWT, KB_JWT>.serialize(
-    serializeJwt: (JWT) -> String,
-    serializeKeyBindingJwt: (KB_JWT) -> String,
-): String {
-    val serializedJwt = serializeJwt(jwt)
-    val serializedDisclosures = disclosures.concat()
-    val serializedKbJwt = keyBindingJwt?.run(serializeKeyBindingJwt) ?: ""
-    return "$serializedJwt$serializedDisclosures~$serializedKbJwt"
-}
-
-fun <JWT> SdJwt.Presentation<JWT, Nothing>.serialize(
-    serializeJwt: (JWT) -> String,
-): String = this@serialize.serialize(serializeJwt) { it }
-
-/**
  * Concatenates the given disclosures into a single string, separated by
  * `~`. The string also starts with "~".
  *
  * @receiver the disclosures to concatenate
  * @return the string as described above
  */
-internal fun Iterable<Disclosure>.concat(): String = concatDisclosureValues(this, Disclosure::value)
-internal fun <T> concatDisclosureValues(vs: Iterable<T>, get: (T) -> String): String =
-    vs.fold("") { acc, disclosure -> "$acc~${get(disclosure)}" }
+private fun List<Disclosure>.concat(): String = concat(Disclosure::value)
+
+internal fun <T> List<T>.concat(get: (T) -> String): String =
+    joinToString(separator = "~", prefix = "~", transform = get)
 
 /**
  * Option on how to embed an SD-JWT in an envelope
@@ -109,11 +86,10 @@ sealed interface EnvelopOption<JWT> {
  * @param signEnvelop a way to sign the claims of the envelope JWT
  * @param JWT the type representing the JWT part of the SD-JWT
  * @param ENVELOPED_JWT the type representing the envelope JWT
- * @receiver the SD-JWT (presentation) to be enveloped. If it contains [SdJwt.Presentation.keyBindingJwt]
- * it will be removed.
+ * @receiver the SD-JWT (presentation) to be enveloped.
  * @return a JWT (not SD-JWT) as described above
  */
-fun <JWT, ENVELOPED_JWT> SdJwt<JWT, *>.toEnvelopedFormat(
+fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(
     issuedAt: Instant,
     nonce: String,
     audience: String,
@@ -137,15 +113,14 @@ const val ENVELOPED_SD_JWT_IN_JWS_JSON = "_js_sd_jwt"
  * the claim `_sd_jwt` or `_js_sd_jwt` depending on the [envelopOption]
  *
  * @param otherClaims claims to be included in the envelope JWT, except "_sd_jwt"
- * @param envelopOption option of how to nest the SD-JWT into the envelop
+ * @param envelopOption option of how to nest the SD-JWT into the envelope
  * @param signEnvelop a way to sign the claims of the envelope JWT
  * @param JWT the type representing the JWT part of the SD-JWT
  * @param ENVELOPED_JWT the type representing the envelope JWT
- * @receiver the SD-JWT (presentation) to be enveloped. If it contains [SdJwt.Presentation.keyBindingJwt]
- * it will be removed.
+ * @receiver the SD-JWT (presentation) to be enveloped.
  * @return a JWT (not SD-JWT) as described above
  */
-fun <JWT, ENVELOPED_JWT> SdJwt<JWT, *>.toEnvelopedFormat(
+fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(
     otherClaims: Claims,
     envelopOption: EnvelopOption<JWT>,
     signEnvelop: (Claims) -> Result<ENVELOPED_JWT>,
@@ -153,20 +128,12 @@ fun <JWT, ENVELOPED_JWT> SdJwt<JWT, *>.toEnvelopedFormat(
     val envelopedClaims = otherClaims.toMutableMap()
     when (envelopOption) {
         is EnvelopOption.Combined<JWT> -> {
-            val sdJwtInCombined = when (this) {
-                is SdJwt.Issuance<JWT> -> serialize(envelopOption.serializeJwt)
-                is SdJwt.Presentation<JWT, *> -> noKeyBinding().serialize(envelopOption.serializeJwt)
-            }
+            val sdJwtInCombined = serialize(envelopOption.serializeJwt)
             envelopedClaims[ENVELOPED_SD_JWT_IN_COMBINED_FROM] = JsonPrimitive(sdJwtInCombined)
         }
 
         is EnvelopOption.JwsJson<JWT> -> {
-            val sdJwtWithNoKB = when (this) {
-                is SdJwt.Issuance<JWT> -> this
-                is SdJwt.Presentation<JWT, *> -> noKeyBinding()
-            }
-            val sdJwtInJwsJson =
-                sdJwtWithNoKB.asJwsJsonObject(envelopOption.jwsSerializationOption, envelopOption.getParts)
+            val sdJwtInJwsJson = asJwsJsonObject(envelopOption.jwsSerializationOption, envelopOption.getParts)
             envelopedClaims[ENVELOPED_SD_JWT_IN_JWS_JSON] = sdJwtInJwsJson
         }
     }
@@ -200,7 +167,7 @@ enum class JwsSerializationOption {
  * @return a JSON object either general or flattened according to RFC7515 having an additional
  * disclosures array as per SD-JWT extension
  */
-fun <JWT> SdJwt<JWT, *>.asJwsJsonObject(
+fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject {

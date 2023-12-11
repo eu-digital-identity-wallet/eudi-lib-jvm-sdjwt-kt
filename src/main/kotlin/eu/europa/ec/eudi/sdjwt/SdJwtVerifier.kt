@@ -44,7 +44,7 @@ sealed interface VerificationError {
     data object InvalidJwt : VerificationError
 
     /**
-     * Failure to verify holder binding
+     * Failure to verify key binding
      * @param details the specific problem
      */
     data class KeyBindingFailed(val details: KeyBindingError) : VerificationError
@@ -127,7 +127,7 @@ fun interface JwtSignatureVerifier {
 }
 
 /**
- * Errors related to Holder Binding
+ * Errors related to Key Binding
  */
 sealed interface KeyBindingError {
 
@@ -154,38 +154,61 @@ sealed interface KeyBindingError {
 }
 
 /**
- * This represents the two kinds of Holder Binding verification
+ * This represents the two kinds of Key Binding verification
  *
- * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a [SdJwt.Presentation.keyBindingJwt]
- * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a  valid [SdJwt.Presentation.keyBindingJwt]
+ * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a Key Binding
+ * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a valid Key Binding
  */
 sealed interface KeyBindingVerifier {
 
-    fun verify(jwtClaims: Claims, holderBindingJwt: String?): Result<Claims?> = runCatching {
-        fun mustBeNotPresent(): Claims? =
-            if (holderBindingJwt != null) throw UnexpectedKeyBindingJwt.asException()
-            else null
+    /**
+     * @param jwtClaims The claims of the JWT part of the SD-JWT. They will be used to extract the
+     * public key of the Holder, in case of [MustBePresentAndValid]
+     * @param expectedDigest The digest of the SD-JWT, as expected to be found inside the Key Binding JWT
+     * under `_sd_hash` claim. It will be used in case of [MustBePresentAndValid]
+     * @param unverifiedKbJwt the Key Binding JWT to be verified.
+     * In case of [MustNotBePresent] it must not be provided.
+     * Otherwise, in case of [MustBePresentAndValid], it must be present, having a valid signature and containing
+     * at least an [expectedDigest] under claim `_sd_hash`
+     *
+     * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
+     */
+    fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<Claims?> =
+        runCatching {
+            fun mustBeNotPresent(): Claims? =
+                if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
+                else null
 
-        fun mustBePresentAndValid(holderBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
-            if (holderBindingJwt == null) throw MissingKeyBindingJwt.asException()
-            val holderBindingJwtVerifier =
-                holderBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
-            return holderBindingJwtVerifier.checkSignature(holderBindingJwt)
-                ?: throw InvalidKeyBindingJwt.asException()
+            fun mustBePresentAndValid(keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
+                if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
+
+                val keyBindingJwtVerifier =
+                    keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
+
+                return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
+                    ?.takeIf { kbClaims ->
+                        val sdHash = kbClaims["_sd_hash"]
+                            ?.takeIf { element -> element is JsonPrimitive && element.isString }
+                            ?.jsonPrimitive
+                            ?.contentOrNull
+                            ?.let { JwtBase64.removePadding(it) }
+                        expectedDigest.value == sdHash
+                    }
+                    ?: throw InvalidKeyBindingJwt.asException()
+            }
+            when (this) {
+                is MustNotBePresent -> mustBeNotPresent()
+                is MustBePresentAndValid -> mustBePresentAndValid(keyBindingVerifierProvider)
+            }
         }
-        when (this) {
-            is MustNotBePresent -> mustBeNotPresent()
-            is MustBePresentAndValid -> mustBePresentAndValid(keyBindingVerifierProvider)
-        }
-    }
 
     /**
-     * Indicates that a presentation SD-JWT must not have holder binding
+     * Indicates that a presentation SD-JWT must not have key binding
      */
     data object MustNotBePresent : KeyBindingVerifier
 
     /**
-     * Indicates that a presentation SD-JWT must have holder binding
+     * Indicates that a presentation SD-JWT must have key binding
      *
      * @param keyBindingVerifierProvider this is a function to extract of the JWT part of the SD-JWT,
      * the public key of the Holder and create [JwtSignatureVerifier] to be used for validating the
@@ -300,13 +323,12 @@ object SdJwtVerifier {
      * To provide an implementation of this,
      * Verifier should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT.
-     * @param keyBindingVerifier specifies whether a Holder Binding JWT is expected or not.
+     * @param keyBindingVerifier specifies whether a Key Binding JWT is expected or not.
      * In the case that it is expected, Verifier should be aware of how the Issuer has chosen to include the
-     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier,
-     * in order to produce the Holder Binding JWT.
+     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and [holder binding JWT]
+     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
@@ -314,7 +336,7 @@ object SdJwtVerifier {
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
+    ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         // Parse
         val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = parse(unverifiedSdJwt)
 
@@ -325,12 +347,12 @@ object SdJwtVerifier {
         val digests = collectDigests(jwtClaims, disclosures)
         verifyDisclosures(hashAlgorithm, disclosures, digests)
 
-        // Check Holder binding
-        val kbClaims = keyBindingVerifier.verify(jwtClaims, unverifiedKBJwt).getOrThrow()
+        // Check Key binding
+        val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
+        keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
 
         // Assemble it
-        val holderBindingJwtAndClaims = unverifiedKBJwt?.let { hb -> kbClaims?.let { cs -> hb to cs } }
-        SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
+        SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures)
     }
 
     /**
@@ -364,7 +386,7 @@ object SdJwtVerifier {
         iatOffset: Duration,
         expectedAudience: String,
         unverifiedEnvelopeJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims, Nothing>> = runCatching {
+    ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         fun isValid(claims: Claims): Boolean = with(ClaimValidations) {
             !claims.envelopSdJwt(clock, iatOffset, expectedAudience).isNullOrEmpty()
         }
@@ -377,7 +399,6 @@ object SdJwtVerifier {
         checkNotNull(unverifiedSdJwt) { "Cannot be null" }
         verifyPresentation(sdJwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
             .getOrThrow()
-            .noKeyBinding()
     }
 }
 
@@ -465,7 +486,7 @@ private fun parseJWSJson(unverifiedSdJwt: Claims): Pair<Jwt, List<String>> {
  */
 private fun verifyDisclosures(
     hashAlgorithm: HashAlgorithm,
-    disclosures: Set<Disclosure>,
+    disclosures: List<Disclosure>,
     digestFoundInSdJwt: Set<DisclosureDigest>,
 ) {
     val calculatedDigestsPerDisclosure: Map<Disclosure, DisclosureDigest> =
@@ -482,16 +503,16 @@ private fun verifyDisclosures(
 
 /**
  * Checks that the [unverifiedDisclosures] are indeed [Disclosure] and that are unique
- * @return the set of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
+ * @return the list of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
  */
-private fun uniqueDisclosures(unverifiedDisclosures: List<String>): Set<Disclosure> {
+private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
     val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
     maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
         if (invalidDisclosures.isNotEmpty())
             throw InvalidDisclosures(invalidDisclosures.toList()).asException()
     }
-    return maybeDisclosures.values.map { it.getOrThrow() }.toSet().also { disclosures ->
-        if (unverifiedDisclosures.size != disclosures.size) throw NonUniqueDisclosures.asException()
+    return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
+        if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
     }
 }
 
@@ -514,7 +535,7 @@ private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
  * @param disclosures the disclosures, of the SD-JWT
  * @return digests from both the JWT payload and the [disclosures][Disclosure], assuring that they are unique
  */
-private fun collectDigests(jwtClaims: Claims, disclosures: Set<Disclosure>): Set<DisclosureDigest> {
+private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Set<DisclosureDigest> {
     // Get Digests
     val jwtDigests = collectDigests(jwtClaims)
     val disclosureDigests = disclosures.map { d -> collectDigests(JsonObject(mapOf(d.claim()))) }.flatten()
@@ -578,7 +599,7 @@ object ClaimValidations {
         fun jwsJsonFormat() = objectClaim(ENVELOPED_SD_JWT_IN_JWS_JSON)?.let { jwsJson ->
             try {
                 val (jwt, disclosures) = parseJWSJson(jwsJson)
-                val serializedDisclosures = concatDisclosureValues(disclosures) { it }
+                val serializedDisclosures = disclosures.concat { it }
                 "$jwt$serializedDisclosures~"
             } catch (t: Throwable) {
                 null
@@ -626,6 +647,6 @@ object ClaimValidations {
     fun Claims.primitiveClaim(name: String): JsonPrimitive? =
         get(name)?.let { element -> if (element is JsonPrimitive) element else null }
 
-    fun Claims.objectClaim(name: String): JsonObject? =
+    private fun Claims.objectClaim(name: String): JsonObject? =
         get(name)?.let { element -> if (element is JsonObject) element else null }
 }

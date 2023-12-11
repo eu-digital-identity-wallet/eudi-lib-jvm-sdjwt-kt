@@ -19,6 +19,7 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -27,6 +28,7 @@ import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
+import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.Period
 import java.time.temporal.ChronoUnit
+import java.util.*
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -46,7 +49,7 @@ import kotlin.test.assertNotNull
  * This is an advanced test.
  *
  * It demonstrates the issuance, holder verification, holder presentation and presentation verification
- * use cases, including holder binding.
+ * use cases, including key binding.
  *
  *
  */
@@ -104,8 +107,12 @@ class KeyBindingTest {
             countries = listOf("GR", "DE"),
         )
 
-        // Issuer should know holder pub key, to included within SD-JWT
-        val issuedSdJwt: String = issuer.issue(holder.pubKey(), emailCredential).serialize()
+        // Issuer should know holder's public key
+
+        val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
+            val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
+            hashAlg to serialize()
+        }
 
         // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
         // Holder expects to find algorithm inside SD-JWT, header
@@ -114,7 +121,7 @@ class KeyBindingTest {
         // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
         // Also Holder should know what verifier wants to be presented
         val verifierQuery = verifier.query()
-        val presentedSdJwt: String = holder.present(verifierQuery)
+        val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
 
         // Verifier should know/trust the issuer.
         // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
@@ -146,6 +153,10 @@ data class VerifierChallenge(
     val iat: Long,
 ) {
     fun asJson(): JsonObject = Json.encodeToJsonElement(this).jsonObject
+
+    companion object {
+        operator fun invoke(nonce: String, aud: String, iat: Instant) = VerifierChallenge(nonce, aud, iat.epochSecond)
+    }
 }
 
 @Serializable
@@ -181,7 +192,7 @@ class IssuerActor(private val issuerKey: ECKey) {
      * This is an advanced [JwtSignatureVerifier] backed by Nimbus [DefaultJWTProcessor]
      * Verifies that the header of JWT contains typ claim equal to [jwtType].
      * Checks the signature of the JWT using issuers pub key and [signAlgorithm].
-     * Makes sures that claims : "iss", "iat", "exp" and "cnf" are present
+     * Makes sure that claims : "iss", "iat", "exp" and "cnf" are present
      */
     fun jwtVerifier(): JwtSignatureVerifier =
         DefaultJWTProcessor<SecurityContext>().apply {
@@ -200,7 +211,7 @@ class IssuerActor(private val issuerKey: ECKey) {
 
     /**
      * This is the main function of the issuer, which issues the SD-JWT
-     * @param holderPubKey the holder pub key. It will be included in plain into SD-JWT, to leverage holder binding
+     * @param holderPubKey the holder pub key. It will be included in plain into SD-JWT, to leverage key binding
      * @param credential the credential
      * @return the issued SD-JWT
      */
@@ -211,8 +222,8 @@ class IssuerActor(private val issuerKey: ECKey) {
         val sdJwtElements =
             sdJwt {
                 iss(iss)
-                iat(iat.toEpochMilli())
-                exp(exp.toEpochMilli())
+                iat(iat.epochSecond)
+                exp(exp.epochSecond)
                 cnf(holderPubKey)
                 structured("credentialSubject") {
                     sd(credential)
@@ -247,15 +258,24 @@ class IssuerActor(private val issuerKey: ECKey) {
  * This is a sample holder capable of keeping a [credential][credentialSdJwt] issued by [IssuerActor]
  * and responding to [VerifierActor] query
  */
-class HolderActor(private val holderKey: ECKey) {
+class HolderActor(holderKey: ECKey) {
 
-    private val keyBindingSigningAlgorithm = JWSAlgorithm.ES256
+    private val keyBindingSigner: KeyBindingSigner by lazy {
+        val actualSigner = ECDSASigner(holderKey)
+        object : KeyBindingSigner {
+            override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
+            override val publicKey: JWK = holderKey.toPublicJWK()
+            override fun getJCAContext(): JCAContext = actualSigner.jcaContext
+            override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = actualSigner.sign(p0, p1)
+        }
+    }
+
+    fun pubKey(): JWK = keyBindingSigner.publicKey
 
     /**
      * Keeps the issued credential
      */
     private var credentialSdJwt: SdJwt.Issuance<Jwt>? = null
-    fun pubKey(): ECKey = holderKey.toPublicJWK()
 
     fun storeCredential(issuerJwtSignatureVerifier: JwtSignatureVerifier, sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
@@ -271,25 +291,27 @@ class HolderActor(private val holderKey: ECKey) {
         )
     }
 
-    fun present(verifierQuery: VerifierQuery): String {
+    fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
-        val keyBindingJwt = keyBindingJwt(verifierQuery.challenge.asJson())
-        return credentialSdJwt!!.present(keyBindingJwt, verifierQuery.whatToDisclose)
-            .serialize({ it }, { it })
-    }
 
-    private fun keyBindingJwt(verifierChallenge: JsonObject): String =
-        SignedJWT(
-            JWSHeader.Builder(keyBindingSigningAlgorithm)
-                .type(JOSEObjectType("kb+jwt"))
-                .keyID(holderKey.keyID)
-                .build(),
-            JWTClaimsSet.parse(
-                verifierChallenge.toString(),
-            ),
-        ).apply {
-            sign(ECDSASigner(holderKey))
-        }.serialize()
+        val presentationSdJwt = run {
+            val issuanceSdJwt = checkNotNull(credentialSdJwt)
+            val jwt = issuanceSdJwt.jwt
+            val disclosures = issuanceSdJwt.disclosures.filter { disclosure ->
+                when (disclosure) {
+                    is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                    is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
+                }
+            }
+            SdJwt.Presentation(jwt, disclosures)
+        }
+
+        return presentationSdJwt.serializeWithKeyBinding({ it }, hashAlgorithm, keyBindingSigner) {
+            audience(verifierQuery.challenge.aud)
+            claim("nonce", verifierQuery.challenge.nonce)
+            issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+        }
+    }
 
     private fun holderDebug(s: String) {
         println("Holder: $s")
@@ -299,14 +321,10 @@ class HolderActor(private val holderKey: ECKey) {
 class VerifierActor(private val clientId: String, private val whatToDisclose: (Claim) -> Boolean) {
 
     private var lastChallenge: JsonObject? = null
-    private var presentation: SdJwt.Presentation<Jwt, Jwt>? = null
+    private var presentation: SdJwt.Presentation<Jwt>? = null
     fun query(): VerifierQuery = VerifierQuery(
-        challenge = VerifierChallenge(
-            nonce = Random.nextBytes(10).toString(),
-            aud = clientId,
-            iat = Instant.now().toEpochMilli(),
-        ),
-        whatToDisclose = whatToDisclose,
+        VerifierChallenge(Random.nextBytes(10).toString(), clientId, Instant.now()),
+        whatToDisclose,
     ).also { lastChallenge = it.challenge.asJson() }
 
     fun acceptPresentation(
@@ -319,9 +337,9 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: (C
             jwtSignatureVerifier = issuerJwtSignatureVerifier,
             keyBindingVerifier = keyBindingVerifier,
             unverifiedSdJwt = sdJwt,
-        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> ->
+        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims> ->
             presentation =
-                SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.keyBindingJwt?.first)
+                SdJwt.Presentation(presented.jwt.first, presented.disclosures)
 
             verifierDebug("Presentation accepted with SD Claims:")
         }, onFailure = { exception ->

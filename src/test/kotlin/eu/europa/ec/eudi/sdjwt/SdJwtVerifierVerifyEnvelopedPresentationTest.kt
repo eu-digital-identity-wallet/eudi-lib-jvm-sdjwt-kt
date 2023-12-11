@@ -82,12 +82,12 @@ class SdJwtVerifierVerifyEnvelopedPresentationTest {
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
     """.trimIndent().removeNewLine()
 
-    private val sdJwt = SdJwt.Presentation(jwt, setOf(Disclosure.wrap(d1).getOrThrow()), null)
+    private val sdJwt = SdJwt.Presentation(jwt, listOf(Disclosure.wrap(d1).getOrThrow()))
     private val holderKey = genKey("holder")
     private val holderAlg = JWSAlgorithm.ES256
     private val verifierClientId = "The verifier"
     private fun genKey(kid: String) = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
-    private fun SdJwt.Presentation<Jwt, Nothing>.envelope(iat: Instant): SignedJWT =
+    private fun SdJwt.Presentation<Jwt>.envelope(iat: Instant): SignedJWT =
         toEnvelopedFormat(
             iat,
             "nonce",
@@ -97,7 +97,7 @@ class SdJwtVerifierVerifyEnvelopedPresentationTest {
             holderAlg,
         ).getOrThrow()
 
-    private fun verify(envelopeJwt: String): SdJwt.Presentation<Jwt, Nothing> {
+    private fun verify(envelopeJwt: String): SdJwt.Presentation<Jwt> {
         return SdJwtVerifier.verifyEnvelopedPresentation(
             sdJwtSignatureVerifier = JwtSignatureVerifier.NoSignatureValidation,
             envelopeJwtVerifier = ECDSAVerifier(holderKey).asJwtVerifier(),
@@ -106,7 +106,7 @@ class SdJwtVerifierVerifyEnvelopedPresentationTest {
             expectedAudience = verifierClientId,
             unverifiedEnvelopeJwt = envelopeJwt,
         ).map {
-            SdJwt.Presentation(it.jwt.first, it.disclosures, it.keyBindingJwt)
+            SdJwt.Presentation(it.jwt.first, it.disclosures)
         }.getOrThrow()
     }
 }

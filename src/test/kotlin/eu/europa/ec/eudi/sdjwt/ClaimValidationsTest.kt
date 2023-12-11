@@ -50,7 +50,7 @@ class ClaimValidationsTest {
         val payload = "paylaod"
         val signature = "signature"
         val ds = listOf("d1", "d2")
-        val sdJwt = "$header.$payload.$signature${concatDisclosureValues(ds){it}}~"
+        val sdJwt = "$header.$payload.$signature${ds.concat { it }}~"
         val clientId = "clientId"
         val claims = buildJsonObject {
             iat(iat.epochSecond)
@@ -73,7 +73,7 @@ class ClaimValidationsTest {
         val payload = "paylaod"
         val signature = "signature"
         val ds = listOf("d1", "d2")
-        val sdJwt = "$header.$payload.$signature${concatDisclosureValues(ds){it}}~"
+        val sdJwt = "$header.$payload.$signature${ds.concat { it }}~"
         val clientId = "clientId"
         val claims = buildJsonObject {
             iat(iat.epochSecond)

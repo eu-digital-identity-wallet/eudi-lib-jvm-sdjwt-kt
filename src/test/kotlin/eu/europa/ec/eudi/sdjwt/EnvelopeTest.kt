@@ -39,7 +39,7 @@ class EnvelopeTest {
             issuedAt = iat,
             nonce = nonce,
             audience = aud,
-            envelopOption = EnvelopOption.Combined({ it }),
+            envelopOption = EnvelopOption.Combined { it },
             signingKey = key(),
             signAlgorithm = JWSAlgorithm.ES384,
         ).getOrThrow().jwtClaimsSet
@@ -53,13 +53,13 @@ class EnvelopeTest {
         assertEquals(unverifiedSdJwt, envelopClaims.getStringClaim("_sd_jwt"))
     }
 
-    val sdJwt: SdJwt.Presentation<Jwt, Nothing> by lazy {
+    val sdJwt: SdJwt.Presentation<Jwt> by lazy {
         val sdJwt = SdJwtVerifier.verifyPresentation(
             jwtSignatureVerifier = JwtSignatureVerifier.NoSignatureValidation,
             keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
             unverifiedSdJwt = unverifiedSdJwt,
         ).getOrThrow()
-        SdJwt.Presentation(sdJwt.jwt.first, sdJwt.disclosures, null)
+        SdJwt.Presentation(sdJwt.jwt.first, sdJwt.disclosures)
     }
 
     private fun key(): ECKey =
