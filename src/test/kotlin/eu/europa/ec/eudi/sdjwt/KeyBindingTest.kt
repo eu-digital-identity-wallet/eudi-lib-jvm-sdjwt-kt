@@ -305,7 +305,7 @@ class HolderActor(private val holderKey: ECKey) {
             },
         ).apply {
             sign(ECDSASigner(holderKey))
-        }. serialize()
+        }.serialize()
 
         return "$tempSerialize$kbJwt"
     }
