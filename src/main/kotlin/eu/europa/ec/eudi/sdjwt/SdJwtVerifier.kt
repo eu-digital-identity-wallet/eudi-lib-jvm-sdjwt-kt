@@ -166,29 +166,32 @@ sealed interface KeyBindingVerifier {
      * public key of the Holder, in case of [MustBePresentAndValid]
      * @param expectedDigest The digest of the SD-JWT, as expected to be found inside the Key Binding JWT
      * under `_sd_hash` claim. It will be used in case of [MustBePresentAndValid]
-     * @param keyBingingJwt the Key Binding JWT to be verified. In case of [MustNotBePresent] it must not be provided.
+     * @param unverifiedKbJwt the Key Binding JWT to be verified.
+     * In case of [MustNotBePresent] it must not be provided.
      * Otherwise, in case of [MustBePresentAndValid], it must be present, having a valid signature and containing
      * at least an [expectedDigest] under claim `_sd_hash`
      *
      * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
      */
-    fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, keyBingingJwt: String?): Result<Claims?> =
+    fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<Claims?> =
         runCatching {
             fun mustBeNotPresent(): Claims? =
-                if (keyBingingJwt != null) throw UnexpectedKeyBindingJwt.asException()
+                if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
                 else null
 
             fun mustBePresentAndValid(keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
-                if (keyBingingJwt == null) throw MissingKeyBindingJwt.asException()
+                if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
+
                 val keyBindingJwtVerifier =
                     keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
-                return keyBindingJwtVerifier.checkSignature(keyBingingJwt)
+
+                return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
                     ?.takeIf { kbClaims ->
-                        fun Claims.sdHash(): SdJwtDigest? =
-                            this["_sd_hash"]
-                                ?.takeIf { it is JsonPrimitive && it.isString }
-                                ?.let { SdJwtDigest.wrap(it.jsonPrimitive.content).getOrNull() }
-                        expectedDigest == kbClaims.sdHash()
+                        val sdHash = kbClaims["_sd_hash"]
+                            ?.takeIf { element -> element is JsonPrimitive && element.isString }
+                            ?.jsonPrimitive
+                            ?.contentOrNull
+                        expectedDigest.value == sdHash
                     }
                     ?: throw InvalidKeyBindingJwt.asException()
             }
@@ -321,8 +324,7 @@ object SdJwtVerifier {
      * used to sign the SD-JWT.
      * @param keyBindingVerifier specifies whether a Holder Binding JWT is expected or not.
      * In the case that it is expected, Verifier should be aware of how the Issuer has chosen to include the
-     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier,
-     * in order to produce the Holder Binding JWT.
+     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and [holder binding JWT]
@@ -344,7 +346,7 @@ object SdJwtVerifier {
         val digests = collectDigests(jwtClaims, disclosures)
         verifyDisclosures(hashAlgorithm, disclosures, digests)
 
-        // Check Holder binding
+        // Check Key binding
         val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
         val kbClaims = keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
 
@@ -646,6 +648,6 @@ object ClaimValidations {
     fun Claims.primitiveClaim(name: String): JsonPrimitive? =
         get(name)?.let { element -> if (element is JsonPrimitive) element else null }
 
-    fun Claims.objectClaim(name: String): JsonObject? =
+    private fun Claims.objectClaim(name: String): JsonObject? =
         get(name)?.let { element -> if (element is JsonObject) element else null }
 }
