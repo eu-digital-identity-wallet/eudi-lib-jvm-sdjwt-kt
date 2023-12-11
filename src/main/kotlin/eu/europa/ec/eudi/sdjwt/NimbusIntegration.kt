@@ -15,7 +15,14 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.json.*
 import java.text.ParseException
 import java.time.Instant
@@ -305,19 +312,46 @@ private object NimbusSdJwtIssuerFactory {
  * @receiver the SD-JWT to be serialized
  * @return the SD-JWT in either Combined Issuance or Combined Presentation format depending on the case
  */
-fun <JWT : NimbusJWT> SdJwt<JWT, Nothing>.serialize(): String =
+fun <JWT : NimbusJWT> SdJwt<JWT>.serialize(): String =
     serialize(NimbusJWT::serialize)
 
-/**
- * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation] that contains a [NimbusJWT].
- *
- * @receiver the SD-JWT for which to calculate the digest
- * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
- * @param JWT the type of the JWT the [SdJwt.Presentation] contains
- * @return the calculated digest
- */
-fun <JWT : NimbusJWT> SdJwt.Presentation<JWT, *>.digest(hashAlgorithm: HashAlgorithm): Result<SdJwtDigest> =
-    digest(hashAlgorithm, NimbusJWT::serialize)
+interface KeyBindingSigner : JWSSigner {
+    val signAlgorithm: JWSAlgorithm
+    val publicKey: JWK
+    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = mutableSetOf(signAlgorithm)
+}
+
+fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+): String = serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+
+fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
+    jwtSerializer: (JWT) -> String,
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+): String {
+    // Serialize the presentation SD-JWT with no Key binding
+    val presentationSdJwt = serialize(jwtSerializer)
+    // Calculate its digest
+    val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+    // Create the Key Binding JWT, sign it and serialize it
+    val kbJwt = SignedJWT(
+        JWSHeader.Builder(keyBindingSigner.signAlgorithm)
+            .type(JOSEObjectType("kb+jwt"))
+            .keyID(keyBindingSigner.publicKey.keyID)
+            .build(),
+        with(JWTClaimsSet.Builder()) {
+            claimSetBuilderAction()
+            claim("_sd_hash", sdJwtDigest.value)
+            build()
+        },
+    ).apply { sign(keyBindingSigner) }.serialize()
+    // concatenate the two parts together
+    return "$presentationSdJwt$kbJwt"
+}
 
 /**
  * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
@@ -334,7 +368,7 @@ fun <JWT : NimbusJWT> SdJwt.Presentation<JWT, *>.digest(hashAlgorithm: HashAlgor
  * @return a JSON object either general or flattened according to RFC7515 having an additional
  * disclosures array as per SD-JWT extension
  */
-fun SdJwt<NimbusSignedJWT, *>.asJwsJsonObject(option: JwsSerializationOption = JwsSerializationOption.Flattened): JsonObject {
+fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption = JwsSerializationOption.Flattened): JsonObject {
     return asJwsJsonObject(option) { jwt ->
         val parts = jwt.parsedParts
         checkNotNull(parts) { "It seems that the jwt is not signed" }
@@ -366,7 +400,7 @@ fun SdJwt<NimbusSignedJWT, *>.asJwsJsonObject(option: JwsSerializationOption = J
  * it will be removed.
  * @return a JWT (not SD-JWT) as described above
  */
-fun <JWT> SdJwt<JWT, *>.toEnvelopedFormat(
+fun <JWT> SdJwt<JWT>.toEnvelopedFormat(
     issuedAt: Instant,
     nonce: String,
     audience: String,
@@ -400,7 +434,7 @@ fun <JWT> SdJwt<JWT, *>.toEnvelopedFormat(
  * it will be removed.
  * @return a JWT (not SD-JWT) as described above
  */
-fun <JWT> SdJwt.Presentation<JWT, *>.toEnvelopedFormat(
+fun <JWT> SdJwt.Presentation<JWT>.toEnvelopedFormat(
     issuedAt: Instant,
     nonce: String,
     audience: String,

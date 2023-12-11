@@ -29,7 +29,7 @@ import kotlinx.serialization.json.*
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT, *>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
     val disclosedClaims = JsonObject(claimsOf(jwt))
     return RecreateClaims.recreateClaims(disclosedClaims, disclosures)
 }

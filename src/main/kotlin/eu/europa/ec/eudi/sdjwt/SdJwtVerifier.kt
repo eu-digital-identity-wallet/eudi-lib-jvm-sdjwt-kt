@@ -335,7 +335,7 @@ object SdJwtVerifier {
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims, JwtAndClaims>> = runCatching {
+    ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         // Parse
         val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = parse(unverifiedSdJwt)
 
@@ -351,8 +351,7 @@ object SdJwtVerifier {
         val kbClaims = keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
 
         // Assemble it
-        val holderBindingJwtAndClaims = unverifiedKBJwt?.let { hb -> kbClaims?.let { cs -> hb to cs } }
-        SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures, holderBindingJwtAndClaims)
+        SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures)
     }
 
     /**
@@ -386,7 +385,7 @@ object SdJwtVerifier {
         iatOffset: Duration,
         expectedAudience: String,
         unverifiedEnvelopeJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims, Nothing>> = runCatching {
+    ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         fun isValid(claims: Claims): Boolean = with(ClaimValidations) {
             !claims.envelopSdJwt(clock, iatOffset, expectedAudience).isNullOrEmpty()
         }
@@ -399,7 +398,6 @@ object SdJwtVerifier {
         checkNotNull(unverifiedSdJwt) { "Cannot be null" }
         verifyPresentation(sdJwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
             .getOrThrow()
-            .noKeyBinding()
     }
 }
 

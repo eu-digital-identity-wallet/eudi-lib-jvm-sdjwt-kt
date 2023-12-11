@@ -53,13 +53,13 @@ class EnvelopeTest {
         assertEquals(unverifiedSdJwt, envelopClaims.getStringClaim("_sd_jwt"))
     }
 
-    val sdJwt: SdJwt.Presentation<Jwt, Nothing> by lazy {
+    val sdJwt: SdJwt.Presentation<Jwt> by lazy {
         val sdJwt = SdJwtVerifier.verifyPresentation(
             jwtSignatureVerifier = JwtSignatureVerifier.NoSignatureValidation,
             keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
             unverifiedSdJwt = unverifiedSdJwt,
         ).getOrThrow()
-        SdJwt.Presentation(sdJwt.jwt.first, sdJwt.disclosures, null)
+        SdJwt.Presentation(sdJwt.jwt.first, sdJwt.disclosures)
     }
 
     private fun key(): ECKey =

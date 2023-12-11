@@ -84,9 +84,8 @@ typealias UnsignedSdJwt = SdJwt.Issuance<JsonObject>
  * A parameterized representation of the SD-JWT
  *
  * @param JWT the type representing the JWT part of the SD-JWT
- * @param KB_JWT the type representing the Holder Binding part of the SD
  */
-sealed interface SdJwt<out JWT, out KB_JWT> {
+sealed interface SdJwt<out JWT> {
 
     /**
      * The JWT part of the SD-JWT
@@ -106,39 +105,15 @@ sealed interface SdJwt<out JWT, out KB_JWT> {
     data class Issuance<JWT>(
         override val jwt: JWT,
         override val disclosures: Set<Disclosure>,
-    ) : SdJwt<JWT, Nothing>
+    ) : SdJwt<JWT>
 
     /**
      * The SD-JWT as it is produced by the holder and presented to the verifier
      * @param jwt the JWT part of the SD-JWT
      * @param disclosures the disclosures that holder decided to disclose to the verifier
-     * @param keyBindingJwt optional Key Binding JWT
      */
-    data class Presentation<JWT, KB_JWT>(
+    data class Presentation<JWT>(
         override val jwt: JWT,
         override val disclosures: Set<Disclosure>,
-        val keyBindingJwt: KB_JWT?,
-    ) : SdJwt<JWT, KB_JWT>
+    ) : SdJwt<JWT>
 }
-
-/**
- * Drops the [key binding JWT][SdJwt.Presentation.keyBindingJwt]
- *
- * @receiver the presentation SD-JWT
- * @return a presentation SD-JWT that keeps the [JWT][SdJwt.Presentation.jwt] and the
- * [disclosures][SdJwt.Presentation.disclosures] of the original SD-JWT, without
- * keybinding JWT
- */
-fun <JWT> SdJwt.Presentation<JWT, *>.noKeyBinding(): SdJwt.Presentation<JWT, Nothing> =
-    SdJwt.Presentation(jwt, disclosures, null)
-
-/**
- * Adds a [key binding JWT][SdJwt.Presentation.keyBindingJwt]
- *
- * @receiver the presentation SD-JWT that contains no [key binding JWT][SdJwt.Presentation.keyBindingJwt]
- * @return a presentation SD-JWT that keeps the [JWT][SdJwt.Presentation.jwt] and the
- * [disclosures][SdJwt.Presentation.disclosures] of the original SD-JWT, and the provided
- * [key binding JWT][keyBindingJwt]
- */
-fun <JWT, KB_JWT> SdJwt.Presentation<JWT, Nothing>.withKeyBinding(keyBindingJwt: KB_JWT): SdJwt.Presentation<JWT, KB_JWT> =
-    SdJwt.Presentation(jwt, disclosures, keyBindingJwt)

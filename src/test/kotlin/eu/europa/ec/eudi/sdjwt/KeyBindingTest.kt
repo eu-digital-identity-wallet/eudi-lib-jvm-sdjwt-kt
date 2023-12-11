@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.sdjwt
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.Curve
@@ -300,7 +299,7 @@ class HolderActor(holderKey: ECKey) {
                     is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
                 }
             }.toSet()
-            SdJwt.Presentation(jwt, disclosures, null)
+            SdJwt.Presentation(jwt, disclosures)
         }
 
         return presentationSdJwt.serializeWithKeyBinding({ it }, hashAlgorithm, keyBindingSigner) {
@@ -308,38 +307,6 @@ class HolderActor(holderKey: ECKey) {
             claim("nonce", verifierQuery.challenge.nonce)
             issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
         }
-    }
-
-    interface KeyBindingSigner : JWSSigner {
-        val signAlgorithm: JWSAlgorithm
-        val publicKey: JWK
-        override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = mutableSetOf(signAlgorithm)
-    }
-
-    fun <JWT> SdJwt.Presentation<JWT, Nothing>.serializeWithKeyBinding(
-        jwtSerializer: (JWT) -> String,
-        hashAlgorithm: HashAlgorithm,
-        keyBindingSigner: KeyBindingSigner,
-        claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
-    ): String {
-        // Serialize the presentation SD-JWT with no Key binding
-        val presentationSdJwt = serialize(jwtSerializer)
-        // Calculate its digest
-        val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
-        // Create the Key Binding JWT, sign it and serialize it
-        val kbJwt = SignedJWT(
-            JWSHeader.Builder(keyBindingSigner.signAlgorithm)
-                .type(JOSEObjectType("kb+jwt"))
-                .keyID(keyBindingSigner.publicKey.keyID)
-                .build(),
-            with(JWTClaimsSet.Builder()) {
-                claimSetBuilderAction()
-                claim("_sd_hash", sdJwtDigest.value)
-                build()
-            },
-        ).apply { sign(keyBindingSigner) }.serialize()
-        // concatenate the two parts together
-        return "$presentationSdJwt$kbJwt"
     }
 
     private fun holderDebug(s: String) {
@@ -350,7 +317,7 @@ class HolderActor(holderKey: ECKey) {
 class VerifierActor(private val clientId: String, private val whatToDisclose: (Claim) -> Boolean) {
 
     private var lastChallenge: JsonObject? = null
-    private var presentation: SdJwt.Presentation<Jwt, Jwt>? = null
+    private var presentation: SdJwt.Presentation<Jwt>? = null
     fun query(): VerifierQuery = VerifierQuery(
         challenge = VerifierChallenge(
             nonce = Random.nextBytes(10).toString(),
@@ -370,9 +337,9 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: (C
             jwtSignatureVerifier = issuerJwtSignatureVerifier,
             keyBindingVerifier = keyBindingVerifier,
             unverifiedSdJwt = sdJwt,
-        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> ->
+        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims> ->
             presentation =
-                SdJwt.Presentation(presented.jwt.first, presented.disclosures, presented.keyBindingJwt?.first)
+                SdJwt.Presentation(presented.jwt.first, presented.disclosures)
 
             verifierDebug("Presentation accepted with SD Claims:")
         }, onFailure = { exception ->
