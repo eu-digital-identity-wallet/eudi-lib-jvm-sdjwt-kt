@@ -77,8 +77,8 @@ typealias GenerateKeyBindingJwt<JWT, KB_JWT> = (SdJwt.Presentation<JWT, Nothing>
 fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
     generateKeyBindingJwt: GenerateKeyBindingJwt<JWT, KB_JWT>,
     selectivelyDisclose: (Claim) -> Boolean,
-): SdJwt.Presentation<JWT, KB_JWT> =
-    SdJwt.Presentation(
+): SdJwt.Presentation<JWT, KB_JWT> {
+    val sdJwt = SdJwt.Presentation(
         jwt,
         disclosures.filter { disclosure ->
             when (disclosure) {
@@ -87,6 +87,7 @@ fun <JWT, KB_JWT> SdJwt.Issuance<JWT>.present(
             }
         }.toSet(),
         null,
-    ).let {
-        it.withKeyBinding(generateKeyBindingJwt(it))
-    }
+    )
+    val kbJwt = generateKeyBindingJwt(sdJwt)
+    return sdJwt.withKeyBinding(kbJwt)
+}

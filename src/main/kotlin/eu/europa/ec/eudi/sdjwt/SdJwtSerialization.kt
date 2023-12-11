@@ -62,7 +62,7 @@ fun <JWT> SdJwt.Presentation<JWT, Nothing>.serialize(
  * Calculates the [digest][SdJwtDigest] of this [presentation][SdJwt.Presentation].
  *
  * @receiver the SD-JWT for which to calculate the digest
- * @param hashAlgorithm the [HashAlgorithm] to use for the calculation of the digest
+ * @param hashAlgorithm the [HashAlgorithm] to be used for the calculation of the digest
  * @param serializeJwt serialization function for [JWT]
  * @param JWT the type of the JWT the [SdJwt.Presentation] contains
  * @return the calculated digest
