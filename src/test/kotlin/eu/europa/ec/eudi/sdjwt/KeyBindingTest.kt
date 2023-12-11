@@ -279,35 +279,38 @@ class HolderActor(private val holderKey: ECKey) {
     fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
 
-        val issuanceSdJwt = checkNotNull(credentialSdJwt)
-        val jwt = issuanceSdJwt.jwt
-        val disclosures = issuanceSdJwt.disclosures.filter { disclosure ->
-            when (disclosure) {
-                is Disclosure.ArrayElement -> true // TODO Figure out what to do
-                is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
-            }
-        }.toSet()
+        val presentationSdJwt = run {
+            val issuanceSdJwt = checkNotNull(credentialSdJwt)
+            val jwt = issuanceSdJwt.jwt
+            val disclosures = issuanceSdJwt.disclosures.filter { disclosure ->
+                when (disclosure) {
+                    is Disclosure.ArrayElement -> true // TODO Figure out what to do
+                    is Disclosure.ObjectProperty -> verifierQuery.whatToDisclose(disclosure.claim())
+                }
+            }.toSet()
+            SdJwt.Presentation(jwt, disclosures, null).serialize { it }
+        }
 
-        val presentationSdJwt = SdJwt.Presentation(jwt, disclosures, null)
-        val tempSerialize = presentationSdJwt.serialize { it }
-        val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, tempSerialize).getOrThrow()
-        val kbJwt = SignedJWT(
-            JWSHeader.Builder(keyBindingSigningAlgorithm)
-                .type(JOSEObjectType("kb+jwt"))
-                .keyID(holderKey.keyID)
-                .build(),
-            with(JWTClaimsSet.Builder()) {
-                audience(verifierQuery.challenge.aud)
-                claim("nonce", verifierQuery.challenge.nonce)
-                issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
-                claim("_sd_hash", sdJwtDigest.value)
-                build()
-            },
-        ).apply {
-            sign(ECDSASigner(holderKey))
-        }.serialize()
+        val kbJwt = run {
+            val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+            SignedJWT(
+                JWSHeader.Builder(keyBindingSigningAlgorithm)
+                    .type(JOSEObjectType("kb+jwt"))
+                    .keyID(holderKey.keyID)
+                    .build(),
+                with(JWTClaimsSet.Builder()) {
+                    audience(verifierQuery.challenge.aud)
+                    claim("nonce", verifierQuery.challenge.nonce)
+                    issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+                    claim("_sd_hash", sdJwtDigest.value)
+                    build()
+                },
+            ).apply {
+                sign(ECDSASigner(holderKey))
+            }.serialize()
+        }
 
-        return "$tempSerialize$kbJwt"
+        return "$presentationSdJwt$kbJwt"
     }
 
     private fun holderDebug(s: String) {
