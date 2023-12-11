@@ -396,8 +396,7 @@ fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption = JwsS
  * @param signAlgorithm the algorithm to use
  * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
  * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT (presentation) to be enveloped. If it contains [SdJwt.Presentation.keyBindingJwt]
- * it will be removed.
+ * @receiver the SD-JWT (presentation) to be enveloped
  * @return a JWT (not SD-JWT) as described above
  */
 fun <JWT> SdJwt<JWT>.toEnvelopedFormat(
