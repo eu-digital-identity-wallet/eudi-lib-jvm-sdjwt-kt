@@ -47,11 +47,11 @@ and the following disclosures (salt omitted):
 
 ```json 
 [
-  ["...salt...", "street_address", "Schulstr. 12"],
-  ["...salt...", "locality", "Schulpforta"],
-  ["...salt...", "region", "Sachsen-Anhalt"],
-  ["...salt...", "country", "DE"],
-  ["...salt...", "address", {"_sd":["gFWXDV6mggkpsxqL-nHqqM6mIEy5WeBLV1jbz1O5pS0","LjQfgLDVbdIa57m98JIZX9I7_NeCgbmN3uHDg9q6JyY","YFYDdcnUYoWkye82Nk8zSUbG8UAXPYHNddEwI5TVrnk","ceHK1FqGvxZLm8ffvx5LI_us6mLtHMaVEkhlRe_1p-E"]}]
+  ["...salt...","street_address","Schulstr. 12"],
+  ["...salt...","locality","Schulpforta"],
+  ["...salt...","region","Sachsen-Anhalt"],
+  ["...salt...","country","DE"],
+  ["...salt...","address",{"_sd":["gQondEr5yGFkFRGgcrz79J6oCUg2MRl_Zk-rRNuDbw0","j2yFIn_eXU4ppH5WqgRS3SAwwL50USZHOfI3JgXe7E4","mJXm4JuM-fRcog21XYUbPEY7L8O7WLbAmbVWxYpjx54","eJ9fi4cAqh1SJ5hpYkerDgIY_SNuHEQ9_QUqR4f4duw"]}]
 ]
 ```
 

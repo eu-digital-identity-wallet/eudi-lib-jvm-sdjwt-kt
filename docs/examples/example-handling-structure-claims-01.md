@@ -66,16 +66,16 @@ and the following disclosures (salt omitted):
 
 ```json 
 [
-  ["...salt...", "sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c"],
-  ["...salt...", "given_name", "太郎"],
-  ["...salt...", "family_name", "山田"],
-  ["...salt...", "email", "\"unusual email address\"@example.jp"],
-  ["...salt...", "phone_number", "+81-80-1234-5678"],
-  ["...salt...", "birthdate", "1940-01-01"],
-  ["...salt...", "street_address", "東京都港区芝公園４丁目２−８"],
-  ["...salt...", "locality", "東京都"],
-  ["...salt...", "region", "港区"],
-  ["...salt...", "country", "JP"]
+  ["...salt...","sub","6c5c0a49-b589-431d-bae7-219122a9ec2c"],
+  ["...salt...","given_name","太郎"],
+  ["...salt...","family_name","山田"],
+  ["...salt...","email","\"unusual email address\"@example.jp"],
+  ["...salt...","phone_number","+81-80-1234-5678"],
+  ["...salt...","birthdate","1940-01-01"],
+  ["...salt...","street_address","東京都港区芝公園４丁目２−８"],
+  ["...salt...","locality","東京都"],
+  ["...salt...","region","港区"],
+  ["...salt...","country","JP"]
 ]
 ```
 

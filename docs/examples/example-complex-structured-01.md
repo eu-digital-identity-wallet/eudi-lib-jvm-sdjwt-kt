@@ -117,22 +117,22 @@ and the following disclosures (salt omitted):
 
 ```json 
 [
-  ["...salt...", "time", "2012-04-23T18:25Z"],
-  ["...salt...", "verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7"],
-  ["...salt...", "type", "document"],
-  ["...salt...", "method", "pipp"],
-  ["...salt...", "time", "2012-04-22T11:30Z"],
-  ["...salt...", "document", {"type":"idcard","issuer":{"name":"Stadt Augsburg","country":"DE"},"number":"53554554","date_of_issuance":"2010-03-23","date_of_expiry":"2020-03-22"}],
-  ["...salt...", {"_sd":["NTSLpvxHr1_m9gonoaDJHXG3TIhetgM7fEgz1nECej8","W8VB5iRHfsypw9EyuzNxhgOOpmGU8cU1_nObC4fVdTU","TCcNfjugYqyCvTjoJE7FrtUTnC9C1MfqfqdnVNYVStE","Qz4QsaLeCrA-dZNmF30pBbHKvW4hayN819avXRpum2Y"]}],
-  ["...salt...", "given_name", "Max"],
-  ["...salt...", "family_name", "Müller"],
-  ["...salt...", "nationalities", ["DE"]],
-  ["...salt...", "birthdate", "1956-01-28"],
-  ["...salt...", "place_of_birth", {"country":"IS","locality":"Þykkvabæjarklaustur"}],
-  ["...salt...", "address", {"locality":"Maxstadt","postal_code":"12344","country":"DE","street_address":"Weidenstraße 22"}],
-  ["...salt...", "birth_middle_name", "Timotheus"],
-  ["...salt...", "salutation", "Dr."],
-  ["...salt...", "msisdn", "49123456789"]
+  ["...salt...","time","2012-04-23T18:25Z"],
+  ["...salt...","verification_process","f24c6f-6d3f-4ec5-973e-b0d8506f3bc7"],
+  ["...salt...","type","document"],
+  ["...salt...","method","pipp"],
+  ["...salt...","time","2012-04-22T11:30Z"],
+  ["...salt...","document",{"type":"idcard","issuer":{"name":"Stadt Augsburg","country":"DE"},"number":"53554554","date_of_issuance":"2010-03-23","date_of_expiry":"2020-03-22"}],
+  ["...salt...",{"_sd":["OBaGga10nf1m2DW0vWdwD1lBXjivCtSHzGcPnKtyY7s","FGwmPe9a1aWRd6o1NLhgol78e0_2NGbg4jZZAdNRPs0","W2baZYXUByZvX_Ssr-vPxzIANolgTgt7hvxLzS-fh9Y","4teoClbh7XwddDqV1_Rz8DO0vGJOrbhbd6KfWXeMnos"]}],
+  ["...salt...","given_name","Max"],
+  ["...salt...","family_name","Müller"],
+  ["...salt...","nationalities",["DE"]],
+  ["...salt...","birthdate","1956-01-28"],
+  ["...salt...","place_of_birth",{"country":"IS","locality":"Þykkvabæjarklaustur"}],
+  ["...salt...","address",{"locality":"Maxstadt","postal_code":"12344","country":"DE","street_address":"Weidenstraße 22"}],
+  ["...salt...","birth_middle_name","Timotheus"],
+  ["...salt...","salutation","Dr."],
+  ["...salt...","msisdn","49123456789"]
 ]
 ```
 

@@ -16,9 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -57,23 +55,15 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     println("SD-JWT payload")
     f(jwt).also { println(json.encodeToString(it)) }
 
-    println("SD-JWT Disclosures without salt")
-    disclosures.print()
-}
-
-/**
- * Prints these [disclosures array][Disclosure], omitting the salt.
- */
-private fun List<Disclosure>.print() {
-    println(
-        joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") {
-            val (_, name, value) = Disclosure.decode(it.value).getOrThrow()
-            when (name) {
-                null -> "\t[\"...salt...\", $value]"
-                else -> "\t[\"...salt...\", \"$name\", $value]"
-            }
-        },
-    )
+    println("SD-JWT disclosures")
+    disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
+        val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
+        buildJsonArray {
+            add(JsonPrimitive("...salt..."))
+            name?.let { add(JsonPrimitive(it)) }
+            add(value)
+        }.toString().prependIndent("\t")
+    }.run(::println)
 }
 
 fun String.removeNewLine(): String = replace("\n", "")

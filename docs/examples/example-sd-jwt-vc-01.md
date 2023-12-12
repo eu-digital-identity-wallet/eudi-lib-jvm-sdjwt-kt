@@ -91,16 +91,16 @@ and the following disclosures (salt omitted):
 
 ```json 
 [
-  ["...salt...", "first_name", "Erika"],
-  ["...salt...", "family_name", "Mustermann"],
-  ["...salt...", "birth_family_name", "Schmidt"],
-  ["...salt...", "birthdate", "1973-01-01"],
-  ["...salt...", "DE"],
-  ["...salt...", "nationalities", [{"...":"DC12c3uSkNwIMTGJW0NfmV7Z3dOFgZq5_mp2uSedWbY"}]],
-  ["...salt...", "address", {"postal_code":"12345","locality":"Irgendwo","street_address":"Sonnenstrasse 23","country_code":"DE"}],
-  ["...salt...", "is_over_18", true],
-  ["...salt...", "is_over_21", true],
-  ["...salt...", "is_over_65", false]
+  ["...salt...","first_name","Erika"],
+  ["...salt...","family_name","Mustermann"],
+  ["...salt...","birth_family_name","Schmidt"],
+  ["...salt...","birthdate","1973-01-01"],
+  ["...salt...","DE"],
+  ["...salt...","nationalities",[{"...":"8kyx5bXn5btWMQ_7F__8o4pIZCkmZI9orMCOzG5kozM"}]],
+  ["...salt...","address",{"postal_code":"12345","locality":"Irgendwo","street_address":"Sonnenstrasse 23","country_code":"DE"}],
+  ["...salt...","is_over_18",true],
+  ["...salt...","is_over_21",true],
+  ["...salt...","is_over_65",false]
 ]
 ```
 

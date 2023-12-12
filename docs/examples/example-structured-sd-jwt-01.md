@@ -52,10 +52,10 @@ and the following disclosures (salt omitted):
 
 ```json 
 [
-  ["...salt...", "street_address", "Schulstr. 12"],
-  ["...salt...", "locality", "Schulpforta"],
-  ["...salt...", "region", "Sachsen-Anhalt"],
-  ["...salt...", "country", "DE"]
+  ["...salt...","street_address","Schulstr. 12"],
+  ["...salt...","locality","Schulpforta"],
+  ["...salt...","region","Sachsen-Anhalt"],
+  ["...salt...","country","DE"]
 ]
 ```
 
