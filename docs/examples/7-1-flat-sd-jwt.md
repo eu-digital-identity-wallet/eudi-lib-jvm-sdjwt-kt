@@ -1,6 +1,6 @@
-# Option 1: Flat SD-JWT
+# Example: Flat SD-JWT
 
-Check [specification Option 1: Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-option-1-flat-sd-jwt)
+Check [Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-flat-sd-jwt)
 
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` is selectively disclosed as a whole.

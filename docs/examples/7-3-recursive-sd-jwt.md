@@ -1,6 +1,6 @@
-# Option 3: SD-JWT with Recursive Disclosures
+# Example: SD-JWT with Recursive Disclosures
 
-Check [specification Option 3: SD-JWT with Recursive Disclosures](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-option-3-sd-jwt-with-recurs)
+Check [SD-JWT with Recursive Disclosures](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-sd-jwt-with-recursi)
 
 ```kotlin
 sdJwt {

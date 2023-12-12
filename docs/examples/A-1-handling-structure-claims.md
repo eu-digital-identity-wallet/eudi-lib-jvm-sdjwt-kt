@@ -1,6 +1,6 @@
 # Example 2a: Handling Structured Claims
 
-Description of the example in the [specification Example 2a: Handling Structured Claims](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html#name-example-2-handling-structur)
+Description of the example in the [Example 2a: Handling Structured Claims](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-2-handling-structur)
 
 ```json
 {
@@ -31,13 +31,15 @@ sdJwt {
         put("family_name", "山田")
         put("email", "\"unusual email address\"@example.jp")
         put("phone_number", "+81-80-1234-5678")
-        putJsonObject("address") {
+        put("birthdate", "1940-01-01")
+    }
+    structured("address") {
+        sd {
             put("street_address", "東京都港区芝公園４丁目２−８")
             put("locality", "東京都")
             put("region", "港区")
             put("country", "JP")
         }
-        put("birthdate", "1940-01-01")
     }
 }
 ```
@@ -45,19 +47,26 @@ Produces
 
 ```json
 {
-    "iss": "https://example.com/issuer",
-    "iat": 1516239022,
-    "exp": 1735689661,
+  "iss": "https://example.com/issuer",
+  "iat": 1516239022,
+  "exp": 1735689661,
+  "_sd": [
+    "FnOYwFlQsWlhkMp7NCvRZwDTQl953A90tbRXXudxlB4",
+    "XOgzXSbiM9HrqUQhrA9T0mJXYGcwkVopAzTCc-9_EdM",
+    "XoqRBRWE_kK8cKB3tlkmGgI-lbBv5hd12RbLnNJ2hH0",
+    "EiZvIeplqObTavuPPQHRuTWT8hv5IqreMZbg0-qxl5Y",
+    "ck-1SrTpkVP0BoMZXADqxn7ZTqUX_fd5cVnQsqB_RV0",
+    "pXlMcfISGAlQV7Gashkz349N77fOhGkEaFC9a3b4BVE"
+  ],
+  "address": {
     "_sd": [
-        "1nqCcdyEBs7CeDF9DAmlv6vH_Bxg2oijdUXrEc1GXsk",
-        "Pc-TFtBmjxfSYFE8KrjFL2qdRi1TYVF43Phw-SkxQTI",
-        "U279L5sFAupFzXkf0z1xqFUVF9R-vEFB2XeS_Nr56G0",
-        "aDFSxGelDNsGKK111qXIF6TmYnWYCT8jk48yfNFocQA",
-        "itcuLF2Ijg4jhWQL39oByyrkk2rihcXz0QVSj8rAPzU",
-        "kGPUPFd7Dg1mitLVVKLfD0miziropwSs575LBkRdz8o",
-        "yXLGrdEpVc6H7FtLfuQ_Ra82XKqMFpD61ZK9-97Hfd4"
-    ],
-    "_sd_alg": "sha-256"
+      "m60ZZsNmPOvp2tkDgAatj97C37MuQwyeer_2GKliQXo",
+      "SKPxKDtk4jaSjH3VjLiLQ6_e7mveKXqJ4u3XoSHBaLI",
+      "fetPHIZDUxo5PxZ--xh1rYi8JlqrE4taXQobq-GZCW8",
+      "LKHhDX8HyloRo73wHUuksowsc9K5m6KOXtB-k23pptw"
+    ]
+  },
+  "_sd_alg": "sha-256"
 }
 ```
 

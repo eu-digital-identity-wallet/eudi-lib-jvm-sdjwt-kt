@@ -238,12 +238,12 @@ All examples assume that we have the following claim set
 }
 ```
 
-- [Option 1: Flat SD-JWT](docs/examples/option1-flat-sd-jwt.md)
-- [Option 2: Structured SD-JWT](docs/examples/option2-structured-sd-jwt.md)
-- [Option 3: SD-JWT with Recursive Disclosures](docs/examples/option3-recursive-sd-jwt.md)
-- [Example 2a: Handling Structured Claims](docs/examples/example2a-handling-structure-claims.md)
-- [Example 3: Complex Structured SD-JWT](docs/examples/example3-complex-structured.md)
-- [Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example4a-sd-jwt-based-vc.md)
+- [Example: Flat SD-JWT](docs/examples/7-1-flat-sd-jwt)
+- [Example: Structured SD-JWT](docs/examples/7-2-structured-sd-jwt)
+- [Example: SD-JWT with Recursive Disclosures](docs/examples/7-3-recursive-sd-jwt)
+- [Example 2: Handling Structured Claims](docs/examples/A-1-handling-structure-claims)
+- [Example 3: Complex Structured SD-JWT](docs/examples/A-2-complex-structured)
+- [Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/A-3-sd-jwt-based-vc)
 
 ## How to contribute
 
