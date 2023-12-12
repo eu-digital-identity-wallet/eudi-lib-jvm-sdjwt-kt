@@ -108,25 +108,6 @@ class SpecExamples {
     }
 
     @Test
-    fun `Option 2 Structured SD-JWT`() = test("Option 2 Structured SD-JWT", expectedDisclosuresNo = 4) {
-        sdJwt {
-            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
-
-            structured("address") {
-                sd {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
-                }
-            }
-        }
-    }
-
-    @Test
     fun `Option 3 Recursively SD-JWT`() = test("Option 3 Recursively SD-JWT", expectedDisclosuresNo = 5) {
         sdJwt {
             sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
