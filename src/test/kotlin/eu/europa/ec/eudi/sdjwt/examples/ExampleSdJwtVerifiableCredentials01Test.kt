@@ -18,10 +18,10 @@ package eu.europa.ec.eudi.sdjwt.examples
 import eu.europa.ec.eudi.sdjwt.assertThat
 import kotlin.test.*
 
-class ExampleHandlingStructuredClaims01Test {
+class ExampleSdJwtVerifiableCredentials01Test {
 
     @Test
-    fun testExampleHandlingStructuredClaims01() {
-        ExampleHandlingStructuredClaims01.sdObject.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 0, 10)
+    fun testExampleSdJwtVerifiableCredentials01() {
+        ExampleSdJwtVerifiableCredentials01.sdObject.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 0, 10)
     }
 }
