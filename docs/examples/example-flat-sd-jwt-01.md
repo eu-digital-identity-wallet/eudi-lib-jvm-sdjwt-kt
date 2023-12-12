@@ -2,7 +2,7 @@
 
 # Example 1: Flat SD-JWT
 
-Check [specification Option 1: Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-1-sd-jwt)
+Check [specification Example 1: Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-1-sd-jwt)
 
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT.
