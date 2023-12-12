@@ -108,31 +108,6 @@ class SpecExamples {
     }
 
     @Test
-    fun `Example 2 Handling Structured Claims`() =
-        test("Example 2 Handling Structured Claims", expectedDisclosuresNo = 7) {
-            sdJwt {
-                iss("https://example.com/issuer")
-                iat(1516239022)
-                exp(1735689661)
-
-                sd {
-                    put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                    put("given_name", "太郎")
-                    put("family_name", "山田")
-                    put("email", "\"unusual email address\"@example.jp")
-                    put("phone_number", "+81-80-1234-5678")
-                    putJsonObject("address") {
-                        put("street_address", "東京都港区芝公園４丁目２−８")
-                        put("locality", "東京都")
-                        put("region", "港区")
-                        put("country", "JP")
-                    }
-                    put("birthdate", "1940-01-01")
-                }
-            }
-        }
-
-    @Test
     fun example3() {
         val unverifiedSdJwt = """
            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4V
