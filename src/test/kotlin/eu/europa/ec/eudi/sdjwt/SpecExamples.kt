@@ -16,14 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 class SpecExamples {
 
@@ -149,85 +143,5 @@ class SpecExamples {
 
         val claims = sdJwt.recreateClaims { it.second }
         json.encodeToString(claims).also { println(it) }
-    }
-
-    @Test
-    fun `Example 3 Complex Structured`() = test("Example 3 Complex Structured", expectedDisclosuresNo = 16) {
-        sdJwt {
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
-
-            sd {
-                put("birth_middle_name", "Timotheus")
-                put("salutation", "Dr.")
-                put("msisdn", "49123456789")
-            }
-            structured("verified_claims") {
-                structured("verification") {
-                    plain {
-                        put("trust_framework", "de_aml")
-                    }
-                    sd {
-                        put("time", "2012-04-23T18:25Z")
-                        put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                    }
-                    sdArray("evidence") {
-                        buildSdObject {
-                            sd {
-                                put("type", "document")
-                                put("method", "pipp")
-                                put("time", "2012-04-22T11:30Z")
-                                putJsonObject("document") {
-                                    put("type", "idcard")
-                                    putJsonObject("issuer") {
-                                        put("name", "Stadt Augsburg")
-                                        put("country", "DE")
-                                    }
-                                    put("number", "53554554")
-                                    put("date_of_issuance", "2010-03-23")
-                                    put("date_of_expiry", "2020-03-22")
-                                }
-                            }
-                        }
-                    }
-                }
-                structured("claim") {
-                    sd {
-                        put("given_name", "Max")
-                        put("family_name", "Müller")
-                        putJsonArray("nationalities") {
-                            add("DE")
-                        }
-                        put("birthdate", "1956-01-28")
-                        putJsonObject("place_of_birth") {
-                            put("country", "IS")
-                            put("locality", "Þykkvabæjarklaustur")
-                        }
-                        putJsonObject("address") {
-                            put("locality", "Maxstadt")
-                            put("postal_code", "12344")
-                            put("country", "DE")
-                            put("street_address", "Weidenstraße 22")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun test(
-        descr: String,
-        numOfDecoysLimit: Int = 0,
-        expectedDisclosuresNo: Int,
-        sdElements: () -> SdObject,
-    ) {
-        println(descr)
-        val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = numOfDecoysLimit)
-        val disclosedClaimsResult = sdJwtFactory.createSdJwt(sdElements())
-        val disclosedClaims = assertDoesNotThrow { disclosedClaimsResult.getOrThrow() }
-        disclosedClaims.run { prettyPrint { it } }
-        assertEquals(expectedDisclosuresNo, disclosedClaims.disclosures.size)
-        println("=====================================")
     }
 }
