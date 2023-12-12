@@ -107,4 +107,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVerifiableCredentials01.kt).
 
-<!--- TEST ExampleSdJwtVerifiableCredentials01.sdObject.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 0, 10) -->
+<!--- TEST ExampleSdJwtVerifiableCredentials01.sdObject.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 10) -->

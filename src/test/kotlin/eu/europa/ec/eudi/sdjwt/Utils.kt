@@ -89,3 +89,6 @@ internal fun SdObject.assertThat(
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }
+
+internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) =
+    assertThat(description, 0, expectedDisclosuresNo)
