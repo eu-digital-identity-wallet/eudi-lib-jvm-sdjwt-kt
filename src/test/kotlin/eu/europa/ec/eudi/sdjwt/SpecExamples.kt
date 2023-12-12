@@ -20,54 +20,12 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SpecExamples {
-
-    @Test
-    fun `Example1 SD-JWT`() = test("Example 1 SD-JWT", expectedDisclosuresNo = 10) {
-        sdJwt {
-            sub("user_42")
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
-
-            sd {
-                put("given_name", "John")
-                put("family_name", "Doe")
-                put("email", "johndoe@example.com")
-                put("phone_number", "+1-202-555-0101")
-                put("phone_number_verified", true)
-                putJsonObject("address") {
-                    put("street_address", "123 Main St")
-                    put("locality", "Anytown")
-                    put("region", "Anystate")
-                    put("country", "US")
-                }
-                put("birthdate", "1940-01-01")
-                put("updated_at", 1570000000)
-            }
-
-            sdArray("nationalities") {
-                sd("US")
-                sd("DE")
-            }
-
-            plain {
-                putJsonObject("cnf") {
-                    putJsonObject("jwk") {
-                        put("kty", "EC")
-                        put("crv", "P-256")
-                        put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                        put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-                    }
-                }
-            }
-        }
-    }
 
     @Test
     fun `Example 1 presentation of all claims`() {
@@ -147,25 +105,6 @@ class SpecExamples {
             onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
             onFailure = { fail(it) },
         )
-    }
-
-    @Test
-    fun `Option 1 Flat SD-JWT`() = test("Option 1 Flat SD-JWT", expectedDisclosuresNo = 1) {
-        sdJwt {
-            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
-
-            sd {
-                putJsonObject("address") {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
-                }
-            }
-        }
     }
 
     @Test

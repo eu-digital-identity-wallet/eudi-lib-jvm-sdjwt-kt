@@ -19,6 +19,7 @@ plugins {
     alias(libs.plugins.sonarqube)
     alias(libs.plugins.dependencycheck)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.kotlinx.knit)
 }
 
 repositories {
@@ -43,6 +44,14 @@ kotlin {
             optIn = listOf("kotlin.io.encoding.ExperimentalEncodingApi")
         }
     }
+}
+
+knit {
+    rootDir = project.rootDir
+    files = fileTree(project.rootDir) {
+        include("docs/examples/**/*.md")
+    }
+    defaultLineSeparator = "\n"
 }
 
 spotless {
@@ -90,7 +99,12 @@ tasks.withType<DokkaTask>().configureEach {
             // contains descriptions for the module and the packages
             includes.from("Module.md")
 
-            documentedVisibilities.set(setOf(DokkaConfiguration.Visibility.PUBLIC, DokkaConfiguration.Visibility.PROTECTED))
+            documentedVisibilities.set(
+                setOf(
+                    DokkaConfiguration.Visibility.PUBLIC,
+                    DokkaConfiguration.Visibility.PROTECTED,
+                ),
+            )
 
             val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URL("${Meta.BASE_URL}/tree/$it/src") }
             remoteSourceUrl

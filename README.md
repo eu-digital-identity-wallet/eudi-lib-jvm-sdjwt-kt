@@ -238,7 +238,7 @@ All examples assume that we have the following claim set
 }
 ```
 
-- [Option 1: Flat SD-JWT](docs/examples/option1-flat-sd-jwt.md)
+- [Example 1: Flat SD-JWT](docs/examples/example-flat-sd-jwt-01.md)
 - [Option 2: Structured SD-JWT](docs/examples/option2-structured-sd-jwt.md)
 - [Option 3: SD-JWT with Recursive Disclosures](docs/examples/option3-recursive-sd-jwt.md)
 - [Example 2a: Handling Structured Claims](docs/examples/example2a-handling-structure-claims.md)
