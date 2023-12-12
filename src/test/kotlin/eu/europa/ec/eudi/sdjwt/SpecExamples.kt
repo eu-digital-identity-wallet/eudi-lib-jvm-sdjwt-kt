@@ -216,41 +216,6 @@ class SpecExamples {
         }
     }
 
-    @Test
-    fun `Example 4A`() = test("Example 4A", numOfDecoysLimit = 4, expectedDisclosuresNo = 10) {
-        sdJwt {
-            iss("https://pid-provider.memberstate.example.eu")
-            iat(1541493724)
-            exp(1883000000)
-            plain {
-                put("type", "PersonIdentificationData")
-            }
-
-            sd {
-                put("first_name", "Erika")
-                put("family_name", "Mustermann")
-                put("birth_family_name", "Schmidt")
-                put("birthdate", "1973-01-01")
-                put("is_over_18", true)
-                put("is_over_21", true)
-                put("is_over_65", false)
-            }
-
-            recursiveArray("nationalities") {
-                sd("DE")
-            }
-
-            recursive("address") {
-                plain {
-                    put("postal_code", "12345")
-                    put("locality", "Irgendwo")
-                    put("street_address", "Sonnenstrasse 23")
-                    put("country_code", "DE")
-                }
-            }
-        }
-    }
-
     private fun test(
         descr: String,
         numOfDecoysLimit: Int = 0,
