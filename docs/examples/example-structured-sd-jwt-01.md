@@ -61,4 +61,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleStructuredSdJwt01.kt).
 
-<!--- TEST ExampleStructuredSdJwt01.sdObject.assertThat(description = "Example 2: Structured SD-JWT", expectedDisclosuresNo = 4) -->
+<!--- TEST ExampleStructuredSdJwt01.sdObject.assertThat("Example 2: Structured SD-JWT", 0, 4) -->

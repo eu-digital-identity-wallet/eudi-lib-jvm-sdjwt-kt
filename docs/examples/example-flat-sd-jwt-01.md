@@ -114,4 +114,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleFlatSdJwt01.kt).
 
-<!--- TEST ExampleFlatSdJwt01.sdObject.assertThat(description = "Example 1: Flat SD-JWT", expectedDisclosuresNo = 10) -->
+<!--- TEST ExampleFlatSdJwt01.sdObject.assertThat("Example 1: Flat SD-JWT", 0, 10) -->

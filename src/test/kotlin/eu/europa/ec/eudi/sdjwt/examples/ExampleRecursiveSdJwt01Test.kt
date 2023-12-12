@@ -22,6 +22,6 @@ class ExampleRecursiveSdJwt01Test {
 
     @Test
     fun testExampleRecursiveSdJwt01() {
-        ExampleRecursiveSdJwt01.sdObject.assertThat(description = "Example 3: Recursive SD-JWT", expectedDisclosuresNo = 5)
+        ExampleRecursiveSdJwt01.sdObject.assertThat("Example 3: Recursive SD-JWT", 0, 5)
     }
 }

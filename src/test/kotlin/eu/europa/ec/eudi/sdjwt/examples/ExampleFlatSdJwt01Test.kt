@@ -22,6 +22,6 @@ class ExampleFlatSdJwt01Test {
 
     @Test
     fun testExampleFlatSdJwt01() {
-        ExampleFlatSdJwt01.sdObject.assertThat(description = "Example 1: Flat SD-JWT", expectedDisclosuresNo = 10)
+        ExampleFlatSdJwt01.sdObject.assertThat("Example 1: Flat SD-JWT", 0, 10)
     }
 }
