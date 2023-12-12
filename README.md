@@ -241,7 +241,7 @@ All examples assume that we have the following claim set
 - [Example 1: Flat SD-JWT](docs/examples/example-flat-sd-jwt-01.md)
 - [Example 2: Structured SD-JWT](docs/examples/example-structured-sd-jwt-01.md)
 - [Example 3: SD-JWT with Recursive Disclosures](docs/examples/example-recursive-sd-jwt-01.md)
-- [Example 2a: Handling Structured Claims](docs/examples/example2a-handling-structure-claims.md)
+- [Appending A-1 - Example 2: Handling Structured Claims](docs/examples/example-handling-structure-claims-01.md)
 - [Example 3: Complex Structured SD-JWT](docs/examples/example3-complex-structured.md)
 - [Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example4a-sd-jwt-based-vc.md)
 
