@@ -1,3 +1,5 @@
+<!--- TEST_NAME ExampleReadMeTest01 -->
+
 # EUDI SD-JWT
 
 :heavy_exclamation_mark: **Important!** Before you proceed, please read
@@ -30,7 +32,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 
 ## Use cases supported
 
-- [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT 
+- [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT issued by an Issuer
 - [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT in simple or in Enveloped Format
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
@@ -51,142 +53,17 @@ In the example bellow, Issuer decides to issue an SD-JWT as follows:
   disclose every subclaim of `address`
 - Uses his RSA key pair to sign the SD-JWT
 
-```kotlin
-import com.nimbusds.jose.crypto.RSASigner
-import com.nimbusds.jose.jwk.RSAKey
+<!--- INCLUDE
+import com.nimbusds.jose.*
+import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
-
-val issuerKeyPair: RSAKey = TODO("Omitted")
-val sdJwtSpec = sdJwt {
-  plain {
-      sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-      iss("https://example.com/issuer")
-      iat(1516239022)
-      exp(1735689661)
-  }
-  structured("address") {
-    sd {
-      put("street_address", "Schulstr. 12")
-      put("locality", "Schulpforta")
-      put("region", "Sachsen-Anhalt")
-      put("country", "DE")
-    }
-  }
-}
-val issuer = SdJwtIssuer.nimbus(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-val sdJwt: String = issuer.issue(sdJwtSpec).getOrThrow().serialize()
-```
-
-Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
-issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
-
-## Holder Verification
-
-In this case, the SD-JWT is expected to be in serialized form.
-
-`Holder` must know:
-
-- the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
+import kotlinx.serialization.json.*
+-->
 
 ```kotlin
-import com.nimbusds.jose.crypto.ECDSAVerifier
-import com.nimbusds.jose.jwk.*
-import eu.europa.ec.eudi.sdjwt.*
-
-val unverifiedSdJwt: String = "..."
-val issuerPubKey: ECPublicKey = TODO("Omitted")
-val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
-
-val issued: SdJwt.Issuance<JwtAndClaims> =
-  SdJwtVerifier.verifyIssuance(
-    jwtSignatureVerifier = jwtSignatureVerifier,
-    unverifiedSdJwt = unverifiedSdJwt
-  ).getOrThrow()
-val (jwtAndClaims, disclosures) = issued
-```
-
-## Presentation Verification
-
-### In simple (not enveloped) format
-
-In this case, the SD-JWT is expected to be in Combined Presentation format.
-Verifier should know the public key of the Issuer and the algorithm used by the Issuer
-to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
-know a how the public key of the Holder was included in the SD-JWT and which algorithm
-the Holder used to sign the `Key Binding JWT`
-
-```kotlin
-import eu.europa.ec.eudi.sdjwt.*
-import com.nimbusds.jose.jwk.*
-import com.nimbusds.jose.crypto.ECDSAVerifier
-
-val unverifiedSdJwt: String = "..."
-val issuerPubKey: ECPublicKey = TODO("Omitted")
-val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
-
-//
-// The following demonstrates verification of presentation
-// without Key Binding JWT
-//
-val sdJwt: SdJwt.Presentation<JwtAndClaims, JwtAndClaims> =
-    SdJwtVerifier.verifyPresentation(
-      jwtSignatureVerifier = jwtSignatureVerifier,
-      keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
-      unverifiedSdJwt = unverifiedSdJwt
-    ).getOrThrow()
-
-```
-
-Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
-presentation scenario which includes key binding
-
-### In enveloped format
-
-In this case, the SD-JWT is expected to be in envelope format.
-Verifier should know
-- the public key of the Issuer and the algorithm used by the Issuer to sign the SD-JWT. 
-- the public key and the signing algorithm used by the Holder to sign the envelope JWT, since the envelope acts 
-  like a proof of possession (replacing the key binding JWT) 
-
-
-```kotlin
-import com.nimbusds.jose.crypto.ECDSAVerifier
-import com.nimbusds.jose.jwk.*
-import eu.europa.ec.eudi.sdjwt.*
-import java.time.Clock
-import java.time.Duration
-
-val unverifiedEnvelopeJwt: String = "..."
-// This is the SD-JWT issuer's key
-val issuerPubKey: ECPublicKey = TODO("Omitted")
-val jwtSignatureVerifier = ECDSAVerifier(issuerPubKey).asJwtVerifier()
-// This is the envelope JWT issuer (the holder) key 
-val holderPubKey: ECPublicKey = TODO("Omitted")
-val envelopeJwtVerifier = ECDSAVerifier(holderPubKey).asJwtVerifier()
-
-val sdJwt : SdJwt.Presentation<JwtAndClaims, Nothing> = 
-    SdJwtVerifier.verifyEnvelopedPresentation(
-        sdJwtSignatureVerifier = jwtSignatureVerifier,
-        envelopeJwtVerifier = envelopeJwtVerifier,
-        clock = Clock.systemDefaultZone(),
-        iatOffset = Duration.ofSeconds(10),
-        expectedAudience = "verifier's client id",
-        unverifiedEnvelopeJwt
-    ).getOrThrow()
-```
-
-## Recreate original claims
-
-Given an `SdJwt`, either issuance or presentation, the original claims used to produce the SD-JWT can be
-recreated. This includes the claims that are always disclosed (included in the JWT part of the SD-JWT) having
-the digests replaced by selectively disclosable claims found in disclosures.
-
-```kotlin
-
-val iss = "Issuer"
-val issuerKeyPair: RSAKey = TODO("Omitted")
-val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
-  signedSdJwt(signer = RSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+val issuedSdJwt: String = run {
+    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+    val sdJwtSpec = sdJwt {
         plain {
             sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
             iss("https://example.com/issuer")
@@ -202,23 +79,186 @@ val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
             }
         }
     }
-val claims: Claims = sdJwt.recreateClaims { jwt -> jwt.asClaims() }
+    val issuer = SdJwtIssuer.nimbus(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+    issuer.issue(sdJwtSpec).getOrThrow().serialize()
+}
 ```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssueSdJw01.kt).
+
+<!--- TEST println(issuedSdJwt) -->
+
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
+issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
+
+## Holder Verification
+
+In this case, the SD-JWT is expected to be in serialized form.
+
+`Holder` must know:
+
+- the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
+
+<!--- INCLUDE
+import com.nimbusds.jose.crypto.*
+import eu.europa.ec.eudi.sdjwt.*
+-->
+
+```kotlin
+val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = run {
+    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+
+    val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
+    SdJwtVerifier.verifyIssuance(
+        jwtSignatureVerifier = jwtSignatureVerifier,
+        unverifiedSdJwt = unverifiedIssuanceSdJwt,
+    ).getOrThrow()
+}
+```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssuanceSdJwtVerification01.kt).
+
+<!--- TEST verifiedIssuanceSdJwt.prettyPrint { it.second } -->
+
+## Presentation Verification
+
+### In simple (not enveloped) format
+
+In this case, the SD-JWT is expected to be in Combined Presentation format.
+Verifier should know the public key of the Issuer and the algorithm used by the Issuer
+to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
+know a how the public key of the Holder was included in the SD-JWT and which algorithm
+the Holder used to sign the `Key Binding JWT`
+
+<!--- INCLUDE
+import com.nimbusds.jose.crypto.*
+import eu.europa.ec.eudi.sdjwt.*
+-->
+
+```kotlin
+val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
+    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+
+    val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
+    SdJwtVerifier.verifyPresentation(
+        jwtSignatureVerifier = jwtSignatureVerifier,
+        keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
+        unverifiedSdJwt = unverifiedPresentationSdJwt,
+    ).getOrThrow()
+}
+```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwtVerification01.kt).
+
+<!--- TEST verifiedPresentationSdJwt.prettyPrint { it.second } -->
+
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
+presentation scenario which includes key binding
+
+### In enveloped format
+
+In this case, the SD-JWT is expected to be in envelope format.
+Verifier should know
+- the public key of the Issuer and the algorithm used by the Issuer to sign the SD-JWT.
+- the public key and the signing algorithm used by the Holder to sign the envelope JWT, since the envelope acts
+  like a proof of possession (replacing the key binding JWT)
+
+<!--- INCLUDE
+import com.nimbusds.jose.crypto.*
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+import java.time.*
+import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaDuration
+-->
+
+```kotlin
+val verifiedEnvelopedSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
+    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+    val issuerSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+
+    val holderKeyPair = loadRsaKey("/exampleHolderKey.json")
+    val holderSignatureVerifier = RSASSAVerifier(holderKeyPair).asJwtVerifier()
+        .and { claims ->
+            claims["nonce"] == JsonPrimitive("nonce")
+        }
+
+    val unverifiedEnvelopedSdJwt = loadJwt("/exampleEnvelopedSdJwt.txt")
+
+    SdJwtVerifier.verifyEnvelopedPresentation(
+        sdJwtSignatureVerifier = issuerSignatureVerifier,
+        envelopeJwtVerifier = holderSignatureVerifier,
+        clock = Clock.systemDefaultZone(),
+        iatOffset = 3650.days.toJavaDuration(),
+        expectedAudience = "verifier",
+        unverifiedEnvelopeJwt = unverifiedEnvelopedSdJwt,
+    ).getOrThrow()
+}
+```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleEnvelopedPresentationSdJwtVerification01.kt).
+
+<!--- TEST verifiedEnvelopedSdJwt.prettyPrint { it.second } -->
+
+## Recreate original claims
+
+Given an `SdJwt`, either issuance or presentation, the original claims used to produce the SD-JWT can be
+recreated. This includes the claims that are always disclosed (included in the JWT part of the SD-JWT) having
+the digests replaced by selectively disclosable claims found in disclosures.
+
+<!--- INCLUDE
+import com.nimbusds.jose.*
+import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.jwk.*
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
+-->
+
+```kotlin
+val claims: Claims = run {
+    val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
+    val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
+        signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+            plain {
+                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                iss("https://example.com/issuer")
+                iat(1516239022)
+                exp(1735689661)
+            }
+            structured("address") {
+                sd {
+                    put("street_address", "Schulstr. 12")
+                    put("locality", "Schulpforta")
+                    put("region", "Sachsen-Anhalt")
+                    put("country", "DE")
+                }
+            }
+        }
+    sdJwt.recreateClaims { jwt -> jwt.jwtClaimsSet.asClaims() }
+}
+```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleRecreateClaims01.kt).
+
+<!--- TEST println(claims) -->
 
 The claims contents would be
 
 ```json
 {
   "sub": "6c5c0a49-b589-431d-bae7-219122a9ec2c",
-  "iss": "https://example.com/issuer",
-  "iat": 1516239022,
-  "exp": 1735689661,
   "address": {
     "street_address": "Schulstr. 12",
     "locality": "Schulpforta",
     "region": "Sachsen-Anhalt",
     "country": "DE"
-  }
+  },
+  "iss": "https://example.com/issuer",
+  "exp": 1735689661,
+  "iat": 1516239022
 }
 ```
 

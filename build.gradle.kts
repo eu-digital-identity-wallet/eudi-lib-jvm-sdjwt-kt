@@ -50,6 +50,7 @@ knit {
     rootDir = project.rootDir
     files = fileTree(project.rootDir) {
         include("docs/examples/**/*.md")
+        include("README.md")
     }
     defaultLineSeparator = "\n"
 }

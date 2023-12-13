@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.jwk.RSAKey
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
@@ -82,3 +83,9 @@ internal fun SdObject.assertThat(
 
 internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) =
     assertThat(description, 0, expectedDisclosuresNo)
+
+internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
+
+internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
+
+internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()
