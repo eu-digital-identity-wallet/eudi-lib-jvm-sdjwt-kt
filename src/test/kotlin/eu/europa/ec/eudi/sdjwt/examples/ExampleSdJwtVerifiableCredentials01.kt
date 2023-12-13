@@ -18,48 +18,46 @@ package eu.europa.ec.eudi.sdjwt.examples
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.json.*
 
-object ExampleSdJwtVerifiableCredentials01 {
-    val sdObject =
-        sdJwt {
-            iss("https://pid-provider.memberstate.example.eu")
-            iat(1541493724)
-            exp(1883000000)
+val sdJwtVc =
+    sdJwt {
+        iss("https://pid-provider.memberstate.example.eu")
+        iat(1541493724)
+        exp(1883000000)
 
-            plain {
-                put("type", "PersonIdentificationData")
+        plain {
+            put("type", "PersonIdentificationData")
+        }
+
+        sd {
+            put("first_name", "Erika")
+            put("family_name", "Mustermann")
+            put("birth_family_name", "Schmidt")
+            put("birthdate", "1973-01-01")
+
+            putJsonObject("address") {
+                put("postal_code", "12345")
+                put("locality", "Irgendwo")
+                put("street_address", "Sonnenstrasse 23")
+                put("country_code", "DE")
             }
 
-            sd {
-                put("first_name", "Erika")
-                put("family_name", "Mustermann")
-                put("birth_family_name", "Schmidt")
-                put("birthdate", "1973-01-01")
+            put("is_over_18", true)
+            put("is_over_21", true)
+            put("is_over_65", false)
+        }
 
-                putJsonObject("address") {
-                    put("postal_code", "12345")
-                    put("locality", "Irgendwo")
-                    put("street_address", "Sonnenstrasse 23")
-                    put("country_code", "DE")
-                }
+        recursiveArray("nationalities") {
+            sd("DE")
+        }
 
-                put("is_over_18", true)
-                put("is_over_21", true)
-                put("is_over_65", false)
-            }
-
-            recursiveArray("nationalities") {
-                sd("DE")
-            }
-
-            plain {
-                putJsonObject("cnf") {
-                    putJsonObject("jwk") {
-                        put("kty", "EC")
-                        put("crv", "P-256")
-                        put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                        put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-                    }
+        plain {
+            putJsonObject("cnf") {
+                putJsonObject("jwk") {
+                    put("kty", "EC")
+                    put("crv", "P-256")
+                    put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                    put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
                 }
             }
         }
-}
+    }

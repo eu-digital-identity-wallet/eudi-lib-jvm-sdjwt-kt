@@ -18,68 +18,66 @@ package eu.europa.ec.eudi.sdjwt.examples
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.serialization.json.*
 
-object ExampleComplexStructured01 {
-    val sdObject =
-        sdJwt {
-            iss("https://issuer.example.com")
-            iat(1683000000)
-            exp(1883000000)
+val complexStructuredSdJwt =
+    sdJwt {
+        iss("https://issuer.example.com")
+        iat(1683000000)
+        exp(1883000000)
 
-            structured("verified_claims") {
-                structured("verification") {
-                    sd {
-                        put("time", "2012-04-23T18:25Z")
-                        put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                    }
-                    plain {
-                        put("trust_framework", "de_aml")
-                    }
-                    sdArray("evidence") {
-                        buildSdObject {
-                            sd {
-                                put("type", "document")
-                                put("method", "pipp")
-                                put("time", "2012-04-22T11:30Z")
-                                putJsonObject("document") {
-                                    put("type", "idcard")
-                                    putJsonObject("issuer") {
-                                        put("name", "Stadt Augsburg")
-                                        put("country", "DE")
-                                    }
-                                    put("number", "53554554")
-                                    put("date_of_issuance", "2010-03-23")
-                                    put("date_of_expiry", "2020-03-22")
+        structured("verified_claims") {
+            structured("verification") {
+                sd {
+                    put("time", "2012-04-23T18:25Z")
+                    put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
+                }
+                plain {
+                    put("trust_framework", "de_aml")
+                }
+                sdArray("evidence") {
+                    buildSdObject {
+                        sd {
+                            put("type", "document")
+                            put("method", "pipp")
+                            put("time", "2012-04-22T11:30Z")
+                            putJsonObject("document") {
+                                put("type", "idcard")
+                                putJsonObject("issuer") {
+                                    put("name", "Stadt Augsburg")
+                                    put("country", "DE")
                                 }
+                                put("number", "53554554")
+                                put("date_of_issuance", "2010-03-23")
+                                put("date_of_expiry", "2020-03-22")
                             }
                         }
                     }
                 }
-                structured("claims") {
-                    sd {
-                        put("given_name", "Max")
-                        put("family_name", "Müller")
-                        putJsonArray("nationalities") {
-                            add("DE")
-                        }
-                        put("birthdate", "1956-01-28")
-                        putJsonObject("place_of_birth") {
-                            put("country", "IS")
-                            put("locality", "Þykkvabæjarklaustur")
-                        }
-                        putJsonObject("address") {
-                            put("locality", "Maxstadt")
-                            put("postal_code", "12344")
-                            put("country", "DE")
-                            put("street_address", "Weidenstraße 22")
-                        }
+            }
+            structured("claims") {
+                sd {
+                    put("given_name", "Max")
+                    put("family_name", "Müller")
+                    putJsonArray("nationalities") {
+                        add("DE")
+                    }
+                    put("birthdate", "1956-01-28")
+                    putJsonObject("place_of_birth") {
+                        put("country", "IS")
+                        put("locality", "Þykkvabæjarklaustur")
+                    }
+                    putJsonObject("address") {
+                        put("locality", "Maxstadt")
+                        put("postal_code", "12344")
+                        put("country", "DE")
+                        put("street_address", "Weidenstraße 22")
                     }
                 }
+            }
 
-                sd {
-                    put("birth_middle_name", "Timotheus")
-                    put("salutation", "Dr.")
-                    put("msisdn", "49123456789")
-                }
+            sd {
+                put("birth_middle_name", "Timotheus")
+                put("salutation", "Dr.")
+                put("msisdn", "49123456789")
             }
         }
-}
+    }

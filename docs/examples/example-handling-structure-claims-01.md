@@ -8,32 +8,30 @@ In this example, the Issuer decided to create a structured object for the `addre
 disclose individual members of the claim.
 
 ```kotlin
-object ExampleHandlingStructuredClaims01 {
-    val sdObject =
-        sdJwt {
-            iss("https://issuer.example.com")
-            iat(1683000000)
-            exp(1883000000)
+val handlingStructuredClaims =
+    sdJwt {
+        iss("https://issuer.example.com")
+        iat(1683000000)
+        exp(1883000000)
 
+        sd {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("given_name", "太郎")
+            put("family_name", "山田")
+            put("email", "\"unusual email address\"@example.jp")
+            put("phone_number", "+81-80-1234-5678")
+            put("birthdate", "1940-01-01")
+        }
+
+        structured("address") {
             sd {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("given_name", "太郎")
-                put("family_name", "山田")
-                put("email", "\"unusual email address\"@example.jp")
-                put("phone_number", "+81-80-1234-5678")
-                put("birthdate", "1940-01-01")
-            }
-
-            structured("address") {
-                sd {
-                    put("street_address", "東京都港区芝公園４丁目２−８")
-                    put("locality", "東京都")
-                    put("region", "港区")
-                    put("country", "JP")
-                }
+                put("street_address", "東京都港区芝公園４丁目２−８")
+                put("locality", "東京都")
+                put("region", "港区")
+                put("country", "JP")
             }
         }
-}
+    }
 ```
 Produces
 
@@ -80,4 +78,4 @@ and the following disclosures (salt omitted):
 ```
 
 <!--- KNIT ExampleHandlingStructuredClaims01.kt -->
-<!--- TEST ExampleHandlingStructuredClaims01.sdObject.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10) -->
+<!--- TEST handlingStructuredClaims.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10) -->

@@ -8,24 +8,22 @@ The Issuer may also decide to make the address claim contents selectively disclo
 the `address` claim is made selectively disclosable as well as its sub-claims:
 
 ```kotlin
-object ExampleRecursiveSdJwt01 {
-    val sdObject =
-        sdJwt {
-            iss("https://issuer.example.com")
-            iat(1683000000)
-            exp(1883000000)
-            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+val recursiveSdJwt =
+    sdJwt {
+        iss("https://issuer.example.com")
+        iat(1683000000)
+        exp(1883000000)
+        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-            recursive("address") {
-                sd {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
-                }
+        recursive("address") {
+            sd {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
             }
         }
-}
+    }
 ```
 
 Produces
@@ -56,4 +54,4 @@ and the following disclosures (salt omitted):
 ```
 
 <!--- KNIT ExampleRecursiveSdJwt01.kt -->
-<!--- TEST ExampleRecursiveSdJwt01.sdObject.assertThat("Example 3: Recursive SD-JWT", 5) -->
+<!--- TEST recursiveSdJwt.assertThat("Example 3: Recursive SD-JWT", 5) -->

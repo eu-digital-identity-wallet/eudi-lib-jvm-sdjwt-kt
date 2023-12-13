@@ -8,24 +8,22 @@ The example bellow demonstrates the usage of the library mixed with the Kotlinx 
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
 
 ```kotlin
-object ExampleStructuredSdJwt01 {
-    val sdObject =
-        sdJwt {
-            iss("https://issuer.example.com")
-            iat(1683000000)
-            exp(1883000000)
-            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+val structuredSdJwt =
+    sdJwt {
+        iss("https://issuer.example.com")
+        iat(1683000000)
+        exp(1883000000)
+        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-            structured("address") {
-                sd {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
-                }
+        structured("address") {
+            sd {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
             }
         }
-}
+    }
 ```
 
 Produces
@@ -60,4 +58,4 @@ and the following disclosures (salt omitted):
 ```
 
 <!--- KNIT ExampleStructuredSdJwt01.kt -->
-<!--- TEST ExampleStructuredSdJwt01.sdObject.assertThat("Example 2: Structured SD-JWT", 4) -->
+<!--- TEST structuredSdJwt.assertThat("Example 2: Structured SD-JWT", 4) -->

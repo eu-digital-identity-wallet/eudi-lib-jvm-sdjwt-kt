@@ -22,6 +22,6 @@ class ExampleHandlingStructuredClaims01Test {
 
     @Test
     fun testExampleHandlingStructuredClaims01() {
-        ExampleHandlingStructuredClaims01.sdObject.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10)
+        handlingStructuredClaims.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10)
     }
 }

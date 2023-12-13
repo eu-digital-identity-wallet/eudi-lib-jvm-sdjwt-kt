@@ -5,51 +5,49 @@
 Description of the example in the [specification Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-4a-sd-jwt-based-ver)
 
 ```kotlin
-object ExampleSdJwtVerifiableCredentials01 {
-    val sdObject =
-        sdJwt {
-            iss("https://pid-provider.memberstate.example.eu")
-            iat(1541493724)
-            exp(1883000000)
+val sdJwtVc =
+    sdJwt {
+        iss("https://pid-provider.memberstate.example.eu")
+        iat(1541493724)
+        exp(1883000000)
 
-            plain {
-                put("type", "PersonIdentificationData")
+        plain {
+            put("type", "PersonIdentificationData")
+        }
+
+        sd {
+            put("first_name", "Erika")
+            put("family_name", "Mustermann")
+            put("birth_family_name", "Schmidt")
+            put("birthdate", "1973-01-01")
+
+            putJsonObject("address") {
+                put("postal_code", "12345")
+                put("locality", "Irgendwo")
+                put("street_address", "Sonnenstrasse 23")
+                put("country_code", "DE")
             }
 
-            sd {
-                put("first_name", "Erika")
-                put("family_name", "Mustermann")
-                put("birth_family_name", "Schmidt")
-                put("birthdate", "1973-01-01")
+            put("is_over_18", true)
+            put("is_over_21", true)
+            put("is_over_65", false)
+        }
 
-                putJsonObject("address") {
-                    put("postal_code", "12345")
-                    put("locality", "Irgendwo")
-                    put("street_address", "Sonnenstrasse 23")
-                    put("country_code", "DE")
-                }
+        recursiveArray("nationalities") {
+            sd("DE")
+        }
 
-                put("is_over_18", true)
-                put("is_over_21", true)
-                put("is_over_65", false)
-            }
-
-            recursiveArray("nationalities") {
-                sd("DE")
-            }
-
-            plain {
-                putJsonObject("cnf") {
-                    putJsonObject("jwk") {
-                        put("kty", "EC")
-                        put("crv", "P-256")
-                        put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                        put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-                    }
+        plain {
+            putJsonObject("cnf") {
+                putJsonObject("jwk") {
+                    put("kty", "EC")
+                    put("crv", "P-256")
+                    put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                    put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
                 }
             }
         }
-}
+    }
 ```
 
 Produces
@@ -61,15 +59,15 @@ Produces
   "exp": 1883000000,
   "type": "PersonIdentificationData",
   "_sd": [
-    "4su09Z3bC7AKzfkYE032y6SdUXpooK8OqW89L-Bq4Vo",
-    "OkiKykLLcItB6ZUWQf80kEo4Qy_90EfYdeESEZFzZbU",
-    "wmqxpV_AwaCF2vnBVexz3ukr5Zu5G2f-q7leTHNMkZI",
-    "arC9peX1alXgWmcI4oyDwSaG964Ff72L2_en_QhCtJA",
-    "AYlLIAl8DEaLyGZlPk0IJ8AkV_kQnBceQjoKt6yqnOA",
-    "0inWJsEAtEtr6zoNaLDe7iifLjqvc6zGGUYSoLmG7XA",
-    "e9g2nG_hFk9rILOBi_i7laGkG1W7HJcvlRgntmy_kWM",
-    "d1oq7KsXmTvCCniODl0LoR0wJyBUCShj5H__lf8Zo6s",
-    "w0y_14m9NhdKdPSBzTTpFtBVkb_yK0pQ-Jb3Gg6moHQ"
+    "NJvTfT23JLkZhIltHY0AO7rXOVDkkaRS6fQdRcm6VXM",
+    "-OKrobtfIMN-laBbAdgtbw-fC-F0LZJmA2L0EBm9sGY",
+    "xRVBj5H2WasSEZg9EyayY78uAwEV_002tuMK89z7E84",
+    "QtO_azYf72Nc57WtikqTP8i2wM3dUa7Z2-LAKV89xBA",
+    "jXEVBYdGHK-agzRSEDsntdqXO7BBPsxAYfLtqIw864U",
+    "jzkHE6kjv3E29J4Oz-x1mej1MNQK1KJSRmyJgKYo5VI",
+    "KRXWVqAE0VOiwagxYaanaDfNkehjvgkbP-q6DOydvKg",
+    "7Ie5wOPnnvvFfNJmO8So8hoBuk1S2EABcqTWcLZe4Ig",
+    "krfazQ7Bmisasqth6EQUCMoTvFHTD4-34WXKp6dmjjM"
   ],
   "cnf": {
     "jwk": {
@@ -101,4 +99,4 @@ and the following disclosures (salt omitted):
 ```
 
 <!--- KNIT ExampleSdJwtVerifiableCredentials01.kt -->
-<!--- TEST ExampleSdJwtVerifiableCredentials01.sdObject.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 10) -->
+<!--- TEST sdJwtVc.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 10) -->
