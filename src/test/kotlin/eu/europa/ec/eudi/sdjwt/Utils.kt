@@ -15,10 +15,11 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.jwk.RSAKey
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
     val otherClaims = JsonObject(filterKeys { it != attributeName })
@@ -38,6 +39,7 @@ val json = Json {
 }
 
 private fun JsonElement.pretty(): String = json.encodeToString(this)
+
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     val type = when (this) {
         is SdJwt.Issuance -> "issuance"
@@ -53,6 +55,37 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     }
     println("SD-JWT payload")
     f(jwt).also { println(json.encodeToString(it)) }
+
+    println("SD-JWT disclosures")
+    disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
+        val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
+        buildJsonArray {
+            add(JsonPrimitive("...salt..."))
+            name?.let { add(JsonPrimitive(it)) }
+            add(value)
+        }.toString().prependIndent("\t")
+    }.run(::println)
 }
 
 fun String.removeNewLine(): String = replace("\n", "")
+
+internal fun SdObject.assertThat(
+    description: String = "",
+    numOfDecoysLimit: Int = 0,
+    expectedDisclosuresNo: Int = 0,
+) {
+    println(description)
+    val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = numOfDecoysLimit)
+    val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }
+    assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
+    println("=====================================")
+}
+
+internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) =
+    assertThat(description, 0, expectedDisclosuresNo)
+
+internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
+
+internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
+
+internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()

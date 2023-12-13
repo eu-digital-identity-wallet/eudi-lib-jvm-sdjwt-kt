@@ -10,6 +10,7 @@ ktlintVersion = "0.50.0"
 sonarqube = "4.4.1.3373"
 dependencycheck = "8.4.2"
 maven-publish = "0.25.3"
+kotlinx-knit = "0.5.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -23,4 +24,5 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
-maven-publish = { id = "com.vanniktech.maven.publish", version.ref="maven-publish" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
+kotlinx-knit = { id = "org.jetbrains.kotlinx.knit", version.ref = "kotlinx-knit" }

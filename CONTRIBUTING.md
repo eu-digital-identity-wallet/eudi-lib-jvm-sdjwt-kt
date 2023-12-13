@@ -49,7 +49,7 @@ contributions to this project. This means that:
   by unit/integration tests. If tested manually, provide information about the test scope in the PR
   description (e.g. “Test passed: Upgrade version from 0.42 to 0.42.23.”).
 
-* Create _Work In Progress [WIP]_ pull requests only if you need clarification or an explicit review
+* Create _Work In Progress \[WIP\]\_ pull requests only if you need clarification or an explicit review
   before you can continue your work item.
 
 * If your patch is not getting reviewed or you need a specific person to review it, you can @-reply
