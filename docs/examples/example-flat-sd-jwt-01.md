@@ -112,6 +112,5 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleFlatSdJwt01.kt).
-
+<!--- KNIT ExampleFlatSdJwt01.kt -->
 <!--- TEST ExampleFlatSdJwt01.sdObject.assertThat("Example 1: Flat SD-JWT", 10) -->

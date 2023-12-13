@@ -136,6 +136,5 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleComplexStructured01.kt).
-
+<!--- KNIT ExampleComplexStructured01.kt -->
 <!--- TEST ExampleComplexStructured01.sdObject.assertThat("Appendix 2 - Example 3: Complex Structured SD-JWT", 16) -->
