@@ -21,25 +21,21 @@ object ExampleSdJwtVerifiableCredentials01 {
                 put("family_name", "Mustermann")
                 put("birth_family_name", "Schmidt")
                 put("birthdate", "1973-01-01")
-            }
 
-            recursiveArray("nationalities") {
-                sd("DE")
-            }
-
-            recursive("address") {
-                plain {
+                putJsonObject("address") {
                     put("postal_code", "12345")
                     put("locality", "Irgendwo")
                     put("street_address", "Sonnenstrasse 23")
                     put("country_code", "DE")
                 }
-            }
 
-            sd {
                 put("is_over_18", true)
                 put("is_over_21", true)
                 put("is_over_65", false)
+            }
+
+            recursiveArray("nationalities") {
+                sd("DE")
             }
 
             plain {
@@ -95,12 +91,12 @@ and the following disclosures (salt omitted):
   ["...salt...","family_name","Mustermann"],
   ["...salt...","birth_family_name","Schmidt"],
   ["...salt...","birthdate","1973-01-01"],
-  ["...salt...","DE"],
-  ["...salt...","nationalities",[{"...":"8kyx5bXn5btWMQ_7F__8o4pIZCkmZI9orMCOzG5kozM"}]],
   ["...salt...","address",{"postal_code":"12345","locality":"Irgendwo","street_address":"Sonnenstrasse 23","country_code":"DE"}],
   ["...salt...","is_over_18",true],
   ["...salt...","is_over_21",true],
-  ["...salt...","is_over_65",false]
+  ["...salt...","is_over_65",false],
+  ["...salt...","DE"],
+  ["...salt...","nationalities",[{"...":"Mf7hxnDJRwKTuM2_XFZHGjdGMt6WHDG8dQi8i9w0vFM"}]]
 ]
 ```
 

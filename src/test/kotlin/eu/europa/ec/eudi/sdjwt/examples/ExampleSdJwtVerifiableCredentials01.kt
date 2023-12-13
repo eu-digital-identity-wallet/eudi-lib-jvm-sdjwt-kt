@@ -34,25 +34,21 @@ object ExampleSdJwtVerifiableCredentials01 {
                 put("family_name", "Mustermann")
                 put("birth_family_name", "Schmidt")
                 put("birthdate", "1973-01-01")
-            }
 
-            recursiveArray("nationalities") {
-                sd("DE")
-            }
-
-            recursive("address") {
-                plain {
+                putJsonObject("address") {
                     put("postal_code", "12345")
                     put("locality", "Irgendwo")
                     put("street_address", "Sonnenstrasse 23")
                     put("country_code", "DE")
                 }
-            }
 
-            sd {
                 put("is_over_18", true)
                 put("is_over_21", true)
                 put("is_over_65", false)
+            }
+
+            recursiveArray("nationalities") {
+                sd("DE")
             }
 
             plain {
