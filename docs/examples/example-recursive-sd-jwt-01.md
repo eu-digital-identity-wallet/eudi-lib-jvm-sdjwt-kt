@@ -7,6 +7,11 @@ Check [specification Example 3: SD-JWT with Recursive Disclosures](https://www.i
 The Issuer may also decide to make the address claim contents selectively disclosable recursively, i.e., 
 the `address` claim is made selectively disclosable as well as its sub-claims:
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val recursiveSdJwt =
     sdJwt {
@@ -53,5 +58,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleRecursiveSdJwt01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleRecursiveSdJwt01.kt).
+
 <!--- TEST recursiveSdJwt.assertThat("Example 3: Recursive SD-JWT", 5) -->

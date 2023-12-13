@@ -7,6 +7,11 @@ Description of the example in the [specification Appending A-1 - Example 2: Hand
 In this example, the Issuer decided to create a structured object for the `address` claim, allowing to separately 
 disclose individual members of the claim.
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val handlingStructuredClaims =
     sdJwt {
@@ -77,5 +82,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleHandlingStructuredClaims01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleHandlingStructuredClaims01.kt).
+
 <!--- TEST handlingStructuredClaims.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10) -->

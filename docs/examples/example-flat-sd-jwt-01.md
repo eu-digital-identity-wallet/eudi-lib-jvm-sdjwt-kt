@@ -13,6 +13,11 @@ The Issuer in this case made the following decisions:
 * For `address`, the Issuer is using a flat structure, i.e., all of the claims in the address claim can only 
 * be disclosed in full.
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val flatSdJwt =
     sdJwt {
@@ -110,5 +115,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleFlatSdJwt01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleFlatSdJwt01.kt).
+
 <!--- TEST flatSdJwt.assertThat("Example 1: Flat SD-JWT", 10) -->

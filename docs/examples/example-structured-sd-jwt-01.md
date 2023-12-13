@@ -7,6 +7,11 @@ Check [specification Example 2: Structured SD-JWT](https://www.ietf.org/archive/
 The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val structuredSdJwt =
     sdJwt {
@@ -57,5 +62,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleStructuredSdJwt01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleStructuredSdJwt01.kt).
+
 <!--- TEST structuredSdJwt.assertThat("Example 2: Structured SD-JWT", 4) -->

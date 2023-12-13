@@ -14,6 +14,3 @@
  * limitations under the License.
  */
 package ${knit.package}
-
-import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*

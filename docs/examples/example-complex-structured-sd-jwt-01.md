@@ -5,6 +5,11 @@
 Description of the example in
 the [specification Appendix 2 - Example 3: Complex Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-3-complex-structure)
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val complexStructuredSdJwt =
     sdJwt {
@@ -134,5 +139,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleComplexStructured01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleComplexStructured01.kt).
+
 <!--- TEST complexStructuredSdJwt.assertThat("Appendix 2 - Example 3: Complex Structured SD-JWT", 16) -->

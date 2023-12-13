@@ -4,6 +4,11 @@
 
 Description of the example in the [specification Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-4a-sd-jwt-based-ver)
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
 ```kotlin
 val sdJwtVc =
     sdJwt {
@@ -98,5 +103,6 @@ and the following disclosures (salt omitted):
 ]
 ```
 
-<!--- KNIT ExampleSdJwtVerifiableCredentials01.kt -->
+> You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVerifiableCredentials01.kt).
+
 <!--- TEST sdJwtVc.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 10) -->
