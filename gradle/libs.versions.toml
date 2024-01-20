@@ -1,6 +1,6 @@
 [versions]
 dokka = "1.9.10"
-kotlin = "1.9.21"
+kotlin = "1.9.22"
 foojay = "0.8.0"
 spotless = "6.24.0"
 java = "17"
