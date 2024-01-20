@@ -2,7 +2,7 @@
 dokka = "1.9.10"
 kotlin = "1.9.21"
 foojay = "0.8.0"
-spotless = "6.23.3"
+spotless = "6.24.0"
 java = "17"
 kotlinxSerialization = "1.6.2"
 nimbusJoseWwt = "9.37.3"
