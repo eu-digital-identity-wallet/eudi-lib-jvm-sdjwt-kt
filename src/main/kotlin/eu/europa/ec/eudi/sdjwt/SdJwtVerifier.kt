@@ -165,11 +165,12 @@ sealed interface KeyBindingVerifier {
      * @param jwtClaims The claims of the JWT part of the SD-JWT. They will be used to extract the
      * public key of the Holder, in case of [MustBePresentAndValid]
      * @param expectedDigest The digest of the SD-JWT, as expected to be found inside the Key Binding JWT
-     * under `_sd_hash` claim. It will be used in case of [MustBePresentAndValid]
+     * under `sd_hash` claim.
+     * It will be used in case of [MustBePresentAndValid]
      * @param unverifiedKbJwt the Key Binding JWT to be verified.
      * In case of [MustNotBePresent] it must not be provided.
      * Otherwise, in case of [MustBePresentAndValid], it must be present, having a valid signature and containing
-     * at least an [expectedDigest] under claim `_sd_hash`
+     * at least an [expectedDigest] under claim `sd_hash`
      *
      * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
      */
@@ -187,7 +188,7 @@ sealed interface KeyBindingVerifier {
 
                 return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
                     ?.takeIf { kbClaims ->
-                        val sdHash = kbClaims["_sd_hash"]
+                        val sdHash = kbClaims[SdJwtDigest.CLAIM_NAME]
                             ?.takeIf { element -> element is JsonPrimitive && element.isString }
                             ?.jsonPrimitive
                             ?.contentOrNull

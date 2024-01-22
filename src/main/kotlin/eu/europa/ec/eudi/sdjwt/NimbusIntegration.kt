@@ -372,7 +372,7 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
             .build(),
         JWTClaimsSet.Builder()
             .apply(claimSetBuilderAction)
-            .claim("_sd_hash", sdJwtDigest.value)
+            .claim(SdJwtDigest.CLAIM_NAME, sdJwtDigest.value)
             .build(),
     ).apply { sign(keyBindingSigner) }.serialize()
     // concatenate the two parts together

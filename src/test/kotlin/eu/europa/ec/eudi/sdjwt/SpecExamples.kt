@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
-import org.junit.jupiter.api.fail
+import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
 
 class SpecExamples {
@@ -54,14 +54,13 @@ class SpecExamples {
             DAwMDAwXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIlVTIl0~WyJuUHVvUW5rUk
             ZxM0JJZUFtN0FuWEZBIiwgIkRFIl0~
         """.trimIndent().removeNewLine()
-        SdJwtVerifier.verifyPresentation(
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            unverifiedSdJwt,
-        ).fold(
-            onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
-            onFailure = { fail(it) },
-        )
+        assertDoesNotThrow {
+            SdJwtVerifier.verifyPresentation(
+                JwtSignatureVerifier.NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                unverifiedSdJwt,
+            ).getOrThrow()
+        }.also { it.printRecreated() }
     }
 
     @Test
@@ -91,14 +90,13 @@ class SpecExamples {
             jl3IiwgImdpdmVuX25hbWUiLCAiSm9obiJd~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNB
             IiwgIlVTIl0~
         """.trimIndent().removeNewLine()
-        SdJwtVerifier.verifyPresentation(
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            unverifiedSdJwt,
-        ).fold(
-            onSuccess = { println(json.encodeToString(it.recreateClaims { c -> c.second })) },
-            onFailure = { fail(it) },
-        )
+        assertDoesNotThrow {
+            SdJwtVerifier.verifyPresentation(
+                JwtSignatureVerifier.NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                unverifiedSdJwt,
+            ).getOrThrow()
+        }.also { it.printRecreated() }
     }
 
     @Test
@@ -135,13 +133,16 @@ class SpecExamples {
            AiV2VpZGVuc3RyYVx1MDBkZmUgMjIifV0~
         """.trimIndent().replace("\n", "")
 
-        val sdJwt = SdJwtVerifier.verifyPresentation(
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            unverifiedSdJwt,
-        ).getOrThrow()
+        assertDoesNotThrow {
+            SdJwtVerifier.verifyPresentation(
+                JwtSignatureVerifier.NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                unverifiedSdJwt,
+            ).getOrThrow()
+        }.also { it.printRecreated() }
+    }
 
-        val claims = sdJwt.recreateClaims { it.second }
-        json.encodeToString(claims).also { println(it) }
+    private fun SdJwt.Presentation<JwtAndClaims>.printRecreated() {
+        println(json.encodeToString(this.recreateClaims { c -> c.second }))
     }
 }

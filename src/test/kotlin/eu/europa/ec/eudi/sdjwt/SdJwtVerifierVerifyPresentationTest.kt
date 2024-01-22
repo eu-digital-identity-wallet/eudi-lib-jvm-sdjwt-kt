@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.fail
+import org.junit.jupiter.api.assertThrows
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -92,7 +92,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures and keyBinding without '_sd_hash' verify fails with InvalidKeyBindingJwt`() {
+    fun `when sd-jwt has an valid jwt, no disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() {
         verifyPresnetationExpectingError(
             VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
             JwtSignatureVerifier.NoSignatureValidation,
@@ -102,7 +102,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, no disclosures valid keyBinding with '_sd_hash' verify should return Valid`() {
+    fun `when sd-jwt has an valid jwt, no disclosures valid keyBinding with 'sd_hash' verify should return Valid`() {
         verifySuccess(
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
@@ -140,7 +140,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without '_sd_hash' verify fails with InvalidKeyBindingJwt`() {
+    fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() {
         verifyPresnetationExpectingError(
             VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
             JwtSignatureVerifier.NoSignatureValidation,
@@ -150,7 +150,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures and valid keyBinding with '_sd_hash' verify should return Valid`() {
+    fun `when sd-jwt has an valid jwt, valid disclosures and valid keyBinding with 'sd_hash' verify should return Valid`() {
         verifySuccess(
             JwtSignatureVerifier.NoSignatureValidation,
             KeyBindingVerifier.MustBePresent,
@@ -164,21 +164,14 @@ class SdJwtVerifierVerifyPresentationTest {
         holderBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
     ) {
-        val verification = SdJwtVerifier.verifyPresentation(
-            jwtSignatureVerifier = jwtSignatureVerifier,
-            keyBindingVerifier = holderBindingVerifier,
-            unverifiedSdJwt = unverifiedSdJwt,
-        )
-        verification.fold(
-            onSuccess = { fail("Was expecting error") },
-            onFailure = { exception ->
-                if (exception is SdJwtVerificationException) {
-                    assertEquals(expectedError, exception.reason)
-                } else {
-                    fail(exception)
-                }
-            },
-        )
+        val exception = assertThrows<SdJwtVerificationException> {
+            SdJwtVerifier.verifyPresentation(
+                jwtSignatureVerifier = jwtSignatureVerifier,
+                keyBindingVerifier = holderBindingVerifier,
+                unverifiedSdJwt = unverifiedSdJwt,
+            ).getOrThrow()
+        }
+        assertEquals(expectedError, exception.reason)
     }
 
     private fun verifySuccess(
@@ -208,14 +201,14 @@ class SdJwtVerifierVerifyPresentationTest {
     """.trimIndent().removeNewLine()
 
     private val kbWithoutD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJfc2RfaGFzaCI6Ik9rUWRrQ1RTcURabmtoay0zVklTWWx
-            HNGltTUNxU3NPX3VRX2l2cUIyeGsifQ.Xlp_qJY98ai_-opnOY-BEkChEs5RClVmhhPP
-            ZbztSKzTpgVSFzxO3ImgMtdwrmBOPZK4xUaZMCS6XslAlx4txA    
+            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc0
+            aW1NQ3FTc09fdVFfaXZxQjJ4ayJ9.u3to8ttbbYCFds3QqhI9D3Hmfygz4-0PG3KjTGKh
+            ROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0DdO1nOA    
     """.trimIndent().removeNewLine()
 
     private val kbWithD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJfc2RfaGFzaCI6InZRRG9JWkpYS1lwQmxGbEhfWDNKbEx
-            QOEptNjgwajRyZ21nVHdyY19pTHMifQ.AqUpigoS8QkUfU5zNpYtDtgmOLBZ3PErP-Ow
-            X8ZJtVmfI0ZKnEB1qUHyY8tjmtBNEzODSCI0ZQViLT0R_PkShw
+            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA4
+            Sm02ODBqNHJnbWdUd3JjX2lMcyJ9.rkN3lEPVuXaLU3wrL0a5xGQjj8vBsHxWEGh5IQdZ
+            VrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ67m0Hg
     """.trimIndent().removeNewLine()
 }

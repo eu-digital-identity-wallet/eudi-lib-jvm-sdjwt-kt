@@ -24,7 +24,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 This is a library offering a DSL (domain-specific language) for defining how a set of claims should be made selectively
 disclosable.
 
-Library implements [SD-JWT draft 6](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html)
+Library implements [SD-JWT draft 7](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html)
 is implemented in Kotlin, targeting JVM.
 
 Library's SD-JWT DSL leverages the DSL provided by
@@ -49,8 +49,8 @@ To issue a SD-JWT, an `Issuer` should have:
 In the example bellow, Issuer decides to issue an SD-JWT as follows:
 
 - Includes in plain standard JWT claims (`sub`,`iss`, `iat`, `exp`)
-- Makes selectively disclosable a claim named `address` using structured disclosure. This allows to individually
-  disclose every subclaim of `address`
+- Makes selectively disclosable a claim named `address` using structured disclosure. This allows individually
+  disclosing every subclaim of `address`
 - Uses his RSA key pair to sign the SD-JWT
 
 <!--- INCLUDE

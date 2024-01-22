@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RecreateClaimsTest {
