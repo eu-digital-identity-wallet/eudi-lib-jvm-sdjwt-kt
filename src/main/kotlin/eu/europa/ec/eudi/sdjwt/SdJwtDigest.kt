@@ -27,6 +27,12 @@ value class SdJwtDigest private constructor(val value: String) {
     companion object {
 
         /**
+         * The name of the claim, under which the SD-JWT
+         * digest is expected to be found in a Key Binding JWT
+         */
+        const val CLAIM_NAME = "sd_hash"
+
+        /**
          * Wraps the given [value] to a [SdJwtDigest].
          * The [value] is expected to be base64-url encoded.
          *
