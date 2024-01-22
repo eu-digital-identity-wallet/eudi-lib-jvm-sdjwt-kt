@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonPrimitive
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 

@@ -36,12 +36,12 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.Period
 import java.time.temporal.ChronoUnit
 import java.util.*
 import kotlin.random.Random
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -91,7 +91,7 @@ class KeyBindingTest {
         // Assert issuer verifier is able to verify JWT
         val jwtClaims = assertNotNull(issuer.jwtVerifier().verify(issuedSdJwt.jwt.serialize()).getOrNull())
 
-        // Assert issuers pub key extractor is able to retrieve holder pub key
+        // Assert issuer's pub key extractor is able to retrieve the holder's pub key
         val holderPubKeyExtractor = issuer.extractHolderPubKey()
         assertEquals(holderPubKey, holderPubKeyExtractor(jwtClaims))
     }
@@ -192,7 +192,7 @@ class IssuerActor(private val issuerKey: ECKey) {
      * This is an advanced [JwtSignatureVerifier] backed by Nimbus [DefaultJWTProcessor]
      * Verifies that the header of JWT contains typ claim equal to [jwtType].
      * Checks the signature of the JWT using issuers pub key and [signAlgorithm].
-     * Makes sure that claims : "iss", "iat", "exp" and "cnf" are present
+     * It makes sure that claims: "iss", "iat", "exp" and "cnf" are present
      */
     fun jwtVerifier(): JwtSignatureVerifier =
         DefaultJWTProcessor<SecurityContext>().apply {
@@ -211,7 +211,7 @@ class IssuerActor(private val issuerKey: ECKey) {
 
     /**
      * This is the main function of the issuer, which issues the SD-JWT
-     * @param holderPubKey the holder pub key. It will be included in plain into SD-JWT, to leverage key binding
+     * @param holderPubKey the holder pub key. It will be included in plain in SD-JWT, to leverage key binding
      * @param credential the credential
      * @return the issued SD-JWT
      */
