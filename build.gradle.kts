@@ -1,7 +1,7 @@
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.gradle.DokkaTask
-import java.net.URL
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
+import java.net.URL
 
 object Meta {
     const val BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
@@ -133,5 +133,5 @@ mavenPublishing {
 val nvdApiKey: String? = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString()
 val dependencyCheckExtension = extensions.findByType(DependencyCheckExtension::class.java)
 dependencyCheckExtension?.apply {
-        nvd.apiKey = nvdApiKey ?: ""
+    nvd.apiKey = nvdApiKey ?: ""
 }
