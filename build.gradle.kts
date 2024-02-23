@@ -133,6 +133,6 @@ mavenPublishing {
 val nvdApiKey: String? = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString()
 val dependencyCheckExtension = extensions.findByType(DependencyCheckExtension::class.java)
 dependencyCheckExtension?.apply {
-    formats=mutableListOf("XML","HTML")
+    formats = mutableListOf("XML", "HTML")
     nvd.apiKey = nvdApiKey ?: ""
 }
