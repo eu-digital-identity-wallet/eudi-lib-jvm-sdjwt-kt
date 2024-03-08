@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.*
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -396,13 +397,14 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
  */
 fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption = JwsSerializationOption.Flattened): JsonObject {
     return asJwsJsonObject(option) { jwt ->
-        val parts = jwt.parsedParts
-        checkNotNull(parts) { "It seems that the jwt is not signed" }
-        val (header, payload, signature) = jwt.parsedParts.map { part ->
-            checkNotNull(part)
-            part.toString()
+        require(jwt.state == JWSObject.State.SIGNED || jwt.state == JWSObject.State.VERIFIED) {
+            "It seems that the jwt is not signed"
         }
-        Triple(header, payload, signature)
+        Triple(
+            jwt.header.toBase64URL().toString(),
+            jwt.payload.toBase64URL().toString(),
+            jwt.signature.toString(),
+        )
     }
 }
 
