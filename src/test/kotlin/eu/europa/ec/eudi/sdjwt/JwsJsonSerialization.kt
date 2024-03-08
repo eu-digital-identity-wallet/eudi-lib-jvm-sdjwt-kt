@@ -15,11 +15,17 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.put
+import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -81,10 +87,30 @@ class JwsJsonSerialization {
     @Test
     fun ex1() {
         val trObj = TrObj.parse(ex1)
-        val sdJwt = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
+        val sdJwt: SdJwt.Issuance<SignedJWT> = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
         val actual =
             sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
         assertEquals(json.parseToJsonElement(ex1), actual)
+    }
+
+    @Test
+    fun `get a JwsJSON for an Issued SDJWT`() {
+        val issuer = run {
+            val issuerKey = ECKeyGenerator(Curve.P_256).generate()
+            SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
+        }
+
+        val sdJwtSpec = sdJwt {
+            sd {
+                put("age_over_18", true)
+            }
+        }
+
+        val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }
+
+        assertDoesNotThrow {
+            sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
+        }
     }
 }
 
