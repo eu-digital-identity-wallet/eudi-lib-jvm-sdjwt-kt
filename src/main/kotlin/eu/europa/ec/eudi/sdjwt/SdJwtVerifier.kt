@@ -524,10 +524,11 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
  * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
  */
 private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
-    return jwtClaims["_sd_alg"]?.let { element ->
+    val element = jwtClaims["_sd_alg"] ?: JsonPrimitive("sha-256")
+    val alg =
         if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
         else null
-    } ?: throw MissingOrUnknownHashingAlgorithm.asException()
+    return alg ?: throw MissingOrUnknownHashingAlgorithm.asException()
 }
 
 /**
