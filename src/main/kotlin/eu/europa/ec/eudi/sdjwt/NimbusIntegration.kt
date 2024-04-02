@@ -264,9 +264,7 @@ private object NimbusSdJwtIssuerFactory {
         signAlgorithm: NimbusJWSAlgorithm,
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
     ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
-
         val (claims, disclosures) = unsignedSdJwt
-        require(signAlgorithm.isAsymmetric()) { "Only asymmetric algorithm can be used" }
         val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         SdJwt.Issuance(signedJwt, disclosures)
     }
@@ -292,13 +290,6 @@ private object NimbusSdJwtIssuerFactory {
         val signer = NimbusDefaultJWSSignerFactory().createJWSSigner(signingKey, signAlgorithm)
         return createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
     }
-
-    /**
-     * Indicates whether an [NimbusJWSAlgorithm] is asymmetric
-     * @receiver the algorithm to check
-     * @return true if the algorithm is asymmetric.
-     */
-    private fun NimbusJWSAlgorithm.isAsymmetric(): Boolean = NimbusJWSAlgorithm.Family.SIGNATURE.contains(this)
 }
 
 //

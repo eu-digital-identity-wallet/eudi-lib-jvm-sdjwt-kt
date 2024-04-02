@@ -11,10 +11,12 @@ sonarqube = "4.4.1.3373"
 dependencycheck = "9.0.9"
 maven-publish = "0.28.0"
 kotlinx-knit = "0.5.0"
+tink = "1.12.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseWwt" }
+tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }

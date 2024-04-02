@@ -32,6 +32,7 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.nimbus.jose.jwt)
     testImplementation(kotlin("test"))
+    testImplementation(libs.tink)
 }
 
 java {
