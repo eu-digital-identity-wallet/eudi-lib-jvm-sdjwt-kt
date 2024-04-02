@@ -20,37 +20,12 @@ import kotlinx.serialization.json.*
 
 val sdJwtVc =
     sdJwt {
-        iss("https://pid-provider.memberstate.example.eu")
-        iat(1541493724)
+        iss("https://issuer.example.com")
+        iat(1683000000)
         exp(1883000000)
 
         plain {
-            put("type", "PersonIdentificationData")
-        }
-
-        sd {
-            put("first_name", "Erika")
-            put("family_name", "Mustermann")
-            put("birth_family_name", "Schmidt")
-            put("birthdate", "1973-01-01")
-
-            putJsonObject("address") {
-                put("postal_code", "12345")
-                put("locality", "Irgendwo")
-                put("street_address", "Sonnenstrasse 23")
-                put("country_code", "DE")
-            }
-
-            put("is_over_18", true)
-            put("is_over_21", true)
-            put("is_over_65", false)
-        }
-
-        recursiveArray("nationalities") {
-            sd("DE")
-        }
-
-        plain {
+            put("vct", "https://bmi.bund.example/credential/pid/1.0")
             putJsonObject("cnf") {
                 putJsonObject("jwk") {
                     put("kty", "EC")
@@ -58,6 +33,48 @@ val sdJwtVc =
                     put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
                     put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
                 }
+            }
+        }
+
+        sd {
+            put("given_name", "Erika")
+            put("family_name", "Mustermann")
+            put("birthdate", "1963-08-12")
+            put("source_document_type", "id_card")
+            putJsonArray("nationalities") {
+                add("DE")
+            }
+            put("gender", "female")
+            put("birth_family_name", "Gabler")
+            put("also_known_as", "Schwester")
+        }
+
+        recursive("address") {
+            sd {
+                put("street_address", "Heidestraße 17")
+                put("locality", "Köln")
+                put("postal_code", "51147")
+                put("country", "DE")
+            }
+        }
+
+        recursive("place_of_birth") {
+            plain {
+                put("country", "DE")
+            }
+            sd {
+                put("locality", "Berlin")
+            }
+        }
+
+        structured("age_equal_or_over") {
+            sd {
+                put("12", true)
+                put("14", true)
+                put("16", true)
+                put("18", true)
+                put("21", true)
+                put("65", false)
             }
         }
     }
