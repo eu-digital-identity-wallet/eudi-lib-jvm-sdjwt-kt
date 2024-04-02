@@ -284,6 +284,7 @@ All examples assume that we have the following claim set
 - [Appendix 1 - Example 2: Handling Structured Claims](docs/examples/example-handling-structure-claims-01.md)
 - [Appendix 2 - Example 3: Complex Structured SD-JWT](docs/examples/example-complex-structured-sd-jwt-01.md)
 - [Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example-sd-jwt-vc-01.md)
+- [Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](docs/examples/example-sd-jwt-vc-data-v02-01.md)
 
 ## How to contribute
 
