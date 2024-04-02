@@ -26,7 +26,6 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.json.*
 import java.text.ParseException
-import java.time.Instant
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
@@ -397,77 +396,6 @@ fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption = JwsS
             jwt.signature.toString(),
         )
     }
-}
-
-/**
- * Creates an enveloped representation of the SD-JWT
- * This produces a JWT (not SD-JWT) which includes the following claims:
- * - `iat`
- * - `nonce`
- * - `aud`
- * - `_sd_jwt`
- *
- * @param issuedAt issuance time of the envelope JWT. It will be included as `iat` claim
- * @param audience the audience of the envelope JWT. It will be included as `aud` claim
- * @param nonce the nonce of the envelope JWT. It will be included as `nonce` claim
- * @param envelopOption
- * @param signer a way to sign the claims of the envelope JWT
- * @param signAlgorithm the algorithm to use
- * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT (presentation) to be enveloped
- * @return a JWT (not SD-JWT) as described above
- */
-fun <JWT> SdJwt<JWT>.toEnvelopedFormat(
-    issuedAt: Instant,
-    nonce: String,
-    audience: String,
-    envelopOption: EnvelopOption<JWT>,
-    signer: NimbusJWSSigner,
-    signAlgorithm: NimbusJWSAlgorithm,
-    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-): Result<NimbusSignedJWT> {
-    val sign = sign(signer, signAlgorithm, jwsHeaderCustomization)
-    return toEnvelopedFormat(issuedAt, nonce, audience, envelopOption, sign)
-}
-
-/**
- * Creates an enveloped representation of the SD-JWT
- * This produces a JWT (not SD-JWT) which includes the following claims:
- * - `iat`
- * - `nonce`
- * - `aud`
- * - `_sd_jwt`
- *
- * @param issuedAt issuance time of the envelope JWT. It will be included as `iat` claim
- * @param audience the audience of the envelope JWT. It will be included as `aud` claim
- * @param nonce the nonce of the envelope JWT. It will be included as `nonce` claim
- * @param signingKey the key that will sign the envelope
- * @param signAlgorithm the algorithm to use
- * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT (presentation) to be enveloped
- * @return a JWT (not SD-JWT) as described above
- */
-fun <JWT> SdJwt.Presentation<JWT>.toEnvelopedFormat(
-    issuedAt: Instant,
-    nonce: String,
-    audience: String,
-    envelopOption: EnvelopOption<JWT>,
-    signingKey: NimbusJWK,
-    signAlgorithm: NimbusJWSAlgorithm,
-    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-): Result<NimbusSignedJWT> = runCatching {
-    val signer = NimbusDefaultJWSSignerFactory().createJWSSigner(signingKey, signAlgorithm)
-    toEnvelopedFormat(
-        issuedAt = issuedAt,
-        nonce = nonce,
-        audience = audience,
-        envelopOption,
-        signer = signer,
-        signAlgorithm = signAlgorithm,
-        jwsHeaderCustomization = jwsHeaderCustomization,
-    ).getOrThrow()
 }
 
 /**

@@ -36,11 +36,6 @@ class ExampleReadMeTest01 {
     }
 
     @Test
-    fun testExampleEnvelopedPresentationSdJwtVerification01() {
-        verifiedEnvelopedSdJwt.prettyPrint { it.second }
-    }
-
-    @Test
     fun testExampleRecreateClaims01() {
         println(claims)
     }

@@ -355,52 +355,6 @@ object SdJwtVerifier {
         // Assemble it
         SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures)
     }
-
-    /**
-     * Verifies an SD-JWT, which is expected to be in envelope format, that is to contain
-     * at least the  `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims.
-     * If the verification succeeds, the returned SD-JWT will not have a key binding JWT
-     * since the envelope acts like a proof of possession.
-     *
-     * @param envelopeJwtVerifier the verification of the envelope JWT signature.
-     * To provide an implementation of this,
-     * Verifier should be aware of the public key and the signing algorithm that the Holder
-     * used to sign the envelope
-     * @param clock the Verifier's clock. Will be used to validate iat claim of the envelope
-     * @param iatOffset an offset that will be used to define a time window within which the iat claim
-     * is considered valid
-     * @param expectedAudience the expected content of the aud claim.
-     * @param sdJwtSignatureVerifier the verification of the SD-JWT signature.
-     * To provide an implementation of this,
-     * Verifier should be aware of the public key and the signing algorithm that the Issuer
-     * used to sign the SD-JWT.
-     * @param unverifiedEnvelopeJwt the JWT to verify.
-     * Expected to be a valid JWT containing the `iat`, `nonce`, `aud` and `one of _sd_jwt`, `_js_sd_jwt` claims, at least
-     * @return the presentation SD-JWT.If the verification succeeds, the SD-JWT will not have a key binding JWT
-     * since the envelope acts like a proof of possession.
-     * Expected errors are reported via a [SdJwtVerificationException]
-     */
-    fun verifyEnvelopedPresentation(
-        sdJwtSignatureVerifier: JwtSignatureVerifier,
-        envelopeJwtVerifier: JwtSignatureVerifier,
-        clock: Clock,
-        iatOffset: Duration,
-        expectedAudience: String,
-        unverifiedEnvelopeJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
-        fun isValid(claims: Claims): Boolean = with(ClaimValidations) {
-            !claims.envelopSdJwt(clock, iatOffset, expectedAudience).isNullOrEmpty()
-        }
-
-        val claims = envelopeJwtVerifier
-            .and { claims -> isValid(claims) }
-            .verify(unverifiedEnvelopeJwt)
-            .getOrThrow()
-        val unverifiedSdJwt = with(ClaimValidations) { claims.envelopSdJwt() }
-        checkNotNull(unverifiedSdJwt) { "Cannot be null" }
-        verifyPresentation(sdJwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
-            .getOrThrow()
-    }
 }
 
 /**
@@ -576,39 +530,6 @@ internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
  * Validations for the contents of an envelope JWT
  */
 object ClaimValidations {
-
-    /**
-     * Retrieves the contents of the _sd_jwt claim, when all the following conditions are being met
-     * - _sd_jwt or _js_sd_jwt claim is present
-     * - nonce claim is present
-     * - iat is present, and valid
-     * - aud claim contains an expected value
-     *
-     * @receiver the claims to check
-     * @return the _sd_jwt claim
-     */
-    fun Claims.envelopSdJwt(clock: Clock, iatOffset: Duration, expectedAudience: String): String? {
-        return envelopSdJwt().let { sdJwt ->
-            fun validAud() = aud().contains(expectedAudience)
-            fun validIat() = iat(clock, iatOffset) != null
-            fun hasNonce() = !nonce().isNullOrEmpty()
-            sdJwt.takeIf { validAud() && validIat() && hasNonce() }
-        }
-    }
-
-    fun Claims.envelopSdJwt(): String? {
-        fun combinedFormat() = primitiveClaim(ENVELOPED_SD_JWT_IN_COMBINED_FROM)?.contentOrNull
-        fun jwsJsonFormat() = objectClaim(ENVELOPED_SD_JWT_IN_JWS_JSON)?.let { jwsJson ->
-            try {
-                val (jwt, disclosures) = parseJWSJson(jwsJson)
-                val serializedDisclosures = disclosures.concat { it }
-                "$jwt$serializedDisclosures~"
-            } catch (t: Throwable) {
-                null
-            }
-        }
-        return combinedFormat() ?: jwsJsonFormat()
-    }
 
     /**
      * Retrieves the aud claim
