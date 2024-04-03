@@ -18,10 +18,10 @@ package eu.europa.ec.eudi.sdjwt.examples
 import eu.europa.ec.eudi.sdjwt.*
 import kotlin.test.*
 
-class ExampleSdJwtVerifiableCredentials01Test {
+class ExampleSdJwtVcDataV201Test {
 
     @Test
-    fun testExampleSdJwtVerifiableCredentials01() {
-        sdJwtVc.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 21)
+    fun testExampleSdJwtVcDataV01() {
+        sdJwtVcDataV2.assertThat("Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0", 14)
     }
 }

@@ -2,7 +2,7 @@
 
 # Appendix A-1 - Example 2: Handling Structured Claims
 
-Description of the example in the [specification Appending A-1 - Example 2: Handling Structured Claims](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-2-handling-structur)
+Description of the example in the [specification Appending A-1 - Example 2: Handling Structured Claims](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-2-handling-structur)
 
 In this example, the Issuer decided to create a structured object for the `address` claim, allowing to separately 
 disclose individual members of the claim.

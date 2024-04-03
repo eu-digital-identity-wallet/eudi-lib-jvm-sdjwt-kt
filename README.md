@@ -24,7 +24,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 This is a library offering a DSL (domain-specific language) for defining how a set of claims should be made selectively
 disclosable.
 
-Library implements [SD-JWT draft 7](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-07.html)
+Library implements [SD-JWT draft 8](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html)
 is implemented in Kotlin, targeting JVM.
 
 Library's SD-JWT DSL leverages the DSL provided by
@@ -34,7 +34,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT issued by an Issuer
-- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT in simple or in Enveloped Format
+- [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
 ## Issuance
@@ -157,51 +157,6 @@ val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
 presentation scenario which includes key binding
 
-### In enveloped format
-
-In this case, the SD-JWT is expected to be in envelope format.
-Verifier should know
-- the public key of the Issuer and the algorithm used by the Issuer to sign the SD-JWT.
-- the public key and the signing algorithm used by the Holder to sign the envelope JWT, since the envelope acts
-  like a proof of possession (replacing the key binding JWT)
-
-<!--- INCLUDE
-import com.nimbusds.jose.crypto.*
-import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
-import java.time.*
-import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaDuration
--->
-
-```kotlin
-val verifiedEnvelopedSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val issuerSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
-
-    val holderKeyPair = loadRsaKey("/exampleHolderKey.json")
-    val holderSignatureVerifier = RSASSAVerifier(holderKeyPair).asJwtVerifier()
-        .and { claims ->
-            claims["nonce"] == JsonPrimitive("nonce")
-        }
-
-    val unverifiedEnvelopedSdJwt = loadJwt("/exampleEnvelopedSdJwt.txt")
-
-    SdJwtVerifier.verifyEnvelopedPresentation(
-        sdJwtSignatureVerifier = issuerSignatureVerifier,
-        envelopeJwtVerifier = holderSignatureVerifier,
-        clock = Clock.systemDefaultZone(),
-        iatOffset = 3650.days.toJavaDuration(),
-        expectedAudience = "verifier",
-        unverifiedEnvelopeJwt = unverifiedEnvelopedSdJwt,
-    ).getOrThrow()
-}
-```
-
-> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleEnvelopedPresentationSdJwtVerification01.kt).
-
-<!--- TEST verifiedEnvelopedSdJwt.prettyPrint { it.second } -->
-
 ## Recreate original claims
 
 Given an `SdJwt`, either issuance or presentation, the original claims used to produce the SD-JWT can be
@@ -284,6 +239,7 @@ All examples assume that we have the following claim set
 - [Appendix 1 - Example 2: Handling Structured Claims](docs/examples/example-handling-structure-claims-01.md)
 - [Appendix 2 - Example 3: Complex Structured SD-JWT](docs/examples/example-complex-structured-sd-jwt-01.md)
 - [Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example-sd-jwt-vc-01.md)
+- [Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](docs/examples/example-sd-jwt-vc-data-v02-01.md)
 
 ## How to contribute
 

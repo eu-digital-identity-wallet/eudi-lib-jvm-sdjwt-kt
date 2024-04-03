@@ -2,7 +2,7 @@
 
 # Example 3: SD-JWT with Recursive Disclosures
 
-Check [specification Example 3: SD-JWT with Recursive Disclosures](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-06.html#name-example-sd-jwt-with-recursi)
+Check [specification Example 3: SD-JWT with Recursive Disclosures](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-sd-jwt-with-recursi)
 
 The Issuer may also decide to make the address claim contents selectively disclosable recursively, i.e., 
 the `address` claim is made selectively disclosable as well as its sub-claims:

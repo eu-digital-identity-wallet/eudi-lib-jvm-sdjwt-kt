@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.*
-import java.time.Instant
 
 /**
  * Serializes an [SdJwt] in combined format without key binding
@@ -46,104 +45,6 @@ private fun List<Disclosure>.concat(): String = concat(Disclosure::value)
 internal fun <T> List<T>.concat(get: (T) -> String): String =
     joinToString(separator = "~", prefix = "~", transform = get)
 
-/**
- * Option on how to embed an SD-JWT in an envelope
- * @param JWT the type representing the JWT part of the SD-JWT
- */
-sealed interface EnvelopOption<JWT> {
-
-    /**
-     * Using the combined format
-     *
-     * This means that the envelope will include a claim named `_sd_jwt`
-     * having as value the SD-JWT in combined format
-     */
-    data class Combined<JWT>(val serializeJwt: (JWT) -> String) : EnvelopOption<JWT>
-
-    /**
-     * Using the JWS Json serialization
-     * @param jwsSerializationOption General or Flatten
-     * @param getParts a function that gets the base 64 encoded parts: protected, payload, signature
-     */
-    data class JwsJson<JWT>(
-        val jwsSerializationOption: JwsSerializationOption,
-        val getParts: (JWT) -> Triple<String, String, String>,
-    ) : EnvelopOption<JWT>
-}
-
-/**
- * Creates an enveloped representation of the SD-JWT
- * This produces a JWT (not SD-JWT) which includes the following claims:
- * - `iat`
- * - `nonce`
- * - `aud`
- * - `_sd_jwt` (or `_js_sd_jwt`)
- *
- * @param issuedAt issuance time of the envelope JWT. It will be included as `iat` claim
- * @param audience the audience of the envelope JWT. It will be included as `aud` claim
- * @param nonce the nonce of the envelope JWT. It will be included as `nonce` claim
- * @param envelopOption option on how to include the SD-JWT in the envelope
- * @param signEnvelop a way to sign the claims of the envelope JWT
- * @param JWT the type representing the JWT part of the SD-JWT
- * @param ENVELOPED_JWT the type representing the envelope JWT
- * @receiver the SD-JWT (presentation) to be enveloped.
- * @return a JWT (not SD-JWT) as described above
- */
-fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(
-    issuedAt: Instant,
-    nonce: String,
-    audience: String,
-    envelopOption: EnvelopOption<JWT>,
-    signEnvelop: (Claims) -> Result<ENVELOPED_JWT>,
-): Result<ENVELOPED_JWT> {
-    val otherClaims = buildJsonObject {
-        iat(issuedAt.epochSecond)
-        aud(audience)
-        put("nonce", nonce)
-    }
-    return toEnvelopedFormat(otherClaims, envelopOption, signEnvelop)
-}
-
-const val ENVELOPED_SD_JWT_IN_COMBINED_FROM = "_sd_jwt"
-const val ENVELOPED_SD_JWT_IN_JWS_JSON = "_js_sd_jwt"
-
-/**
- * Creates an enveloped representation of the SD-JWT
- * This produces a JWT (not SD-JWT) which includes in addition to the [otherClaims]
- * the claim `_sd_jwt` or `_js_sd_jwt` depending on the [envelopOption]
- *
- * @param otherClaims claims to be included in the envelope JWT, except "_sd_jwt"
- * @param envelopOption option of how to nest the SD-JWT into the envelope
- * @param signEnvelop a way to sign the claims of the envelope JWT
- * @param JWT the type representing the JWT part of the SD-JWT
- * @param ENVELOPED_JWT the type representing the envelope JWT
- * @receiver the SD-JWT (presentation) to be enveloped.
- * @return a JWT (not SD-JWT) as described above
- */
-fun <JWT, ENVELOPED_JWT> SdJwt<JWT>.toEnvelopedFormat(
-    otherClaims: Claims,
-    envelopOption: EnvelopOption<JWT>,
-    signEnvelop: (Claims) -> Result<ENVELOPED_JWT>,
-): Result<ENVELOPED_JWT> {
-    val envelopedClaims = otherClaims.toMutableMap()
-    when (envelopOption) {
-        is EnvelopOption.Combined<JWT> -> {
-            val sdJwtInCombined = serialize(envelopOption.serializeJwt)
-            envelopedClaims[ENVELOPED_SD_JWT_IN_COMBINED_FROM] = JsonPrimitive(sdJwtInCombined)
-        }
-
-        is EnvelopOption.JwsJson<JWT> -> {
-            val sdJwtInJwsJson = asJwsJsonObject(envelopOption.jwsSerializationOption, envelopOption.getParts)
-            envelopedClaims[ENVELOPED_SD_JWT_IN_JWS_JSON] = sdJwtInJwsJson
-        }
-    }
-
-    return signEnvelop(envelopedClaims)
-}
-
-/**
- *
- */
 enum class JwsSerializationOption {
     General, Flattened
 }
