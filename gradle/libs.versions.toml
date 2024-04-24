@@ -12,11 +12,13 @@ dependencycheck = "9.1.0"
 maven-publish = "0.28.0"
 kotlinx-knit = "0.5.0"
 tink = "1.13.0"
+jsonpathkt="2.0.1"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseWwt" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
+jsonpathkt = { module = "com.nfeld.jsonpathkt:jsonpathkt", version.ref = "jsonpathkt" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
