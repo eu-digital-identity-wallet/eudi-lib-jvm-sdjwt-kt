@@ -114,9 +114,8 @@ class PresentationTest {
         sdJwt
     }
 
-    private val presenter = DefaultPresenter<SignedJWT>({ it.jwtClaimsSet.asClaims() }, false)
     private fun SdJwt.Issuance<SignedJWT>.present(query: Query): SdJwt.Presentation<SignedJWT>? =
-        presenter.present(this, query)
+        present(query) { it.jwtClaimsSet.asClaims() }
 
     @Test
     fun `query for all claims should returned the issued sd-jwt`() {

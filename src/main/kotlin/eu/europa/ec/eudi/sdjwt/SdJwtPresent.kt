@@ -40,22 +40,23 @@ sealed interface Query {
     data class Many(val claimsInPath: List<ClaimInPath>) : Query
     data object AllClaims : Query
 }
+fun <JWT>SdJwt.Issuance<JWT>.present(query: Query, claimsOf: (JWT) -> Claims): SdJwt.Presentation<JWT>? =
+    Presenter(claimsOf, false).present(this, query)
 
-sealed interface Match {
+private sealed interface Match {
     data object ByPlainClaims : Match // No disclosures needed. Claim is non-selectively disclosable
     data class BySdClaims(val disclosures: List<Disclosure>) : Match {
         init {
             require(disclosures.isNotEmpty())
         }
     }
-
-    fun disclosures(): List<Disclosure> = when (this) {
-        ByPlainClaims -> emptyList()
-        is BySdClaims -> disclosures
-    }
 }
 
-interface Presenter<JWT> {
+private class Presenter<JWT>(
+    private val claimsOf: (JWT) -> Claims,
+    private val continueIfSomeNotMatch: Boolean = false,
+) {
+
     fun present(sdJwt: SdJwt.Issuance<JWT>, query: Query): SdJwt.Presentation<JWT>? =
         when (val match = match(sdJwt, query)) {
             null -> null
@@ -68,15 +69,7 @@ interface Presenter<JWT> {
             }
         }
 
-    fun match(sdJwt: SdJwt.Issuance<JWT>, query: Query): Match?
-}
-
-class DefaultPresenter<JWT>(
-    private val claimsOf: (JWT) -> Claims,
-    private val continueIfSomeNotMatch: Boolean = false,
-) : Presenter<JWT> {
-
-    override fun match(sdJwt: SdJwt.Issuance<JWT>, query: Query): Match? {
+    fun match(sdJwt: SdJwt.Issuance<JWT>, query: Query): Match? {
         val disclosuresPerClaim by lazy { sdJwt.disclosuresPerClaim(claimsOf) }
         fun matchClaimInPath(q: Query.ClaimInPath): Match? =
             when (val ds = disclosuresPerClaim[q.path]) {
