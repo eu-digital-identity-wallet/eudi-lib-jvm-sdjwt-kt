@@ -21,6 +21,23 @@ import kotlinx.serialization.json.*
 import com.nfeld.jsonpathkt.JsonPath as ExternalJsonPath
 
 typealias JsonPath = String
+typealias DisclosuresPerClaim = Map<JsonPath, List<Disclosure>>
+
+/**
+ * Gets the full [JsonPath] of each selectively disclosed claim alongside the [Disclosures][Disclosure] that are required
+ * to disclose it.
+ */
+fun <JWT> SdJwt.Issuance<JWT>.disclosuresPerClaim(claimsOf: (JWT) -> Claims): DisclosuresPerClaim {
+    val disclosures = mutableMapOf<JsonPath, List<Disclosure>>()
+    val visitor = SdClaimVisitor { parent, current, disclosure ->
+        require(current !in disclosures.keys) { "Disclosures for claim $current have already been calculated." }
+        disclosures[current] = (disclosures[parent] ?: emptyList()) + disclosure
+    }
+    recreateClaims(visitor, claimsOf)
+    return disclosures
+}
+
+fun UnsignedSdJwt.disclosuresPerClaim(): DisclosuresPerClaim = disclosuresPerClaim { it }
 
 sealed interface Query {
     data object OnlyNonSelectivelyDisclosableClaims : Query
