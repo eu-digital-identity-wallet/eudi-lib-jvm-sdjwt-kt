@@ -199,7 +199,7 @@ internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
  *  @receiver the claims to check
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
-private fun Claims.directDigests(): Set<DisclosureDigest> =
+internal fun Claims.directDigests(): Set<DisclosureDigest> =
     this["_sd"]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?.toSet()
@@ -210,5 +210,5 @@ private fun Claims.directDigests(): Set<DisclosureDigest> =
  * @receiver the claims to check
  * @return The [HashAlgorithm] if found
  */
-private fun Claims.hashAlgorithm(): HashAlgorithm? =
+internal fun Claims.hashAlgorithm(): HashAlgorithm? =
     this["_sd_alg"]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }

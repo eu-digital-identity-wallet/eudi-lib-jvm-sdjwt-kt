@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import com.nfeld.jsonpathkt.JsonPath as ExternalJsonPath
 
@@ -71,72 +70,19 @@ class DefaultPresenter<JWT>(
 ) : Presenter<JWT> {
 
     override fun match(sdJwt: SdJwt.Issuance<JWT>, query: Query): Match? {
-        val protected: Claims by lazy { claimsOf(sdJwt.jwt) }
-        val protectedJson by lazy { Json.encodeToString(protected) }
-        val unprotected: Claims by lazy { sdJwt.recreateClaims(claimsOf) }
-        val unprotectedJson by lazy { Json.encodeToString(unprotected) }
-
-        fun getUnprotectedClaimAt(path: JsonPath): JsonElement? =
-            JsonPathOps.getJsonAtPath(path, unprotectedJson)?.let { Json.encodeToJsonElement(it) }
-
-        fun getProtectedClaimAt(path: JsonPath): JsonElement? =
-            JsonPathOps.getJsonAtPath(path, protectedJson)?.let { Json.encodeToJsonElement(it) }
-
-        val protectedPaths by lazy { findPaths(JsonObject(protected)) }
-        val unprotectedPaths by lazy { findPaths(JsonObject(unprotected)) }
-
-        val intersection = (unprotectedPaths.intersect(protectedPaths)).also {
-            println("Intersection")
-            println(it)
-        }
-        val diff = (unprotectedPaths - protectedPaths).also {
-            println("Diff")
-            println(it)
-        }
-
-        fun doMatch(q: Query): Match? = when (q) {
-            Query.OnlyNonSelectivelyDisclosableClaims -> Match.ByPlainClaims
+        return when (query) {
             Query.AllClaims -> Match.BySdClaims(sdJwt.disclosures)
             is Query.ClaimInPath -> {
-                val matchingClaim = getUnprotectedClaimAt(q.path)
-                when (matchingClaim) {
-                    JsonNull -> {
-                        // This assumes that JSON Null cannot be Selectively disclosed
-                        // TODO Check if is true
-                        Match.ByPlainClaims
-                    }
-
-                    null -> null
-                    else -> {
-                        val isPlain = getProtectedClaimAt(q.path) != null
-                        if (isPlain) Match.ByPlainClaims
-                        else {
-                            TODO()
-                        }
-                    }
-                }
+                val ps: List<String> = query.path.run {
+                    this.split(".")
+                }.drop(1)
+                sdJwt.disclosuresOf(claimsOf, ps)
             }
-
             is Query.Many -> TODO()
+            Query.OnlyNonSelectivelyDisclosableClaims -> Match.ByPlainClaims
         }
-
-        return doMatch(query)
     }
 }
-
-internal fun findPaths(jsonObject: JsonObject, currentPath: String = "\$"): List<String> =
-    jsonObject.flatMap { (key, value) ->
-        val keyPath = "$currentPath.$key"
-        when (value) {
-            is JsonArray -> listOf(keyPath)
-            is JsonObject -> {
-                listOf(keyPath) + findPaths(value, keyPath)
-            }
-
-            is JsonPrimitive -> listOf(keyPath)
-            JsonNull -> emptyList()
-        }
-    }
 
 /**
  * JSON Path related operations
@@ -169,21 +115,119 @@ internal object JsonPathOps {
     private val objectMapper: ObjectMapper by lazy { ObjectMapper() }
 }
 
-internal sealed interface AnnotatedClaim {
-    val path: JsonPath
-    data class Plain(override val path: JsonPath) : AnnotatedClaim
-    data class Sd(override val path: JsonPath) : AnnotatedClaim
+private data class AnnotatedClaim(
+    val path: JsonPath,
+    val disclosure: Disclosure? = null,
+) {
+    override fun toString(): String {
+        return "AnnotatedClaim[ path:$path" + (
+            disclosure?.let {
+                val (n, v) = it.claim()
+                ", disclosure:$n = $v"
+            } ?: ""
+            ) + "]"
+    }
 }
 
-internal typealias Analyzed = BinaryTree<AnnotatedClaim>
+private typealias Analyzed = TreeNode<AnnotatedClaim>
 
-internal fun Analyzed.leafAt(ps: List<String>): Leaf<AnnotatedClaim>? {
-    TODO()
+private fun <JWT>SdJwt.Issuance<JWT>.disclosuresOf(
+    claimsOf: (JWT) -> Claims,
+    pathAsList: List<String>,
+): Match? {
+    val analysis = analyze(claimsOf)
+    var disclosuresToPresent: MutableList<Disclosure>? = null
+
+    fun d(nodes: List<TreeNode<AnnotatedClaim>>, p: String): TreeNode<AnnotatedClaim>? =
+        nodes.firstOrNull { it.value.path == p }
+
+    var current = analysis.children
+    for (p in pathAsList) {
+        val r = d(current, p)
+        when (r) {
+            null -> {}
+            else -> {
+                if (disclosuresToPresent == null) {
+                    disclosuresToPresent = mutableListOf()
+                }
+                r.value.disclosure?.let { disclosuresToPresent.add(it) }
+                current = r.children
+            }
+        }
+    }
+    return disclosuresToPresent?.let {
+        if (it.isEmpty()) Match.ByPlainClaims
+        else Match.BySdClaims(it)
+    }
+}
+private fun <JWT> SdJwt.Issuance<JWT>.analyze(claimsOf: (JWT) -> Claims): Analyzed {
+    val jwtClaims = JsonObject(claimsOf(jwt))
+    val disclosures = disclosures
+    val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
+    // Recalculate digests, using the hash algorithm
+    val disclosuresPerDigest: MutableMap<DisclosureDigest, Disclosure> = disclosures.associateBy {
+        DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
+    }.toMutableMap()
+
+    val analysis = TreeNode(AnnotatedClaim("", null))
+
+    doAnalyze(disclosuresPerDigest, jwtClaims, analysis)
+
+    return analysis
 }
 
+private fun doAnalyze(
+    disclosuresPerDigest: MutableMap<DisclosureDigest, Disclosure>,
+    c: Claim,
+    parent: TreeNode<AnnotatedClaim>,
+    disclosure: Disclosure?,
+) {
+    val (name, json) = c
+    when (json) {
+        is JsonArray -> {
+            parent.add(AnnotatedClaim(name, disclosure))
+        }
+        is JsonObject -> {
+            val node = parent.add(AnnotatedClaim(name, disclosure))
+            doAnalyze(disclosuresPerDigest, json, node)
+        }
+        is JsonPrimitive -> {
+            parent.add(AnnotatedClaim(name, disclosure))
+        }
+        JsonNull -> {
+            parent.add(AnnotatedClaim(name, disclosure))
+        }
+    }
+}
+private fun doAnalyze(disclosuresPerDigest: MutableMap<DisclosureDigest, Disclosure>, cs: Claims, parent: TreeNode<AnnotatedClaim>) {
+    for (digest in cs.directDigests()) {
+        disclosuresPerDigest[digest]?.let { disclosure ->
+            if (disclosure is Disclosure.ObjectProperty) {
+                doAnalyze(disclosuresPerDigest, disclosure.claim(), parent, disclosure)
+            } else error("Found array element disclosure ${disclosure.value} within _sd claim")
+        }
+    }
+
+    for (c in ((cs - "_sd") - "_sd_alg")) {
+        doAnalyze(disclosuresPerDigest, c.key to c.value, parent, null)
+    }
+}
 //
 // Tree
 //
+
+private class TreeNode<T>(val value: T) {
+    val children: MutableList<TreeNode<T>> = mutableListOf()
+    fun add(v: T): TreeNode<T> {
+        val node = TreeNode(v)
+        children.add(node)
+        return node
+    }
+
+    override fun toString(): String {
+        return "value = $value" + if (children.isNotEmpty())", children=$children" else ""
+    }
+}
 
 internal sealed interface BinaryTree<A>
 internal data class Leaf<A>(val value: A) : BinaryTree<A>
