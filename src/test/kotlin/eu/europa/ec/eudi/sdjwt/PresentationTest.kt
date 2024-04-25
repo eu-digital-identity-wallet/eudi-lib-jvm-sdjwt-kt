@@ -22,6 +22,8 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
+import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.time.Instant
@@ -219,7 +221,7 @@ class PresentationTest {
     }
 
     @Test
-    fun foo() {
+    fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() {
         val spec = sdJwt {
             structured("credentialSubject") {
                 plain {
@@ -227,19 +229,31 @@ class PresentationTest {
                 }
             }
         }
-        val sdJwt = issuer.issue(spec).getOrThrow()
-        val (claims, disclosuresPerClaim) = sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }
-        sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
-        println(claims.pretty())
-        disclosuresPerClaim.forEach { (p, ds) ->
-            println("${p.asJsonPath()} - ${if (ds.isEmpty()) "plain" else "$ds"}")
-        }
-//        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.vaccine.type"))
-//        assertNotNull(p)
+        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.type"))
+        assertNotNull(p)
+        assertTrue { p.disclosures.isEmpty() }
     }
 
     @Test
-    fun foo2() {
+    fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() {
+        val spec = sdJwt {
+            recursive("credentialSubject") {
+                plain {
+                    put("type", "VaccinationEvent")
+                }
+            }
+        }
+        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+
+        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.type"))
+        assertNotNull(p)
+        assertEquals(1, p.disclosures.size)
+        assertEquals("credentialSubject", p.disclosures.firstOrNull()?.claim()?.name())
+    }
+
+    @Test
+    fun `query for sd array`() {
         val spec = sdJwt {
             sdArray("evidence") {
                 buildSdObject {
@@ -253,18 +267,82 @@ class PresentationTest {
             }
         }
 
-        val sdJwt = issuer.issue(spec).getOrThrow()
-        val (claims, disclosuresPerClaim) = sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }
-        sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
-        println(claims.pretty())
-        disclosuresPerClaim.forEach { (p, ds) ->
-            println("${p.asJsonPath()} - ${if (ds.isEmpty()) "plain" else "$ds"}")
+        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+        // All claims bellow should not require a disclosure
+        val claimsToPresent = listOf("$.evidence", "$.evidence[1]", "$.evidence[1].foo")
+        val p1 = sdJwt.present(Query.Many(claimsToPresent.map { Query.ClaimInPath(it) }))
+        assertNotNull(p1)
+        assertTrue { p1.disclosures.isEmpty() }
+
+        val p2 = sdJwt.present(Query.ClaimInPath("$.evidence[0].type"))
+        assertNotNull(p2)
+        // To reveal `type` we need
+        // - an array disclosure for the first element of the array
+        // - a disclosure to reveal `type`
+        assertEquals(2, p2.disclosures.size)
+
+    }
+
+    @Test
+    fun `querying for a recursive SD array`() {
+        val spec = sdJwt {
+            recursiveArray("evidence") {
+                buildSdObject {
+                    sd {
+                        put("type", "document")
+                    }
+                }
+                plain {
+                    put("foo", "bar")
+                }
+            }
         }
-//        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.vaccine.type"))
-//        assertNotNull(p)
+
+        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+
+        val claimsToPresent = listOf("$.evidence", "$.evidence[1]", "$.evidence[1].foo")
+        val p1 = sdJwt.present(Query.Many(claimsToPresent.map { Query.ClaimInPath(it) }))
+        assertNotNull(p1)
+        assertEquals(1, p1.disclosures.size)
+        assertEquals("evidence", p1.disclosures.firstOrNull()?.claim()?.name())
+
+        val p2 = sdJwt.present(Query.ClaimInPath("$.evidence[0].type"))
+        assertNotNull(p2)
+        // To reveal `type` we need
+        // - "evidence" <- since it is a recursive array
+        // - an array disclosure for the first element of the array
+        // - a disclosure to reveal `type`
+        assertEquals(3, p2.disclosures.size)
+
+
+    }
+
+
+    @Test
+    fun foo() {
+   val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
+        val p = sdJwt.present(Query.ClaimInPath("\$.verified_claims.verification.evidence[0].document"))
+        assertNotNull(p)
+
+    }
+
+    @Test
+    fun foo2() {
+        val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
+        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.recipient.gender"))
+        assertNotNull(p)
+
     }
 }
 
+private fun SdJwt<SignedJWT>.prettyPrintAll() {
+    val (claims, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }
+    prettyPrint { it.jwtClaimsSet.asClaims() }
+    println(claims.pretty())
+    disclosuresPerClaim.forEach { (p, ds) ->
+        println("${p.asJsonPath()} - ${if (ds.isEmpty()) "plain" else "$ds"}")
+    }
+}
 private fun Claims.pretty(): String = jsonSupport.encodeToString(JsonObject(this))
 private fun JsonElement.pretty(): String = jsonSupport.encodeToString(this)
 private val jsonSupport: Json = Json { prettyPrint = true }
