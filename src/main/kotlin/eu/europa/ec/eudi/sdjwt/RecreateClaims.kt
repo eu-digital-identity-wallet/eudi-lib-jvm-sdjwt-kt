@@ -53,6 +53,29 @@ fun <JWT> SdJwt<JWT>.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoO
 
 fun UnsignedSdJwt.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoOp) = recreateClaims(visitor) { it }
 
+@JvmInline
+value class SingleClaimJsonPath private constructor(private val claimPath: List<String>) {
+    fun partOf(): SingleClaimJsonPath? = when (this) {
+        Root -> null
+        else -> SingleClaimJsonPath(claimPath.dropLast(1))
+    }
+    fun asJsonPath(): JsonPath {
+        return "$" + claimPath.fold("") { acc, s ->
+            if (s.startsWith("[")) acc + s
+            else "$acc.$s"
+        }
+    }
+    fun nestClaim(name: String): SingleClaimJsonPath {
+        require("[" !in name && "]" !in name) { "Invalid name" }
+        return SingleClaimJsonPath(claimPath + name)
+    }
+    fun arrayItem(i: Int): SingleClaimJsonPath = SingleClaimJsonPath(claimPath + "[$i]")
+    companion object {
+        val Root: SingleClaimJsonPath = SingleClaimJsonPath(emptyList())
+        fun fromJsonPath(jsonPath: JsonPath): SingleClaimJsonPath? = TODO()
+    }
+}
+
 /**
  * Visitor for selectively disclosed claims.
  */
@@ -63,7 +86,7 @@ fun interface SdClaimVisitor {
      * @param current the full JsonPath of the current selectively disclosed element - uses dot notation
      * @param disclosure the disclosure of the current selectively disclosed element
      */
-    operator fun invoke(current: JsonPath, disclosure: Disclosure)
+    operator fun invoke(current: SingleClaimJsonPath, disclosure: Disclosure)
 
     companion object {
 
@@ -117,7 +140,8 @@ private object RecreateClaims {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }.toMutableMap()
 
-        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, "\$", visitor)
+        val recreatedClaims =
+            embedDisclosuresIntoObject(disclosuresPerDigest, claims, SingleClaimJsonPath.Root, visitor)
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
@@ -141,13 +165,14 @@ private object RecreateClaims {
     private fun embedDisclosuresIntoElement(
         disclosures: DisclosurePerDigest,
         jsonElement: JsonElement,
-        current: JsonPath,
+        current: SingleClaimJsonPath,
         visitor: SdClaimVisitor,
     ): JsonElement {
         fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
-            val sdArrayElementPath = "$current[$index]"
+            val sdArrayElementPath = current.arrayItem(index)
             val sdArrayElement =
-                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath, visitor) ?: element
+                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath, visitor)
+                    ?: element
                 else element
 
             return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath, visitor)
@@ -182,7 +207,7 @@ private object RecreateClaims {
     private fun embedDisclosuresIntoObject(
         disclosures: DisclosurePerDigest,
         claims: Claims,
-        current: JsonPath,
+        current: SingleClaimJsonPath,
         visitor: SdClaimVisitor,
     ): JsonObject =
         replaceDirectDigests(disclosures, claims, current, visitor)
@@ -190,7 +215,7 @@ private object RecreateClaims {
                 embedDisclosuresIntoElement(
                     disclosures,
                     element,
-                    "$current.$name",
+                    current.nestClaim(name),
                     visitor,
                 )
             }
@@ -210,7 +235,7 @@ private object RecreateClaims {
     private fun replaceDirectDigests(
         disclosures: DisclosurePerDigest,
         claims: Claims,
-        current: JsonPath,
+        current: SingleClaimJsonPath,
         visitor: SdClaimVisitor,
     ): Claims {
         val resultingClaims = claims.toMutableMap()
@@ -219,7 +244,7 @@ private object RecreateClaims {
             val (name, value) = disclosure.claim()
             require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
 
-            visitor("$current.$name", disclosure)
+            visitor(current.nestClaim(name), disclosure)
 
             disclosures.remove(digest)
             resultingClaims[name] = value
@@ -243,7 +268,7 @@ private object RecreateClaims {
 private fun replaceArrayDigest(
     disclosures: DisclosurePerDigest,
     claims: JsonObject,
-    current: JsonPath,
+    current: SingleClaimJsonPath,
     visitor: SdClaimVisitor,
 ): JsonElement? =
     arrayElementDigest(claims)?.let { digest ->
