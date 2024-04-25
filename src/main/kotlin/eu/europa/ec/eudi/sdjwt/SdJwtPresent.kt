@@ -33,12 +33,10 @@ fun UnsignedSdJwt.disclosuresPerClaim(): DisclosuresPerClaim = disclosuresPerCla
 fun <JWT> SdJwt.Issuance<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
     val disclosuresPerClaim = mutableMapOf<SingleClaimJsonPath, List<Disclosure>>()
     val visitor = SdClaimVisitor { path, disclosure ->
-        require(path !in disclosuresPerClaim.keys) { "Disclosures for claim $path have already been calculated." }
         if (disclosure != null) {
-            disclosuresPerClaim[path] = (disclosuresPerClaim[path.partOf()] ?: emptyList()) + disclosure
-        } else {
-            disclosuresPerClaim[path] = emptyList()
+            require(path !in disclosuresPerClaim.keys) { "Disclosures for claim $path have already been calculated." }
         }
+        disclosuresPerClaim.putIfAbsent(path, disclosuresPerClaim[path.partOf()].orEmpty() + disclosure?.let { listOf(it) }.orEmpty())
     }
     val claims = recreateClaims(visitor, claimsOf)
     return claims to disclosuresPerClaim

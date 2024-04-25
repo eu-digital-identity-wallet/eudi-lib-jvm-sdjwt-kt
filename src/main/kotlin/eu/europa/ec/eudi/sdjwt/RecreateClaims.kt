@@ -164,17 +164,12 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 private class RecreateClaims(private val visitor: SdClaimVisitor) {
 
     fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
-        val hashAlgorithm = claims.hashAlgorithm()
-        return if (hashAlgorithm != null) replaceDigestsWithDisclosures(
+        val hashAlgorithm = claims.hashAlgorithm() ?: HashAlgorithm.SHA_256
+        return replaceDigestsWithDisclosures(
             hashAlgorithm,
             disclosures,
             claims - "_sd_alg",
         )
-        else {
-            val containsDigests = collectDigests(claims).isNotEmpty()
-            if (disclosures.isEmpty() && !containsDigests) claims
-            else error("Missing hash algorithm")
-        }
     }
 
     /**
@@ -199,14 +194,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }.toMutableMap()
 
-        for ((name, _) in claims) {
-            if (name != "_sd" && name != "_sd_alg") {
-                visitor(SingleClaimJsonPath.Root.nestClaim(name), null)
-            }
-        }
-
-        val recreatedClaims =
-            embedDisclosuresIntoObject(disclosuresPerDigest, claims, SingleClaimJsonPath.Root)
+        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, SingleClaimJsonPath.Root)
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
@@ -234,13 +222,13 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
         fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
             val sdArrayElementPath = current.arrayItem(index)
             val sdArrayElement =
-                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath, visitor)
-                    ?: element
+                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath, visitor) ?: element
                 else element
 
             return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath)
         }
 
+        visitor(current, null)
         return when (jsonElement) {
             is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement, current)
             is JsonArray ->
@@ -326,8 +314,12 @@ private fun replaceArrayDigest(
     claims: JsonObject,
     current: SingleClaimJsonPath,
     visitor: SdClaimVisitor,
-): JsonElement? =
-    arrayElementDigest(claims)?.let { digest ->
+): JsonElement? {
+    val digest = arrayElementDigest(claims)
+    return if (digest == null) {
+        visitor(current, null)
+        null
+    } else {
         disclosures[digest]?.let { disclosure ->
             when (disclosure) {
                 is Disclosure.ArrayElement -> {
@@ -340,6 +332,7 @@ private fun replaceArrayDigest(
             }
         }
     }
+}
 
 internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
     if (claims.size == 1)
