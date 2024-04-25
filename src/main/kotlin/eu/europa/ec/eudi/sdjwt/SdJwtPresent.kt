@@ -84,12 +84,11 @@ private class Presenter<JWT>(
 
         fun matchClaimInPath(q: Query.ClaimInPath): Match {
             val predicate = f(q.path)
-            return when (val keys = disclosuresPerClaim.keys.filter(predicate)) {
-                emptyList<SingleClaimJsonPath>() -> Match.NotMatched
-                else -> {
-                    val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten()
-                    Match.Matched(ds)
-                }
+            val keys = disclosuresPerClaim.keys.filter(predicate)
+            return if (keys.isEmpty()) return Match.NotMatched
+            else {
+                val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten()
+                Match.Matched(ds)
             }
         }
 
