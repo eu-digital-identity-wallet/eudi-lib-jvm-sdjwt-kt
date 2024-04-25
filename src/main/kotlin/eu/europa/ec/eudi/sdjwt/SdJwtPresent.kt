@@ -32,9 +32,13 @@ fun UnsignedSdJwt.disclosuresPerClaim(): DisclosuresPerClaim = disclosuresPerCla
 
 fun <JWT> SdJwt.Issuance<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
     val disclosuresPerClaim = mutableMapOf<SingleClaimJsonPath, List<Disclosure>>()
-    val visitor = SdClaimVisitor { current, disclosure ->
-        require(current !in disclosuresPerClaim.keys) { "Disclosures for claim $current have already been calculated." }
-        disclosuresPerClaim[current] = (disclosuresPerClaim[current.partOf()] ?: emptyList()) + disclosure
+    val visitor = SdClaimVisitor { path, disclosure ->
+        require(path !in disclosuresPerClaim.keys) { "Disclosures for claim $path have already been calculated." }
+        if (disclosure != null) {
+            disclosuresPerClaim[path] = (disclosuresPerClaim[path.partOf()] ?: emptyList()) + disclosure
+        } else {
+            disclosuresPerClaim[path] = emptyList()
+        }
     }
     val claims = recreateClaims(visitor, claimsOf)
     return claims to disclosuresPerClaim
@@ -80,14 +84,10 @@ private class Presenter<JWT>(
 
         fun matchClaimInPath(q: Query.ClaimInPath): Match {
             val predicate = f(q.path)
-            val ds = disclosuresPerClaim.filterKeys(predicate).values.flatten()
-            return when {
-                ds.isEmpty() -> Match.NotMatched
+            return when (val keys = disclosuresPerClaim.keys.filter(predicate)) {
+                emptyList<SingleClaimJsonPath>() -> Match.NotMatched
                 else -> {
-//                    val claimValue = checkNotNull(unprotectedClaimAt(q.path)) { "Missing value for ${q.path}" }
-//                    if (q.filter(claimValue)) Match.Matched(ds)
-//                    else Match.NotMatched
-
+                    val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten()
                     Match.Matched(ds)
                 }
             }
