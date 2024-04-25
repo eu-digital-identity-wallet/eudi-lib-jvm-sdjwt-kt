@@ -24,6 +24,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import java.time.Instant
 import kotlin.test.*
 
 class PresentationTest {
@@ -99,23 +100,46 @@ class PresentationTest {
         cnf(holderKey.toPublicJWK())
     }
 
-    private val issuedSdJwt: SdJwt.Issuance<SignedJWT> by lazy {
-        val issuer = SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256) {
-            type(JOSEObjectType("example+sd-jwt"))
-            keyID(issuerKey.keyID)
-        }
-        val sdJwt = issuer.issue(pidSpec).getOrThrow()
+    private val issuer = SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256) {
+        type(JOSEObjectType("example+sd-jwt"))
+        keyID(issuerKey.keyID)
+    }
 
+    private val issuedSdJwt: SdJwt.Issuance<SignedJWT> by lazy {
+        val sdJwt = issuer.issue(pidSpec).getOrThrow()
         println("Issued: ${sdJwt.serialize()}")
         sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
-        sdJwt.recreateClaims { it.jwtClaimsSet.asClaims() }.also { json ->
+        sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }.also { (json, map) ->
             println(json.pretty())
+            map.forEach { (name, ds) -> println("${name.asJsonPath()} - $ds") }
         }
         sdJwt
     }
 
     private fun SdJwt.Issuance<SignedJWT>.present(query: Query): SdJwt.Presentation<SignedJWT>? =
         present(query) { it.jwtClaimsSet.asClaims() }
+
+    @Test
+    fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() {
+        val sdJwt = run {
+            val spec = sdJwt {
+                iss("foo")
+                iat(Instant.now().epochSecond)
+            }
+            issuer.issue(spec).getOrThrow().also {
+                assertTrue { it.disclosures.isEmpty() }
+            }
+        }
+
+        val allClaims = sdJwt.present(Query.AllClaims)
+        val alwaysDisclosableClaims = sdJwt.present(Query.OnlyNonSelectivelyDisclosableClaims)
+
+        assertNotNull(allClaims)
+        assertEquals(sdJwt.jwt, allClaims.jwt)
+
+        assertTrue { allClaims.disclosures.isEmpty() }
+        assertEquals(allClaims, alwaysDisclosableClaims)
+    }
 
     @Test
     fun `query for all claims should returned the issued sd-jwt`() {
@@ -192,6 +216,52 @@ class PresentationTest {
         assertNotNull(presentation)
         assertEquals(1, presentation.disclosures.size)
         assertEquals("18", presentation.disclosures.first().claim().name())
+    }
+
+    @Test
+    fun foo() {
+        val spec = sdJwt {
+            structured("credentialSubject") {
+                plain {
+                    put("type", "VaccinationEvent")
+                }
+            }
+        }
+        val sdJwt = issuer.issue(spec).getOrThrow()
+        val (claims, disclosuresPerClaim) = sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }
+        sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
+        println(claims.pretty())
+        disclosuresPerClaim.forEach { (p, ds) ->
+            println("${p.asJsonPath()} - ${if (ds.isEmpty()) "plain" else "$ds"}")
+        }
+//        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.vaccine.type"))
+//        assertNotNull(p)
+    }
+
+    @Test
+    fun foo2() {
+        val spec = sdJwt {
+            sdArray("evidence") {
+                buildSdObject {
+                    sd {
+                        put("type", "document")
+                    }
+                }
+                plain {
+                    put("foo", "bar")
+                }
+            }
+        }
+
+        val sdJwt = issuer.issue(spec).getOrThrow()
+        val (claims, disclosuresPerClaim) = sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }
+        sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
+        println(claims.pretty())
+        disclosuresPerClaim.forEach { (p, ds) ->
+            println("${p.asJsonPath()} - ${if (ds.isEmpty()) "plain" else "$ds"}")
+        }
+//        val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.vaccine.type"))
+//        assertNotNull(p)
     }
 }
 
