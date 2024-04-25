@@ -23,10 +23,29 @@ typealias DisclosuresPerClaim = Map<JsonPath, List<Disclosure>>
  * to disclose it.
  */
 fun <JWT> SdJwt.Issuance<JWT>.disclosuresPerClaim(claimsOf: (JWT) -> Claims): DisclosuresPerClaim {
+    fun JsonPath.parent(): JsonPath {
+        val parts = split(".")
+        return when {
+            parts.size > 1 -> {
+                buildList {
+                    addAll(parts.subList(0, parts.lastIndex))
+                    val lastPart = parts.last()
+
+                    if ("[" in lastPart && "]" in lastPart) {
+                        // Current JsonPath is an array element. In this case the parent is the JsonPath of the array.
+                        add(lastPart.substring(0, lastPart.indexOf("[")))
+                    }
+                }.joinToString(separator = ".")
+            }
+
+            else -> error("JsonPath doesn't have a parent")
+        }
+    }
+
     val disclosures = mutableMapOf<JsonPath, List<Disclosure>>()
-    val visitor = SdClaimVisitor { parent, current, disclosure ->
+    val visitor = SdClaimVisitor { current, disclosure ->
         require(current !in disclosures.keys) { "Disclosures for claim $current have already been calculated." }
-        disclosures[current] = (disclosures[parent] ?: emptyList()) + disclosure
+        disclosures[current] = (disclosures[current.parent()] ?: emptyList()) + disclosure
     }
     recreateClaims(visitor, claimsOf)
     return disclosures
@@ -40,7 +59,8 @@ sealed interface Query {
     data class Many(val claimsInPath: List<ClaimInPath>) : Query
     data object AllClaims : Query
 }
-fun <JWT>SdJwt.Issuance<JWT>.present(query: Query, claimsOf: (JWT) -> Claims): SdJwt.Presentation<JWT>? =
+
+fun <JWT> SdJwt.Issuance<JWT>.present(query: Query, claimsOf: (JWT) -> Claims): SdJwt.Presentation<JWT>? =
     Presenter(claimsOf, false).present(this, query)
 
 private sealed interface Match {
@@ -87,7 +107,9 @@ private class Presenter<JWT>(
                     when (val m = matchClaimInPath(q)) {
                         null -> misses = true
                         Match.ByPlainClaims -> {}
-                        is Match.BySdClaims -> { disclosuresToPresent.addAll(m.disclosures) }
+                        is Match.BySdClaims -> {
+                            disclosuresToPresent.addAll(m.disclosures)
+                        }
                     }
                     if (misses && !continueIfSomeNotMatch) break
                 }
@@ -97,6 +119,7 @@ private class Presenter<JWT>(
                     else Match.BySdClaims(disclosuresToPresent.toList())
                 }
             }
+
             Query.OnlyNonSelectivelyDisclosableClaims -> Match.ByPlainClaims
         }
     }
