@@ -53,26 +53,85 @@ fun <JWT> SdJwt<JWT>.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoO
 
 fun UnsignedSdJwt.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoOp) = recreateClaims(visitor) { it }
 
+/**
+ * Subset of json path, used to point to a single claim.
+ *
+ * Wildcards, deep-scan, bracket notation, array range accessors, comma notation, or negative indexes are not supported.
+ */
 @JvmInline
 value class SingleClaimJsonPath private constructor(private val claimPath: List<String>) {
+
+    /**
+     * Gets the path of the containing element, if any.
+     */
     fun partOf(): SingleClaimJsonPath? = when (this) {
         Root -> null
         else -> SingleClaimJsonPath(claimPath.dropLast(1))
     }
+
+    /**
+     * Converts this to a [JsonPath].
+     */
     fun asJsonPath(): JsonPath {
         return "$" + claimPath.fold("") { acc, s ->
             if (s.startsWith("[")) acc + s
             else "$acc.$s"
         }
     }
+
+    /**
+     * Gets a new [SingleClaimJsonPath] for the claim with the provided [name], nested in the current [SingleClaimJsonPath].
+     *
+     * @throws IllegalArgumentException in case [name] contains invalid characters
+     */
     fun nestClaim(name: String): SingleClaimJsonPath {
-        require("[" !in name && "]" !in name) { "Invalid name" }
+        require(name.isNotBlank() && ClaimNameDisallowedCharacters.none { it in name }) { "Invalid name" }
         return SingleClaimJsonPath(claimPath + name)
     }
-    fun arrayItem(i: Int): SingleClaimJsonPath = SingleClaimJsonPath(claimPath + "[$i]")
+
+    /**
+     * Gets a new [SingleClaimJsonPath] for an array item at the provided [index].
+     *
+     * @throws IllegalArgumentException in case [index] is negative.
+     */
+    fun arrayItem(index: Int): SingleClaimJsonPath {
+        require(index >= 0) { "Invalid index" }
+        return SingleClaimJsonPath(claimPath + "[$index]")
+    }
+
     companion object {
+
+        /**
+         * The root element. i.e. '$'.
+         */
         val Root: SingleClaimJsonPath = SingleClaimJsonPath(emptyList())
-        fun fromJsonPath(jsonPath: JsonPath): SingleClaimJsonPath? = TODO()
+
+        /**
+         * Characters not allowed in names of claims.
+         */
+        val ClaimNameDisallowedCharacters = setOf("$", "[", "]", ",", ":", "'", " ", "*")
+
+        /**
+         * Converts a [JsonPath] to a [SingleClaimJsonPath].
+         * In case [jsonPath] is not a valid [SingleClaimJsonPath], null is returned.
+         */
+        fun fromJsonPath(jsonPath: JsonPath): SingleClaimJsonPath? =
+            if (jsonPath.isBlank() || jsonPath[0] != '$') null
+            else runCatching {
+                jsonPath.split(".")
+                    .drop(1)
+                    .fold(Root) { accumulator, part ->
+                        if (part.contains("[") && part.contains("]")) {
+                            val nameAndIndex = part.split("[", "]").dropLast(1)
+                            require(nameAndIndex.size == 2)
+
+                            val name = nameAndIndex[0]
+                            val index = nameAndIndex[1].toInt()
+
+                            accumulator.nestClaim(name).arrayItem(index)
+                        } else accumulator.nestClaim(part)
+                    }
+            }.getOrNull()
     }
 }
 
