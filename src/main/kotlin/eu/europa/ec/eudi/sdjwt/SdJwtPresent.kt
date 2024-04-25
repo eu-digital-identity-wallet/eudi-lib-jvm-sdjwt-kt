@@ -30,12 +30,12 @@ typealias DisclosuresPerClaim = Map<SingleClaimJsonPath, List<Disclosure>>
 /**
  * Gets each claim alongside the [Disclosures][Disclosure] that are required to disclose it.
  */
-fun <JWT> SdJwt.Issuance<JWT>.disclosuresPerClaim(claimsOf: (JWT) -> Claims): DisclosuresPerClaim =
+fun <JWT> SdJwt<JWT>.disclosuresPerClaim(claimsOf: (JWT) -> Claims): DisclosuresPerClaim =
     recreateClaimsAndDisclosuresPerClaim(claimsOf).second
 
 fun UnsignedSdJwt.disclosuresPerClaim(): DisclosuresPerClaim = disclosuresPerClaim { it }
 
-fun <JWT> SdJwt.Issuance<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
+fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
     val disclosuresPerClaim = mutableMapOf<SingleClaimJsonPath, List<Disclosure>>()
     val visitor = SdClaimVisitor { path, disclosure ->
         if (disclosure != null) {
