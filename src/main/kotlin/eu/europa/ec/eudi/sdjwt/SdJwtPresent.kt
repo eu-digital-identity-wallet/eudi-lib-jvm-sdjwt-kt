@@ -15,15 +15,20 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import com.fasterxml.jackson.databind.JsonNode as JacksonJsonNode
+import com.fasterxml.jackson.databind.ObjectMapper as JacksonObjectMapper
+import com.nfeld.jsonpathkt.JsonPath as ExternalJsonPath
 
 typealias JsonPath = String
 
 typealias DisclosuresPerClaim = Map<SingleClaimJsonPath, List<Disclosure>>
 
 /**
- * Gets the full [JsonPath] of each selectively disclosed claim alongside the [Disclosures][Disclosure] that are required
- * to disclose it.
+ * Gets each claim alongside the [Disclosures][Disclosure] that are required to disclose it.
  */
 fun <JWT> SdJwt.Issuance<JWT>.disclosuresPerClaim(claimsOf: (JWT) -> Claims): DisclosuresPerClaim =
     recreateClaimsAndDisclosuresPerClaim(claimsOf).second
@@ -36,7 +41,10 @@ fun <JWT> SdJwt.Issuance<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JW
         if (disclosure != null) {
             require(path !in disclosuresPerClaim.keys) { "Disclosures for claim $path have already been calculated." }
         }
-        disclosuresPerClaim.putIfAbsent(path, disclosuresPerClaim[path.partOf()].orEmpty() + disclosure?.let { listOf(it) }.orEmpty())
+        disclosuresPerClaim.putIfAbsent(
+            path,
+            disclosuresPerClaim[path.partOf()].orEmpty() + disclosure?.let { listOf(it) }.orEmpty(),
+        )
     }
     val claims = recreateClaims(visitor, claimsOf)
     return claims to disclosuresPerClaim
@@ -60,7 +68,7 @@ private sealed interface Match {
 private class Presenter<JWT>(
     private val claimsOf: (JWT) -> Claims,
     private val continueIfSomeNotMatch: Boolean = false,
-    private val f: (JsonPath) -> ((SingleClaimJsonPath) -> Boolean) = { jsonPath ->
+    private val filter: (JsonPath) -> ((SingleClaimJsonPath) -> Boolean) = { jsonPath ->
         {
                 single ->
             single.asJsonPath() == jsonPath
@@ -76,17 +84,25 @@ private class Presenter<JWT>(
 
     fun match(sdJwt: SdJwt.Issuance<JWT>, query: Query): Match {
         val (unprotected, disclosuresPerClaim) = sdJwt.recreateClaimsAndDisclosuresPerClaim(claimsOf)
-        fun unprotectedClaimAt(path: JsonPath): JsonElement? {
-            TODO()
-        }
+        val unprotectedJson: String by lazy { Json.encodeToString(JsonObject(unprotected)) }
+
+        fun unprotectedClaimAt(path: SingleClaimJsonPath): JsonElement? =
+            JsonPathOps.getJsonAtPath(path.asJsonPath(), unprotectedJson)
+                ?.let { Json.decodeFromString<JsonElement>(it) }
 
         fun matchClaimInPath(q: Query.ClaimInPath): Match {
-            val predicate = f(q.path)
+            val predicate = filter(q.path)
             val keys = disclosuresPerClaim.keys.filter(predicate)
-            return if (keys.isEmpty()) return Match.NotMatched
+            return if (keys.isEmpty()) Match.NotMatched
             else {
-                val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten()
-                Match.Matched(ds)
+                val matches = disclosuresPerClaim.filterKeys { it in keys }
+                    .filterKeys {
+                        val value =
+                            checkNotNull(unprotectedClaimAt(it)) { "Couldn't find value of claim '${it.asJsonPath()}'" }
+                        q.filter(value)
+                    }
+                return if (matches.isEmpty()) Match.NotMatched
+                else Match.Matched(matches.values.flatten())
             }
         }
 
@@ -112,4 +128,35 @@ private class Presenter<JWT>(
             Query.OnlyNonSelectivelyDisclosableClaims -> Match.Matched(emptyList())
         }
     }
+}
+
+/**
+ * JSON Path related operations
+ */
+internal object JsonPathOps {
+
+    /**
+     * Checks that the provided [path][String] is JSON Path
+     */
+    internal fun isValid(path: String): Boolean = path.toJsonPath().isSuccess
+
+    /**
+     * Extracts from given [JSON][jsonString] the content
+     * at [path][jsonPath]. Returns the value found at the path, if found
+     */
+    internal fun getJsonAtPath(jsonPath: JsonPath, jsonString: String): String? =
+        ExternalJsonPath(jsonPath)
+            .readFromJson<JacksonJsonNode>(jsonString)
+            ?.toJsonString()
+
+    private fun String.toJsonPath(): Result<ExternalJsonPath> = runCatching {
+        ExternalJsonPath(this)
+    }
+
+    private fun JacksonJsonNode.toJsonString(): String = objectMapper.writeValueAsString(this)
+
+    /**
+     * Jackson JSON support
+     */
+    private val objectMapper: JacksonObjectMapper by lazy { JacksonObjectMapper() }
 }

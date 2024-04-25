@@ -31,6 +31,7 @@ repositories {
 dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.nimbus.jose.jwt)
+    implementation(libs.jsonpathkt)
     testImplementation(kotlin("test"))
     testImplementation(libs.tink)
 }
