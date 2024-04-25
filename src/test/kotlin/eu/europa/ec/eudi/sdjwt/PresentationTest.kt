@@ -280,7 +280,6 @@ class PresentationTest {
         // - an array disclosure for the first element of the array
         // - a disclosure to reveal `type`
         assertEquals(2, p2.disclosures.size)
-
     }
 
     @Test
@@ -313,17 +312,13 @@ class PresentationTest {
         // - an array disclosure for the first element of the array
         // - a disclosure to reveal `type`
         assertEquals(3, p2.disclosures.size)
-
-
     }
-
 
     @Test
     fun foo() {
-   val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
+        val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
         val p = sdJwt.present(Query.ClaimInPath("\$.verified_claims.verification.evidence[0].document"))
         assertNotNull(p)
-
     }
 
     @Test
@@ -331,7 +326,6 @@ class PresentationTest {
         val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
         val p = sdJwt.present(Query.ClaimInPath("\$.credentialSubject.recipient.gender"))
         assertNotNull(p)
-
     }
 }
 
