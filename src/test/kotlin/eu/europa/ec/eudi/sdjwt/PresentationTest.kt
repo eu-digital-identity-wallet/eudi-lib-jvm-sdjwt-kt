@@ -149,7 +149,7 @@ class PresentationTest {
     @Test
     fun `query for non SD claim should not reveal disclosure`() {
         val claimsToPresent = setOf("iss", "vct", "cnf")
-        val query = claimsToPresent.map { JsonPointer.root().child(it) }.toSet()
+        val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
         assertNotNull(presentation)
         assertTrue { presentation.disclosures.isEmpty() }
@@ -158,7 +158,7 @@ class PresentationTest {
     @Test
     fun `query for top-level SD claims reveal equal number of disclosures`() {
         val claimsToPresent = listOf("given_name", "also_known_as", "nationalities")
-        val query = claimsToPresent.map { JsonPointer.root().child(it) }.toSet()
+        val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
         assertNotNull(presentation)
         assertEquals(claimsToPresent.size, presentation.disclosures.size)
@@ -173,7 +173,7 @@ class PresentationTest {
     @Test
     fun `query for recursive claim's with no nested SD claims should reveal equal no of disclosures`() {
         val claimsToPresent = listOf("place_of_birth", "address")
-        val query = claimsToPresent.map { JsonPointer.root().child(it) }.toSet()
+        val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
         assertNotNull(presentation)
         assertEquals(claimsToPresent.size, presentation.disclosures.size)
@@ -323,9 +323,8 @@ private fun SdJwt<SignedJWT>.prettyPrintAll() {
     }
 }
 
-private fun String.claimPointer(): JsonPointer = JsonPointer.parse(this).getOrThrow()
+private fun String.claimPointer(): JsonPointer = requireNotNull(JsonPointer.parse(this))
 
 private fun Claims.pretty(): String = jsonSupport.encodeToString(JsonObject(this))
-private fun JsonElement.pretty(): String = jsonSupport.encodeToString(this)
 private val jsonSupport: Json = Json { prettyPrint = true }
 private fun genKey(kid: String): ECKey = ECKeyGenerator(Curve.P_256).keyID(kid).generate()

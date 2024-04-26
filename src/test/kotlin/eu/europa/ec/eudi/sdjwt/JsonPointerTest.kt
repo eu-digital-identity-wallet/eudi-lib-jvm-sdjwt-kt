@@ -27,26 +27,20 @@ internal class JsonPointerTest {
     internal fun `handles root properly`() {
         val expectedTokens = emptyList<String>()
 
-        val pointer = JsonPointer.root()
+        val pointer = JsonPointer.Root
         assertEquals(emptyList(), pointer.tokens)
         assertEquals("", pointer.toString())
-        assertEquals("#", pointer.toUriFragment().getOrThrow())
-
-        assertEquals(expectedTokens, JsonPointer.parse("").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("")?.tokens)
     }
 
     @Test
     internal fun `handles 'foo' properly`() {
         val expectedTokens = listOf("foo")
 
-        val pointer = JsonPointer.root().child("foo")
+        val pointer = JsonPointer.Root.child("foo")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/foo", pointer.toString())
-        assertEquals("#/foo", pointer.toUriFragment().getOrThrow())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/foo").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/foo").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/foo")?.tokens)
     }
 
     // foo[0]
@@ -54,26 +48,22 @@ internal class JsonPointerTest {
     internal fun `handles 'foo~0' properly`() {
         val expectedTokens = listOf("foo", "0")
 
-        val pointer = JsonPointer.root().child("foo").child(0).getOrThrow()
+        val pointer = JsonPointer.Root.child("foo").child(0)
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/foo/0", pointer.toString())
-        assertEquals("#/foo/0", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/foo/0").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/foo/0").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/foo/0")?.tokens)
     }
 
     @Test
     internal fun `handles '' properly`() {
         val expectedTokens = listOf("")
 
-        val pointer = JsonPointer.root().child("")
+        val pointer = JsonPointer.Root.child("")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/", pointer.toString())
-        assertEquals("#/", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/")?.tokens)
     }
 
     // a/b
@@ -81,13 +71,11 @@ internal class JsonPointerTest {
     internal fun `handles 'a~b' properly`() {
         val expectedTokens = listOf("a/b")
 
-        val pointer = JsonPointer.root().child("a/b")
+        val pointer = JsonPointer.Root.child("a/b")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/a~1b", pointer.toString())
-        assertEquals("#/a~1b", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/a~1b").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/a~1b").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/a~1b")?.tokens)
     }
 
     // c%d
@@ -95,26 +83,22 @@ internal class JsonPointerTest {
     internal fun `handles 'c~d' properly`() {
         val expectedTokens = listOf("c%d")
 
-        val pointer = JsonPointer.root().child("c%d")
+        val pointer = JsonPointer.Root.child("c%d")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/c%d", pointer.toString())
-        assertEquals("#/c%25d", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/c%d").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/c%25d").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/c%d")?.tokens)
     }
 
     @Test
     internal fun `handles 'e^f' properly`() {
         val expectedTokens = listOf("e^f")
 
-        val pointer = JsonPointer.root().child("e^f")
+        val pointer = JsonPointer.Root.child("e^f")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/e^f", pointer.toString())
-        assertEquals("#/e%5Ef", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/e^f").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/e%5Ef").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/e^f")?.tokens)
     }
 
     // g|h
@@ -122,13 +106,10 @@ internal class JsonPointerTest {
     internal fun `handles 'g~h' properly`() {
         val expectedTokens = listOf("g|h")
 
-        val pointer = JsonPointer.root().child("g|h")
+        val pointer = JsonPointer.Root.child("g|h")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/g|h", pointer.toString())
-        assertEquals("#/g%7Ch", pointer.toUriFragment().getOrThrow())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/g|h").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/g%7Ch").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/g|h")?.tokens)
     }
 
     // i\\j
@@ -136,13 +117,11 @@ internal class JsonPointerTest {
     internal fun `handles 'i~~j' properly`() {
         val expectedTokens = listOf("i\\j")
 
-        val pointer = JsonPointer.root().child("i\\j")
+        val pointer = JsonPointer.Root.child("i\\j")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/i\\j", pointer.toString())
-        assertEquals("#/i%5Cj", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/i\\j").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/i%5Cj").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/i\\j")?.tokens)
     }
 
     // k\"l
@@ -150,38 +129,30 @@ internal class JsonPointerTest {
     internal fun `handles 'k~~l' properly`() {
         val expectedTokens = listOf("k\"l")
 
-        val pointer = JsonPointer.root().child("k\"l")
+        val pointer = JsonPointer.Root.child("k\"l")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/k\"l", pointer.toString())
-        assertEquals("#/k%22l", pointer.toUriFragment().getOrThrow())
 
-        assertEquals(expectedTokens, JsonPointer.parse("/k\"l").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/k%22l").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/k\"l")?.tokens)
     }
 
     @Test
     internal fun `handles ' ' properly`() {
         val expectedTokens = listOf(" ")
 
-        val pointer = JsonPointer.root().child(" ")
+        val pointer = JsonPointer.Root.child(" ")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/ ", pointer.toString())
-        assertEquals("#/%20", pointer.toUriFragment().getOrThrow())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/ ").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/%20").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/ ")?.tokens)
     }
 
     @Test
     internal fun `handles 'm~n' properly`() {
         val expectedTokens = listOf("m~n")
 
-        val pointer = JsonPointer.root().child("m~n")
+        val pointer = JsonPointer.Root.child("m~n")
         assertEquals(expectedTokens, pointer.tokens)
         assertEquals("/m~0n", pointer.toString())
-        assertEquals("#/m~0n", pointer.toUriFragment().getOrThrow())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/m~0n").getOrThrow().tokens)
-        assertEquals(expectedTokens, JsonPointer.fromUriFragment("#/m~0n").getOrThrow().tokens)
+        assertEquals(expectedTokens, JsonPointer.parse("/m~0n")?.tokens)
     }
 }

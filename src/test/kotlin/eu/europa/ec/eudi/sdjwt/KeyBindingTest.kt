@@ -169,7 +169,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 
     fun whatToDiscloseAsPointers(): Set<JsonPointer> =
         whatToDisclose
-            .map { JsonPointer.parse(it).getOrThrow() }
+            .map { requireNotNull(JsonPointer.parse(it)) }
             .toSet()
 }
 

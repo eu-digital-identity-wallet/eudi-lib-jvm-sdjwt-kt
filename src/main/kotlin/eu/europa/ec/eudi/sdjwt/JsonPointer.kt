@@ -15,25 +15,18 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import com.eygraber.uri.UriCodec
-
 /**
  * A pointer to a specific value withing a JSON object.
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc6901">RFC6901</a>
  */
 class JsonPointer private constructor(internal val tokens: List<String>) {
-
-    /**
-     * Whether this is the root element. (i.e. the whole JSON object)
-     */
-    val isRoot: Boolean
-        get() = tokens.isEmpty()
 
     /**
      * Gets the parent of this pointer, if any.
      */
     fun parent(): JsonPointer? =
-        when {
-            isRoot -> null
+        when (this) {
+            Root -> null
             else -> JsonPointer(tokens.dropLast(1))
         }
 
@@ -45,24 +38,13 @@ class JsonPointer private constructor(internal val tokens: List<String>) {
     /**
      * Gets a new pointer that points to a child of this pointer. Applicable for array elements.
      */
-    fun child(index: Int): Result<JsonPointer> =
-        runCatching {
-            require(index >= 0) { "index must be greater than or equal to '0'" }
-            child(index.toString())
-        }
+    fun child(index: Int): JsonPointer {
+        require(index >= 0) { "index must be greater than or equal to '0'" }
+        return child(index.toString())
+    }
 
-    override fun toString(): String = toString { it.encode() }
-
-    /**
-     * Converts this pointer to a URI fragment.
-     */
-    fun toUriFragment(): Result<String> = runCatching { "#${toString { UriCodec.encode(it.encode()) }}" }
-
-    /**
-     * Converts this pointer to a string encoding each token using the provided encoding function.
-     */
-    private fun toString(encode: (String) -> String): String =
-        tokens.fold("") { accumulator, current -> "$accumulator/${encode(current)}" }
+    override fun toString(): String =
+        tokens.fold("") { accumulator, current -> "$accumulator/${current.encode()}" }
 
     override fun equals(other: Any?): Boolean =
         when {
@@ -76,40 +58,27 @@ class JsonPointer private constructor(internal val tokens: List<String>) {
     companion object {
 
         /**
-         * Creates a new pointer for the root element.
+         * The root element.
          */
-        fun root(): JsonPointer = JsonPointer(emptyList())
+        val Root: JsonPointer = JsonPointer(emptyList())
 
         /**
          * Parses a string as a pointer.
+         * @return the JsonPointer or null if the provided [pointer] is not
+         * a valid representation
          */
-        fun parse(pointer: String): Result<JsonPointer> = parse(pointer) { it.decode() }
-
-        /**
-         * Parses a URI fragment as a pointer.
-         */
-        fun fromUriFragment(fragment: String): Result<JsonPointer> =
-            runCatching {
-                require(fragment.startsWith("#")) { "fragment must start with a '#'" }
-                parse(fragment.drop(1)) { UriCodec.decode(it, throwOnFailure = true).decode() }.getOrThrow()
-            }
-
-        /**
-         * Parses a string as a pointer. Each token is decoded using the provided decoding function.
-         */
-        private fun parse(pointer: String, decode: (String) -> String): Result<JsonPointer> =
-            runCatching {
-                when {
-                    pointer.isEmpty() -> root()
-                    else -> {
-                        require(pointer.startsWith("/")) { "pointer must start with a '/'" }
-                        pointer.split("/")
-                            .drop(1)
-                            .map { decode(it) }
-                            .let { JsonPointer(it) }
-                    }
+        fun parse(pointer: String): JsonPointer? = runCatching {
+            when {
+                pointer.isEmpty() -> Root
+                !pointer.startsWith("/") -> null
+                else -> {
+                    val tokens = pointer.split("/")
+                        .drop(1)
+                        .map { it.decode() }
+                    JsonPointer(tokens)
                 }
             }
+        }.getOrNull()
 
         /**
          * Encodes a token by replacing instances of '~' with '~0', and instances of '/' with '~1'.

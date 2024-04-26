@@ -112,7 +112,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }.toMutableMap()
 
-        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, JsonPointer.root())
+        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, JsonPointer.Root)
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
@@ -138,7 +138,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
         current: JsonPointer,
     ): JsonElement {
         fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
-            val sdArrayElementPath = current.child(index).getOrThrow()
+            val sdArrayElementPath = current.child(index)
             val sdArrayElement =
                 if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath) ?: element
                 else element
