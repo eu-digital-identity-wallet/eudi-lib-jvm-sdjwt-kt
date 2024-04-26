@@ -307,7 +307,7 @@ class HolderActor(holderKey: ECKey) {
         val presentationSdJwt = run {
             val issuanceSdJwt = checkNotNull(credentialSdJwt)
             val whatToDisclose = verifierQuery.whatToDiscloseAsPaths()
-            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }
+            issuanceSdJwt.present(whatToDisclose)
         }
         checkNotNull(presentationSdJwt)
 
@@ -326,7 +326,7 @@ class HolderActor(holderKey: ECKey) {
 class VerifierActor(private val clientId: String, private val whatToDisclose: Set<JsonPath>) {
 
     private var lastChallenge: JsonObject? = null
-    private var presentation: SdJwt.Presentation<Jwt>? = null
+    private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
         VerifierChallenge(Random.nextBytes(10).toString(), clientId, Instant.now()),
         whatToDisclose,
@@ -335,24 +335,34 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
     fun acceptPresentation(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
         holderPubKeyExtractor: (Claims) -> JWK?,
-        sdJwt: String,
+        unverifiedSdJwt: String,
     ) {
+        val signatureVerifier = signaturesVerifier(issuerJwtSignatureVerifier, holderPubKeyExtractor)
+        val presented = signatureVerifier(unverifiedSdJwt).ensureContainsWhatRequested()
+        presentation = presented
+        verifierDebug("Presentation accepted with SD Claims:")
+    }
+
+    private fun signaturesVerifier(
+        issuerJwtSignatureVerifier: JwtSignatureVerifier,
+        holderPubKeyExtractor: (Claims) -> JWK?,
+    ): (Jwt) -> SdJwt.Presentation<JwtAndClaims> = { sdJwt ->
         val keyBindingVerifier = KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, lastChallenge)
+
         SdJwtVerifier.verifyPresentation(
             jwtSignatureVerifier = issuerJwtSignatureVerifier,
             keyBindingVerifier = keyBindingVerifier,
             unverifiedSdJwt = sdJwt,
-        ).fold(onSuccess = { presented: SdJwt.Presentation<JwtAndClaims> ->
-            presentation =
-                SdJwt.Presentation(presented.jwt.first, presented.disclosures)
-
-            verifierDebug("Presentation accepted with SD Claims:")
-        }, onFailure = { exception ->
-            verifierDebug("Unable to verify presentation")
-            throw exception
-        })
+        ).getOrThrow()
     }
-
+    private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
+        val disclosedPaths = disclosedClaims()
+        whatToDisclose.forEach { check(it in disclosedPaths) { "Requested $it was not disclosed" } }
+    }
+    private fun SdJwt<JwtAndClaims>.disclosedClaims(): List<JsonPath> {
+        val (_, ds) = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }
+        return ds.keys.map { it.asJsonPath() }
+    }
     private fun verifierDebug(s: String) {
         println("Verifier: $s")
     }

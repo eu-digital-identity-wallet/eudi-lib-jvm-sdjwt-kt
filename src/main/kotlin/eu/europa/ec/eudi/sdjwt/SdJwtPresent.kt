@@ -32,12 +32,16 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
     val disclosuresPerClaim = mutableMapOf<SingleClaimJsonPath, List<Disclosure>>()
     val visitor = SdClaimVisitor { path, disclosure ->
         if (disclosure != null) {
-            require(path !in disclosuresPerClaim.keys) { "Disclosures for claim $path have already been calculated." }
+            require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
         }
-        disclosuresPerClaim.putIfAbsent(
-            path,
-            disclosuresPerClaim[path.partOf()].orEmpty() + disclosure?.let { listOf(it) }.orEmpty(),
-        )
+        val claimDisclosures = run {
+            val containerPath = path.partOf()
+            val containerDisclosures = disclosuresPerClaim[containerPath].orEmpty()
+            disclosure
+                ?.let { containerDisclosures + it }
+                ?: containerDisclosures
+        }
+        disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
     }
     val claims = recreateClaims(visitor, claimsOf)
     return claims to disclosuresPerClaim
@@ -61,3 +65,11 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
         SdJwt.Presentation(jwt, ds.toList())
     }
 }
+
+fun SdJwt.Issuance<JwtAndClaims>.present(
+    query: Set<SingleClaimJsonPath>,
+): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
+
+fun SdJwt.Issuance<JwtAndClaims>.present(
+    query: (SingleClaimJsonPath) -> Boolean,
+): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
