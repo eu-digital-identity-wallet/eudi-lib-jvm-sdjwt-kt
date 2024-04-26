@@ -23,7 +23,6 @@ import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.json.*
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
@@ -356,7 +355,7 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     // Calculate its digest
     val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
     // Create the Key Binding JWT, sign it and serialize it
-    val kbJwt = SignedJWT(
+    val kbJwt = NimbusSignedJWT(
         JWSHeader.Builder(keyBindingSigner.signAlgorithm)
             .type(JOSEObjectType("kb+jwt"))
             .keyID(keyBindingSigner.publicKey.keyID)
@@ -426,7 +425,8 @@ private fun sign(
 // Presentation
 //
 
-fun SdJwt.Issuance<SignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<SignedJWT>? =
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
-fun SdJwt.Issuance<SignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<SignedJWT>? =
+
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
