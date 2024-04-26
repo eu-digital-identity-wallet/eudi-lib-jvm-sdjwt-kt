@@ -73,9 +73,6 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
  */
 private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
-    private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
-        visitor?.invoke(pointer, disclosure)
-    }
     fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return replaceDigestsWithDisclosures(
@@ -242,6 +239,10 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
                 }
             }
         }
+    }
+
+    private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
+        visitor?.invoke(pointer, disclosure)
     }
 }
 
