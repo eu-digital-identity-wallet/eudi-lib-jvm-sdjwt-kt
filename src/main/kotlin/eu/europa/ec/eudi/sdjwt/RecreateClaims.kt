@@ -30,7 +30,7 @@ import kotlinx.serialization.json.*
  * @return the claims that were used to produce the SD-JWT
  */
 fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
-    return recreateClaims(visitor = SdClaimVisitor.NoOp, claimsOf = claimsOf)
+    return recreateClaims(visitor = ClaimVisitor.NoOp, claimsOf = claimsOf)
 }
 
 /**
@@ -40,23 +40,23 @@ fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
  * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
  *   be replaced by [Disclosure.claim]
  *
- * @param visitor [SdClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
+ * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
  * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
  * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT>.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoOp, claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor = ClaimVisitor.NoOp, claimsOf: (JWT) -> Claims): Claims {
     val disclosedClaims = JsonObject(claimsOf(jwt))
     return RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
 }
 
-fun UnsignedSdJwt.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoOp) = recreateClaims(visitor) { it }
+fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor = ClaimVisitor.NoOp) = recreateClaims(visitor) { it }
 
 /**
  * Visitor for selectively disclosed claims.
  */
-fun interface SdClaimVisitor {
+fun interface ClaimVisitor {
 
     /**
      * Invoked whenever a selectively disclosed claim is encountered while recreating the claims of an [SdJwt].
@@ -68,18 +68,18 @@ fun interface SdClaimVisitor {
     companion object {
 
         /**
-         * An [SdClaimVisitor] that performs no operation.
+         * An [ClaimVisitor] that performs no operation.
          */
-        val NoOp = SdClaimVisitor { _, _ -> }
+        val NoOp = ClaimVisitor { _, _ -> }
     }
 }
 
 private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
 /**
- * @param visitor [SdClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
+ * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
  */
-private class RecreateClaims(private val visitor: SdClaimVisitor) {
+private class RecreateClaims(private val visitor: ClaimVisitor) {
 
     fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm() ?: HashAlgorithm.SHA_256

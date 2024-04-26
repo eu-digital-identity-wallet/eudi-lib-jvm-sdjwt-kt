@@ -28,7 +28,7 @@ typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
  */
 fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
     val disclosuresPerClaim = mutableMapOf<JsonPointer, List<Disclosure>>()
-    val visitor = SdClaimVisitor { path, disclosure ->
+    val visitor = ClaimVisitor { path, disclosure ->
         if (disclosure != null) {
             require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
         }
