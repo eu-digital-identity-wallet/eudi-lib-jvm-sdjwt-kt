@@ -31,6 +31,11 @@ class ExampleReadMeTest01 {
     }
 
     @Test
+    fun testExamplePresentationSdJwt01() {
+        assertEquals(3, presentationSdJwt.disclosures.size)
+    }
+
+    @Test
     fun testExamplePresentationSdJwtVerification01() {
         verifiedPresentationSdJwt.prettyPrint { it.second }
     }
