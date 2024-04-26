@@ -15,28 +15,26 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-typealias JsonPath = String
-
 /**
  * Represents a map which contains all the claims - selectively disclosable or not -
  * found in a SD-JWT.
- * Each entry contains the [path][SingleClaimJsonPath] and the [disclosures][Disclosure]
+ * Each entry contains the [pointer][JsonPointer] and the [disclosures][Disclosure]
  * required to revel the claim
  */
-typealias DisclosuresPerClaim = Map<SingleClaimJsonPath, List<Disclosure>>
+typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
 
 /**
  * Gets each claim alongside the [Disclosures][Disclosure] that are required to disclose it.
  */
 fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
-    val disclosuresPerClaim = mutableMapOf<SingleClaimJsonPath, List<Disclosure>>()
+    val disclosuresPerClaim = mutableMapOf<JsonPointer, List<Disclosure>>()
     val visitor = SdClaimVisitor { path, disclosure ->
         if (disclosure != null) {
             require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
         }
         val claimDisclosures = run {
-            val containerPath = path.partOf()
-            val containerDisclosures = disclosuresPerClaim[containerPath].orEmpty()
+            val containerPath = path.parent()
+            val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
             disclosure
                 ?.let { containerDisclosures + it }
                 ?: containerDisclosures
@@ -48,13 +46,13 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
 }
 
 fun <JWT> SdJwt.Issuance<JWT>.present(
-    query: Set<SingleClaimJsonPath>,
+    query: Set<JsonPointer>,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? =
     present({ it in query }, claimsOf)
 
 fun <JWT> SdJwt.Issuance<JWT>.present(
-    query: (SingleClaimJsonPath) -> Boolean,
+    query: (JsonPointer) -> Boolean,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
     val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
@@ -67,9 +65,9 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
 }
 
 fun SdJwt.Issuance<JwtAndClaims>.present(
-    query: Set<SingleClaimJsonPath>,
+    query: Set<JsonPointer>,
 ): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
 
 fun SdJwt.Issuance<JwtAndClaims>.present(
-    query: (SingleClaimJsonPath) -> Boolean,
+    query: (JsonPointer) -> Boolean,
 ): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }

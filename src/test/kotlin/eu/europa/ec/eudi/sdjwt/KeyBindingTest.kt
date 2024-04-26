@@ -99,9 +99,10 @@ class KeyBindingTest {
     @Test
     fun holderBindingFullTest() {
         val whatToDisclose = setOf(
-            "$.credentialSubject.email",
-            "$.credentialSubject.countries",
+            "/credentialSubject/email",
+            "/credentialSubject/countries",
         )
+
         val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose)
 
         val emailCredential = SampleCredential(
@@ -166,9 +167,9 @@ data class VerifierChallenge(
 @Serializable
 data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<String>) {
 
-    fun whatToDiscloseAsPaths(): Set<SingleClaimJsonPath> =
+    fun whatToDiscloseAsPointers(): Set<JsonPointer> =
         whatToDisclose
-            .map { checkNotNull(SingleClaimJsonPath.fromJsonPath(it)) { "Unsupported path $it" } }
+            .map { JsonPointer.parse(it).getOrThrow() }
             .toSet()
 }
 
@@ -306,7 +307,7 @@ class HolderActor(holderKey: ECKey) {
 
         val presentationSdJwt = run {
             val issuanceSdJwt = checkNotNull(credentialSdJwt)
-            val whatToDisclose = verifierQuery.whatToDiscloseAsPaths()
+            val whatToDisclose = verifierQuery.whatToDiscloseAsPointers()
             issuanceSdJwt.present(whatToDisclose)
         }
         checkNotNull(presentationSdJwt)
@@ -323,7 +324,7 @@ class HolderActor(holderKey: ECKey) {
     }
 }
 
-class VerifierActor(private val clientId: String, private val whatToDisclose: Set<JsonPath>) {
+class VerifierActor(private val clientId: String, private val whatToDisclose: Set<String>) {
 
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
@@ -355,14 +356,17 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
             unverifiedSdJwt = sdJwt,
         ).getOrThrow()
     }
+
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
         val disclosedPaths = disclosedClaims()
         whatToDisclose.forEach { check(it in disclosedPaths) { "Requested $it was not disclosed" } }
     }
-    private fun SdJwt<JwtAndClaims>.disclosedClaims(): List<JsonPath> {
+
+    private fun SdJwt<JwtAndClaims>.disclosedClaims(): List<String> {
         val (_, ds) = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }
-        return ds.keys.map { it.asJsonPath() }
+        return ds.keys.map { it.toString() }.toList()
     }
+
     private fun verifierDebug(s: String) {
         println("Verifier: $s")
     }

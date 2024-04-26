@@ -426,7 +426,7 @@ private fun sign(
 // Presentation
 //
 
-fun SdJwt.Issuance<SignedJWT>.present(query: Set<SingleClaimJsonPath>): SdJwt.Presentation<SignedJWT>? =
+fun SdJwt.Issuance<SignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<SignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
-fun SdJwt.Issuance<SignedJWT>.present(query: (SingleClaimJsonPath) -> Boolean): SdJwt.Presentation<SignedJWT>? =
+fun SdJwt.Issuance<SignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<SignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }

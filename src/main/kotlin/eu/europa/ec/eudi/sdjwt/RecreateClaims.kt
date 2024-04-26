@@ -54,98 +54,16 @@ fun <JWT> SdJwt<JWT>.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoO
 fun UnsignedSdJwt.recreateClaims(visitor: SdClaimVisitor = SdClaimVisitor.NoOp) = recreateClaims(visitor) { it }
 
 /**
- * Subset of json path, used to point to a single claim.
- *
- * Wildcards, deep-scan, bracket notation, array range accessors, comma notation, or negative indexes are not supported.
- */
-@JvmInline
-value class SingleClaimJsonPath private constructor(private val claimPath: List<String>) {
-
-    /**
-     * Gets the path of the containing element, if any.
-     */
-    fun partOf(): SingleClaimJsonPath? = when (this) {
-        Root -> null
-        else -> SingleClaimJsonPath(claimPath.dropLast(1))
-    }
-
-    /**
-     * Converts this to a [JsonPath].
-     */
-    fun asJsonPath(): JsonPath {
-        return "$" + claimPath.fold("") { acc, s ->
-            if (s.startsWith("[")) acc + s
-            else "$acc.$s"
-        }
-    }
-
-    /**
-     * Gets a new [SingleClaimJsonPath] for the claim with the provided [name], nested in the current [SingleClaimJsonPath].
-     *
-     * @throws IllegalArgumentException in case [name] contains invalid characters
-     */
-    fun nestClaim(name: String): SingleClaimJsonPath {
-        require(name.isNotBlank() && ClaimNameDisallowedCharacters.none { it in name }) { "Invalid name" }
-        return SingleClaimJsonPath(claimPath + name)
-    }
-
-    /**
-     * Gets a new [SingleClaimJsonPath] for an array item at the provided [index].
-     *
-     * @throws IllegalArgumentException in case [index] is negative.
-     */
-    fun arrayItem(index: Int): SingleClaimJsonPath {
-        require(index >= 0) { "Invalid index" }
-        return SingleClaimJsonPath(claimPath + "[$index]")
-    }
-
-    companion object {
-
-        /**
-         * The root element. i.e. '$'.
-         */
-        val Root: SingleClaimJsonPath = SingleClaimJsonPath(emptyList())
-
-        /**
-         * Characters not allowed in names of claims.
-         */
-        val ClaimNameDisallowedCharacters = setOf("$", "[", "]", ",", ":", "'", " ", "*")
-
-        /**
-         * Converts a [JsonPath] to a [SingleClaimJsonPath].
-         * In case [jsonPath] is not a valid [SingleClaimJsonPath], null is returned.
-         */
-        fun fromJsonPath(jsonPath: JsonPath): SingleClaimJsonPath? =
-            if (jsonPath.isBlank() || jsonPath[0] != '$') null
-            else runCatching {
-                jsonPath.split(".")
-                    .drop(1)
-                    .fold(Root) { accumulator, part ->
-                        if (part.contains("[") && part.contains("]")) {
-                            val nameAndIndex = part.split("[", "]").dropLast(1)
-                            require(nameAndIndex.size == 2)
-
-                            val name = nameAndIndex[0]
-                            val index = nameAndIndex[1].toInt()
-
-                            accumulator.nestClaim(name).arrayItem(index)
-                        } else accumulator.nestClaim(part)
-                    }
-            }.getOrNull()
-    }
-}
-
-/**
  * Visitor for selectively disclosed claims.
  */
 fun interface SdClaimVisitor {
 
     /**
      * Invoked whenever a selectively disclosed claim is encountered while recreating the claims of an [SdJwt].
-     * @param path the full JsonPath of the current selectively disclosed element - uses dot notation
+     * @param pointer a JsonPointer to the current element
      * @param disclosure the disclosure of the current selectively disclosed element
      */
-    operator fun invoke(path: SingleClaimJsonPath, disclosure: Disclosure?)
+    operator fun invoke(pointer: JsonPointer, disclosure: Disclosure?)
 
     companion object {
 
@@ -194,7 +112,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }.toMutableMap()
 
-        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, SingleClaimJsonPath.Root)
+        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, JsonPointer.root())
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
@@ -210,19 +128,19 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
      *
      * @param disclosures the disclosures to use when replacing digests
      * @param jsonElement the element to use
-     * @param current the [JsonPath] of the current element - uses dot notation
+     * @param current the [JsonPointer] of the current element
      *
      * @return a json element where all digests have been replaced by disclosed claims
      */
     private fun embedDisclosuresIntoElement(
         disclosures: DisclosurePerDigest,
         jsonElement: JsonElement,
-        current: SingleClaimJsonPath,
+        current: JsonPointer,
     ): JsonElement {
         fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
-            val sdArrayElementPath = current.arrayItem(index)
+            val sdArrayElementPath = current.child(index).getOrThrow()
             val sdArrayElement =
-                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath, visitor) ?: element
+                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath) ?: element
                 else element
 
             return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath)
@@ -249,7 +167,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
      *
      * @param disclosures the disclosures to use when replacing digests
      * @param claims the claims to use
-     * @param current the [JsonPath] of the current element - uses dot notation
+     * @param current the [JsonPointer] of the current element
      *
      * @return the given [claims] with the digests, if any, replaced by disclosures, including
      * all nested objects and/or array of objects
@@ -257,11 +175,11 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
     private fun embedDisclosuresIntoObject(
         disclosures: DisclosurePerDigest,
         claims: Claims,
-        current: SingleClaimJsonPath,
+        current: JsonPointer,
     ): JsonObject =
         replaceDirectDigests(disclosures, claims, current)
             .mapValues { (name, element) ->
-                val nestedPath = current.nestClaim(name)
+                val nestedPath = current.child(name)
                 embedDisclosuresIntoElement(disclosures, element, nestedPath)
             }
             .let { obj -> JsonObject(obj) }
@@ -272,15 +190,14 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
      *
      * @param disclosures the disclosures to use when replacing digests
      * @param claims the claims to use
-     * @param current the [JsonPath] of the current element - uses dot notation
-     * @param visitor [SdClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
+     * @param current the [JsonPointer] of the current element
      *
      * @return the given [claims] with the digests, if any, replaced by disclosures.
      */
     private fun replaceDirectDigests(
         disclosures: DisclosurePerDigest,
         claims: Claims,
-        current: SingleClaimJsonPath,
+        current: JsonPointer,
     ): Claims {
         val resultingClaims = claims.toMutableMap()
 
@@ -288,7 +205,7 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
             val (name, value) = disclosure.claim()
             require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
 
-            visitor(current.nestClaim(name), disclosure)
+            visitor(current.child(name), disclosure)
 
             disclosures.remove(digest)
             resultingClaims[name] = value
@@ -307,28 +224,27 @@ private class RecreateClaims(private val visitor: SdClaimVisitor) {
 
         return resultingClaims
     }
-}
 
-private fun replaceArrayDigest(
-    disclosures: DisclosurePerDigest,
-    claims: JsonObject,
-    current: SingleClaimJsonPath,
-    visitor: SdClaimVisitor,
-): JsonElement? {
-    val digest = arrayElementDigest(claims)
-    return if (digest == null) {
-        visitor(current, null)
-        null
-    } else {
-        disclosures[digest]?.let { disclosure ->
-            when (disclosure) {
-                is Disclosure.ArrayElement -> {
-                    visitor(current, disclosure)
-                    disclosures.remove(digest)
-                    disclosure.claim().value()
+    private fun replaceArrayDigest(
+        disclosures: DisclosurePerDigest,
+        claims: JsonObject,
+        current: JsonPointer,
+    ): JsonElement? {
+        val digest = arrayElementDigest(claims)
+        return if (digest == null) {
+            visitor(current, null)
+            null
+        } else {
+            disclosures[digest]?.let { disclosure ->
+                when (disclosure) {
+                    is Disclosure.ArrayElement -> {
+                        visitor(current, disclosure)
+                        disclosures.remove(digest)
+                        disclosure.claim().value()
+                    }
+
+                    else -> error("Found an $disclosure within an selectively disclosed array element")
                 }
-
-                else -> error("Found an $disclosure within an selectively disclosed array element")
             }
         }
     }
