@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 /**
  * Test cases for [JsonPointer].
@@ -24,135 +25,28 @@ import kotlin.test.assertEquals
 internal class JsonPointerTest {
 
     @Test
-    internal fun `handles root properly`() {
-        val expectedTokens = emptyList<String>()
+    internal fun `verify toString and parse`() {
+        testData.forEach { (string, tokens) ->
+            val recreated = tokens.fold(JsonPointer.Root) { accumulator, token -> accumulator.child(token) }
+            assertEquals(string, recreated.toString())
 
-        val pointer = JsonPointer.Root
-        assertEquals(emptyList(), pointer.tokens)
-        assertEquals("", pointer.toString())
-        assertEquals(expectedTokens, JsonPointer.parse("")?.tokens)
+            val parsed = assertNotNull(JsonPointer.parse(string))
+            assertEquals(tokens, parsed.tokens)
+        }
     }
 
-    @Test
-    internal fun `handles 'foo' properly`() {
-        val expectedTokens = listOf("foo")
-
-        val pointer = JsonPointer.Root.child("foo")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/foo", pointer.toString())
-        assertEquals(expectedTokens, JsonPointer.parse("/foo")?.tokens)
-    }
-
-    // foo[0]
-    @Test
-    internal fun `handles 'foo~0' properly`() {
-        val expectedTokens = listOf("foo", "0")
-
-        val pointer = JsonPointer.Root.child("foo").child(0)
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/foo/0", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/foo/0")?.tokens)
-    }
-
-    @Test
-    internal fun `handles '' properly`() {
-        val expectedTokens = listOf("")
-
-        val pointer = JsonPointer.Root.child("")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/")?.tokens)
-    }
-
-    // a/b
-    @Test
-    internal fun `handles 'a~b' properly`() {
-        val expectedTokens = listOf("a/b")
-
-        val pointer = JsonPointer.Root.child("a/b")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/a~1b", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/a~1b")?.tokens)
-    }
-
-    // c%d
-    @Test
-    internal fun `handles 'c~d' properly`() {
-        val expectedTokens = listOf("c%d")
-
-        val pointer = JsonPointer.Root.child("c%d")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/c%d", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/c%d")?.tokens)
-    }
-
-    @Test
-    internal fun `handles 'e^f' properly`() {
-        val expectedTokens = listOf("e^f")
-
-        val pointer = JsonPointer.Root.child("e^f")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/e^f", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/e^f")?.tokens)
-    }
-
-    // g|h
-    @Test
-    internal fun `handles 'g~h' properly`() {
-        val expectedTokens = listOf("g|h")
-
-        val pointer = JsonPointer.Root.child("g|h")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/g|h", pointer.toString())
-        assertEquals(expectedTokens, JsonPointer.parse("/g|h")?.tokens)
-    }
-
-    // i\\j
-    @Test
-    internal fun `handles 'i~~j' properly`() {
-        val expectedTokens = listOf("i\\j")
-
-        val pointer = JsonPointer.Root.child("i\\j")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/i\\j", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/i\\j")?.tokens)
-    }
-
-    // k\"l
-    @Test
-    internal fun `handles 'k~~l' properly`() {
-        val expectedTokens = listOf("k\"l")
-
-        val pointer = JsonPointer.Root.child("k\"l")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/k\"l", pointer.toString())
-
-        assertEquals(expectedTokens, JsonPointer.parse("/k\"l")?.tokens)
-    }
-
-    @Test
-    internal fun `handles ' ' properly`() {
-        val expectedTokens = listOf(" ")
-
-        val pointer = JsonPointer.Root.child(" ")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/ ", pointer.toString())
-        assertEquals(expectedTokens, JsonPointer.parse("/ ")?.tokens)
-    }
-
-    @Test
-    internal fun `handles 'm~n' properly`() {
-        val expectedTokens = listOf("m~n")
-
-        val pointer = JsonPointer.Root.child("m~n")
-        assertEquals(expectedTokens, pointer.tokens)
-        assertEquals("/m~0n", pointer.toString())
-        assertEquals(expectedTokens, JsonPointer.parse("/m~0n")?.tokens)
-    }
+    private val testData = listOf(
+        "" to emptyList(),
+        "/foo" to listOf("foo"),
+        "/foo/0" to listOf("foo", "0"),
+        "/" to listOf(""),
+        "/a~1b" to listOf("a/b"),
+        "/c%d" to listOf("c%d"),
+        "/e^f" to listOf("e^f"),
+        "/g|h" to listOf("g|h"),
+        "/i\\j" to listOf("i\\j"),
+        "/k\"l" to listOf("k\"l"),
+        "/ " to listOf(" "),
+        "/m~0n" to listOf("m~n"),
+    )
 }
