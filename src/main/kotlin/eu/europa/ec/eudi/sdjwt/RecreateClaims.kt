@@ -30,7 +30,7 @@ import kotlinx.serialization.json.*
  * @return the claims that were used to produce the SD-JWT
  */
 fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
-    return recreateClaims(visitor = ClaimVisitor.NoOp, claimsOf = claimsOf)
+    return recreateClaims(visitor = null, claimsOf = claimsOf)
 }
 
 /**
@@ -46,12 +46,12 @@ fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor = ClaimVisitor.NoOp, claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> Claims): Claims {
     val disclosedClaims = JsonObject(claimsOf(jwt))
     return RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
 }
 
-fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor = ClaimVisitor.NoOp) = recreateClaims(visitor) { it }
+fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor? = null) = recreateClaims(visitor) { it }
 
 /**
  * Visitor for selectively disclosed claims.
@@ -64,14 +64,6 @@ fun interface ClaimVisitor {
      * @param disclosure the disclosure of the current selectively disclosed element
      */
     operator fun invoke(pointer: JsonPointer, disclosure: Disclosure?)
-
-    companion object {
-
-        /**
-         * An [ClaimVisitor] that performs no operation.
-         */
-        val NoOp = ClaimVisitor { _, _ -> }
-    }
 }
 
 private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
@@ -79,8 +71,11 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 /**
  * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
  */
-private class RecreateClaims(private val visitor: ClaimVisitor) {
+private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
+    private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
+        visitor?.invoke(pointer, disclosure)
+    }
     fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
         val hashAlgorithm = claims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return replaceDigestsWithDisclosures(
@@ -146,7 +141,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor) {
             return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath)
         }
 
-        visitor(current, null)
+        visited(current, null)
         return when (jsonElement) {
             is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement, current)
             is JsonArray ->
@@ -205,7 +200,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor) {
             val (name, value) = disclosure.claim()
             require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
 
-            visitor(current.child(name), disclosure)
+            visited(current.child(name), disclosure)
 
             disclosures.remove(digest)
             resultingClaims[name] = value
@@ -232,13 +227,13 @@ private class RecreateClaims(private val visitor: ClaimVisitor) {
     ): JsonElement? {
         val digest = arrayElementDigest(claims)
         return if (digest == null) {
-            visitor(current, null)
+            visited(current, null)
             null
         } else {
             disclosures[digest]?.let { disclosure ->
                 when (disclosure) {
                     is Disclosure.ArrayElement -> {
-                        visitor(current, disclosure)
+                        visited(current, disclosure)
                         disclosures.remove(digest)
                         disclosure.claim().value()
                     }
