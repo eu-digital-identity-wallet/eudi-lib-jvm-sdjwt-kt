@@ -24,7 +24,12 @@ package eu.europa.ec.eudi.sdjwt
 typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
 
 /**
- * Gets each claim alongside the [Disclosures][Disclosure] that are required to disclose it.
+ * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
+ *
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ *
+ * @see SdJwt.recreateClaims
  */
 fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
     val disclosuresPerClaim = mutableMapOf<JsonPointer, List<Disclosure>>()
@@ -45,12 +50,31 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
     return claims to disclosuresPerClaim
 }
 
+/**
+ * Tries to create a presentation that discloses the claims are in [query]
+ * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
+ * claims that are always disclosable can be omitted
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<JsonPointer>,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? =
     present({ it in query }, claimsOf)
 
+/**
+ * Tries to create a presentation that discloses the claims that satisfy
+ * [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: (JsonPointer) -> Boolean,
     claimsOf: (JWT) -> Claims,
@@ -64,10 +88,25 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     }
 }
 
+/**
+ *  Tries to create a presentation that discloses the claims are in [query]
+ *  @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
+ *  * claims that are always disclosable can be omitted
+ *  @receiver The issuance SD-JWT upon which the presentation will be based
+ *  @return the presentation if possible to satisfy the [query]
+ */
 fun SdJwt.Issuance<JwtAndClaims>.present(
     query: Set<JsonPointer>,
 ): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
 
+/**
+ * Tries to create a presentation that discloses the claims that satisfy
+ * [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun SdJwt.Issuance<JwtAndClaims>.present(
     query: (JsonPointer) -> Boolean,
 ): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }

@@ -425,8 +425,24 @@ private fun sign(
 // Presentation
 //
 
+/**
+ * Tries to create a presentation that discloses the claims are in [query]
+ * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
+ * claims that are always disclosable can be omitted
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ *
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
 
+/**
+ *  Tries to create a presentation that discloses the claims that satisfy
+ *  [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
