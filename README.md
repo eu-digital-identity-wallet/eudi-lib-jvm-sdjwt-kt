@@ -13,7 +13,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 * [Use cases supported](#use-cases-supported)
     * [Issuance](#issuance)
     * [Holder Verification](#holder-verification)
-    * [Presentation Creation](#presentation-creation)
+    * [Holder Presentation](#holder-presentation)
     * [Presentation Verification](#presentation-verification)
     * [Recreate initial claims](#recreate-original-claims)
 * [DSL Examples](#dsl-examples)
@@ -35,7 +35,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT issued by an Issuer
-- [Presentation Creation](#presentation-creation): As a Holder of a SD-JWT issued by an Issuer, create a presentation for a Verifier
+- [Holder Presentation](#holder-presentation): As a Holder of a SD-JWT issued by an Issuer, create a presentation for a Verifier
 - [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
@@ -123,12 +123,13 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = run {
 
 <!--- TEST verifiedIssuanceSdJwt.prettyPrint { it.second } -->
 
-## Presentation Creation
+## Holder Presentation
 
 In this case, a `Holder` of an SD-JWT issued by an `Issuer`, wants to create a presentation for a `Verifier`.
-The `Holder` should have decided which of the selectively disclosed claims to include in the presentation.
+The `Holder` should know which of the selectively disclosed claims to include in the presentation.
 The selectively disclosed claims to include in the presentation are expressed using JSON Pointers
 as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
+
 
 <!--- INCLUDE
 import com.nimbusds.jose.*
@@ -169,7 +170,6 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
     issuedSdJwt.present(claimsToInclude)!!
 }
 ```
-
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwt01.kt).
 
 <!--- TEST assertEquals(3, presentationSdJwt.disclosures.size) -->
@@ -184,6 +184,11 @@ The resulting presentation will contain 3 disclosures:
 
 This is because to disclose either the claim `region` or the claim `country`, the claim `address` must be 
 disclosed as well.
+
+Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
+requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
+either a set of JSON Pointers or a JSON Pointer predicate. We consider that bridging those two (JSON Path & Pointer)
+should be left outside the scope of this library.
 
 ## Presentation Verification
 
