@@ -23,7 +23,6 @@ import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.json.*
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
@@ -356,7 +355,7 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     // Calculate its digest
     val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
     // Create the Key Binding JWT, sign it and serialize it
-    val kbJwt = SignedJWT(
+    val kbJwt = NimbusSignedJWT(
         JWSHeader.Builder(keyBindingSigner.signAlgorithm)
             .type(JOSEObjectType("kb+jwt"))
             .keyID(keyBindingSigner.publicKey.keyID)
@@ -421,3 +420,29 @@ private fun sign(
         NimbusSignedJWT(jwsHeader, jwtClaimSet).apply { sign(signer) }
     }
 }
+
+//
+// Presentation
+//
+
+/**
+ * Tries to create a presentation that discloses the claims are in [query]
+ * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
+ * claims that are always disclosable can be omitted
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ *
+ * @return the presentation if possible to satisfy the [query]
+ */
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<NimbusSignedJWT>? =
+    present(query) { it.jwtClaimsSet.asClaims() }
+
+/**
+ *  Tries to create a presentation that discloses the claims that satisfy
+ *  [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @return the presentation if possible to satisfy the [query]
+ */
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
+    present(query) { it.jwtClaimsSet.asClaims() }

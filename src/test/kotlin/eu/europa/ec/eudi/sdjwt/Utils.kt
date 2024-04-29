@@ -67,6 +67,21 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     }.run(::println)
 }
 
+fun DisclosuresPerClaim.prettyPrint() {
+    println("SD-JWT disclosures per claim")
+    forEach { (claim, disclosures) ->
+        println("$claim ->")
+        disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
+            val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
+            buildJsonArray {
+                add(JsonPrimitive("...salt..."))
+                name?.let { add(JsonPrimitive(it)) }
+                add(value)
+            }.toString().prependIndent("\t")
+        }.run(::println)
+    }
+}
+
 fun String.removeNewLine(): String = replace("\n", "")
 
 internal fun SdObject.assertThat(

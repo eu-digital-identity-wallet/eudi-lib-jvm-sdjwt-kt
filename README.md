@@ -11,10 +11,11 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 * [Overview](#overview)
 * [Use cases supported](#use-cases-supported)
-  * [Issuance](#issuance)
-  * [Holder Verification](#holder-verification)
-  * [Presentation Verification](#presentation-verification)
-  * [Recreate initial claims](#recreate-original-claims)
+    * [Issuance](#issuance)
+    * [Holder Verification](#holder-verification)
+    * [Holder Presentation](#holder-presentation)
+    * [Presentation Verification](#presentation-verification)
+    * [Recreate initial claims](#recreate-original-claims)
 * [DSL Examples](#dsl-examples)
 * [How to contribute](#how-to-contribute)
 * [License](#license)
@@ -34,6 +35,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT
 - [Holder Verification](#holder-verification): As Holder verify a SD-JWT issued by an Issuer
+- [Holder Presentation](#holder-presentation): As a Holder of a SD-JWT issued by an Issuer, create a presentation for a Verifier
 - [Presentation Verification](#presentation-verification): As a Verifier verify SD-JWT
 - [Recreate initial claims](#recreate-original-claims): Given a SD-JWT recreate the original claims
 
@@ -120,6 +122,73 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = run {
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssuanceSdJwtVerification01.kt).
 
 <!--- TEST verifiedIssuanceSdJwt.prettyPrint { it.second } -->
+
+## Holder Presentation
+
+In this case, a `Holder` of an SD-JWT issued by an `Issuer`, wants to create a presentation for a `Verifier`.
+The `Holder` should know which of the selectively disclosed claims to include in the presentation.
+The selectively disclosed claims to include in the presentation are expressed using JSON Pointers
+as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
+
+
+<!--- INCLUDE
+import com.nimbusds.jose.*
+import com.nimbusds.jose.crypto.*
+import com.nimbusds.jwt.*
+import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.serialization.json.*
+-->
+
+```kotlin
+val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
+    val issuedSdJwt = run {
+        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+        val sdJwtSpec = sdJwt {
+            plain {
+                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                iss("https://example.com/issuer")
+                iat(1516239022)
+                exp(1735689661)
+            }
+            recursive("address") {
+                sd {
+                    put("street_address", "Schulstr. 12")
+                    put("locality", "Schulpforta")
+                    put("region", "Sachsen-Anhalt")
+                    put("country", "DE")
+                }
+            }
+        }
+        val issuer = SdJwtIssuer.nimbus(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        issuer.issue(sdJwtSpec).getOrThrow()
+    }
+
+    val claimsToInclude = listOf("/address/region", "/address/country")
+        .mapNotNull { JsonPointer.parse(it) }
+        .toSet()
+
+    issuedSdJwt.present(claimsToInclude)!!
+}
+```
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwt01.kt).
+
+<!--- TEST assertEquals(3, presentationSdJwt.disclosures.size) -->
+
+In the above example, the `Holder` has decided to disclose the claims `region` and `country` of the selectively 
+disclosed claim `address`.
+
+The resulting presentation will contain 3 disclosures:
+* 1 disclosure for the selectively disclosed claim `address`
+* 1 disclosure for the selectively disclosed claim `region`
+* 1 disclosure for the selectively disclosed claim `country`
+
+This is because to disclose either the claim `region` or the claim `country`, the claim `address` must be 
+disclosed as well.
+
+Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
+requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
+either a set of JSON Pointers or a JSON Pointer predicate. We consider that bridging those two (JSON Path & Pointer)
+should be left outside the scope of this library.
 
 ## Presentation Verification
 
