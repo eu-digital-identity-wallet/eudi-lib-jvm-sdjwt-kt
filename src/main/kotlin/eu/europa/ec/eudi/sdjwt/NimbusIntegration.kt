@@ -21,6 +21,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import kotlinx.serialization.json.*
@@ -120,7 +121,7 @@ fun keyBindingJWTProcess(
         jwsKeySelector = NimbusJWSKeySelector { header, context ->
             val algorithm = header.algorithm
             val nestedSelector =
-                NimbusSingleKeyJWSKeySelector<SecurityContext>(algorithm, holderPubKey.toECKey().toECPublicKey())
+                NimbusSingleKeyJWSKeySelector<SecurityContext>(algorithm, (holderPubKey as AsymmetricJWK).toPublicKey())
             nestedSelector.selectJWSKeys(header, context)
         }
         jwtClaimsSetVerifier = NimbusDefaultJWTClaimsVerifier(
