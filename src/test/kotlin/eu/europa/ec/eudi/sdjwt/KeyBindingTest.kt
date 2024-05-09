@@ -20,6 +20,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jca.JCAContext
+import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
@@ -226,7 +227,7 @@ class IssuerActor(private val issuerKey: ECKey) {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    fun issue(holderPubKey: JWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
+    fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Instant.now()
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
@@ -235,7 +236,7 @@ class IssuerActor(private val issuerKey: ECKey) {
                 iss(iss)
                 iat(iat.epochSecond)
                 exp(exp.epochSecond)
-                cnf(holderPubKey)
+                cnf(holderPubKey as JWK)
                 structured("credentialSubject") {
                     sd(credential)
                 }
@@ -258,7 +259,7 @@ class IssuerActor(private val issuerKey: ECKey) {
      *
      * @return the holder's pub key, if found
      */
-    fun extractHolderPubKey(): (Claims) -> JWK? = HolderPubKeyInConfirmationClaim
+    fun extractHolderPubKey(): (Claims) -> AsymmetricJWK? = HolderPubKeyInConfirmationClaim
 
     private fun issuerDebug(s: String) {
         println("Issuer: $s")
@@ -275,13 +276,13 @@ class HolderActor(holderKey: ECKey) {
         val actualSigner = ECDSASigner(holderKey)
         object : KeyBindingSigner {
             override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
-            override val publicKey: JWK = holderKey.toPublicJWK()
+            override val publicKey: AsymmetricJWK = holderKey.toPublicJWK()
             override fun getJCAContext(): JCAContext = actualSigner.jcaContext
             override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = actualSigner.sign(p0, p1)
         }
     }
 
-    fun pubKey(): JWK = keyBindingSigner.publicKey
+    fun pubKey(): AsymmetricJWK = keyBindingSigner.publicKey
 
     /**
      * Keeps the issued credential
@@ -335,7 +336,7 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
 
     fun acceptPresentation(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
-        holderPubKeyExtractor: (Claims) -> JWK?,
+        holderPubKeyExtractor: (Claims) -> AsymmetricJWK?,
         unverifiedSdJwt: String,
     ) {
         val signatureVerifier = signaturesVerifier(issuerJwtSignatureVerifier, holderPubKeyExtractor)
@@ -346,7 +347,7 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
 
     private fun signaturesVerifier(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
-        holderPubKeyExtractor: (Claims) -> JWK?,
+        holderPubKeyExtractor: (Claims) -> AsymmetricJWK?,
     ): (Jwt) -> SdJwt.Presentation<JwtAndClaims> = { sdJwt ->
         val keyBindingVerifier = KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, lastChallenge)
 
