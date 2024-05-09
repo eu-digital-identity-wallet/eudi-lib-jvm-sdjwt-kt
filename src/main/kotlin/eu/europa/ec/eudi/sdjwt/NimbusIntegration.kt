@@ -20,10 +20,11 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
-import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import kotlinx.serialization.json.*
+import java.security.PublicKey
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
@@ -32,6 +33,7 @@ import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
 import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
 import com.nimbusds.jose.JWSVerifier as NimbusJWSVerifier
 import com.nimbusds.jose.crypto.factories.DefaultJWSSignerFactory as NimbusDefaultJWSSignerFactory
+import com.nimbusds.jose.jwk.AsymmetricJWK as NimbusAsymmetricJWK
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier as NimbusDefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JWSKeySelector as NimbusJWSKeySelector
@@ -84,14 +86,14 @@ val KeyBindingVerifier.Companion.MustBePresent: KeyBindingVerifier.MustBePresent
  * @see keyBindingJWTProcess
  */
 fun KeyBindingVerifier.Companion.mustBePresentAndValid(
-    holderPubKeyExtractor: (Claims) -> NimbusJWK? = HolderPubKeyInConfirmationClaim,
+    holderPubKeyExtractor: (Claims) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
     challenge: Claims? = null,
 ): KeyBindingVerifier.MustBePresentAndValid {
     val keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier = { sdJwtClaims ->
         holderPubKeyExtractor(sdJwtClaims)?.let { holderPubKey ->
-            val holderPubKeyJWK = holderPubKey.toPublicJWK()
+            val key = holderPubKey.toPublicKey()
             val challengeClaimSet: NimbusJWTClaimsSet = NimbusJWTClaimsSet.parse(challenge.toString())
-            keyBindingJWTProcess(holderPubKeyJWK, challengeClaimSet).asJwtVerifier()
+            keyBindingJWTProcess(key, challengeClaimSet).asJwtVerifier()
         } ?: throw KeyBindingError.MissingHolderPubKey.asException()
     }
     return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
@@ -112,7 +114,7 @@ fun KeyBindingVerifier.Companion.mustBePresentAndValid(
  * @return
  */
 fun keyBindingJWTProcess(
-    holderPubKey: NimbusJWK,
+    holderPubKey: PublicKey,
     challenge: NimbusJWTClaimsSet? = null,
 ): NimbusJWTProcessor<SecurityContext> =
     NimbusDefaultJWTProcessor<SecurityContext>().apply {
@@ -120,7 +122,7 @@ fun keyBindingJWTProcess(
         jwsKeySelector = NimbusJWSKeySelector { header, context ->
             val algorithm = header.algorithm
             val nestedSelector =
-                NimbusSingleKeyJWSKeySelector<SecurityContext>(algorithm, holderPubKey.toECKey().toECPublicKey())
+                NimbusSingleKeyJWSKeySelector<SecurityContext>(algorithm, holderPubKey)
             nestedSelector.selectJWSKeys(header, context)
         }
         jwtClaimsSetVerifier = NimbusDefaultJWTClaimsVerifier(
@@ -135,12 +137,18 @@ fun keyBindingJWTProcess(
  *
  * @return the holder's pub key, if found
  */
-val HolderPubKeyInConfirmationClaim: (Claims) -> NimbusJWK? = { claims ->
+val HolderPubKeyInConfirmationClaim: (Claims) -> NimbusAsymmetricJWK? = { claims ->
 
     claims["cnf"]
         ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
         ?.let { jwk -> if (jwk is JsonObject) jwk else null }
-        ?.let { jwk -> runCatching { NimbusJWK.parse(jwk.toString()) }.getOrNull() }
+        ?.let { jwk ->
+            runCatching {
+                val key = NimbusJWK.parse(jwk.toString())
+                require(key is NimbusAsymmetricJWK)
+                key
+            }.getOrNull()
+        }
 }
 
 /**
@@ -309,7 +317,7 @@ fun <JWT : NimbusJWT> SdJwt<JWT>.serialize(): String =
  */
 interface KeyBindingSigner : JWSSigner {
     val signAlgorithm: JWSAlgorithm
-    val publicKey: JWK
+    val publicKey: AsymmetricJWK
     override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = mutableSetOf(signAlgorithm)
 }
 
@@ -356,10 +364,14 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
     // Create the Key Binding JWT, sign it and serialize it
     val kbJwt = NimbusSignedJWT(
-        JWSHeader.Builder(keyBindingSigner.signAlgorithm)
-            .type(JOSEObjectType("kb+jwt"))
-            .keyID(keyBindingSigner.publicKey.keyID)
-            .build(),
+        with(JWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
+            type(JOSEObjectType("kb+jwt"))
+            val pk = keyBindingSigner.publicKey
+            if (pk is NimbusJWK) {
+                keyID(pk.keyID)
+            }
+            build()
+        },
         JWTClaimsSet.Builder()
             .apply(claimSetBuilderAction)
             .claim(SdJwtDigest.CLAIM_NAME, sdJwtDigest.value)
