@@ -24,6 +24,7 @@ import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.time.Clock
@@ -40,8 +41,8 @@ internal class NimbusIntegrationTest {
      * Verifies SD-JWTs can be signed using both asymmetric and symmetric signing algorithms
      */
     @Test
-    fun `successfully creates signed sd-jwt with both symmetric and asymmetric algorithms`() {
-        fun test(context: Context) {
+    fun `successfully creates signed sd-jwt with both symmetric and asymmetric algorithms`() = runTest {
+        suspend fun test(context: Context) {
             val (_, issuer, verifier) = context
             val issued = issuer.issue(sdObject).fold(onSuccess = { it }, onFailure = { fail(it.message, it) })
             verifier.verify(issued.jwt.serialize()).onFailure { fail(it.message, it) }

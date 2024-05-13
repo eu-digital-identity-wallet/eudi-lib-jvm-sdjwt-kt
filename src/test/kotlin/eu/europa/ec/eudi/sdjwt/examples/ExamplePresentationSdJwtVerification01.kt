@@ -17,8 +17,9 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.*
 
-val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
+val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 

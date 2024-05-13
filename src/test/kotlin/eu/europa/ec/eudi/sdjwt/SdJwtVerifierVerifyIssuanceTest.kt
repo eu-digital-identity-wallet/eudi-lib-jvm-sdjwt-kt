@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -26,36 +27,40 @@ import kotlin.test.assertTrue
 class SdJwtVerifierVerifyIssuanceTest {
 
     @Test
-    fun simple() {
-        verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1~")
-    }
+    fun simple() =
+        runTest {
+            verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1~")
+        }
 
     @Test
-    fun simpleJWSJsonGeneral() {
-        verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            unverifiedSdJwtJWSJson(JwsSerializationOption.General),
-        )
-    }
+    fun simpleJWSJsonGeneral() =
+        runTest {
+            verifyIssuanceSuccess(
+                JwtSignatureVerifier.NoSignatureValidation,
+                unverifiedSdJwtJWSJson(JwsSerializationOption.General),
+            )
+        }
 
     @Test
-    fun simpleJWSJsonFlattened() {
-        verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened),
-        )
-    }
+    fun simpleJWSJsonFlattened() =
+        runTest {
+            verifyIssuanceSuccess(
+                JwtSignatureVerifier.NoSignatureValidation,
+                unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened),
+            )
+        }
 
     @Test
-    fun `when sd-jwt doesn't end in ~ raise UnexpectedKeyBindingJwt`() {
-        verifyIssuanceExpectingError(
-            VerificationError.KeyBindingFailed(KeyBindingError.UnexpectedKeyBindingJwt),
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~$d1",
-        )
-    }
+    fun `when sd-jwt doesn't end in ~ raise UnexpectedKeyBindingJwt`() =
+        runTest {
+            verifyIssuanceExpectingError(
+                VerificationError.KeyBindingFailed(KeyBindingError.UnexpectedKeyBindingJwt),
+                JwtSignatureVerifier.NoSignatureValidation,
+                "$jwt~$d1",
+            )
+        }
 
-    private fun verifyIssuanceSuccess(
+    private suspend fun verifyIssuanceSuccess(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: JsonObject,
     ) {
@@ -64,7 +69,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         assertTrue { verification.isSuccess }
     }
 
-    private fun verifyIssuanceSuccess(
+    private suspend fun verifyIssuanceSuccess(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
     ) {
@@ -106,7 +111,7 @@ class SdJwtVerifierVerifyIssuanceTest {
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
     """.trimIndent().removeNewLine()
 
-    private fun verifyIssuanceExpectingError(
+    private suspend fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
@@ -127,7 +132,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         )
     }
 
-    private fun verifyIssuanceExpectingError(
+    private suspend fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: JsonObject,
@@ -149,7 +154,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt is empty verify should return ParsingError`() {
+    fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
         verifyIssuanceExpectingError(
             VerificationError.ParsingError,
             JwtSignatureVerifier.NoSignatureValidation,
@@ -158,25 +163,27 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has an invalid jwt but no disclosures , no ending ~ verify should return ParsingError`() {
-        verifyIssuanceExpectingError(
-            VerificationError.ParsingError,
-            JwtSignatureVerifier.NoSignatureValidation,
-            "jwt",
-        )
-    }
+    fun `when sd-jwt has an invalid jwt but no disclosures , no ending ~ verify should return ParsingError`() =
+        runTest {
+            verifyIssuanceExpectingError(
+                VerificationError.ParsingError,
+                JwtSignatureVerifier.NoSignatureValidation,
+                "jwt",
+            )
+        }
 
     @Test
-    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding, no ending ~ verify should return ParsingError`() {
-        verifyIssuanceExpectingError(
-            VerificationError.ParsingError,
-            JwtSignatureVerifier.NoSignatureValidation,
-            jwt,
-        )
-    }
+    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding, no ending ~ verify should return ParsingError`() =
+        runTest {
+            verifyIssuanceExpectingError(
+                VerificationError.ParsingError,
+                JwtSignatureVerifier.NoSignatureValidation,
+                jwt,
+            )
+        }
 
     @Test
-    fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() {
+    fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
         verifyIssuanceExpectingError(
             VerificationError.InvalidJwt,
             JwtSignatureVerifier.NoSignatureValidation,
@@ -185,7 +192,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() {
+    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() = runTest {
         verifyIssuanceSuccess(
             JwtSignatureVerifier.NoSignatureValidation,
             "$jwt~",
@@ -193,21 +200,22 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid in JWS JSON`() {
-        val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
-            val mutable = toMutableMap()
-            mutable.remove("disclosures")
-            JsonObject(mutable)
+    fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid in JWS JSON`() =
+        runTest {
+            val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
+                val mutable = toMutableMap()
+                mutable.remove("disclosures")
+                JsonObject(mutable)
+            }
+
+            verifyIssuanceSuccess(
+                JwtSignatureVerifier.NoSignatureValidation,
+                unverifiedSdJwt,
+            )
         }
 
-        verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            unverifiedSdJwt,
-        )
-    }
-
     @Test
-    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() {
+    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
             val mutable = toMutableMap()
             mutable["disclosures"] = JsonArray(listOf("d1", "d2").map { JsonPrimitive(it) })
@@ -221,16 +229,17 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures in JWS Json`() {
-        verifyIssuanceExpectingError(
-            VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~d1~d2~",
-        )
-    }
+    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures in JWS Json`() =
+        runTest {
+            verifyIssuanceExpectingError(
+                VerificationError.InvalidDisclosures(listOf("d1", "d2")),
+                JwtSignatureVerifier.NoSignatureValidation,
+                "$jwt~d1~d2~",
+            )
+        }
 
     @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() {
+    fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() = runTest {
         verifyIssuanceSuccess(
             JwtSignatureVerifier.NoSignatureValidation,
             "$jwt~$d1~",
@@ -238,7 +247,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() {
+    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
             val mutable = toMutableMap()
             mutable["disclosures"] = JsonArray(listOf(d1, d1).map { JsonPrimitive(it) })
@@ -252,11 +261,12 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     @Test
-    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures in JWS JSon`() {
-        verifyIssuanceExpectingError(
-            VerificationError.NonUniqueDisclosures,
-            JwtSignatureVerifier.NoSignatureValidation,
-            "$jwt~$d1~$d1~",
-        )
-    }
+    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures in JWS JSon`() =
+        runTest {
+            verifyIssuanceExpectingError(
+                VerificationError.NonUniqueDisclosures,
+                JwtSignatureVerifier.NoSignatureValidation,
+                "$jwt~$d1~$d1~",
+            )
+        }
 }

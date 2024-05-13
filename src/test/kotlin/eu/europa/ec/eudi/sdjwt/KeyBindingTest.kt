@@ -34,6 +34,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
@@ -67,7 +68,7 @@ class KeyBindingTest {
      * that [IssuerActor.extractHolderPubKey] is indeed able to extract holder pub key from SD-JWT claims
      */
     @Test
-    fun testIssuance() {
+    fun testIssuance() = runTest {
         val emailCredential = SampleCredential(
             givenName = "John",
             familyName = "Doe",
@@ -98,7 +99,7 @@ class KeyBindingTest {
     }
 
     @Test
-    fun holderBindingFullTest() {
+    fun holderBindingFullTest() = runTest {
         val whatToDisclose = setOf(
             "/credentialSubject/email",
             "/credentialSubject/countries",
@@ -289,7 +290,7 @@ class HolderActor(holderKey: ECKey) {
      */
     private var credentialSdJwt: SdJwt.Issuance<JwtAndClaims>? = null
 
-    fun storeCredential(issuerJwtSignatureVerifier: JwtSignatureVerifier, sdJwt: String) {
+    suspend fun storeCredential(issuerJwtSignatureVerifier: JwtSignatureVerifier, sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
         SdJwtVerifier.verifyIssuance(issuerJwtSignatureVerifier, sdJwt).fold(
             onSuccess = { issued ->
@@ -334,7 +335,7 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
         whatToDisclose,
     ).also { lastChallenge = it.challenge.asJson() }
 
-    fun acceptPresentation(
+    suspend fun acceptPresentation(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
         holderPubKeyExtractor: (Claims) -> AsymmetricJWK?,
         unverifiedSdJwt: String,
@@ -348,7 +349,7 @@ class VerifierActor(private val clientId: String, private val whatToDisclose: Se
     private fun signaturesVerifier(
         issuerJwtSignatureVerifier: JwtSignatureVerifier,
         holderPubKeyExtractor: (Claims) -> AsymmetricJWK?,
-    ): (Jwt) -> SdJwt.Presentation<JwtAndClaims> = { sdJwt ->
+    ): suspend (Jwt) -> SdJwt.Presentation<JwtAndClaims> = { sdJwt ->
         val keyBindingVerifier = KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, lastChallenge)
 
         SdJwtVerifier.verifyPresentation(
