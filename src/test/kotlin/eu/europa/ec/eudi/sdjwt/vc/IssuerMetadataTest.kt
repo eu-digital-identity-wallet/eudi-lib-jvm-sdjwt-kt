@@ -64,8 +64,8 @@ internal class IssuerMetadataTest {
             }
         }
 
-        assertFailsWith(IllegalArgumentException::class, "issuer does not match the expected value") {
-            issuerJwks(issuer, client)
+        assertFailsWith(IllegalStateException::class, "issuer does not match the expected value") {
+            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
         }
         assertEquals(1, requests)
     }
@@ -92,8 +92,8 @@ internal class IssuerMetadataTest {
             }
         }
 
-        assertFailsWith(IllegalArgumentException::class, "either 'jwks' or 'jwks_uri' must be provided") {
-            issuerJwks(issuer, client)
+        assertFailsWith(IllegalStateException::class, "either 'jwks' or 'jwks_uri' must be provided") {
+            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
         }
         assertEquals(1, requests)
     }
@@ -119,7 +119,7 @@ internal class IssuerMetadataTest {
             }
         }
 
-        val jwks = issuerJwks(issuer, client)
+        val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
         assertEquals(1, jwks.size())
         val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
         assertIs<RSAKey>(jwk)
@@ -157,7 +157,7 @@ internal class IssuerMetadataTest {
             }
         }
 
-        val jwks = issuerJwks(issuer, client)
+        val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
         assertEquals(1, jwks.size())
         val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
         assertIs<RSAKey>(jwk)

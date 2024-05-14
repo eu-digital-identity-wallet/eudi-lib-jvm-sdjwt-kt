@@ -33,12 +33,7 @@ data class SdJwtVcIssuerMetaData(
 class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
 
     suspend fun fetchMetaData(issuer: Url): SdJwtVcIssuerMetaData {
-        val issuerMetadataUrl: Url =
-            URLBuilder(issuer)
-                .apply {
-                    path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
-                }
-                .build()
+        val issuerMetadataUrl = issuerMetadataUrl(issuer)
         val metadata = httpClient.get(issuerMetadataUrl).body<SdJwtVcIssuerMetadataTO>()
         check(issuer == Url(metadata.issuer)) { "issuer does not match the expected value" }
         check((metadata.jwks != null) xor (metadata.jwksUri != null)) { "either 'jwks' or 'jwks_uri' must be provided" }
@@ -56,6 +51,11 @@ class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
         return SdJwtVcIssuerMetaData(issuer.toURI(), jwkSet)
     }
 }
+
+internal fun issuerMetadataUrl(issuer: Url): Url =
+    URLBuilder(issuer).apply {
+        path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
+    }.build()
 
 @Serializable
 private data class SdJwtVcIssuerMetadataTO(

@@ -16,8 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.*
 import com.nimbusds.jose.util.X509CertUtils
@@ -194,4 +192,3 @@ private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTP
     }
 
 private const val SD_JWT_VC_TYPE = "vc+sd-jwt"
-
