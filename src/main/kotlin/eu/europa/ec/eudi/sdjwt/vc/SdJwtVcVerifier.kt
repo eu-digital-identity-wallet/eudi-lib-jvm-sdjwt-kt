@@ -76,7 +76,28 @@ class SdJwtVcVerifier(
      */
     suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> = SdJwtVerifier.verifyIssuance(signatureVerifier(), unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> =
+        SdJwtVerifier.verifyIssuance(signatureVerifier(), unverifiedSdJwt)
+
+    /**
+     * Verifies a SD-JWT in Combined Presentation Format
+     * Typically, this is useful to Verifier that wants to verify presentation SD-JWT communicated by Holder
+     *
+     * @param keyBindingVerifier specifies whether a Key Binding JWT is expected or not.
+     * In the case that it is expected, Verifier should be aware of how the Issuer has chosen to include the
+     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
+     * are representing in both string and decoded payload.
+     * Expected errors are reported via a [SdJwtVerificationException]
+     */
+    suspend fun verifyPresentation(
+        keyBindingVerifier: KeyBindingVerifier,
+        unverifiedSdJwt: String,
+    ): Result<SdJwt.Presentation<JwtAndClaims>> =
+        // TODO perhaps we can remove keyBindingVerifier, see KeyBindingExample
+        SdJwtVerifier.verifyPresentation(signatureVerifier(), keyBindingVerifier, unverifiedSdJwt)
 
     private suspend fun signatureVerifier() = sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
 }
