@@ -157,10 +157,10 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
 
     return when {
         iss == null -> null
-        issScheme == "https" && certChain.isEmpty() && kid == null -> SdJwtVcIssuerPublicKeySource.Metadata(iss)
+        issScheme == URLProtocol.HTTPS.name && certChain.isEmpty() && kid == null -> SdJwtVcIssuerPublicKeySource.Metadata(iss)
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
-                "dns" -> {
+                SCHEMA_DNS -> {
                     val name = dnsName(iss)
                     val names = certChain[0].sanOfDNSName().getOrDefault(emptyList())
                     if (name != null && name in names) SdJwtVcIssuerPublicKeySource.X509SanDns(iss, certChain)

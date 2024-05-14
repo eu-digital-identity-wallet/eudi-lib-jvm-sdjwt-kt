@@ -18,13 +18,18 @@ package eu.europa.ec.eudi.sdjwt.vc
 import io.ktor.http.*
 
 /**
+ * The dns URI schema.
+ */
+internal const val SCHEMA_DNS = "dns"
+
+/**
  * Gets the DNS name of the provided RFC-4501 DNS Uri.
  *
  * @return the DNS name or null in case [uri] is not a valid RFC-4501 DNS Uri
  */
 internal fun dnsName(uri: Url): String? =
     when (uri.protocol.name) {
-        "dns" -> {
+        SCHEMA_DNS -> {
             when {
                 uri.fullPath.isBlank() -> ""
                 uri.fullPath.isNotBlank() -> {
