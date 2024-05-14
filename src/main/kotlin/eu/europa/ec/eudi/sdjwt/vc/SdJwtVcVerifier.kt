@@ -27,6 +27,8 @@ import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import io.ktor.http.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
 import java.net.URI
 import java.security.PublicKey
@@ -34,6 +36,7 @@ import java.security.cert.X509Certificate
 
 fun interface X509CertificateTrust {
     suspend fun isTrusted(chain: List<X509Certificate>): Boolean
+
     companion object {
         val None: X509CertificateTrust = X509CertificateTrust { false }
     }
@@ -58,9 +61,9 @@ class SdJwtVcVerifier(
      */
     suspend fun verifyIssuance(
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> {
-        val jwtSignatureVerifier = signatureVerifier()
-        return SdJwtVerifier.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
+        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
     /**
@@ -78,9 +81,9 @@ class SdJwtVcVerifier(
      */
     suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> {
-        val jwtSignatureVerifier = signatureVerifier()
-        return SdJwtVerifier.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
+        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
     /**
@@ -97,13 +100,13 @@ class SdJwtVcVerifier(
     suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject? = null,
-    ): Result<SdJwt.Presentation<JwtAndClaims>> {
-        val jwtSignatureVerifier = signatureVerifier()
+    ): Result<SdJwt.Presentation<JwtAndClaims>> = coroutineScope {
+        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
         val keyBindingVerifier = keyBindingVerifier(challenge)
-        return SdJwtVerifier.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
-    private suspend fun signatureVerifier(): JwtSignatureVerifier =
+    private suspend fun jwtSignatureVerifier(): JwtSignatureVerifier =
         sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
 
     private fun keyBindingVerifier(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
