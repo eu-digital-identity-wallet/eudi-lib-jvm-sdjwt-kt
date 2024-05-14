@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.*
@@ -26,12 +27,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.*
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import java.net.URI
 import java.security.PublicKey
@@ -110,7 +106,8 @@ private suspend fun issuerJwsKeySelector(
         null -> null
         is SdJwtVcIssuerPublicKeySource.Metadata -> {
             factory().use { client ->
-                val jwks = issuerJwks(source.iss, client)
+                val fetcher = SdJwtVcIssuerMetaDataFetcher(client)
+                val (_, jwks) = fetcher.fetchMetaData(source.iss)
                 JWSVerificationKeySelector(algorithm, ImmutableJWKSet(jwks))
             }
         }
@@ -198,31 +195,3 @@ private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTP
 
 private const val SD_JWT_VC_TYPE = "vc+sd-jwt"
 
-internal fun issuerMetadataUrl(issuer: Url): Url =
-    URLBuilder(issuer)
-        .apply {
-            path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
-        }
-        .build()
-
-internal suspend fun issuerJwks(issuer: Url, client: HttpClient): JWKSet {
-    val metadata = client.get(issuerMetadataUrl(issuer))
-        .body<IssuerMetadata>()
-        .also {
-            require(issuer == Url(it.issuer)) { "issuer does not match the expected value" }
-            require((it.jwks != null) xor (it.jwksUri != null)) { "either 'jwks' or 'jwks_uri' must be provided" }
-        }
-
-    return if (metadata.jwks != null) {
-        JWKSet.parse(metadata.jwks.toString())
-    } else {
-        JWKSet.parse(client.get(metadata.jwksUri!!).body<JsonObject>().toString())
-    }
-}
-
-@Serializable
-private data class IssuerMetadata(
-    val issuer: String,
-    @SerialName("jwks_uri") val jwksUri: String? = null,
-    @SerialName("jwks") val jwks: JsonObject? = null,
-)
