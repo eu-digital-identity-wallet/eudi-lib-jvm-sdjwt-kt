@@ -16,10 +16,10 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
-import com.nimbusds.jose.proc.JWSKeySelector
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jose.proc.SingleKeyJWSKeySelector
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet
+import com.nimbusds.jose.proc.*
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -27,14 +27,19 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import java.net.URI
 import java.security.PublicKey
 import java.security.cert.X509Certificate
 
 fun interface X509CertificateTrust {
-    fun isTrusted(chain: List<X509Certificate>): Boolean
+    suspend fun isTrusted(chain: List<X509Certificate>): Boolean
 }
 
 fun interface DIDResolver {
@@ -44,6 +49,7 @@ fun interface DIDResolver {
 class SdJwtVcVerifier(
     private val trust: X509CertificateTrust?,
     private val didResolver: DIDResolver?,
+    private val factory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) {
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
@@ -75,54 +81,65 @@ class SdJwtVcVerifier(
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = SdJwtVerifier.verifyIssuance(signatureVerifier(), unverifiedSdJwt)
 
-    private suspend fun signatureVerifier() = sdJwtVcSignatureVerifier(trust, didResolver)
+    private suspend fun signatureVerifier() = sdJwtVcSignatureVerifier(trust, didResolver, factory)
 }
 
-suspend fun sdJwtVcSignatureVerifier(
+private suspend fun sdJwtVcSignatureVerifier(
     trust: X509CertificateTrust?,
     didResolver: DIDResolver?,
+    factory: KtorHttpClientFactory,
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = SignedJWT.parse(unverifiedJwt)
-        val issuerPublicKey = issuerPublicKey(trust, didResolver, signedJwt)
-        checkNotNull(issuerPublicKey) { "Failed to resolve issuer public key" }
-        val jwtProcessor = sdJwtVcProcessor(issuerPublicKey)
+        val keySelector = issuerJwsKeySelector(trust, didResolver, signedJwt, factory)
+        checkNotNull(keySelector) { "Failed to resolve issuer public key" }
+        val jwtProcessor = sdJwtVcProcessor(keySelector)
         jwtProcessor.process(signedJwt, null).asClaims()
     } catch (e: Throwable) {
         null
     }
 }
 
-internal suspend fun issuerPublicKey(
+private suspend fun issuerJwsKeySelector(
     trust: X509CertificateTrust?,
     didResolver: DIDResolver?,
     signedJwt: SignedJWT,
-): PublicKey? =
-    when (val source = keySource(signedJwt)) {
+    factory: KtorHttpClientFactory,
+): JWSKeySelector<SecurityContext>? {
+    val algorithm = requireNotNull(signedJwt.header.algorithm) { "missing 'alg'" }
+    return when (val source = keySource(signedJwt)) {
         null -> null
-        is SdJwtVCIssuerPubKeySource.MetaData -> {
-            // TODO Fetch meta-data
-            //  - match iss
-            //  - Resolve JWK or JWK_URI
-            TODO()
+        is SdJwtVcIssuerPublicKeySource.Metadata -> {
+            factory().use { client ->
+                val jwks = issuerJwks(source.iss, client)
+                JWSVerificationKeySelector(algorithm, ImmutableJWKSet(jwks))
+            }
         }
 
-        is SdJwtVCIssuerPubKeySource.X509CertChain ->
-            if (trust?.isTrusted(source.chain) == true) source.chain.first().publicKey
-            else null
+        is SdJwtVcIssuerPublicKeySource.X509CertChain ->
+            if (trust?.isTrusted(source.chain) == true) {
+                val jwks = JWKSet(JWK.parse(source.chain.first()))
+                JWSVerificationKeySelector(algorithm, ImmutableJWKSet(jwks))
+            } else null
 
-        is SdJwtVCIssuerPubKeySource.DIDUrl -> didResolver?.resolve(source.url.toURI())
+        is SdJwtVcIssuerPublicKeySource.DIDUrl -> {
+            didResolver?.resolve(source.url.toURI())
+                ?.let { publicKey ->
+                    SingleKeyJWSKeySelector(algorithm, publicKey)
+                }
+        }
     }
+}
 
 /**
  * The source from which to get Issuer's public key
  */
-private sealed interface SdJwtVCIssuerPubKeySource {
+private sealed interface SdJwtVcIssuerPublicKeySource {
 
     @JvmInline
-    value class MetaData(val iss: Url) : SdJwtVCIssuerPubKeySource
+    value class Metadata(val iss: Url) : SdJwtVcIssuerPublicKeySource
 
-    interface X509CertChain : SdJwtVCIssuerPubKeySource {
+    interface X509CertChain : SdJwtVcIssuerPublicKeySource {
         val chain: List<X509Certificate>
     }
 
@@ -130,10 +147,10 @@ private sealed interface SdJwtVCIssuerPubKeySource {
     data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
 
     @JvmInline
-    value class DIDUrl(val url: Url) : SdJwtVCIssuerPubKeySource
+    value class DIDUrl(val url: Url) : SdJwtVcIssuerPublicKeySource
 }
 
-private fun keySource(jwt: SignedJWT): SdJwtVCIssuerPubKeySource? {
+private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     val kid = jwt.header.keyID?.let { runCatching { Url(it) }.getOrNull() }
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet.issuer?.let { runCatching { Url(it) }.getOrNull() }
@@ -141,19 +158,19 @@ private fun keySource(jwt: SignedJWT): SdJwtVCIssuerPubKeySource? {
 
     return when {
         iss == null -> null
-        issScheme == "https" && certChain.isEmpty() && kid == null -> SdJwtVCIssuerPubKeySource.MetaData(iss)
+        issScheme == "https" && certChain.isEmpty() && kid == null -> SdJwtVcIssuerPublicKeySource.Metadata(iss)
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
                 "dns" -> {
                     val name = dnsName(iss)
                     val names = certChain[0].sanOfDNSName().getOrDefault(emptyList())
-                    if (name != null && name in names) SdJwtVCIssuerPubKeySource.X509SanDns(iss, certChain)
+                    if (name != null && name in names) SdJwtVcIssuerPublicKeySource.X509SanDns(iss, certChain)
                     else null
                 }
 
                 else -> {
                     val names = certChain[0].sanOfUniformResourceIdentifier().getOrDefault(emptyList())
-                    if (iss.toString() in names) SdJwtVCIssuerPubKeySource.X509SanURI(iss, certChain)
+                    if (iss.toString() in names) SdJwtVcIssuerPublicKeySource.X509SanURI(iss, certChain)
                     else null
                 }
             }
@@ -163,21 +180,17 @@ private fun keySource(jwt: SignedJWT): SdJwtVCIssuerPubKeySource? {
             //  in case of absolute URL make sure that it is sub-resource of iss => didUrl = kid
             //  in case of relative URL => didURL = iss + did
             val didUrl = iss
-            SdJwtVCIssuerPubKeySource.DIDUrl(didUrl)
+            SdJwtVcIssuerPublicKeySource.DIDUrl(didUrl)
         }
 
         else -> null
     }
 }
 
-private fun sdJwtVcProcessor(issuerPublicKey: PublicKey): JWTProcessor<SecurityContext> =
+private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTProcessor<SecurityContext> =
     DefaultJWTProcessor<SecurityContext>().apply {
         jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType(SD_JWT_VC_TYPE))
-        jwsKeySelector = JWSKeySelector { header, context ->
-            val alg = checkNotNull(header.algorithm) { "Could not find alg claim in JWT header" }
-            val nested = SingleKeyJWSKeySelector<SecurityContext>(alg, issuerPublicKey)
-            nested.selectJWSKeys(header, context)
-        }
+        jwsKeySelector = keySelector
         jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
             JWTClaimsSet.Builder().build(),
             setOf("iss"),
@@ -185,3 +198,32 @@ private fun sdJwtVcProcessor(issuerPublicKey: PublicKey): JWTProcessor<SecurityC
     }
 
 private const val SD_JWT_VC_TYPE = "vc+sd-jwt"
+
+private fun issuerMetadataUrl(issuer: Url): Url =
+    URLBuilder(issuer)
+        .apply {
+            path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
+        }
+        .build()
+
+private suspend fun issuerJwks(issuer: Url, client: HttpClient): JWKSet {
+    val metadata = client.get(issuerMetadataUrl(issuer))
+        .body<IssuerMetadata>()
+        .also {
+            require(issuer == Url(it.issuer)) { "issuer does not match the expected value" }
+            require((it.jwks != null) xor (it.jwksUri != null)) { "either 'jwks' or 'jwks_uri' must be provided" }
+        }
+
+    return if (metadata.jwks != null) {
+        JWKSet.parse(metadata.jwks.toString())
+    } else {
+        JWKSet.parse(client.get(metadata.jwksUri!!).body<JsonObject>().toString())
+    }
+}
+
+@Serializable
+private data class IssuerMetadata(
+    val issuer: String,
+    @SerialName("jwks_uri") val jwksUri: String? = null,
+    @SerialName("jwks") val jwks: JsonObject? = null,
+)
