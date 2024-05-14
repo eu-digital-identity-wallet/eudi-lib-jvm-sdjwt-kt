@@ -77,10 +77,10 @@ class SdJwtVcVerifier(
     private suspend fun signatureVerifier() = sdJwtVcSignatureVerifier(trust, didResolver, factory)
 }
 
-private suspend fun sdJwtVcSignatureVerifier(
+suspend fun sdJwtVcSignatureVerifier(
     trust: X509CertificateTrust?,
     didResolver: DIDResolver?,
-    factory: KtorHttpClientFactory,
+    factory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = SignedJWT.parse(unverifiedJwt)
