@@ -20,7 +20,7 @@ import io.ktor.http.*
 /**
  * The dns URI schema.
  */
-internal const val SCHEMA_DNS = "dns"
+internal const val DNS_URI_SCHEME = "dns"
 
 /**
  * Gets the DNS name of the provided RFC-4501 DNS Uri.
@@ -29,7 +29,7 @@ internal const val SCHEMA_DNS = "dns"
  */
 internal fun dnsName(uri: Url): String? =
     when (uri.protocol.name) {
-        SCHEMA_DNS -> {
+        DNS_URI_SCHEME -> {
             when {
                 uri.fullPath.isBlank() -> ""
                 uri.fullPath.isNotBlank() -> {

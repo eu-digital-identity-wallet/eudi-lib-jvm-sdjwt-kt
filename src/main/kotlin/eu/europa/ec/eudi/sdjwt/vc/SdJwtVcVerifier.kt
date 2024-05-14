@@ -144,6 +144,9 @@ private sealed interface SdJwtVcIssuerPublicKeySource {
     value class DIDUrl(val url: Url) : SdJwtVcIssuerPublicKeySource
 }
 
+private const val HTTPS_URI_SCHEME = "https"
+private const val DID_URI_SCHEME = "did"
+
 private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     val kid = jwt.header.keyID?.let { runCatching { Url(it) }.getOrNull() }
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
@@ -152,10 +155,12 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
 
     return when {
         iss == null -> null
-        issScheme == URLProtocol.HTTPS.name && certChain.isEmpty() && kid == null -> SdJwtVcIssuerPublicKeySource.Metadata(iss)
+        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() && kid == null ->
+            SdJwtVcIssuerPublicKeySource.Metadata(iss)
+
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
-                SCHEMA_DNS -> {
+                DNS_URI_SCHEME -> {
                     val name = dnsName(iss)
                     val names = certChain[0].sanOfDNSName().getOrDefault(emptyList())
                     if (name != null && name in names) SdJwtVcIssuerPublicKeySource.X509SanDns(iss, certChain)
@@ -169,7 +174,7 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
                 }
             }
 
-        issScheme == "did" && certChain.isEmpty() && kid != null -> {
+        issScheme == DID_URI_SCHEME && certChain.isEmpty() -> {
             // TODO check if Kid is absolute or relative URL
             //  in case of absolute URL make sure that it is sub-resource of iss => didUrl = kid
             //  in case of relative URL => didURL = iss + did
