@@ -58,8 +58,10 @@ class SdJwtVcVerifier(
      */
     suspend fun verifyIssuance(
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> =
-        SdJwtVerifier.verifyIssuance(signatureVerifier(), unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> {
+        val jwtSignatureVerifier = signatureVerifier()
+        return SdJwtVerifier.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    }
 
     /**
      * Verifies an SD-JWT in JWS JSON general of flattened format as defined by RFC7515 and extended by SD-JWT
@@ -76,30 +78,36 @@ class SdJwtVcVerifier(
      */
     suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> =
-        SdJwtVerifier.verifyIssuance(signatureVerifier(), unverifiedSdJwt)
+    ): Result<SdJwt.Issuance<JwtAndClaims>> {
+        val jwtSignatureVerifier = signatureVerifier()
+        return SdJwtVerifier.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    }
 
     /**
      * Verifies a SD-JWT in Combined Presentation Format
      * Typically, this is useful to Verifier that wants to verify presentation SD-JWT communicated by Holder
      *
-     * @param keyBindingVerifier specifies whether a Key Binding JWT is expected or not.
-     * In the case that it is expected, Verifier should be aware of how the Issuer has chosen to include the
-     * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param unverifiedSdJwt the SD-JWT to be verified
+     * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verifyPresentation(
-        keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Presentation<JwtAndClaims>> =
-        // TODO perhaps we can remove keyBindingVerifier, see KeyBindingExample
-        SdJwtVerifier.verifyPresentation(signatureVerifier(), keyBindingVerifier, unverifiedSdJwt)
+        challenge: JsonObject? = null,
+    ): Result<SdJwt.Presentation<JwtAndClaims>> {
+        val jwtSignatureVerifier = signatureVerifier()
+        val keyBindingVerifier = keyBindingVerifier(challenge)
+        return SdJwtVerifier.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+    }
 
-    private suspend fun signatureVerifier() = sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
+    private suspend fun signatureVerifier(): JwtSignatureVerifier =
+        sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
+
+    private fun keyBindingVerifier(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
+        KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
 }
 
 suspend fun sdJwtVcSignatureVerifier(
