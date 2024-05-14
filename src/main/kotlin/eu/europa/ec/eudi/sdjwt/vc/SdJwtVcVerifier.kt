@@ -27,6 +27,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.*
+import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 import java.net.URI
 import java.security.PublicKey
@@ -110,7 +111,7 @@ internal suspend fun issuerPublicKey(
             if (trust?.isTrusted(source.chain) == true) source.chain.first().publicKey
             else null
 
-        is SdJwtVCIssuerPubKeySource.DIDUrl -> didResolver?.resolve(source.url)
+        is SdJwtVCIssuerPubKeySource.DIDUrl -> didResolver?.resolve(source.url.toURI())
     }
 
 /**
@@ -119,24 +120,24 @@ internal suspend fun issuerPublicKey(
 private sealed interface SdJwtVCIssuerPubKeySource {
 
     @JvmInline
-    value class MetaData(val iss: URI) : SdJwtVCIssuerPubKeySource
+    value class MetaData(val iss: Url) : SdJwtVCIssuerPubKeySource
 
     interface X509CertChain : SdJwtVCIssuerPubKeySource {
         val chain: List<X509Certificate>
     }
 
-    data class X509SanDns(val iss: URI, override val chain: List<X509Certificate>) : X509CertChain
-    data class X509SanURI(val iss: URI, override val chain: List<X509Certificate>) : X509CertChain
+    data class X509SanDns(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
+    data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
 
     @JvmInline
-    value class DIDUrl(val url: URI) : SdJwtVCIssuerPubKeySource
+    value class DIDUrl(val url: Url) : SdJwtVCIssuerPubKeySource
 }
 
 private fun keySource(jwt: SignedJWT): SdJwtVCIssuerPubKeySource? {
-    val kid = jwt.header.keyID?.let { runCatching { URI.create(it) }.getOrNull() }
+    val kid = jwt.header.keyID?.let { runCatching { Url(it) }.getOrNull() }
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
-    val iss = jwt.jwtClaimsSet.issuer?.let { runCatching { URI.create(it) }.getOrNull() }
-    val issScheme = iss?.scheme?.lowercase()
+    val iss = jwt.jwtClaimsSet.issuer?.let { runCatching { Url(it) }.getOrNull() }
+    val issScheme = iss?.protocol?.name
 
     return when {
         iss == null -> null
@@ -144,9 +145,9 @@ private fun keySource(jwt: SignedJWT): SdJwtVCIssuerPubKeySource? {
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
                 "dns" -> {
+                    val name = dnsName(iss)
                     val names = certChain[0].sanOfDNSName().getOrDefault(emptyList())
-                    // TODO iss should be in leaf certificate san DNS entries
-                    if (true) SdJwtVCIssuerPubKeySource.X509SanDns(iss, certChain)
+                    if (name != null && name in names) SdJwtVCIssuerPubKeySource.X509SanDns(iss, certChain)
                     else null
                 }
 
