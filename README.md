@@ -104,10 +104,11 @@ In this case, the SD-JWT is expected to be in serialized form.
 <!--- INCLUDE
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = run {
+val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 
@@ -203,10 +204,11 @@ the Holder used to sign the `Key Binding JWT`
 <!--- INCLUDE
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = run {
+val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 

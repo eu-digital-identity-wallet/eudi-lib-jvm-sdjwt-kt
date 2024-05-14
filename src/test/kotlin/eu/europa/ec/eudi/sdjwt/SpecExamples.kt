@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
@@ -22,7 +23,7 @@ import kotlin.test.Test
 class SpecExamples {
 
     @Test
-    fun `Example 1 presentation of all claims`() {
+    fun `Example 1 presentation of all claims`() = runTest {
         val unverifiedSdJwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
             DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
@@ -64,7 +65,7 @@ class SpecExamples {
     }
 
     @Test
-    fun `Example 1 presentation of given_name, family_name, and address`() {
+    fun `Example 1 presentation of given_name, family_name, and address`() = runTest {
         val unverifiedSdJwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
             DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
@@ -100,7 +101,7 @@ class SpecExamples {
     }
 
     @Test
-    fun example3() {
+    fun example3() = runTest {
         val unverifiedSdJwt = """
            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4V
            mdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUticllObjN2QTdXRUZyeXN2YmRCSmpERFVfR

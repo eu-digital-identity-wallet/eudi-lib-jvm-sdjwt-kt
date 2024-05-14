@@ -25,6 +25,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -169,7 +171,7 @@ class SdJwtVCIssuerTest {
     )
 
     @Test
-    fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() {
+    fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() = runTest {
         //
         // Issue of SD-JWT according to SD-JWT VC
         //
@@ -187,10 +189,12 @@ class SdJwtVCIssuerTest {
         val verified: SdJwt.Issuance<JwtAndClaims> =
             Assertions.assertDoesNotThrow(
                 ThrowingSupplier {
-                    SdJwtVerifier.verifyIssuance(
-                        jwtSignatureVerifier = ECDSAVerifier(issuerCfg.issuerKey.toECPublicKey()).asJwtVerifier(),
-                        unverifiedSdJwt = issuedSdJwt,
-                    ).getOrThrow()
+                    runBlocking {
+                        SdJwtVerifier.verifyIssuance(
+                            jwtSignatureVerifier = ECDSAVerifier(issuerCfg.issuerKey.toECPublicKey()).asJwtVerifier(),
+                            unverifiedSdJwt = issuedSdJwt,
+                        ).getOrThrow()
+                    }
                 },
             )
 

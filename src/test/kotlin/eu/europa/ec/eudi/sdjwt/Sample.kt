@@ -22,7 +22,9 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import java.util.*
 
 val jwtVcPayload = """{
@@ -66,7 +68,7 @@ fun genRSAKeyPair(): RSAKey =
         .issueTime(Date()) // issued-at timestamp (optional)
         .generate()
 
-fun main() {
+suspend fun main() {
     // Generate an RSA key pair
     val issuerKeyPair = genRSAKeyPair()
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
@@ -122,7 +124,7 @@ fun main() {
     )
 }
 
-fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<JwtAndClaims>> {
+suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<JwtAndClaims>> {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
     return SdJwtVerifier.verifyIssuance(jwtVer, sdJwt)
 }

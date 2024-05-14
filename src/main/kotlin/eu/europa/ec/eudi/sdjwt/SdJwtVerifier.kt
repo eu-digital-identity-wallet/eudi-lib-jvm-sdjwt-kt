@@ -103,14 +103,14 @@ fun interface JwtSignatureVerifier {
      * @param jwt the JWT to validate
      * @return the payload of the JWT if signature is valid, otherwise raises [InvalidJwt]
      */
-    fun verify(jwt: String): Result<Claims> = runCatching { checkSignature(jwt) ?: throw InvalidJwt.asException() }
+    suspend fun verify(jwt: String): Result<Claims> = runCatching { checkSignature(jwt) ?: throw InvalidJwt.asException() }
 
     /**
      * Implement this method to check the signature of the JWT and extract its payload
      * @param jwt the JWT to validate
      * @return the payload of the JWT if signature is valid, otherwise null
      */
-    fun checkSignature(jwt: String): Claims?
+    suspend fun checkSignature(jwt: String): Claims?
 
     /**
      * Constructs a new [JwtSignatureVerifier] that in addition applies to the
@@ -119,7 +119,7 @@ fun interface JwtSignatureVerifier {
      * @return a new [JwtSignatureVerifier] that in addition applies to the
      *  extracted payload the [additionalCondition]
      */
-    fun and(additionalCondition: (Claims) -> Boolean): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+    fun and(additionalCondition: suspend (Claims) -> Boolean): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
         this.checkSignature(jwt)?.let { claims -> if (additionalCondition(claims)) claims else null }
     }
 
@@ -174,13 +174,13 @@ sealed interface KeyBindingVerifier {
      *
      * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
      */
-    fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<Claims?> =
+    suspend fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<Claims?> =
         runCatching {
             fun mustBeNotPresent(): Claims? =
                 if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
                 else null
 
-            fun mustBePresentAndValid(keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
+            suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
                 if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
                 val keyBindingJwtVerifier =
@@ -250,7 +250,7 @@ object SdJwtVerifier {
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
-    fun verifyIssuance(
+    suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
@@ -276,7 +276,7 @@ object SdJwtVerifier {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
-    fun verifyIssuance(
+    suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
@@ -298,7 +298,7 @@ object SdJwtVerifier {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
-    private fun verifyIssuance(
+    private suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedJwt: Jwt,
         unverifiedDisclosures: List<String>,
@@ -333,7 +333,7 @@ object SdJwtVerifier {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    fun verifyPresentation(
+    suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
