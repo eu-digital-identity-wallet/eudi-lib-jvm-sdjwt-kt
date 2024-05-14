@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.*
@@ -118,8 +117,8 @@ private suspend fun issuerJwsKeySelector(
 
         is SdJwtVcIssuerPublicKeySource.X509CertChain ->
             if (trust?.isTrusted(source.chain) == true) {
-                val jwks = JWKSet(JWK.parse(source.chain.first()))
-                JWSVerificationKeySelector(algorithm, ImmutableJWKSet(jwks))
+                val publicKey = source.chain.first().publicKey
+                SingleKeyJWSKeySelector(algorithm, publicKey)
             } else null
 
         is SdJwtVcIssuerPublicKeySource.DIDUrl -> {
