@@ -39,6 +39,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
 }
 
 java {

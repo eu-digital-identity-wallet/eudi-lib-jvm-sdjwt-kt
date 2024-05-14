@@ -198,14 +198,14 @@ private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTP
 
 private const val SD_JWT_VC_TYPE = "vc+sd-jwt"
 
-private fun issuerMetadataUrl(issuer: Url): Url =
+internal fun issuerMetadataUrl(issuer: Url): Url =
     URLBuilder(issuer)
         .apply {
             path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
         }
         .build()
 
-private suspend fun issuerJwks(issuer: Url, client: HttpClient): JWKSet {
+internal suspend fun issuerJwks(issuer: Url, client: HttpClient): JWKSet {
     val metadata = client.get(issuerMetadataUrl(issuer))
         .body<IssuerMetadata>()
         .also {
