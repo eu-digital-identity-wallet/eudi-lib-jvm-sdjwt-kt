@@ -25,12 +25,18 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import java.net.URI
 
-data class SdJwtVcIssuerMetaData(
+/**
+ * The metadata of an SD-JWT VC issuer.
+ */
+internal data class SdJwtVcIssuerMetaData(
     val issuer: URI,
     val jwkSet: JWKSet,
 )
 
-class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
+/**
+ * Fetches the metadata of an SD-JWT VC issuer.
+ */
+internal class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
 
     suspend fun fetchMetaData(issuer: Url): SdJwtVcIssuerMetaData {
         val issuerMetadataUrl = issuerMetadataUrl(issuer)
@@ -52,7 +58,7 @@ class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
     }
 }
 
-internal fun issuerMetadataUrl(issuer: Url): Url =
+private fun issuerMetadataUrl(issuer: Url): Url =
     URLBuilder(issuer).apply {
         path("/.well-known/jwt-vc-issuer${issuer.pathSegments.joinToString("/")}")
     }.build()

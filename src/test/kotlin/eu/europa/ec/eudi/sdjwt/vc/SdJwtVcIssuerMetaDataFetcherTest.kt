@@ -29,19 +29,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.test.*
 
 /**
- * Test cases for methods relating to issuer metadata.
+ * Test cases for [SdJwtVcIssuerMetaDataFetcher].
  */
-internal class IssuerMetadataTest {
-
-    @Test
-    fun `verify issuer metadata url is properly constructed `() {
-        listOf(
-            Url("https://example.com") to Url("https://example.com/.well-known/jwt-vc-issuer"),
-            Url("https://example.com/tenant/1234") to Url("https://example.com/.well-known/jwt-vc-issuer/tenant/1234"),
-        ).forEach { (issuer, metadataUrl) ->
-            assertEquals(metadataUrl, issuerMetadataUrl(issuer))
-        }
-    }
+internal class SdJwtVcIssuerMetaDataFetcherTest {
 
     @Test
     fun `verify issuer jwks resolution fails when issuer is mismatched`() = runTest {
@@ -100,68 +90,72 @@ internal class IssuerMetadataTest {
 
     @Test
     fun `verify issuer jwks is resolved by value`() = runTest {
-        val issuer = Url("https://example.com")
-        val metadata = Url("https://example.com/.well-known/jwt-vc-issuer")
+        suspend fun test(issuer: Url, metadata: Url) {
+            var requests = 0
+            val client = HttpClient { request ->
+                when (request.url) {
+                    metadata -> {
+                        requests += 1
+                        respond(
+                            issuerMetadata(issuer, issuerJwks, null).toString(),
+                            HttpStatusCode.OK,
+                            headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+                        )
+                    }
 
-        var requests = 0
-        val client = HttpClient { request ->
-            when (request.url) {
-                metadata -> {
-                    requests += 1
-                    respond(
-                        issuerMetadata(issuer, issuerJwks, null).toString(),
-                        HttpStatusCode.OK,
-                        headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
-                    )
+                    else -> error("Unexpected request $request")
                 }
-
-                else -> error("Unexpected request $request")
             }
+
+            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            assertEquals(1, jwks.size())
+            val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
+            assertIs<RSAKey>(jwk)
+            assertEquals(1, requests)
         }
 
-        val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
-        assertEquals(1, jwks.size())
-        val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
-        assertIs<RSAKey>(jwk)
-        assertEquals(1, requests)
+        test(Url("https://example.com"), Url("https://example.com/.well-known/jwt-vc-issuer"))
+        test(Url("https://example.com/tenant/1"), Url("https://example.com/.well-known/jwt-vc-issuer/tenant/1"))
     }
 
     @Test
     fun `verify issuer jwks is resolved by reference`() = runTest {
-        val issuer = Url("https://example.com")
-        val metadata = Url("https://example.com/.well-known/jwt-vc-issuer")
-        val jwksUri = Url("https://example.com/keys.jwks")
+        suspend fun test(issuer: Url, metadata: Url) {
+            val jwksUri = Url("https://example.com/keys.jwks")
+            var requests = 0
+            val client = HttpClient { request ->
+                when (request.url) {
+                    metadata -> {
+                        requests += 1
+                        respond(
+                            issuerMetadata(issuer, null, jwksUri).toString(),
+                            HttpStatusCode.OK,
+                            headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+                        )
+                    }
 
-        var requests = 0
-        val client = HttpClient { request ->
-            when (request.url) {
-                metadata -> {
-                    requests += 1
-                    respond(
-                        issuerMetadata(issuer, null, jwksUri).toString(),
-                        HttpStatusCode.OK,
-                        headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
-                    )
+                    jwksUri -> {
+                        requests += 1
+                        respond(
+                            issuerJwks.toString(),
+                            HttpStatusCode.OK,
+                            headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+                        )
+                    }
+
+                    else -> error("Unexpected request $request")
                 }
-
-                jwksUri -> {
-                    requests += 1
-                    respond(
-                        issuerJwks.toString(),
-                        HttpStatusCode.OK,
-                        headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
-                    )
-                }
-
-                else -> error("Unexpected request $request")
             }
+
+            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            assertEquals(1, jwks.size())
+            val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
+            assertIs<RSAKey>(jwk)
+            assertEquals(2, requests)
         }
 
-        val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
-        assertEquals(1, jwks.size())
-        val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
-        assertIs<RSAKey>(jwk)
-        assertEquals(2, requests)
+        test(Url("https://example.com"), Url("https://example.com/.well-known/jwt-vc-issuer"))
+        test(Url("https://example.com/tenant/1"), Url("https://example.com/.well-known/jwt-vc-issuer/tenant/1"))
     }
 
     @Suppress("TestFunctionName")
