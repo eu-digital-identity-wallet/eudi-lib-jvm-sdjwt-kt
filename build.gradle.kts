@@ -32,9 +32,14 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.nimbus.jose.jwt)
     implementation(libs.kotlinx.coroutines.core)
+    api(libs.ktor.client.core)
+    api(libs.ktor.client.content.negotiation)
+    api(libs.ktor.client.serialization)
+    api(libs.ktor.serialization.kotlinx.json)
     testImplementation(kotlin("test"))
     testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
 }
 
 java {
