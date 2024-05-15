@@ -271,5 +271,4 @@ private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTP
             setOf("iss"),
         )
     }
-
-private const val SD_JWT_VC_TYPE = "vc+sd-jwt"
+const val SD_JWT_VC_TYPE = "vc+sd-jwt"
