@@ -28,7 +28,7 @@ internal value class DnsUri private constructor(val value: Url) {
      *
      * @return the DNS name
      */
-    fun dnsName(): String = dnsName(value)!!
+    fun dnsName(): String = checkNotNull(dnsName(value))
 
     companion object {
 
