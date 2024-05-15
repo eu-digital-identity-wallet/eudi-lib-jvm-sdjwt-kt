@@ -48,21 +48,20 @@ import kotlin.test.assertNotNull
  *
  * It demonstrates the issuance, holder verification, holder presentation and presentation verification
  * use cases, including key binding.
- *
- *
  */
 class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val didResolver: DIDResolver = DIDResolver { issuer.issuerKey.toPublicKey() }
+    private val verifier = SdJwtVcVerifier(didResolver = didResolver)
     private val holder = HolderActor(genKey("holder"), didResolver)
 
     /**
      * This test focuses on the issuance
      *
      * It makes sure that [IssuerActor] is able to produce correctly an SD-JWT (issuance variation).
-     * Furthermore, assures that the [IssuerActor.jwtVerifier] of the issuer successfully verifies the before-mentioned SD-JWT and
-     * that [IssuerActor.extractHolderPubKey] is indeed able to extract holder pub key from SD-JWT claims
+     * Furthermore, assures that the [verifier] successfully verifies the before-mentioned SD-JWT and
+     * that [HolderPubKeyInConfirmationClaim] is indeed able to extract holder pub key from SD-JWT claims
      */
     @Test
     fun testIssuance() = runTest {
@@ -88,9 +87,9 @@ class KeyBindingTest {
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
         // Assert issuer verifier is able to verify JWT
-        val verifier = SdJwtVcVerifier(didResolver = didResolver)
         val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwt.serialize()).getOrNull())
 
+        // Extract and verify holder public key
         assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
     }
 
@@ -239,9 +238,7 @@ class HolderActor(
     holderKey: ECKey,
     didResolver: DIDResolver,
 ) {
-
     private val verifier = SdJwtVcVerifier(didResolver = didResolver)
-
     private val keyBindingSigner: KeyBindingSigner by lazy {
         val actualSigner = ECDSASigner(holderKey)
         object : KeyBindingSigner {
@@ -300,7 +297,6 @@ class VerifierActor(
     private val whatToDisclose: Set<String>,
     didResolver: DIDResolver,
 ) {
-
     private val verifier = SdJwtVcVerifier(didResolver = didResolver)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
