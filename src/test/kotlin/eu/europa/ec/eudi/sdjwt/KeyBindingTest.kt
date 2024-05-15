@@ -27,7 +27,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.vc.DIDResolver
+import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
 import eu.europa.ec.eudi.sdjwt.vc.SD_JWT_VC_TYPE
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.test.runTest
@@ -52,9 +52,9 @@ import kotlin.test.assertNotNull
 class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
-    private val didResolver: DIDResolver = DIDResolver { issuer.issuerKey.toPublicKey() }
-    private val verifier = SdJwtVcVerifier(didResolver = didResolver)
-    private val holder = HolderActor(genKey("holder"), didResolver)
+    private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
+    private val verifier = SdJwtVcVerifier(lookup = lookup)
+    private val holder = HolderActor(genKey("holder"), lookup)
 
     /**
      * This test focuses on the issuance
@@ -100,7 +100,7 @@ class KeyBindingTest {
             "/credentialSubject/countries",
         )
 
-        val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, didResolver)
+        val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
 
         val emailCredential = SampleCredential(
             givenName = "John",
@@ -236,9 +236,9 @@ class IssuerActor(val issuerKey: ECKey) {
  */
 class HolderActor(
     holderKey: ECKey,
-    didResolver: DIDResolver,
+    lookup: LookupPublicKeysFromDIDDocument,
 ) {
-    private val verifier = SdJwtVcVerifier(didResolver = didResolver)
+    private val verifier = SdJwtVcVerifier(lookup = lookup)
     private val keyBindingSigner: KeyBindingSigner by lazy {
         val actualSigner = ECDSASigner(holderKey)
         object : KeyBindingSigner {
@@ -295,9 +295,9 @@ class HolderActor(
 class VerifierActor(
     private val clientId: String,
     private val whatToDisclose: Set<String>,
-    didResolver: DIDResolver,
+    lookup: LookupPublicKeysFromDIDDocument,
 ) {
-    private val verifier = SdJwtVcVerifier(didResolver = didResolver)
+    private val verifier = SdJwtVcVerifier(lookup = lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(

@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.proc.*
 import com.nimbusds.jose.util.X509CertUtils
@@ -30,8 +32,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
-import java.net.URI
-import java.security.PublicKey
 import java.security.cert.X509Certificate
 
 fun interface X509CertificateTrust {
@@ -43,10 +43,20 @@ fun interface X509CertificateTrust {
 }
 
 /**
- * A function to look up a public key from a DID URL
+ * A function to look up public keys from DIDs/DID URLs.
  */
-fun interface DIDResolver {
-    suspend fun resolve(didUrl: URI): PublicKey?
+fun interface LookupPublicKeysFromDIDDocument {
+
+    /**
+     * Lookup the public keys from a DID document.
+     *
+     * @param did the identifier of the DID document
+     * @param didUrl optional DID URL, that is either absolute or relative to [did], indicating the exact public key
+     * to lookup from the DID document
+     *
+     * @return the matching public keys or null in case lookup fails for any reason
+     */
+    suspend fun lookup(did: String, didUrl: String?): List<JWK>?
 }
 
 /**
@@ -55,13 +65,13 @@ fun interface DIDResolver {
  * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
  * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
- * @param didResolver an optional way of resolving DIDs. A `null` value indicates that holder doesn't
+ * @param lookup an optional way of looking up keys from DID Documents. A `null` value indicates that holder doesn't
  * support DIDs
  */
 class SdJwtVcVerifier(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
     private val trust: X509CertificateTrust = X509CertificateTrust.None,
-    private val didResolver: DIDResolver? = null,
+    private val lookup: LookupPublicKeysFromDIDDocument? = null,
 ) {
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
@@ -119,7 +129,7 @@ class SdJwtVcVerifier(
     }
 
     private suspend fun jwtSignatureVerifier(): JwtSignatureVerifier =
-        sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
+        sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
 }
 
 fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
@@ -141,19 +151,19 @@ fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingV
  * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
  * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
- * @param didResolver an optional way of resolving DIDs. A `null` value indicates that holder doesn't
- * support DIDs
+ * @param lookup an optional way of looking up public keys from DID Documents. A `null` value indicates
+ * that holder doesn't support DIDs
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
 suspend fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
     trust: X509CertificateTrust = X509CertificateTrust.None,
-    didResolver: DIDResolver? = null,
+    lookup: LookupPublicKeysFromDIDDocument? = null,
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = SignedJWT.parse(unverifiedJwt)
-        val keySelector = issuerJwsKeySelector(httpClientFactory, trust, didResolver, signedJwt)
+        val keySelector = issuerJwsKeySelector(httpClientFactory, trust, lookup, signedJwt)
         checkNotNull(keySelector) { "Failed to resolve issuer public key" }
         val jwtProcessor = sdJwtVcProcessor(keySelector)
         jwtProcessor.process(signedJwt, null).asClaims()
@@ -165,7 +175,7 @@ suspend fun sdJwtVcSignatureVerifier(
 private suspend fun issuerJwsKeySelector(
     httpClientFactory: KtorHttpClientFactory,
     trust: X509CertificateTrust,
-    didResolver: DIDResolver?,
+    lookup: LookupPublicKeysFromDIDDocument?,
     signedJwt: SignedJWT,
 ): JWSKeySelector<SecurityContext>? {
     val algorithm = requireNotNull(signedJwt.header.algorithm) { "missing 'alg'" }
@@ -183,9 +193,10 @@ private suspend fun issuerJwsKeySelector(
         } else null
 
     suspend fun fromDid(source: DIDUrl): JWSKeySelector<SecurityContext>? =
-        didResolver
-            ?.resolve(source.url.toURI())
-            ?.let { publicKey -> SingleKeyJWSKeySelector(algorithm, publicKey) }
+        lookup
+            ?.lookup(source.did, source.didUrl)
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { publicKeys -> JWSVerificationKeySelector(algorithm, ImmutableJWKSet(JWKSet(publicKeys))) }
 
     return when (val source = keySource(signedJwt)) {
         null -> null
@@ -210,18 +221,18 @@ private sealed interface SdJwtVcIssuerPublicKeySource {
     data class X509SanDns(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
     data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
 
-    @JvmInline
-    value class DIDUrl(val url: Url) : SdJwtVcIssuerPublicKeySource
+    data class DIDUrl(val did: String, val didUrl: String?) : SdJwtVcIssuerPublicKeySource
 }
 
 private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
 private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
-    val kid = jwt.header.keyID?.let { runCatching { Url(it) }.getOrNull() }
+    val kid = jwt.header.keyID
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
-    val iss = jwt.jwtClaimsSet.issuer?.let { runCatching { Url(it) }.getOrNull() }
-    val issScheme = iss?.protocol?.name
+    val iss = jwt.jwtClaimsSet.issuer
+    val issUrl = iss?.let { runCatching { Url(it) }.getOrNull() }
+    val issScheme = issUrl?.protocol?.name
 
     fun X509Certificate.containsIssuerDnsName(iss: DnsUri): Boolean {
         val issuerDnsName = iss.dnsName()
@@ -235,28 +246,25 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     }
 
     return when {
-        iss == null -> null
-        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() && kid == null -> Metadata(iss)
+        issUrl == null -> null
+        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() && kid == null -> Metadata(issUrl)
 
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
                 DNS_URI_SCHEME ->
                     certChain
-                        .takeIf { (leaf, _) -> DnsUri(iss)?.let { leaf.containsIssuerDnsName(it) } ?: false }
-                        ?.let { X509SanDns(iss, it) }
+                        .takeIf { (leaf, _) -> DnsUri(issUrl)?.let { leaf.containsIssuerDnsName(it) } ?: false }
+                        ?.let { X509SanDns(issUrl, it) }
 
                 else ->
                     certChain
-                        .takeIf { (leaf, _) -> leaf.containsIssuerUri(iss) }
-                        ?.let { X509SanURI(iss, it) }
+                        .takeIf { (leaf, _) -> leaf.containsIssuerUri(issUrl) }
+                        ?.let { X509SanURI(issUrl, it) }
             }
 
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> {
-            // TODO check if Kid is absolute or relative URL
-            //  in case of absolute URL make sure that it is sub-resource of iss => didUrl = kid
-            //  in case of relative URL => didURL = iss + did
-            val didUrl = iss
-            DIDUrl(didUrl)
+            // do not use Url for DIDs. Url adds localhost as a host when parsing DIDs. use the original value instead.
+            DIDUrl(iss, kid)
         }
 
         else -> null
