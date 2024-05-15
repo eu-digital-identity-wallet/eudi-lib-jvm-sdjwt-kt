@@ -17,6 +17,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
     * [Presentation Verification](#presentation-verification)
     * [Recreate initial claims](#recreate-original-claims)
 * [DSL Examples](#dsl-examples)
+* [SD-JWT VC support](#sd-jwt-vc-support)
 * [How to contribute](#how-to-contribute)
 * [License](#license)
 
@@ -311,6 +312,15 @@ All examples assume that we have the following claim set
 - [Appendix 2 - Example 3: Complex Structured SD-JWT](docs/examples/example-complex-structured-sd-jwt-01.md)
 - [Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example-sd-jwt-vc-01.md)
 - [Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](docs/examples/example-sd-jwt-vc-data-v02-01.md)
+
+## SD-JWT VC support
+
+The library support verifying 
+[SD-JWT-based Verifiable Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-03.html).
+More specifically, Issuer-signed JWT Verification Key Validation support is provided by
+[SdJwtVcVerifier](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/SdJwtVcVerifier.kt).  
+Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for code examples of
+verifying an Issuance SD-JWT VC and a Presentation SD-JWT VC (including verification of the Key Binding JWT).
 
 ## How to contribute
 
