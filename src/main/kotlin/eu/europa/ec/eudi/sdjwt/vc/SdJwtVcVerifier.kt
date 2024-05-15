@@ -42,10 +42,22 @@ fun interface X509CertificateTrust {
     }
 }
 
+/**
+ * A function to look up a public key from a DID URL
+ */
 fun interface DIDResolver {
     suspend fun resolve(didUrl: URI): PublicKey?
 }
 
+/**
+ * An SD-JWT-VC specific verifier
+ *
+ * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
+ * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
+ * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
+ * @param didResolver an optional way of resolving DIDs. A `null` value indicates that holder doesn't
+ * support DIDs
+ */
 class SdJwtVcVerifier(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
     private val trust: X509CertificateTrust = X509CertificateTrust.None,
@@ -102,17 +114,38 @@ class SdJwtVcVerifier(
         challenge: JsonObject? = null,
     ): Result<SdJwt.Presentation<JwtAndClaims>> = coroutineScope {
         val jwtSignatureVerifier = async { jwtSignatureVerifier() }
-        val keyBindingVerifier = keyBindingVerifier(challenge)
+        val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
         SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
     private suspend fun jwtSignatureVerifier(): JwtSignatureVerifier =
         sdJwtVcSignatureVerifier(httpClientFactory, trust, didResolver)
-
-    private fun keyBindingVerifier(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
-        KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
 }
 
+fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
+    KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
+
+/**
+ * Factory method for producing a SD-JWT-VC specific signature verifier.
+ * This verifier will get the Issuer's public key from the JWT part of the SD-JWT.
+ * In particular,
+ * - If `iss` claim is a URI and there is no `x5c` and no `kid` in the header, SD-JWT-VC metadata will be used
+ * - If `iss` claim is a DNS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ * if it is trusted & it contains a SAN DNS equal to `iss`
+ * - If `iss` claim is a URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ *  if it is trusted & it contains a SAN URI equal to `iss`
+ * - If `iss` claim is a DID the key will be extracted by resolving it.
+ *
+ *  In addition, the verifier will ensure that `typ` claim is equal to vc+sd-jwt
+ *
+ * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
+ * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
+ * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
+ * @param didResolver an optional way of resolving DIDs. A `null` value indicates that holder doesn't
+ * support DIDs
+ *
+ * @return a SD-JWT-VC specific signature verifier as described above
+ */
 suspend fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
     trust: X509CertificateTrust = X509CertificateTrust.None,
