@@ -222,11 +222,12 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet.issuer?.let { runCatching { Url(it) }.getOrNull() }
     val issScheme = iss?.protocol?.name
-    fun X509Certificate.containsIssuerDnsName(iss: Url): Boolean =
-        dnsName(iss)?.let { issuerDnsName ->
-            val dnsNames = sanOfDNSName().getOrDefault(emptyList())
-            issuerDnsName in dnsNames
-        } ?: false
+
+    fun X509Certificate.containsIssuerDnsName(iss: DnsUri): Boolean {
+        val issuerDnsName = iss.dnsName()
+        val dnsNames = sanOfDNSName().getOrDefault(emptyList())
+        return issuerDnsName in dnsNames
+    }
 
     fun X509Certificate.containsIssuerUri(iss: Url): Boolean {
         val names = sanOfUniformResourceIdentifier().getOrDefault(emptyList())
@@ -241,7 +242,7 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
             when (issScheme) {
                 DNS_URI_SCHEME ->
                     certChain
-                        .takeIf { (leaf, _) -> leaf.containsIssuerDnsName(iss) }
+                        .takeIf { (leaf, _) -> DnsUri(iss)?.let { leaf.containsIssuerDnsName(it) } ?: false }
                         ?.let { X509SanDns(iss, it) }
 
                 else ->
@@ -271,4 +272,5 @@ private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTP
             setOf("iss"),
         )
     }
+
 const val SD_JWT_VC_TYPE = "vc+sd-jwt"

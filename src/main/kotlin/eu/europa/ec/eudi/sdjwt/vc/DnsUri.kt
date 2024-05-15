@@ -18,6 +18,41 @@ package eu.europa.ec.eudi.sdjwt.vc
 import io.ktor.http.*
 
 /**
+ * A URI that represents a DNS Name as per RFC-4501.
+ */
+@JvmInline
+internal value class DnsUri private constructor(val value: Url) {
+
+    /**
+     * Gets the DNS name of this RFC-4501 DNS Uri.
+     *
+     * @return the DNS name
+     */
+    fun dnsName(): String = dnsName(value)!!
+
+    companion object {
+
+        /**
+         * Creates a new DNS Uri.
+         *
+         * @return a new DNS Uri or null in case [value] is not a valid RFC-4501 DNS Uri.
+         */
+        operator fun invoke(value: Url): DnsUri? = value.takeIf { dnsName(it) != null }?.let { DnsUri(it) }
+
+        /**
+         * Creates a new DNS Uri.
+         *
+         * @return a new DNS Uri or null in case [value] is not a valid RFC-4501 DNS Uri.
+         */
+        operator fun invoke(value: String): DnsUri? =
+            runCatching {
+                val uri = Url(value)
+                uri.takeIf { dnsName(it) != null }?.let { DnsUri(it) }
+            }.getOrNull()
+    }
+}
+
+/**
  * The dns URI schema.
  */
 internal const val DNS_URI_SCHEME = "dns"
@@ -27,7 +62,7 @@ internal const val DNS_URI_SCHEME = "dns"
  *
  * @return the DNS name or null in case [uri] is not a valid RFC-4501 DNS Uri
  */
-internal fun dnsName(uri: Url): String? =
+private fun dnsName(uri: Url): String? =
     when (uri.protocol.name) {
         DNS_URI_SCHEME -> {
             when {
@@ -45,10 +80,3 @@ internal fun dnsName(uri: Url): String? =
 
         else -> null
     }
-
-/**
- * Gets the DNS name of the provided RFC-4501 DNS Uri.
- *
- * @return the DNS name or null in case [uri] is not a valid RFC-4501 DNS Uri
- */
-internal fun dnsName(uri: String): String? = runCatching { dnsName(Url(uri)) }.getOrNull()

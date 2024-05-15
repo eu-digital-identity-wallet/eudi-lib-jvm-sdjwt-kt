@@ -17,10 +17,11 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * Test cases for [dnsName].
+ * Test cases for [DnsUri].
  *
  * Examples taken from [https://www.rfc-editor.org/rfc/rfc4501.txt](https://www.rfc-editor.org/rfc/rfc4501.txt).
  */
@@ -30,16 +31,17 @@ internal class DnsUriTest {
     internal fun `parses valid dns uris successfully`() {
         validDnsUris.forEach { (uri, dnsName) ->
             println("testing $uri")
-            assertEquals(dnsName, dnsName(uri))
+            val dnsUri = assertNotNull(DnsUri(uri))
+            assertEquals(dnsName, dnsUri.dnsName())
         }
     }
 
     @Test
     internal fun `does not parse invalid dns uris`() {
-        assertNull(dnsName(""))
-        assertNull(dnsName("http://google.com"))
-        assertNull(dnsName("https://google.com"))
-        assertNull(dnsName("ftp://google.com"))
+        assertNull(DnsUri(""))
+        assertNull(DnsUri("http://google.com"))
+        assertNull(DnsUri("https://google.com"))
+        assertNull(DnsUri("ftp://google.com"))
     }
 
     private val validDnsUris = listOf(
