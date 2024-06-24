@@ -8,12 +8,12 @@ kotlinxSerialization = "1.6.2"
 nimbusJoseWwt = "9.37.3"
 ktlintVersion = "0.50.0"
 sonarqube = "5.0.0.4638"
-dependencycheck = "9.1.0"
-maven-publish = "0.28.0"
+dependencycheck = "9.2.0"
+maven-publish = "0.29.0"
 kotlinx-knit = "0.5.0"
 tink = "1.13.0"
 kotlinxCoroutines = "1.8.1"
-ktor = "2.3.6"
+ktor = "2.3.12"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
