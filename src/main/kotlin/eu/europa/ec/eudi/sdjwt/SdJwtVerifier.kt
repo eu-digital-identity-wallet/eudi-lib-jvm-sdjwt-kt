@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
@@ -237,6 +238,23 @@ typealias JwtAndClaims = Pair<Jwt, Claims>
  * and [Combined Presentation Format][verifyPresentation]
  */
 object SdJwtVerifier {
+
+    /**
+     * Parses an SD-JWT to extract the JWT and its claims.
+     *
+     * This function takes an unverified SD-JWT, parses it to separate the JWT and its disclosures,
+     * and then constructs an issuance object containing the JWT and its claims along with the unique disclosures.
+     *
+     * @param unverifiedSdJwt the unverified SD-JWT to be parsed
+     * @return an issuance object containing the JWT and its claims, and the unique disclosures
+     */
+    fun sdJWTParser(unverifiedSdJwt: String): SdJwt.Issuance<JwtAndClaims> {
+        val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
+        val parsedJwt = SignedJWT.parse(unverifiedJwt)
+        val jwtClaims = parsedJwt.jwtClaimsSet.asClaims()
+        val disclosures = uniqueDisclosures(unverifiedDisclosures)
+        return SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
+    }
 
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
