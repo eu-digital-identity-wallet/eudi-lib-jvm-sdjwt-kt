@@ -209,7 +209,7 @@ private suspend fun issuerJwsKeySelector(
 /**
  * The source from which to get Issuer's public key
  */
-private sealed interface SdJwtVcIssuerPublicKeySource {
+internal sealed interface SdJwtVcIssuerPublicKeySource {
 
     data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
@@ -226,7 +226,7 @@ private sealed interface SdJwtVcIssuerPublicKeySource {
 private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
-private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
+internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     val kid = jwt.header.keyID
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet.issuer
