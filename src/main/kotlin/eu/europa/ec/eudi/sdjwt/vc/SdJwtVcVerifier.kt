@@ -211,8 +211,7 @@ private suspend fun issuerJwsKeySelector(
  */
 private sealed interface SdJwtVcIssuerPublicKeySource {
 
-    @JvmInline
-    value class Metadata(val iss: Url) : SdJwtVcIssuerPublicKeySource
+    data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
     interface X509CertChain : SdJwtVcIssuerPublicKeySource {
         val chain: List<X509Certificate>
@@ -247,7 +246,7 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
 
     return when {
         issUrl == null -> null
-        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() && kid == null -> Metadata(issUrl)
+        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() -> Metadata(issUrl, kid)
 
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
