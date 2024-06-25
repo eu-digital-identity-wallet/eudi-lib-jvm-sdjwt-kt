@@ -20,6 +20,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -44,25 +45,57 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 private object SampleIssuer {
-    val iss = Url("https://example.com")
+    private val iss = Url("https://example.com")
+    const val KEY_ID = "signing-key-01"
     private val alg = JWSAlgorithm.ES256
-    val issuerKey = ECKeyGenerator(Curve.P_256)
-        .keyID("someKeyId")
+    private val key: ECKey = ECKeyGenerator(Curve.P_256)
+        .keyID(KEY_ID)
         .keyUse(KeyUse.SIGNATURE)
         .algorithm(alg)
         .generate()
     val issuerMeta = run {
-        val jwks = Json.parseToJsonElement(JWKSet(issuerKey.toPublicJWK()).toString())
+        val jwks = Json.parseToJsonElement(JWKSet(key.toPublicJWK()).toString())
         buildJsonObject {
             put("issuer", iss.toString())
             put("jwks", jwks)
         }
     }
 
-    fun issuer(kid: String?) =
-        SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = alg) {
+    private fun issuer(kid: String?) =
+        SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
             type(JOSEObjectType(SD_JWT_VC_TYPE))
             kid?.let { keyID(it) }
+        }
+
+    fun issueUsingKid(kid: String?): String {
+        val issuer = issuer(kid)
+        val sdJwtSpec = sdJwt {
+            iss(iss.toString())
+            iat(Instant.now().toEpochMilli())
+            sd("foo", "bar")
+        }
+        return issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    }
+}
+
+private object HttpMock {
+
+    fun clientReturning(issuerMeta: JsonObject): HttpClient =
+        HttpClient { _ ->
+            respond(
+                issuerMeta.toString(),
+                HttpStatusCode.OK,
+                headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+            )
+        }
+
+    @Suppress("TestFunctionName")
+    private fun HttpClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
+        HttpClient(MockEngine(handler)) {
+            expectSuccess = true
+            install(ContentNegotiation) {
+                json()
+            }
         }
 }
 
@@ -80,17 +113,52 @@ class SdJwtVcVerifierTest {
         testForMetaDataSource(expectedSource)
     }
 
-    @Test
-    fun `SdJwtVcVerifier should verify with metadata when iss is HTTPS url using kid`() = runTest {
-        // In case the issuer uses the KID
-        val unverifiedSdJwt = run {
-            val issuer = SampleIssuer.issuer(kid = SampleIssuer.issuerKey.keyID) // correct kid
-            val sdJwtSpec = sdJwtSpec(SampleIssuer.iss)
-            issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    private fun testForMetaDataSource(expectedSource: SdJwtVcIssuerPublicKeySource.Metadata) {
+        val jwt = run {
+            val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
+                type(JOSEObjectType(SD_JWT_VC_TYPE))
+                expectedSource.kid?.let { keyID(it) }
+            }.build()
+            val payload = JWTClaimsSet.Builder().apply {
+                issuer(expectedSource.iss.toString())
+            }.build()
+            SignedJWT(header, payload)
         }
 
-        val verifier =
-            SdJwtVcVerifier(httpClientFactory = { httpClientReturning(SampleIssuer.issuerMeta) })
+        val actualSource = keySource(jwt)
+        assertEquals(expectedSource, actualSource)
+    }
+
+    @Test
+    fun `keySource() should return a DID when iss is a DID and kid is provided`() {
+        val expectedSource =
+            SdJwtVcIssuerPublicKeySource.DIDUrl(
+                did = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2",
+                didUrl = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2#x8x4WxXHoPW7ccEO0zACL_miBfO-V7X_jofc-UEGzw4",
+            )
+        testForDid(expectedSource)
+    }
+
+    private fun testForDid(expectedSource: SdJwtVcIssuerPublicKeySource.DIDUrl) {
+        val jwt = run {
+            val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
+                type(JOSEObjectType(SD_JWT_VC_TYPE))
+                expectedSource.didUrl?.let { keyID(it) }
+            }.build()
+            val payload = JWTClaimsSet.Builder().apply {
+                issuer(expectedSource.did)
+            }.build()
+            SignedJWT(header, payload)
+        }
+
+        val actualSource = keySource(jwt)
+        assertEquals(expectedSource, actualSource)
+    }
+
+    @Test
+    fun `SdJwtVcVerifier should verify with metadata when iss is HTTPS url using kid`() = runTest {
+        val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         assertDoesNotThrow {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
@@ -99,14 +167,8 @@ class SdJwtVcVerifierTest {
 
     @Test
     fun `SdJwtVcVerifier should verify with metadata when iss is HTTPS url and no kid`() = runTest {
-        val unverifiedSdJwt = run {
-            val issuer = SampleIssuer.issuer(kid = null) // no kid
-            val sdJwtSpec = sdJwtSpec(SampleIssuer.iss)
-            issuer.issue(sdJwtSpec).getOrThrow().serialize()
-        }
-
-        val verifier =
-            SdJwtVcVerifier(httpClientFactory = { httpClientReturning(SampleIssuer.issuerMeta) })
+        val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         assertDoesNotThrow {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
@@ -116,58 +178,12 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should not verify with metadata when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
-        val unverifiedSdJwt = run {
-            val issuer = SampleIssuer.issuer(kid = "wrong kid")
-            val sdJwtSpec = sdJwtSpec(SampleIssuer.iss)
-            issuer.issue(sdJwtSpec).getOrThrow().serialize()
-        }
-
-        val verifier =
-            SdJwtVcVerifier(httpClientFactory = { httpClientReturning(SampleIssuer.issuerMeta) })
+        val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         val exception = assertThrows<SdJwtVerificationException> {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
         }
         assertEquals(VerificationError.InvalidJwt, exception.reason)
     }
-
-    private fun sdJwtSpec(iss: Url) = sdJwt {
-        iss(iss.toString())
-        sd("foo", "bar")
-        iat(Instant.now().toEpochMilli())
-    }
-
-    private fun httpClientReturning(issuerMeta: JsonObject): HttpClient =
-        HttpClient { _ ->
-            respond(
-                issuerMeta.toString(),
-                HttpStatusCode.OK,
-                headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
-            )
-        }
-}
-
-@Suppress("TestFunctionName")
-private fun HttpClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
-    HttpClient(MockEngine(handler)) {
-        expectSuccess = true
-        install(ContentNegotiation) {
-            json()
-        }
-    }
-
-private fun testForMetaDataSource(expectedSource: SdJwtVcIssuerPublicKeySource.Metadata) {
-    val jwt = run {
-        val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-            type(JOSEObjectType(SD_JWT_VC_TYPE))
-            expectedSource.kid?.let { keyID(it) }
-        }.build()
-        val payload = JWTClaimsSet.Builder().apply {
-            issuer(expectedSource.iss.toString())
-        }.build()
-        SignedJWT(header, payload)
-    }
-
-    val actualSource = keySource(jwt)
-    assertEquals(expectedSource, actualSource)
 }
