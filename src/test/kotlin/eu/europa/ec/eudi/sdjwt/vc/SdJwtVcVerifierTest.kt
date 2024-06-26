@@ -133,8 +133,8 @@ class SdJwtVcVerifierTest {
     fun `keySource() should return a DID when iss is a DID and kid is provided`() {
         val expectedSource =
             SdJwtVcIssuerPublicKeySource.DIDUrl(
-                did = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2",
-                didUrl = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2#x8x4WxXHoPW7ccEO0zACL_miBfO-V7X_jofc-UEGzw4",
+                iss = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2",
+                kid = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2#x8x4WxXHoPW7ccEO0zACL_miBfO-V7X_jofc-UEGzw4",
             )
         testForDid(expectedSource)
     }
@@ -143,10 +143,10 @@ class SdJwtVcVerifierTest {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
                 type(JOSEObjectType(SD_JWT_VC_TYPE))
-                expectedSource.didUrl?.let { keyID(it) }
+                expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
-                issuer(expectedSource.did)
+                issuer(expectedSource.iss)
             }.build()
             SignedJWT(header, payload)
         }

@@ -194,7 +194,7 @@ private suspend fun issuerJwsKeySelector(
 
     suspend fun fromDid(source: DIDUrl): JWSKeySelector<SecurityContext>? =
         lookup
-            ?.lookup(source.did, source.didUrl)
+            ?.lookup(source.iss, source.kid)
             ?.takeIf { it.isNotEmpty() }
             ?.let { publicKeys -> JWSVerificationKeySelector(algorithm, ImmutableJWKSet(JWKSet(publicKeys))) }
 
@@ -220,7 +220,7 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
     data class X509SanDns(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
     data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
 
-    data class DIDUrl(val did: String, val didUrl: String?) : SdJwtVcIssuerPublicKeySource
+    data class DIDUrl(val iss: String, val kid: String?) : SdJwtVcIssuerPublicKeySource
 }
 
 private const val HTTPS_URI_SCHEME = "https"
@@ -262,7 +262,6 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
             }
 
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> {
-            // do not use Url for DIDs. Url adds localhost as a host when parsing DIDs. use the original value instead.
             DIDUrl(iss, kid)
         }
 
