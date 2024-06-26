@@ -194,7 +194,7 @@ private suspend fun issuerJwsKeySelector(
 
     suspend fun fromDid(source: DIDUrl): JWSKeySelector<SecurityContext>? =
         lookup
-            ?.lookup(source.did, source.didUrl)
+            ?.lookup(source.iss, source.kid)
             ?.takeIf { it.isNotEmpty() }
             ?.let { publicKeys -> JWSVerificationKeySelector(algorithm, ImmutableJWKSet(JWKSet(publicKeys))) }
 
@@ -209,10 +209,9 @@ private suspend fun issuerJwsKeySelector(
 /**
  * The source from which to get Issuer's public key
  */
-private sealed interface SdJwtVcIssuerPublicKeySource {
+internal sealed interface SdJwtVcIssuerPublicKeySource {
 
-    @JvmInline
-    value class Metadata(val iss: Url) : SdJwtVcIssuerPublicKeySource
+    data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
     interface X509CertChain : SdJwtVcIssuerPublicKeySource {
         val chain: List<X509Certificate>
@@ -221,13 +220,13 @@ private sealed interface SdJwtVcIssuerPublicKeySource {
     data class X509SanDns(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
     data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
 
-    data class DIDUrl(val did: String, val didUrl: String?) : SdJwtVcIssuerPublicKeySource
+    data class DIDUrl(val iss: String, val kid: String?) : SdJwtVcIssuerPublicKeySource
 }
 
 private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
-private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
+internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     val kid = jwt.header.keyID
     val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet.issuer
@@ -247,7 +246,7 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
 
     return when {
         issUrl == null -> null
-        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() && kid == null -> Metadata(issUrl)
+        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() -> Metadata(issUrl, kid)
 
         certChain.isNotEmpty() && kid == null ->
             when (issScheme) {
@@ -263,7 +262,6 @@ private fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
             }
 
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> {
-            // do not use Url for DIDs. Url adds localhost as a host when parsing DIDs. use the original value instead.
             DIDUrl(iss, kid)
         }
 
