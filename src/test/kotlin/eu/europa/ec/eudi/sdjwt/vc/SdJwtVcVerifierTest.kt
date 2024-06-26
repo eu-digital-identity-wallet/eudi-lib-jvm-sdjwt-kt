@@ -102,13 +102,13 @@ private object HttpMock {
 class SdJwtVcVerifierTest {
 
     @Test
-    fun `keySource() should return a Metadata when iss is a https url`() {
+    fun `keySource should return a Metadata when iss is a https url`() {
         val expectedSource = SdJwtVcIssuerPublicKeySource.Metadata(Url("https://example.com"), null)
         testForMetaDataSource(expectedSource)
     }
 
     @Test
-    fun `keySource() should return a Metadata when iss is a https url and kid is provided`() {
+    fun `keySource should return a Metadata when iss is a https url and kid is provided`() {
         val expectedSource = SdJwtVcIssuerPublicKeySource.Metadata(Url("https://example.com"), "some-kid")
         testForMetaDataSource(expectedSource)
     }
@@ -130,7 +130,7 @@ class SdJwtVcVerifierTest {
     }
 
     @Test
-    fun `keySource() should return a DID when iss is a DID and kid is provided`() {
+    fun `keySource should return a DIDUrl when iss is a DID and kid is provided`() {
         val expectedSource =
             SdJwtVcIssuerPublicKeySource.DIDUrl(
                 iss = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2",
@@ -156,7 +156,7 @@ class SdJwtVcVerifierTest {
     }
 
     @Test
-    fun `SdJwtVcVerifier should verify with metadata when iss is HTTPS url using kid`() = runTest {
+    fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
@@ -166,7 +166,7 @@ class SdJwtVcVerifierTest {
     }
 
     @Test
-    fun `SdJwtVcVerifier should verify with metadata when iss is HTTPS url and no kid`() = runTest {
+    fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
@@ -176,7 +176,7 @@ class SdJwtVcVerifierTest {
     }
 
     @Test
-    fun `SdJwtVcVerifier should not verify with metadata when iss is HTTPS url using wrong kid`() = runTest {
+    fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
