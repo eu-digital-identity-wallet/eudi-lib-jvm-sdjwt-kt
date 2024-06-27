@@ -223,10 +223,11 @@ inline fun signedSdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+    desiredDigests: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
 ): SdJwt.Issuance<NimbusSignedJWT> {
     val issuer = SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlgorithm)
-    val sdJwtElements = sdJwt(builderAction)
+    val sdJwtElements = sdJwt(desiredDigests, builderAction)
     return issuer.issue(sdJwtElements).getOrThrow()
 }
 

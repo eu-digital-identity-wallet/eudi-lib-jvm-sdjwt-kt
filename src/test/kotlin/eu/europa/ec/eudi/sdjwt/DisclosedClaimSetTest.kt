@@ -199,7 +199,7 @@ class DisclosedClaimSetTest {
                 plain(JsonObject(plainClaims))
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { sd(c.value.jsonObject) } }
             }
-            val numOfDecoys = 4
+            val numOfDecoys = 0
             val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,
                 SaltProvider.Default,

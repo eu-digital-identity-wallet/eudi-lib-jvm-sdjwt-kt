@@ -67,7 +67,7 @@ internal class DecoyTest {
     // counts only top-level digests
     private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.asClaims().directDigests().count()
 
-    private fun sdJwtSpec(membership: Membership) = sdJwt {
+    private fun sdJwtSpec(membership: Membership) = sdJwt(5) {
         sd("name", membership.name)
         if (membership is Membership.Premium) {
             sd("premiumMembershipNumber", membership.premiumMembershipNumber)

@@ -23,7 +23,16 @@ import kotlinx.serialization.json.*
  *
  * Each of its claims could be always or selectively disclosable
  */
-class SdObject(private val content: Map<String, SdObjectElement>) : Map<String, SdObjectElement> by content
+class SdObject(
+    private val content: Map<String, SdObjectElement>,
+    val desiredDigests: Int?,
+) : Map<String, SdObjectElement> by content {
+    init {
+        if (desiredDigests != null) {
+            require(desiredDigests > 0) { "Desired digests must be greater than 0" }
+        }
+    }
+}
 
 /**
  * Adds to then current [SdObject] another [SdObject] producing
@@ -53,8 +62,15 @@ class SdObject(private val content: Map<String, SdObjectElement>) : Map<String, 
  * @receiver the current [SdObject]
  * @return a new [SdObject] as described above
  */
-operator fun SdObject.plus(that: SdObject): SdObject =
-    SdObject((this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>))
+operator fun SdObject.plus(that: SdObject): SdObject {
+    val newDesiredDigests =
+        if (this.desiredDigests == null && that.desiredDigests == null) null
+        else (this.desiredDigests ?: 0) + (that.desiredDigests ?: 0)
+    return SdObject(
+        (this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>),
+        newDesiredDigests,
+    )
+}
 
 /**
  * A [JsonElement] that is either always or selectively disclosable
@@ -256,8 +272,8 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
  * ```
  */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun SdArrayBuilder.buildSdObject(action: SdObjectBuilder.() -> Unit) {
-    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(action)))
+fun SdArrayBuilder.buildSdObject(desiredDigests: Int? = null, action: SdObjectBuilder.() -> Unit) {
+    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(desiredDigests, action)))
 }
 
 /**
@@ -280,14 +296,21 @@ inline fun <reified E> SdArrayBuilder.sd(claims: E) {
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
-inline fun sdJwt(builderAction: SdObjectBuilder.() -> Unit): SdObject = buildSdObject(builderAction)
+inline fun sdJwt(
+    desiredDigests: Int? = null,
+    builderAction: SdObjectBuilder.() -> Unit,
+): SdObject = buildSdObject(desiredDigests, builderAction)
 
 /**
  * Factory method for creating a [SdObject] using the [SdObjectBuilder]
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
-inline fun buildSdObject(builderAction: SdObjectBuilder.() -> Unit): SdObject = SdObject(buildMap(builderAction))
+inline fun buildSdObject(
+    desiredDigests: Int? = null,
+    builderAction: SdObjectBuilder.() -> Unit,
+): SdObject = SdObject(buildMap(builderAction), desiredDigests)
+
 fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, SdObjectElement.plain(element))
 fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, SdObjectElement.sd(element))
 fun SdObjectBuilder.sd(name: String, element: SdObjectElement) = put(name, element)
@@ -403,8 +426,8 @@ fun SdObjectBuilder.sdArray(name: String, action: SdArrayBuilder.() -> Unit) {
     sd(name, buildSdArray(action))
 }
 
-fun SdObjectBuilder.structured(name: String, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(action)
+fun SdObjectBuilder.structured(name: String, desiredDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(desiredDigests, action)
     sd(name, StructuredSdObject(obj))
 }
 
@@ -413,8 +436,8 @@ fun SdObjectBuilder.recursiveArray(name: String, action: SdArrayBuilder.() -> Un
     sd(name, RecursiveSdArray(arr))
 }
 
-fun SdObjectBuilder.recursive(name: String, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(action)
+fun SdObjectBuilder.recursive(name: String, desiredDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(desiredDigests, action)
     sd(name, RecursiveSdObject(obj))
 }
 

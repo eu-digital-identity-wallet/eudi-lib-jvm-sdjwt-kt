@@ -61,14 +61,32 @@ class SdJwtFactory(
                 encodedClaims["_sd"] = mergedSdClaim
             }
         }
+        fun addDecoysIfNeeded() {
+            val desiredDigests = sdObject.desiredDigests ?: numOfDecoysLimit.takeIf { it != 0 }
+            if (desiredDigests != null) {
+                val digests = encodedClaims.sdClaim()
+                val numOfDecoys = desiredDigests - digests.size
+                if (numOfDecoys > 0) {
+                    val digestAndDecoys = run {
+                        val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys)
+                            .map { JsonPrimitive(it.value) }
+
+                        (decoys + digests).sortedBy { it.jsonPrimitive.contentOrNull }
+                    }
+
+                    encodedClaims["_sd"] = JsonArray(digestAndDecoys)
+                }
+            }
+        }
 
         for ((subClaimName, subClaimValue) in sdObject) {
             val (encodedSubClaim, subClaimDisclosures) = encodeClaim(subClaimName, subClaimValue)
             disclosures += subClaimDisclosures
             add(encodedSubClaim)
         }
-        val sdObjectClaims = JsonObject(encodedClaims)
 
+        addDecoysIfNeeded()
+        val sdObjectClaims = JsonObject(encodedClaims)
         return sdObjectClaims to disclosures
     }
 
@@ -91,7 +109,7 @@ class SdJwtFactory(
         fun encodeSd(sd: DisclosableJsonElement.Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
             val claim = claimName to sd.value
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
-            val digestAndDecoys = (decoys() + digest).sorted()
+            val digestAndDecoys = setOf(digest)
             val sdClaim = digestAndDecoys.sdClaim()
             return sdClaim to listOf(disclosure)
         }
