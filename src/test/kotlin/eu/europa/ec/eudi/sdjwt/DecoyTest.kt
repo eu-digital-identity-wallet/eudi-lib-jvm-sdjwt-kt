@@ -43,9 +43,11 @@ internal class DecoyTest {
             return issuer.issue(spec).getOrThrow()
         }
 
-        val (simpleSdJwts, premiumSdJwts) = (1..100).map {
-            issue(simpleMembership) to issue(premiumMembership)
-        }.unzip()
+        val (simpleSdJwts, premiumSdJwts) =
+            (1..100)
+                .map { issue(simpleMembership) to issue(premiumMembership) }
+                .unzip()
+
         fun printFreq(s: String, f: Map<Int, Int>) {
             println("$s\t(DigestNo/Occurrences) $f")
         }
@@ -54,10 +56,12 @@ internal class DecoyTest {
         premiumSdJwts.digestFrequency().also { printFreq("premium", it) }
     }
 
-    fun Iterable<SdJwt.Issuance<SignedJWT>>.digestFrequency() =
-        map {
-            it.countDigests()
-        }.groupBy { it }.mapValues { (_, vs) -> vs.size }.toSortedMap()
+    private fun Iterable<SdJwt.Issuance<SignedJWT>>.digestFrequency() =
+        this
+            .map { it.countDigests() }
+            .groupBy { it }
+            .mapValues { (_, vs) -> vs.size }
+            .toSortedMap()
 
     // That's not safe, but it will do for them example
     // counts only top-level digests
