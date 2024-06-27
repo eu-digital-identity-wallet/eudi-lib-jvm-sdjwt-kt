@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlin.random.Random
+import java.security.SecureRandom
 
 /**
  * An interface for generating [Salt] values.
@@ -36,7 +36,7 @@ fun interface SaltProvider {
          */
         val Default: SaltProvider by lazy { randomSaltProvider(16) }
 
-        private val secureRandom: Random = Random.Default
+        private val secureRandom: SecureRandom = SecureRandom()
 
         /**
          * Creates a salt provider which generates random [Salt] values
