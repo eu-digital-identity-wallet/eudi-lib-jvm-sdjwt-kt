@@ -163,10 +163,6 @@ class SdJwtFactory(
         }
     }
 
-    private fun decoys() = decoyGen.genUpTo(hashAlgorithm, numOfDecoysLimit)
-    private fun Iterable<DisclosureDigest>.sorted(): Set<DisclosureDigest> =
-        toSortedSet(Comparator.comparing { it.value })
-
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
