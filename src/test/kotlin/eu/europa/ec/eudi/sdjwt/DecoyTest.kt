@@ -23,6 +23,7 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 sealed interface Membership {
     val name: String
@@ -37,23 +38,21 @@ internal class DecoyTest {
 
     @Test
     fun baseline() {
-        fun issue(m: Membership): SdJwt.Issuance<SignedJWT> {
-            val issuer = SampleIssuer.issuer()
-            val spec = sdJwtSpec(m)
-            return issuer.issue(spec).getOrThrow()
-        }
+        val simpleMembershipSpec = simpleMembership.sdJwtSpec()
+        val premiumMembershipSpec = premiumMembership.sdJwtSpec()
 
         val (simpleSdJwts, premiumSdJwts) =
             (1..100)
-                .map { issue(simpleMembership) to issue(premiumMembership) }
+                .map { SampleIssuer.issue(simpleMembershipSpec) to SampleIssuer.issue(premiumMembershipSpec) }
                 .unzip()
 
         fun printFreq(s: String, f: Map<Int, Int>) {
             println("$s\t(DigestNo/Occurrences) $f")
         }
 
-        simpleSdJwts.digestFrequency().also { printFreq("simple", it) }
-        premiumSdJwts.digestFrequency().also { printFreq("premium", it) }
+        val simpleFreq = simpleSdJwts.digestFrequency().also { printFreq("simple", it) }
+        val premiumFreq = premiumSdJwts.digestFrequency().also { printFreq("premium", it) }
+        assertTrue { simpleFreq == premiumFreq }
     }
 
     private fun Iterable<SdJwt.Issuance<SignedJWT>>.digestFrequency() =
@@ -67,10 +66,10 @@ internal class DecoyTest {
     // counts only top-level digests
     private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.asClaims().directDigests().count()
 
-    private fun sdJwtSpec(membership: Membership) = sdJwt(desiredDigests = 5) {
-        sd("name", membership.name)
-        if (membership is Membership.Premium) {
-            sd("premiumMembershipNumber", membership.premiumMembershipNumber)
+    private fun Membership.sdJwtSpec() = sdJwt(desiredDigests = 5) {
+        sd("name", name)
+        if (this@sdJwtSpec is Membership.Premium) {
+            sd("premiumMembershipNumber", premiumMembershipNumber)
         }
     }
 }
@@ -83,8 +82,10 @@ private object SampleIssuer {
         .keyUse(KeyUse.SIGNATURE)
         .algorithm(alg)
         .generate()
-    private val factory = SdJwtFactory(numOfDecoysLimit = 5)
 
-    fun issuer(): SdJwtIssuer<SignedJWT> =
-        SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg, sdJwtFactory = factory)
+    private val issuer: SdJwtIssuer<SignedJWT> =
+        SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg)
+
+    fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =
+        issuer.issue(sdElements).getOrThrow()
 }
