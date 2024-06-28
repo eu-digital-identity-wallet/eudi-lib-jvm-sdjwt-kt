@@ -296,7 +296,7 @@ If issuer wants to use digests, it can do so using the DSL.
 
 DSL functions that mark a container comprised of potentially selectively disclosable   
 elements, such as `sdJwt{}`, `structured{}` e.t,c, accept
-an optional parameter named `digestNumberHint: Int? = null`.
+an optional parameter named `minimumDigests: Int? = null`.
 
 The issuer can use this parameter in order to set the minimum  number of digests
 for the immediate level of this container. Library will make sure that
@@ -312,15 +312,31 @@ sdJwt(digestNumberHint = 5) {
   // This 5 guarantees that at least 5 digests will be found
   // to the digest array, regardless of the content of the SD-JWT
     
-  structured("address", digestNumberHint = 10) {
+  structured("address", minimumDigests = 10) {
     // This affects the nested array of the digests that will 
     // have at list 10 digests.
   }
   
-  recursive("address1", digestNumberHint = 8) {
+  recursive("address1", minimumDigests = 8) {
       // This will affect the digests array that will be found
       // in the disclosure of this recursively disclosable item
+      // the whole object will be embedded in its parent
+      // as a single digest
   }
+
+  sdArray("evidence", minimumDigests = 2) {
+    // Array will have at least 2 digests
+    // regardless of its elements
+  }
+
+  recursiveArray("evidence1", minimumDigests = 2) {
+    // Array will have at least 2 digests
+    // regardless of its elements
+    // the whole array will be embedded in its parent  
+    // as a single digest  
+  }
+
+  
 }
 ```
 In addition to the DSL defined hints, the issuer may set a global hint to the `SdJwtFactory`.
