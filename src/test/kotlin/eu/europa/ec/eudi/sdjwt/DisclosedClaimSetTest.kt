@@ -38,7 +38,7 @@ class DisclosedClaimSetTest {
                 },
             )
 
-            val sdJwtFactory = SdJwtFactory(globalDigestNumberHint = 0)
+            val sdJwtFactory = SdJwtFactory.Default
             invalidClaims.forEach { sdJwt ->
                 val result = sdJwtFactory.createSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
@@ -114,7 +114,7 @@ class DisclosedClaimSetTest {
                 hashAlgorithm,
                 SaltProvider.Default,
                 DecoyGen.Default,
-                4,
+                4.atLeastDigests(),
             ).createSdJwt(sdJwtElements).getOrThrow()
 
             val (jwtClaimSet, disclosures) = disclosedJsonObject
@@ -199,12 +199,11 @@ class DisclosedClaimSetTest {
                 plain(JsonObject(plainClaims))
                 claimsToBeDisclosed.forEach { c -> structured(c.key) { sd(c.value.jsonObject) } }
             }
-            val numOfDecoys = 0
             val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,
                 SaltProvider.Default,
                 DecoyGen.Default,
-                numOfDecoys,
+                null,
 
             ).createSdJwt(sdJwtElements).getOrThrow()
 

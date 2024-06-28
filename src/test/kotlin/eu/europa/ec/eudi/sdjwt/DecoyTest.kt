@@ -67,7 +67,7 @@ internal class DecoyTest {
         val premiumMembershipSpec = premiumMembership.sdJwtSpec(null)
 
         val digestNumberHint = 5
-        val issuer = SampleIssuer(globalDigestNumberHint = digestNumberHint)
+        val issuer = SampleIssuer(globalMinDigests = digestNumberHint)
 
         assertEquals(digestNumberHint, issuer.issue(simpleMembershipSpec).countDigests())
         assertEquals(digestNumberHint, issuer.issue(premiumMembershipSpec).countDigests())
@@ -85,7 +85,7 @@ internal class DecoyTest {
     private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.asClaims().directDigests().count()
 
     private fun Membership.sdJwtSpec(digestNumberHint: Int?) =
-        sdJwt(digestNumberHint = digestNumberHint) {
+        sdJwt(minimumDigests = digestNumberHint) {
             sd("name", name)
             if (this@sdJwtSpec is Membership.Premium) {
                 sd("premiumMembershipNumber", premiumMembershipNumber)
@@ -93,7 +93,7 @@ internal class DecoyTest {
         }
 }
 
-private class SampleIssuer(globalDigestNumberHint: Int? = null) {
+private class SampleIssuer(globalMinDigests: Int? = null) {
     val keyId = "signing-key-01"
     private val alg = JWSAlgorithm.ES256
     val key: ECKey = ECKeyGenerator(Curve.P_256)
@@ -106,7 +106,7 @@ private class SampleIssuer(globalDigestNumberHint: Int? = null) {
         SdJwtIssuer.nimbus(
             signer = ECDSASigner(key),
             signAlgorithm = alg,
-            sdJwtFactory = SdJwtFactory(globalDigestNumberHint = globalDigestNumberHint),
+            sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = globalMinDigests?.let(::MinimumDigests)),
         )
 
     fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =

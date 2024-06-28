@@ -20,20 +20,29 @@ import kotlinx.serialization.json.*
 
 private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
 
+@JvmInline
+value class MinimumDigests(val value: Int) {
+    init {
+        require(value > 0) { "value must be greater than zero." }
+    }
+    operator fun plus(that: MinimumDigests) = MinimumDigests(this.value + that.value)
+}
+fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
+
 /**
  * Factory for creating an [UnsignedSdJwt]
  *
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
- * @param globalDigestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
- * of every [SdObject]. It will be taken into account if there is not an explicit [hint][SdObject.digestNumberHint] for
+ * @param fallbackMinimumDigests This is an optional hint, that expresses the number of digests on the immediate level
+ * of every [SdObject]. It will be taken into account if there is not an explicit [hint][SdObject.minimumDigests] for
  * this [SdObject]. If not provided, decoys will be added only if there is a hint at [SdObject] level.
  */
 class SdJwtFactory(
     private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     private val saltProvider: SaltProvider = SaltProvider.Default,
     private val decoyGen: DecoyGen = DecoyGen.Default,
-    private val globalDigestNumberHint: Int? = null,
+    private val fallbackMinimumDigests: MinimumDigests? = null,
 ) {
 
     /**
@@ -67,19 +76,11 @@ class SdJwtFactory(
 
         // Adds decoys if needed
         fun addDecoysIfNeeded() {
-            // Use the hint of the sdObject, fallback to globalDigestNumberHint
-            val digestNumberHint = sdObject.digestNumberHint ?: globalDigestNumberHint
-            if (digestNumberHint != null) {
-                val digests = encodedClaims.sdClaim()
-                val numOfDecoys = digestNumberHint - digests.size
-                if (numOfDecoys > 0) {
-                    val digestAndDecoys = run {
-                        val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys)
-                            .map { JsonPrimitive(it.value) }
-                        (decoys + digests).sortedBy { it.jsonPrimitive.contentOrNull }
-                    }
-                    encodedClaims["_sd"] = JsonArray(digestAndDecoys)
-                }
+            val digests = encodedClaims.sdClaim()
+            val decoys = genDecoys(digests.size, sdObject.minimumDigests).map { JsonPrimitive(it.value) }
+            val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+            if (digestAndDecoys.isNotEmpty()) {
+                encodedClaims["_sd"] = JsonArray(digestAndDecoys)
             }
         }
 
@@ -120,9 +121,8 @@ class SdJwtFactory(
 
         fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
             val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(sdArray)
-            val digestNumberHint = sdArray.digestNumberHint ?: globalDigestNumberHint ?: 0
-            val numOfDecoys = digestNumberHint - plainOrDigestElements.size
-            val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys).map { PlainOrDigest.Dig(it) }
+            val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
+            val decoys = genDecoys(actualDisclosureDigests, sdArray.minimumDigests).map { PlainOrDigest.Dig(it) }
             val allElements = JsonArray(
                 (plainOrDigestElements + decoys).map {
                     when (it) {
@@ -185,6 +185,16 @@ class SdJwtFactory(
         }
     }
 
+    /**
+     * Generates decoys, if needed.
+     *
+     */
+    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): Set<DisclosureDigest> {
+        val min = (minimumDigests ?: fallbackMinimumDigests)?.value ?: 0
+        val numOfDecoys = min - disclosureDigests
+        return decoyGen.gen(hashAlgorithm, numOfDecoys)
+    }
+
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
         if (isEmpty()) JsonObject(emptyMap())
         else JsonObject(mapOf("_sd" to JsonArray(map { JsonPrimitive(it.value) })))
@@ -245,7 +255,7 @@ class SdJwtFactory(
          * - SHA_256 hash algorithm
          * - [SaltProvider.Default]
          * - [DecoyGen.Default]
-         * - No hint for [SdJwtFactory.globalDigestNumberHint]
+         * - No hint for [SdJwtFactory.fallbackMinimumDigests]
          */
         val Default: SdJwtFactory =
             SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
@@ -254,8 +264,8 @@ class SdJwtFactory(
             message = "Deprecated and will be removed in a future release",
             replaceWith = ReplaceWith("SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)"),
         )
-        fun of(hashAlgorithm: HashAlgorithm, globalDigestNumberHint: Int?): SdJwtFactory =
-            SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)
+        fun of(hashAlgorithm: HashAlgorithm, fallbackMinimumDigests: Int?): SdJwtFactory =
+            SdJwtFactory(hashAlgorithm, fallbackMinimumDigests = fallbackMinimumDigests.atLeastDigests())
     }
 }
 

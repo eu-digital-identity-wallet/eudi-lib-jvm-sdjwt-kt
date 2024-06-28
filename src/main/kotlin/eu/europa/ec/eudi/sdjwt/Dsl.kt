@@ -24,20 +24,14 @@ import kotlinx.serialization.json.*
  * order to produce the [SdJwt]
  *
  * @param content the content of the object. Each of its claims could be always or selectively disclosable
- * @param digestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
+ * @param minimumDigests This is an optional hint, that expresses the minimum number of digests at the immediate level
  * of this [SdObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
- * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
+ * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  */
 class SdObject(
     private val content: Map<String, SdObjectElement>,
-    val digestNumberHint: Int?,
-) : Map<String, SdObjectElement> by content {
-    init {
-        if (digestNumberHint != null) {
-            require(digestNumberHint > 0) { "Digests hint must be greater than 0" }
-        }
-    }
-}
+    val minimumDigests: MinimumDigests?,
+) : Map<String, SdObjectElement> by content
 
 /**
  * Adds to then current [SdObject] another [SdObject] producing
@@ -47,14 +41,14 @@ class SdObject(
  * will preserve the claims of [that]
  *
  * ```
- *   val sdObj1 = buildSdObject(digestNumberHint=2) {
+ *   val sdObj1 = buildSdObject(minimumDigests=2) {
  *      sd{
  *          put("a", "foo")
  *          put("b", "bar")
  *      }
  *   }
  *
- *   val sdObj2 = buildSdObject(digestNumberHint=2) {
+ *   val sdObj2 = buildSdObject(minimumDigests=2) {
  *      plain {
  *          put("a", "ddd")
  *      }
@@ -68,12 +62,13 @@ class SdObject(
  * @return a new [SdObject] as described above
  */
 operator fun SdObject.plus(that: SdObject): SdObject {
-    val newDigestNumberHint =
-        if (this.digestNumberHint == null && that.digestNumberHint == null) null
-        else (this.digestNumberHint ?: 0) + (that.digestNumberHint ?: 0)
+    fun MinimumDigests?.valueOrZero() = this?.value ?: 0
+    val newMinimumDigests =
+        if (this.minimumDigests == null && that.minimumDigests == null) null
+        else MinimumDigests(this.minimumDigests.valueOrZero() + that.minimumDigests.valueOrZero())
     return SdObject(
         (this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>),
-        newDigestNumberHint,
+        newMinimumDigests,
     )
 }
 
@@ -132,7 +127,8 @@ sealed interface SdObjectElement {
      * A selectively disclosable array
      * Each of its elements could be always or selectively disclosable
      */
-    class SdArray(private val content: List<SdArrayElement>, val digestNumberHint: Int?) : SdObjectElement, List<SdArrayElement> by content
+    class SdArray(private val content: List<SdArrayElement>, val minimumDigests: MinimumDigests?) :
+        SdObjectElement, List<SdArrayElement> by content
 
     /**
      * Selectively disclosable array that will be encoded with the recursive option
@@ -154,8 +150,8 @@ sealed interface SdObjectElement {
         fun sd(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Sd(content))
         fun sdRec(obj: SdObject): RecursiveSdObject = RecursiveSdObject(obj)
         fun sdStruct(obj: SdObject): StructuredSdObject = StructuredSdObject(obj)
-        fun sd(es: List<SdArrayElement>, digestNumberHint: Int?): SdArray = SdArray(es, digestNumberHint)
-        fun sdRec(es: List<SdArrayElement>, digestNumberHint: Int?): RecursiveSdArray = RecursiveSdArray(sd(es, digestNumberHint))
+        fun sd(es: List<SdArrayElement>, minimumDigests: Int?): SdArray = SdArray(es, minimumDigests.atLeastDigests())
+        fun sdRec(es: List<SdArrayElement>, minimumDigests: Int?): RecursiveSdArray = RecursiveSdArray(sd(es, minimumDigests))
     }
 }
 
@@ -205,9 +201,9 @@ typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
  * @return the [SdArray] described by the [builderAction]
  */
 inline fun buildSdArray(
-    digestNumberHint: Int?,
+    minimumDigests: Int?,
     builderAction: SdArrayBuilder.() -> Unit,
-): SdArray = SdArray(buildList(builderAction), digestNumberHint)
+): SdArray = SdArray(buildList(builderAction), minimumDigests.atLeastDigests())
 fun SdArrayBuilder.plain(value: String) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
@@ -280,8 +276,8 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
  * ```
  */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun SdArrayBuilder.buildSdObject(digestNumberHint: Int? = null, action: SdObjectBuilder.() -> Unit) {
-    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(digestNumberHint, action)))
+fun SdArrayBuilder.buildSdObject(minimumDigests: Int? = null, action: SdObjectBuilder.() -> Unit) {
+    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(minimumDigests, action)))
 }
 
 /**
@@ -301,25 +297,25 @@ inline fun <reified E> SdArrayBuilder.sd(claims: E) {
 
 /**
  * Factory method for creating a [SdObject] using the [SdObjectBuilder]
- * @param digestNumberHint check [SdObject.digestNumberHint]
+ * @param minimumDigests check [SdObject.minimumDigests]
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
 inline fun sdJwt(
-    digestNumberHint: Int? = null,
+    minimumDigests: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = buildSdObject(digestNumberHint, builderAction)
+): SdObject = buildSdObject(minimumDigests, builderAction)
 
 /**
  * Factory method for creating a [SdObject] using the [SdObjectBuilder]
- * @param digestNumberHint check [SdObject.digestNumberHint]
+ * @param minimumDigests check [SdObject.minimumDigests]
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
 inline fun buildSdObject(
-    digestNumberHint: Int? = null,
+    minimumDigests: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = SdObject(buildMap(builderAction), digestNumberHint)
+): SdObject = SdObject(buildMap(builderAction), minimumDigests.atLeastDigests())
 
 fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, SdObjectElement.plain(element))
 fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, SdObjectElement.sd(element))
@@ -432,22 +428,22 @@ inline fun <reified E> SdObjectBuilder.plain(claims: E) {
  * ```
  */
 fun SdObjectBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
-fun SdObjectBuilder.sdArray(name: String, digestNumberHint: Int? = null, action: SdArrayBuilder.() -> Unit) {
-    sd(name, buildSdArray(digestNumberHint, action))
+fun SdObjectBuilder.sdArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {
+    sd(name, buildSdArray(minimumDigests, action))
 }
 
-fun SdObjectBuilder.structured(name: String, digestNumberHint: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(digestNumberHint, action)
+fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(minimumDigests, action)
     sd(name, StructuredSdObject(obj))
 }
 
-fun SdObjectBuilder.recursiveArray(name: String, digestNumberHint: Int? = null, action: SdArrayBuilder.() -> Unit) {
-    val arr = buildSdArray(digestNumberHint, action)
+fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {
+    val arr = buildSdArray(minimumDigests, action)
     sd(name, RecursiveSdArray(arr))
 }
 
-fun SdObjectBuilder.recursive(name: String, digestNumberHint: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(digestNumberHint, action)
+fun SdObjectBuilder.recursive(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(minimumDigests, action)
     sd(name, RecursiveSdObject(obj))
 }
 
