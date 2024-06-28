@@ -132,7 +132,7 @@ sealed interface SdObjectElement {
      * A selectively disclosable array
      * Each of its elements could be always or selectively disclosable
      */
-    class SdArray(private val content: List<SdArrayElement>) : SdObjectElement, List<SdArrayElement> by content
+    class SdArray(private val content: List<SdArrayElement>, val digestNumberHint: Int?) : SdObjectElement, List<SdArrayElement> by content
 
     /**
      * Selectively disclosable array that will be encoded with the recursive option
@@ -154,8 +154,8 @@ sealed interface SdObjectElement {
         fun sd(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Sd(content))
         fun sdRec(obj: SdObject): RecursiveSdObject = RecursiveSdObject(obj)
         fun sdStruct(obj: SdObject): StructuredSdObject = StructuredSdObject(obj)
-        fun sd(es: List<SdArrayElement>): SdArray = SdArray(es)
-        fun sdRec(es: List<SdArrayElement>): RecursiveSdArray = RecursiveSdArray(sd(es))
+        fun sd(es: List<SdArrayElement>, digestNumberHint: Int?): SdArray = SdArray(es, digestNumberHint)
+        fun sdRec(es: List<SdArrayElement>, digestNumberHint: Int?): RecursiveSdArray = RecursiveSdArray(sd(es, digestNumberHint))
     }
 }
 
@@ -204,7 +204,10 @@ typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
  *
  * @return the [SdArray] described by the [builderAction]
  */
-inline fun buildSdArray(builderAction: SdArrayBuilder.() -> Unit): SdArray = SdArray(buildList(builderAction))
+inline fun buildSdArray(
+    digestNumberHint: Int?,
+    builderAction: SdArrayBuilder.() -> Unit,
+): SdArray = SdArray(buildList(builderAction), digestNumberHint)
 fun SdArrayBuilder.plain(value: String) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
 fun SdArrayBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
@@ -429,8 +432,8 @@ inline fun <reified E> SdObjectBuilder.plain(claims: E) {
  * ```
  */
 fun SdObjectBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
-fun SdObjectBuilder.sdArray(name: String, action: SdArrayBuilder.() -> Unit) {
-    sd(name, buildSdArray(action))
+fun SdObjectBuilder.sdArray(name: String, digestNumberHint: Int? = null, action: SdArrayBuilder.() -> Unit) {
+    sd(name, buildSdArray(digestNumberHint, action))
 }
 
 fun SdObjectBuilder.structured(name: String, digestNumberHint: Int? = null, action: (SdObjectBuilder).() -> Unit) {
@@ -438,8 +441,8 @@ fun SdObjectBuilder.structured(name: String, digestNumberHint: Int? = null, acti
     sd(name, StructuredSdObject(obj))
 }
 
-fun SdObjectBuilder.recursiveArray(name: String, action: SdArrayBuilder.() -> Unit) {
-    val arr = buildSdArray(action)
+fun SdObjectBuilder.recursiveArray(name: String, digestNumberHint: Int? = null, action: SdArrayBuilder.() -> Unit) {
+    val arr = buildSdArray(digestNumberHint, action)
     sd(name, RecursiveSdArray(arr))
 }
 

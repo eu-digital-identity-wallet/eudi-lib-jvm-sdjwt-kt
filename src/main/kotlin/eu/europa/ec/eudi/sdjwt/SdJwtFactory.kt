@@ -120,8 +120,11 @@ class SdJwtFactory(
 
         fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
             val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(sdArray)
+            val digestNumberHint = sdArray.digestNumberHint ?: globalDigestNumberHint ?: 0
+            val numOfDecoys = digestNumberHint - plainOrDigestElements.size
+            val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys).map { PlainOrDigest.Dig(it) }
             val allElements = JsonArray(
-                plainOrDigestElements.map {
+                (plainOrDigestElements + decoys).map {
                     when (it) {
                         is PlainOrDigest.Dig -> it.value.asDigestClaim()
                         is PlainOrDigest.Plain -> it.value

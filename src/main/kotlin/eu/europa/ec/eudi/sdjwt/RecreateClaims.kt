@@ -129,13 +129,21 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         jsonElement: JsonElement,
         current: JsonPointer,
     ): JsonElement {
-        fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
+        fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement? {
             val sdArrayElementPath = current.child(index)
-            val sdArrayElement =
-                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath) ?: element
-                else element
+            val sdArrayElement = run {
+                if (element is JsonObject) {
+                    val digest = arrayElementDigest(element)
+                    if (digest != null) {
+                        replaceArrayDigest(disclosures, digest, sdArrayElementPath)
+                    } else {
+                        visited(sdArrayElementPath, null)
+                        element
+                    }
+                } else element
+            }
 
-            return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath)
+            return sdArrayElement?.let { embedDisclosuresIntoElement(disclosures, it, sdArrayElementPath) }
         }
 
         visited(current, null)
@@ -144,7 +152,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
             is JsonArray ->
                 jsonElement
                     .zip(0 until jsonElement.size)
-                    .map { (element, index) -> embedDisclosuresIntoArrayElement(element, index) }
+                    .mapNotNull { (element, index) -> embedDisclosuresIntoArrayElement(element, index) }
                     .let { elements -> JsonArray(elements) }
 
             else -> jsonElement
@@ -219,25 +227,22 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
     private fun replaceArrayDigest(
         disclosures: DisclosurePerDigest,
-        claims: JsonObject,
+        digest: DisclosureDigest,
         current: JsonPointer,
     ): JsonElement? {
-        val digest = arrayElementDigest(claims)
-        return if (digest == null) {
-            visited(current, null)
-            null
-        } else {
-            disclosures[digest]?.let { disclosure ->
-                when (disclosure) {
-                    is Disclosure.ArrayElement -> {
-                        visited(current, disclosure)
-                        disclosures.remove(digest)
-                        disclosure.claim().value()
-                    }
-
-                    else -> error("Found an $disclosure within an selectively disclosed array element")
+        val disclosure = disclosures[digest]
+        return if (disclosure != null) {
+            when (disclosure) {
+                is Disclosure.ArrayElement -> {
+                    visited(current, disclosure)
+                    disclosures.remove(digest)
+                    disclosure.claim().value()
                 }
+
+                else -> error("Found an $disclosure within an selectively disclosed array element")
             }
+        } else {
+            null
         }
     }
 
