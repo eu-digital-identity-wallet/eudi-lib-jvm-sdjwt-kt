@@ -295,7 +295,7 @@ By default, library doesn't add decoy digests to the issued SD-JWT.
 If issuer wants to use digests, it can do so using the DSL.
 
 DSL functions that mark a container comprised of potentially selectively disclosable   
-elements, such as `sdJwtc{}`, `structured{}` e.t,c, accept
+elements, such as `sdJwt{}`, `structured{}` e.t,c, accept
 an optional parameter named `digestNumberHint: Int? = null`.
 
 The issuer can use this parameter in order to set the minimum  number of digests
