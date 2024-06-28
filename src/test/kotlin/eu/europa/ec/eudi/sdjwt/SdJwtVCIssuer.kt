@@ -130,7 +130,7 @@ class SdJwtVCIssuer(private val config: IssuerConfig) {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {
         // SD-JWT VC requires no decoys
 
-        val sdJwtFactory = SdJwtFactory(hashAlgorithm = config.hashAlgorithm, numOfDecoysLimit = 0)
+        val sdJwtFactory = SdJwtFactory(hashAlgorithm = config.hashAlgorithm, globalDigestNumberHint = 0)
         val signer = ECDSASigner(config.issuerKey)
         SdJwtIssuer.nimbus(sdJwtFactory, signer, config.signAlg) {
             // SD-JWT VC requires the kid & typ header attributes

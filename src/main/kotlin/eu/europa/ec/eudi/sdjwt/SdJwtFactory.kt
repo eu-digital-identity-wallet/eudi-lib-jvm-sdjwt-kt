@@ -25,13 +25,15 @@ private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
  *
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
- * @param numOfDecoysLimit the upper limit of the decoys to generate
+ * @param globalDigestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
+ * of every [SdObject]. It will be taken into account if there is not an explicit [hint][SdObject.digestNumberHint] for
+ * this [SdObject]. If not provided, decoys will be added only if there is a hint at [SdObject] level.
  */
 class SdJwtFactory(
     private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     private val saltProvider: SaltProvider = SaltProvider.Default,
     private val decoyGen: DecoyGen = DecoyGen.Default,
-    private val numOfDecoysLimit: Int = 0,
+    private val globalDigestNumberHint: Int? = null,
 ) {
 
     /**
@@ -54,6 +56,7 @@ class SdJwtFactory(
         val disclosures = mutableListOf<Disclosure>()
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
+        // Add the given claim to encodedClaims
         fun add(encodedClaim: Claims) {
             val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
             encodedClaims += encodedClaim
@@ -61,19 +64,20 @@ class SdJwtFactory(
                 encodedClaims["_sd"] = mergedSdClaim
             }
         }
+
+        // Adds decoys if needed
         fun addDecoysIfNeeded() {
-            val desiredDigests = sdObject.desiredDigests ?: numOfDecoysLimit.takeIf { it != 0 }
-            if (desiredDigests != null) {
+            // Use the hint of the sdObject, fallback to globalDigestNumberHint
+            val digestNumberHint = sdObject.digestNumberHint ?: globalDigestNumberHint
+            if (digestNumberHint != null) {
                 val digests = encodedClaims.sdClaim()
-                val numOfDecoys = desiredDigests - digests.size
+                val numOfDecoys = digestNumberHint - digests.size
                 if (numOfDecoys > 0) {
                     val digestAndDecoys = run {
                         val decoys = decoyGen.gen(hashAlgorithm, numOfDecoys)
                             .map { JsonPrimitive(it.value) }
-
                         (decoys + digests).sortedBy { it.jsonPrimitive.contentOrNull }
                     }
-
                     encodedClaims["_sd"] = JsonArray(digestAndDecoys)
                 }
             }
@@ -233,11 +237,22 @@ class SdJwtFactory(
 
     companion object {
 
+        /**
+         * A default [SdJwtFactory] with the following options set
+         * - SHA_256 hash algorithm
+         * - [SaltProvider.Default]
+         * - [DecoyGen.Default]
+         * - No hint for [SdJwtFactory.globalDigestNumberHint]
+         */
         val Default: SdJwtFactory =
-            SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, 0)
+            SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
 
-        fun of(hashAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): SdJwtFactory =
-            SdJwtFactory(hashAlgorithm, numOfDecoysLimit = numOfDecoysLimit)
+        @Deprecated(
+            message = "Deprecated and will be removed in a future release",
+            replaceWith = ReplaceWith("SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)"),
+        )
+        fun of(hashAlgorithm: HashAlgorithm, globalDigestNumberHint: Int?): SdJwtFactory =
+            SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)
     }
 }
 

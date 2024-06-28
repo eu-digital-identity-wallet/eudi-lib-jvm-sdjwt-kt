@@ -19,17 +19,22 @@ import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
 import kotlinx.serialization.json.*
 
 /**
- * Selectively disclosable claims that will be encoded with the flat option
+ * Selectively disclosable claims that will be encoded with the flat option.
+ * Effectively, this is a specification that will feed [SdJwtFactory] in
+ * order to produce the [SdJwt]
  *
- * Each of its claims could be always or selectively disclosable
+ * @param content the content of the object. Each of its claims could be always or selectively disclosable
+ * @param digestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
+ * of this [SdObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
  */
 class SdObject(
     private val content: Map<String, SdObjectElement>,
-    val desiredDigests: Int?,
+    val digestNumberHint: Int?,
 ) : Map<String, SdObjectElement> by content {
     init {
-        if (desiredDigests != null) {
-            require(desiredDigests > 0) { "Desired digests must be greater than 0" }
+        if (digestNumberHint != null) {
+            require(digestNumberHint > 0) { "Digests hint must be greater than 0" }
         }
     }
 }
@@ -42,14 +47,14 @@ class SdObject(
  * will preserve the claims of [that]
  *
  * ```
- *   val sdObj1 = buildSdObject {
+ *   val sdObj1 = buildSdObject(digestNumberHint=2) {
  *      sd{
  *          put("a", "foo")
  *          put("b", "bar")
  *      }
  *   }
  *
- *   val sdObj2 = buildSdObject {
+ *   val sdObj2 = buildSdObject(digestNumberHint=2) {
  *      plain {
  *          put("a", "ddd")
  *      }
@@ -63,12 +68,12 @@ class SdObject(
  * @return a new [SdObject] as described above
  */
 operator fun SdObject.plus(that: SdObject): SdObject {
-    val newDesiredDigests =
-        if (this.desiredDigests == null && that.desiredDigests == null) null
-        else (this.desiredDigests ?: 0) + (that.desiredDigests ?: 0)
+    val newDigestNumberHint =
+        if (this.digestNumberHint == null && that.digestNumberHint == null) null
+        else (this.digestNumberHint ?: 0) + (that.digestNumberHint ?: 0)
     return SdObject(
         (this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>),
-        newDesiredDigests,
+        newDigestNumberHint,
     )
 }
 
@@ -272,8 +277,8 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
  * ```
  */
 fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun SdArrayBuilder.buildSdObject(desiredDigests: Int? = null, action: SdObjectBuilder.() -> Unit) {
-    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(desiredDigests, action)))
+fun SdArrayBuilder.buildSdObject(digestNumberHint: Int? = null, action: SdObjectBuilder.() -> Unit) {
+    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(digestNumberHint, action)))
 }
 
 /**
@@ -293,23 +298,25 @@ inline fun <reified E> SdArrayBuilder.sd(claims: E) {
 
 /**
  * Factory method for creating a [SdObject] using the [SdObjectBuilder]
+ * @param digestNumberHint check [SdObject.digestNumberHint]
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
 inline fun sdJwt(
-    desiredDigests: Int? = null,
+    digestNumberHint: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = buildSdObject(desiredDigests, builderAction)
+): SdObject = buildSdObject(digestNumberHint, builderAction)
 
 /**
  * Factory method for creating a [SdObject] using the [SdObjectBuilder]
+ * @param digestNumberHint check [SdObject.digestNumberHint]
  * @param builderAction some usage/action of the [SdObjectBuilder]
  * @return the [SdObject]
  */
 inline fun buildSdObject(
-    desiredDigests: Int? = null,
+    digestNumberHint: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = SdObject(buildMap(builderAction), desiredDigests)
+): SdObject = SdObject(buildMap(builderAction), digestNumberHint)
 
 fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, SdObjectElement.plain(element))
 fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, SdObjectElement.sd(element))
@@ -426,8 +433,8 @@ fun SdObjectBuilder.sdArray(name: String, action: SdArrayBuilder.() -> Unit) {
     sd(name, buildSdArray(action))
 }
 
-fun SdObjectBuilder.structured(name: String, desiredDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(desiredDigests, action)
+fun SdObjectBuilder.structured(name: String, digestNumberHint: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(digestNumberHint, action)
     sd(name, StructuredSdObject(obj))
 }
 
@@ -436,8 +443,8 @@ fun SdObjectBuilder.recursiveArray(name: String, action: SdArrayBuilder.() -> Un
     sd(name, RecursiveSdArray(arr))
 }
 
-fun SdObjectBuilder.recursive(name: String, desiredDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(desiredDigests, action)
+fun SdObjectBuilder.recursive(name: String, digestNumberHint: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(digestNumberHint, action)
     sd(name, RecursiveSdObject(obj))
 }
 

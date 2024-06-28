@@ -38,7 +38,7 @@ class DisclosedClaimSetTest {
                 },
             )
 
-            val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = 0)
+            val sdJwtFactory = SdJwtFactory(globalDigestNumberHint = 0)
             invalidClaims.forEach { sdJwt ->
                 val result = sdJwtFactory.createSdJwt(sdJwt)
                 assertFalse { result.isSuccess }
