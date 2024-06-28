@@ -130,20 +130,23 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         current: JsonPointer,
     ): JsonElement {
         fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement? {
-            val sdArrayElementPath = current.child(index)
-            val sdArrayElement = run {
-                if (element is JsonObject) {
-                    val digest = arrayElementDigest(element)
-                    if (digest != null) {
-                        replaceArrayDigest(disclosures, digest, sdArrayElementPath)
-                    } else {
-                        visited(sdArrayElementPath, null)
+            val elementPath = current.child(index)
+
+            val sdArrayElement =
+                when (val disclosed = DisclosedArrayElement.of(element)) {
+                    is DisclosedArrayElement.Digest -> {
+                        replaceArrayDigest(disclosures, disclosed.digest, elementPath)
+                    }
+
+                    DisclosedArrayElement.Object -> {
+                        visited(elementPath, null)
                         element
                     }
-                } else element
-            }
 
-            return sdArrayElement?.let { embedDisclosuresIntoElement(disclosures, it, sdArrayElementPath) }
+                    DisclosedArrayElement.NotAnObject -> element
+                }
+            return sdArrayElement
+                ?.let { embedDisclosuresIntoElement(disclosures, it, elementPath) }
         }
 
         visited(current, null)
@@ -151,7 +154,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
             is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement, current)
             is JsonArray ->
                 jsonElement
-                    .zip(0 until jsonElement.size)
+                    .zip(0..<jsonElement.size)
                     .mapNotNull { (element, index) -> embedDisclosuresIntoArrayElement(element, index) }
                     .let { elements -> JsonArray(elements) }
 
@@ -215,8 +218,10 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         // otherwise digest is probably decoy
         for (digest in claims.directDigests()) {
             disclosures[digest]?.let { disclosure ->
-                if (disclosure is Disclosure.ObjectProperty) embed(digest, disclosure)
-                else error("Found array element disclosure ${disclosure.value} within _sd claim")
+                check(disclosure is Disclosure.ObjectProperty) {
+                    "Found array element disclosure ${disclosure.value} within _sd claim"
+                }
+                embed(digest, disclosure)
             }
         }
         // Remove _sd claim, if present
@@ -229,34 +234,46 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         disclosures: DisclosurePerDigest,
         digest: DisclosureDigest,
         current: JsonPointer,
-    ): JsonElement? {
-        val disclosure = disclosures[digest]
-        return if (disclosure != null) {
-            when (disclosure) {
-                is Disclosure.ArrayElement -> {
-                    visited(current, disclosure)
-                    disclosures.remove(digest)
-                    disclosure.claim().value()
-                }
-
-                else -> error("Found an $disclosure within an selectively disclosed array element")
+    ): JsonElement? =
+        disclosures[digest]?.let { disclosure ->
+            check(disclosure is Disclosure.ArrayElement) {
+                "Found an $disclosure within an selectively disclosed array element"
             }
-        } else {
-            null
+            visited(current, disclosure)
+            disclosures.remove(digest)
+            disclosure.claim().value()
         }
-    }
 
     private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
         visitor?.invoke(pointer, disclosure)
     }
 }
 
-internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
-    if (claims.size == 1)
-        claims["..."]?.takeIf { element -> element is JsonPrimitive }?.let {
-            DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull()
-        }
-    else null
+private sealed interface DisclosedArrayElement {
+    @JvmInline
+    value class Digest(val digest: DisclosureDigest) : DisclosedArrayElement
+    data object Object : DisclosedArrayElement
+    data object NotAnObject : DisclosedArrayElement
+
+    companion object {
+        fun of(jsonElement: JsonElement): DisclosedArrayElement =
+            when (jsonElement) {
+                is JsonObject ->
+                    when (val digest = arrayElementDigest(jsonElement)) {
+                        null -> Object
+                        else -> Digest(digest)
+                    }
+                else -> NotAnObject
+            }
+
+        private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
+            if (obj.size == 1)
+                obj["..."]
+                    ?.takeIf { element -> element is JsonPrimitive }
+                    ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
+            else null
+    }
+}
 
 /**
  * Cet the [digests][DisclosureDigest] by looking for digest claim.
