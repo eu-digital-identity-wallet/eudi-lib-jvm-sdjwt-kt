@@ -117,7 +117,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
 private class DiscloseObject(
     private val visitor: ClaimVisitor?,
-    private val disclosures: DisclosurePerDigest,
+    private val disclosuresPerDigest: DisclosurePerDigest,
 ) {
 
     /**
@@ -180,7 +180,7 @@ private class DiscloseObject(
 
     /**
      * Replaces the direct (immediate) digests found in the _sd claim
-     * with the [Disclosure.ObjectProperty.claim] from [disclosures]
+     * with the [Disclosure.ObjectProperty.claim] from [disclosuresPerDigest]
      *
      * @param jsonObject the claims to use
      * @param current the [JsonPointer] of the current element
@@ -194,7 +194,7 @@ private class DiscloseObject(
         val resultingClaims = jsonObject.toMutableMap()
 
         fun replace(digest: DisclosureDigest) {
-            disclosures[digest]?.let { disclosure ->
+            disclosuresPerDigest.remove(digest)?.let { disclosure ->
                 check(disclosure is Disclosure.ObjectProperty) {
                     "Found array element disclosure ${disclosure.value} within _sd claim"
                 }
@@ -203,7 +203,6 @@ private class DiscloseObject(
                     "Failed to embed disclosure with key $name. Already present"
                 }
                 visited(current.child(name), disclosure)
-                disclosures.remove(digest)
                 resultingClaims[name] = value
             }
         }
@@ -258,12 +257,11 @@ private class DiscloseObject(
         current: JsonPointer,
         digest: DisclosureDigest,
     ): JsonElement? =
-        disclosures[digest]?.let { disclosure ->
+        disclosuresPerDigest.remove(digest)?.let { disclosure ->
             check(disclosure is Disclosure.ArrayElement) {
                 "Found an $disclosure within an selectively disclosed array element"
             }
             visited(current, disclosure)
-            disclosures.remove(digest)
             disclosure.claim().value()
         }
 

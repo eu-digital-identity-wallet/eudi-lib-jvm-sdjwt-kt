@@ -39,9 +39,9 @@ internal class DecoyTest {
 
     @Test
     fun `make sure that kind membership is not revealed via digests number using hint on the spec`() {
-        val digestNumberHint = 5
-        val simpleMembershipSpec = simpleMembership.sdJwtSpec(digestNumberHint)
-        val premiumMembershipSpec = premiumMembership.sdJwtSpec(digestNumberHint)
+        val minimumDigests = 5
+        val simpleMembershipSpec = simpleMembership.sdJwtSpec(minimumDigests)
+        val premiumMembershipSpec = premiumMembership.sdJwtSpec(minimumDigests)
         val issuer = SampleIssuer()
         val (simpleSdJwts, premiumSdJwts) =
             (1..100)
@@ -66,11 +66,11 @@ internal class DecoyTest {
         val simpleMembershipSpec = simpleMembership.sdJwtSpec(null)
         val premiumMembershipSpec = premiumMembership.sdJwtSpec(null)
 
-        val digestNumberHint = 5
-        val issuer = SampleIssuer(globalMinDigests = digestNumberHint)
+        val minimumDigests = 5
+        val issuer = SampleIssuer(globalMinDigests = minimumDigests)
 
-        assertEquals(digestNumberHint, issuer.issue(simpleMembershipSpec).countDigests())
-        assertEquals(digestNumberHint, issuer.issue(premiumMembershipSpec).countDigests())
+        assertEquals(minimumDigests, issuer.issue(simpleMembershipSpec).countDigests())
+        assertEquals(minimumDigests, issuer.issue(premiumMembershipSpec).countDigests())
     }
 
     private fun Iterable<SdJwt.Issuance<SignedJWT>>.digestFrequency() =
@@ -84,8 +84,8 @@ internal class DecoyTest {
     // counts only top-level digests
     private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.asClaims().directDigests().count()
 
-    private fun Membership.sdJwtSpec(digestNumberHint: Int?) =
-        sdJwt(minimumDigests = digestNumberHint) {
+    private fun Membership.sdJwtSpec(minimumDigests: Int?) =
+        sdJwt(minimumDigests) {
             sd("name", name)
             if (this@sdJwtSpec is Membership.Premium) {
                 sd("premiumMembershipNumber", premiumMembershipNumber)
