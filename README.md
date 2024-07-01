@@ -16,6 +16,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
     * [Holder Presentation](#holder-presentation)
     * [Presentation Verification](#presentation-verification)
     * [Recreate initial claims](#recreate-original-claims)
+* [Decoy digests](#decoy-digests)
 * [DSL Examples](#dsl-examples)
 * [SD-JWT VC support](#sd-jwt-vc-support)
 * [How to contribute](#how-to-contribute)
@@ -288,6 +289,59 @@ The claims contents would be
   "iat": 1516239022
 }
 ```
+## Decoy digests
+
+By default, library doesn't add decoy digests to the issued SD-JWT.
+If issuer wants to use digests, it can do so using the DSL.
+
+DSL functions that mark a container comprised of potentially selectively disclosable   
+elements, such as `sdJwt{}`, `structured{}` e.t,c, accept
+an optional parameter named `minimumDigests: Int? = null`.
+
+The issuer can use this parameter in order to set the minimum  number of digests
+for the immediate level of this container. Library will make sure that
+the underlying digests array will have at minimum a length equal to `digestNumberHint`.
+
+Initially, during issuance, the digests array will contain disclosure digests and if needed,
+additional decoy digests to reach the hint provided. If the array
+contains more disclosure digests than the hint, no decoys will be added.
+
+
+```kotlin
+sdJwt(digestNumberHint = 5) {
+  // This 5 guarantees that at least 5 digests will be found
+  // to the digest array, regardless of the content of the SD-JWT
+    
+  structured("address", minimumDigests = 10) {
+    // This affects the nested array of the digests that will 
+    // have at list 10 digests.
+  }
+  
+  recursive("address1", minimumDigests = 8) {
+      // This will affect the digests array that will be found
+      // in the disclosure of this recursively disclosable item
+      // the whole object will be embedded in its parent
+      // as a single digest
+  }
+
+  sdArray("evidence", minimumDigests = 2) {
+    // Array will have at least 2 digests
+    // regardless of its elements
+  }
+
+  recursiveArray("evidence1", minimumDigests = 2) {
+    // Array will have at least 2 digests
+    // regardless of its elements
+    // the whole array will be embedded in its parent  
+    // as a single digest  
+  }
+
+  
+}
+```
+In addition to the DSL defined hints, the issuer may set a global hint to the `SdJwtFactory`.
+This will be used as a fallback limit for every container of selectively disclosable elements
+that don't explicit provide a limit.
 
 ## DSL Examples
 

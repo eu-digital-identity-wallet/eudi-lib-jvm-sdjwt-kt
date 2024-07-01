@@ -73,185 +73,229 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
  */
 private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
-    fun recreateClaims(claims: Claims, disclosures: List<Disclosure>): Claims {
-        val hashAlgorithm = claims.hashAlgorithm() ?: HashAlgorithm.SHA_256
-        return replaceDigestsWithDisclosures(
+    fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): Claims {
+        val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
+        return discloseJwt(
             hashAlgorithm,
+            JsonObject(jwtClaims - "_sd_alg"),
             disclosures,
-            claims - "_sd_alg",
         )
     }
 
     /**
-     * Replaces the digests found within [claims] and/or [disclosures] with
+     * Replaces the digests found within [jwtClaims] and/or [disclosures] with
      * the [disclosures]
      *
      * @param hashAlgorithm the hash algorithm used to produce the [digests][DisclosureDigest]
      * @param disclosures the disclosures to use when replacing digests
-     * @param claims the claims to use
+     * @param jwtClaims the claims of the JWT (except _sd_alg)
      *
-     * @return the initial [claims] having all digests replaced by [Disclosure]
+     * @return the initial [jwtClaims] having all digests replaced by [Disclosure]
      * @throws IllegalStateException when not all [disclosures] have been used, which means
-     * that [claims] doesn't contain a [DisclosureDigest] for every [Disclosure]
+     * that [jwtClaims] doesn't contain a [DisclosureDigest] for every [Disclosure]
      */
-    private fun replaceDigestsWithDisclosures(
+    private fun discloseJwt(
         hashAlgorithm: HashAlgorithm,
+        jwtClaims: JsonObject,
         disclosures: List<Disclosure>,
-        claims: Claims,
     ): JsonObject {
         // Recalculate digests, using the hash algorithm
         val disclosuresPerDigest = disclosures.associateBy {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }.toMutableMap()
 
-        val recreatedClaims = embedDisclosuresIntoObject(disclosuresPerDigest, claims, JsonPointer.Root)
+        val discloseObject = DiscloseObject(visitor, disclosuresPerDigest)
+        val disclosedClaims = discloseObject(JsonPointer.Root, jwtClaims)
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
             "Could not find digests for disclosures ${disclosuresPerDigest.values.map { it.value }}"
         }
-        return recreatedClaims
+        return disclosedClaims
     }
+}
+
+private class DiscloseObject(
+    private val visitor: ClaimVisitor?,
+    private val disclosuresPerDigest: DisclosurePerDigest,
+) {
 
     /**
-     * Embed disclosures into [jsonElement], if the element
-     * is [JsonObject] or a [JsonArray] with [JSON objects][JsonObject],
-     * including nested elements.
-     *
-     * @param disclosures the disclosures to use when replacing digests
-     * @param jsonElement the element to use
-     * @param current the [JsonPointer] of the current element
-     *
-     * @return a json element where all digests have been replaced by disclosed claims
-     */
-    private fun embedDisclosuresIntoElement(
-        disclosures: DisclosurePerDigest,
-        jsonElement: JsonElement,
-        current: JsonPointer,
-    ): JsonElement {
-        fun embedDisclosuresIntoArrayElement(element: JsonElement, index: Int): JsonElement {
-            val sdArrayElementPath = current.child(index)
-            val sdArrayElement =
-                if (element is JsonObject) replaceArrayDigest(disclosures, element, sdArrayElementPath) ?: element
-                else element
-
-            return embedDisclosuresIntoElement(disclosures, sdArrayElement, sdArrayElementPath)
-        }
-
-        visited(current, null)
-        return when (jsonElement) {
-            is JsonObject -> embedDisclosuresIntoObject(disclosures, jsonElement, current)
-            is JsonArray ->
-                jsonElement
-                    .zip(0 until jsonElement.size)
-                    .map { (element, index) -> embedDisclosuresIntoArrayElement(element, index) }
-                    .let { elements -> JsonArray(elements) }
-
-            else -> jsonElement
-        }
-    }
-
-    /**
-     * Embed disclosures into [claims]
+     * Embed disclosures into [jsonObject]
      * Replaces the direct (immediate) digests of the object and
      * then recursively do the same for all elements
      * that are either objects or arrays
      *
-     * @param disclosures the disclosures to use when replacing digests
-     * @param claims the claims to use
-     * @param current the [JsonPointer] of the current element
+     * @param jsonObject the claims to use
+     * @param currentPointer the [JsonPointer] of the current element
      *
-     * @return the given [claims] with the digests, if any, replaced by disclosures, including
+     * @return the given [jsonObject] with the digests, if any, replaced by disclosures, including
      * all nested objects and/or array of objects
      */
-    private fun embedDisclosuresIntoObject(
-        disclosures: DisclosurePerDigest,
-        claims: Claims,
-        current: JsonPointer,
+    operator fun invoke(
+        currentPointer: JsonPointer,
+        jsonObject: JsonObject,
+    ): JsonObject = discloseObject(currentPointer, jsonObject)
+
+    //
+    // Any JSON Element
+    //
+
+    /**
+     * Embed disclosures into [element], if the element
+     * is [JsonObject] or a [JsonArray] with [JSON objects][JsonObject],
+     * including nested elements.
+     *
+     * @param element the element to use
+     * @param currentPointer the [JsonPointer] of the current element
+     *
+     * @return a json element where all digests have been replaced by disclosed claims
+     */
+    private fun discloseElement(
+        currentPointer: JsonPointer,
+        element: JsonElement,
+    ): JsonElement {
+        visited(currentPointer, null)
+        return when (element) {
+            is JsonObject -> discloseObject(currentPointer, element)
+            is JsonArray -> discloseArray(currentPointer, element)
+            else -> element
+        }
+    }
+
+    //
+    // JSON Object
+    //
+
+    private fun discloseObject(
+        currentPointer: JsonPointer,
+        jsonObject: JsonObject,
     ): JsonObject =
-        replaceDirectDigests(disclosures, claims, current)
+        replaceObjectDigests(currentPointer, jsonObject)
             .mapValues { (name, element) ->
-                val nestedPath = current.child(name)
-                embedDisclosuresIntoElement(disclosures, element, nestedPath)
+                val nestedPath = currentPointer.child(name)
+                discloseElement(nestedPath, element)
             }
             .let { obj -> JsonObject(obj) }
 
     /**
      * Replaces the direct (immediate) digests found in the _sd claim
-     * with the [Disclosure.ObjectProperty.claim] from [disclosures]
+     * with the [Disclosure.ObjectProperty.claim] from [disclosuresPerDigest]
      *
-     * @param disclosures the disclosures to use when replacing digests
-     * @param claims the claims to use
+     * @param jsonObject the claims to use
      * @param current the [JsonPointer] of the current element
      *
-     * @return the given [claims] with the digests, if any, replaced by disclosures.
+     * @return the given [jsonObject] with the digests, if any, replaced by disclosures.
      */
-    private fun replaceDirectDigests(
-        disclosures: DisclosurePerDigest,
-        claims: Claims,
+    private fun replaceObjectDigests(
         current: JsonPointer,
-    ): Claims {
-        val resultingClaims = claims.toMutableMap()
+        jsonObject: JsonObject,
+    ): JsonObject {
+        val resultingClaims = jsonObject.toMutableMap()
 
-        fun embed(digest: DisclosureDigest, disclosure: Disclosure.ObjectProperty) {
-            val (name, value) = disclosure.claim()
-            require(!claims.containsKey(name)) { "Failed to embed disclosure with key $name. Already present" }
-
-            visited(current.child(name), disclosure)
-
-            disclosures.remove(digest)
-            resultingClaims[name] = value
+        fun replace(digest: DisclosureDigest) {
+            disclosuresPerDigest.remove(digest)?.let { disclosure ->
+                check(disclosure is Disclosure.ObjectProperty) {
+                    "Found array element disclosure ${disclosure.value} within _sd claim"
+                }
+                val (name, value) = disclosure.claim()
+                require(!jsonObject.containsKey(name)) {
+                    "Failed to embed disclosure with key $name. Already present"
+                }
+                visited(current.child(name), disclosure)
+                resultingClaims[name] = value
+            }
         }
 
         // Replace each digest with the claim from the disclosure, if found
         // otherwise digest is probably decoy
-        for (digest in claims.directDigests()) {
-            disclosures[digest]?.let { disclosure ->
-                if (disclosure is Disclosure.ObjectProperty) embed(digest, disclosure)
-                else error("Found array element disclosure ${disclosure.value} within _sd claim")
-            }
-        }
+        jsonObject.directDigests().forEach { replace(it) }
+
         // Remove _sd claim, if present
         resultingClaims.remove("_sd")
 
-        return resultingClaims
+        return JsonObject(resultingClaims)
+    }
+
+    //
+    // JSON Array
+    //
+
+    private fun discloseArray(
+        currentPointer: JsonPointer,
+        jsonArray: JsonArray,
+    ): JsonArray =
+        jsonArray
+            .zip(0..<jsonArray.size)
+            .mapNotNull { (element, index) -> discloseArrayElement(currentPointer, element, index) }
+            .let { elements -> JsonArray(elements) }
+
+    private fun discloseArrayElement(
+        currentPointer: JsonPointer,
+        arrayElement: JsonElement,
+        index: Int,
+    ): JsonElement? {
+        val elementPath = currentPointer.child(index)
+        val disclosedElement =
+            when (val disclosed = DisclosedArrayElement.of(arrayElement)) {
+                is DisclosedArrayElement.Digest -> {
+                    replaceArrayDigest(elementPath, disclosed.digest)
+                }
+
+                DisclosedArrayElement.Object -> {
+                    visited(elementPath, null)
+                    arrayElement
+                }
+
+                DisclosedArrayElement.NotAnObject -> arrayElement
+            }
+        return disclosedElement
+            ?.let { discloseElement(elementPath, it) }
     }
 
     private fun replaceArrayDigest(
-        disclosures: DisclosurePerDigest,
-        claims: JsonObject,
         current: JsonPointer,
-    ): JsonElement? {
-        val digest = arrayElementDigest(claims)
-        return if (digest == null) {
-            visited(current, null)
-            null
-        } else {
-            disclosures[digest]?.let { disclosure ->
-                when (disclosure) {
-                    is Disclosure.ArrayElement -> {
-                        visited(current, disclosure)
-                        disclosures.remove(digest)
-                        disclosure.claim().value()
-                    }
-
-                    else -> error("Found an $disclosure within an selectively disclosed array element")
-                }
+        digest: DisclosureDigest,
+    ): JsonElement? =
+        disclosuresPerDigest.remove(digest)?.let { disclosure ->
+            check(disclosure is Disclosure.ArrayElement) {
+                "Found an $disclosure within an selectively disclosed array element"
             }
+            visited(current, disclosure)
+            disclosure.claim().value()
         }
-    }
 
     private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
         visitor?.invoke(pointer, disclosure)
     }
 }
 
-internal fun arrayElementDigest(claims: Claims): DisclosureDigest? =
-    if (claims.size == 1)
-        claims["..."]?.takeIf { element -> element is JsonPrimitive }?.let {
-            DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull()
-        }
-    else null
+private sealed interface DisclosedArrayElement {
+    @JvmInline
+    value class Digest(val digest: DisclosureDigest) : DisclosedArrayElement
+    data object Object : DisclosedArrayElement
+    data object NotAnObject : DisclosedArrayElement
+
+    companion object {
+        fun of(jsonElement: JsonElement): DisclosedArrayElement =
+            when (jsonElement) {
+                is JsonObject ->
+                    when (val digest = arrayElementDigest(jsonElement)) {
+                        null -> Object
+                        else -> Digest(digest)
+                    }
+
+                else -> NotAnObject
+            }
+
+        private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
+            if (obj.size == 1)
+                obj["..."]
+                    ?.takeIf { element -> element is JsonPrimitive }
+                    ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
+            else null
+    }
+}
 
 /**
  * Cet the [digests][DisclosureDigest] by looking for digest claim.

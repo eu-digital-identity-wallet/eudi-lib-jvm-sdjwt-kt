@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlin.random.Random
-
 /**
  * Generates decoy [DisclosureDigest]
  */
@@ -40,24 +38,14 @@ fun interface DecoyGen {
         else (1..numOfDecoys).map { gen(hashingAlgorithm) }.toSet()
     }
 
-    /**
-     * Produces a set of decoy [DisclosureDigest]
-     * The number of decoys is random and up to [numOfDecoysLimit]
-     *
-     * @param hashingAlgorithm the algorithm to be used for producing the decoy
-     * @param numOfDecoysLimit the upper limit of the decoys to generate
-     * @return a series of decoy [DisclosureDigest]
-     */
-    fun genUpTo(hashingAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): Set<DisclosureDigest> =
-        gen(hashingAlgorithm, if (numOfDecoysLimit >= 1) Random.nextInt(1, numOfDecoysLimit) else 0)
-
     companion object {
         /**
          * Default implementation of [DecoyGen] which produces random decoy [DisclosureDigest]
          */
         val Default: DecoyGen by lazy {
             DecoyGen { hashingAlgorithm ->
-                val saltProvider = SaltProvider.randomSaltProvider(Random.nextInt(12, 24))
+                val numberOfBytes = 12..24
+                val saltProvider = SaltProvider.randomSaltProvider(numberOfBytes.random())
                 val random = saltProvider.salt()
                 DisclosureDigest.digest(hashingAlgorithm, random).getOrThrow()
             }

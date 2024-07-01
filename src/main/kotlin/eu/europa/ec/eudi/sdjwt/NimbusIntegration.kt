@@ -214,6 +214,9 @@ fun SdObjectBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
  * @param sdJwtFactory factory for creating the unsigned SD-JWT
  * @param signer the signer that will sign the SD-JWT
  * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+ * @param digestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
+ * of this SD-JWT, that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
  *
  * @return signed SD-JWT
  *
@@ -223,10 +226,11 @@ inline fun signedSdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+    digestNumberHint: Int? = null,
     builderAction: SdObjectBuilder.() -> Unit,
 ): SdJwt.Issuance<NimbusSignedJWT> {
     val issuer = SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlgorithm)
-    val sdJwtElements = sdJwt(builderAction)
+    val sdJwtElements = sdJwt(digestNumberHint, builderAction)
     return issuer.issue(sdJwtElements).getOrThrow()
 }
 

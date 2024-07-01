@@ -84,20 +84,13 @@ fun DisclosuresPerClaim.prettyPrint() {
 
 fun String.removeNewLine(): String = replace("\n", "")
 
-internal fun SdObject.assertThat(
-    description: String = "",
-    numOfDecoysLimit: Int = 0,
-    expectedDisclosuresNo: Int = 0,
-) {
+internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
     println(description)
-    val sdJwtFactory = SdJwtFactory(numOfDecoysLimit = numOfDecoysLimit)
+    val sdJwtFactory = SdJwtFactory.Default
     val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }
-
-internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) =
-    assertThat(description, 0, expectedDisclosuresNo)
 
 internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
 

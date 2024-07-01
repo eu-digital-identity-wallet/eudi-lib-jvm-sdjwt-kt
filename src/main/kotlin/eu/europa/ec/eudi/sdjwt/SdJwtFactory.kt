@@ -20,18 +20,29 @@ import kotlinx.serialization.json.*
 
 private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
 
+@JvmInline
+value class MinimumDigests(val value: Int) {
+    init {
+        require(value > 0) { "value must be greater than zero." }
+    }
+    operator fun plus(that: MinimumDigests) = MinimumDigests(this.value + that.value)
+}
+fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
+
 /**
  * Factory for creating an [UnsignedSdJwt]
  *
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
- * @param numOfDecoysLimit the upper limit of the decoys to generate
+ * @param fallbackMinimumDigests This is an optional hint, that expresses the number of digests on the immediate level
+ * of every [SdObject]. It will be taken into account if there is not an explicit [hint][SdObject.minimumDigests] for
+ * this [SdObject]. If not provided, decoys will be added only if there is a hint at [SdObject] level.
  */
 class SdJwtFactory(
     private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
     private val saltProvider: SaltProvider = SaltProvider.Default,
     private val decoyGen: DecoyGen = DecoyGen.Default,
-    private val numOfDecoysLimit: Int = 0,
+    private val fallbackMinimumDigests: MinimumDigests? = null,
 ) {
 
     /**
@@ -54,6 +65,7 @@ class SdJwtFactory(
         val disclosures = mutableListOf<Disclosure>()
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
+        // Add the given claim to encodedClaims
         fun add(encodedClaim: Claims) {
             val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
             encodedClaims += encodedClaim
@@ -62,13 +74,24 @@ class SdJwtFactory(
             }
         }
 
+        // Adds decoys if needed
+        fun addDecoysIfNeeded() {
+            val digests = encodedClaims.sdClaim()
+            val decoys = genDecoys(digests.size, sdObject.minimumDigests).map { JsonPrimitive(it.value) }
+            val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+            if (digestAndDecoys.isNotEmpty()) {
+                encodedClaims["_sd"] = JsonArray(digestAndDecoys)
+            }
+        }
+
         for ((subClaimName, subClaimValue) in sdObject) {
             val (encodedSubClaim, subClaimDisclosures) = encodeClaim(subClaimName, subClaimValue)
             disclosures += subClaimDisclosures
             add(encodedSubClaim)
         }
-        val sdObjectClaims = JsonObject(encodedClaims)
 
+        addDecoysIfNeeded()
+        val sdObjectClaims = JsonObject(encodedClaims)
         return sdObjectClaims to disclosures
     }
 
@@ -91,15 +114,17 @@ class SdJwtFactory(
         fun encodeSd(sd: DisclosableJsonElement.Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
             val claim = claimName to sd.value
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
-            val digestAndDecoys = (decoys() + digest).sorted()
+            val digestAndDecoys = setOf(digest)
             val sdClaim = digestAndDecoys.sdClaim()
             return sdClaim to listOf(disclosure)
         }
 
         fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
             val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(sdArray)
+            val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
+            val decoys = genDecoys(actualDisclosureDigests, sdArray.minimumDigests).map { PlainOrDigest.Dig(it) }
             val allElements = JsonArray(
-                plainOrDigestElements.map {
+                (plainOrDigestElements + decoys).map {
                     when (it) {
                         is PlainOrDigest.Dig -> it.value.asDigestClaim()
                         is PlainOrDigest.Plain -> it.value
@@ -145,10 +170,6 @@ class SdJwtFactory(
         }
     }
 
-    private fun decoys() = decoyGen.genUpTo(hashAlgorithm, numOfDecoysLimit)
-    private fun Iterable<DisclosureDigest>.sorted(): Set<DisclosureDigest> =
-        toSortedSet(Comparator.comparing { it.value })
-
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
@@ -162,6 +183,16 @@ class SdJwtFactory(
             val newClaimSet = JsonObject(jwtClaimSet + ("_sd_alg" to JsonPrimitive(h.alias)))
             newClaimSet to disclosures
         }
+    }
+
+    /**
+     * Generates decoys, if needed.
+     *
+     */
+    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): Set<DisclosureDigest> {
+        val min = (minimumDigests ?: fallbackMinimumDigests)?.value ?: 0
+        val numOfDecoys = min - disclosureDigests
+        return decoyGen.gen(hashAlgorithm, numOfDecoys)
     }
 
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
@@ -219,11 +250,22 @@ class SdJwtFactory(
 
     companion object {
 
+        /**
+         * A default [SdJwtFactory] with the following options set
+         * - SHA_256 hash algorithm
+         * - [SaltProvider.Default]
+         * - [DecoyGen.Default]
+         * - No hint for [SdJwtFactory.fallbackMinimumDigests]
+         */
         val Default: SdJwtFactory =
-            SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, 0)
+            SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
 
-        fun of(hashAlgorithm: HashAlgorithm, numOfDecoysLimit: Int): SdJwtFactory =
-            SdJwtFactory(hashAlgorithm, numOfDecoysLimit = numOfDecoysLimit)
+        @Deprecated(
+            message = "Deprecated and will be removed in a future release",
+            replaceWith = ReplaceWith("SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)"),
+        )
+        fun of(hashAlgorithm: HashAlgorithm, fallbackMinimumDigests: Int?): SdJwtFactory =
+            SdJwtFactory(hashAlgorithm, fallbackMinimumDigests = fallbackMinimumDigests.atLeastDigests())
     }
 }
 
