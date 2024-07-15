@@ -305,15 +305,7 @@ object SdJwtVerifier {
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Check JWT signature
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
-        val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
-        val disclosures = uniqueDisclosures(unverifiedDisclosures)
-        val digests = collectDigests(jwtClaims, disclosures)
-
-        // Check Disclosures
-        verifyDisclosures(hashAlgorithm, disclosures, digests)
-
-        // Assemble it
-        SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
+        verifyIssuance(unverifiedJwt, unverifiedDisclosures) { jwtClaims }.getOrThrow()
     }
 
     /**
@@ -357,6 +349,23 @@ object SdJwtVerifier {
     }
 }
 
+internal fun verifyIssuance(
+    unverifiedJwt: Jwt,
+    unverifiedDisclosures: List<String>,
+    jwtClaimsExtractor: (Jwt) -> Claims,
+): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
+    val jwtClaims = jwtClaimsExtractor(unverifiedJwt)
+    val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
+    val disclosures = uniqueDisclosures(unverifiedDisclosures)
+    val digests = collectDigests(jwtClaims, disclosures)
+
+    // Check Disclosures
+    verifyDisclosures(hashAlgorithm, disclosures, digests)
+
+    // Assemble it
+    SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
+}
+
 /**
  * Parses an SD-JWT
  * @param unverifiedSdJwt the SD-JWT to be verified
@@ -364,7 +373,7 @@ object SdJwtVerifier {
  * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed. It can raise also
  *  [UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
  */
-private fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
+internal fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
     val (jwt, ds, kbJwt) = parse(unverifiedSdJwt)
     if (null != kbJwt) throw UnexpectedKeyBindingJwt.asException()
     return jwt to ds

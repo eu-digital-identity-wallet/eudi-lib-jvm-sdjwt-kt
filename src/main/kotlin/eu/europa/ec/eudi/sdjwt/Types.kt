@@ -116,4 +116,6 @@ sealed interface SdJwt<out JWT> {
         override val jwt: JWT,
         override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
+
+    companion object
 }
