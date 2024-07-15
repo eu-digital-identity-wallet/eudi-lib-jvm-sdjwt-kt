@@ -181,6 +181,21 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
     process(unverifiedJwt, null).asClaims()
 }
 
+/**
+ * A method for obtaining an [SdJwt.Issuance] given an [unverifiedSdJwt], without checking the signature
+ * of the issuer.
+ *
+ * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+ * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
+ *
+ */
+fun SdJwt.Companion.unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
+    val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
+    verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
+        NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.asClaims()
+    }.getOrThrow()
+}
+
 //
 // JSON Support
 //
