@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,9 +74,14 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
     ) {
-        val verification =
-            SdJwtVerifier.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt)
-        assertTrue { verification.isSuccess }
+        val verifiedSdJwt = assertDoesNotThrow {
+            SdJwtVerifier.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
+        }
+
+        val sdJwtWithOutSigVerification = assertDoesNotThrow {
+            SdJwt.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
+        }
+        assertEquals(verifiedSdJwt, sdJwtWithOutSigVerification)
     }
 
     private fun unverifiedSdJwtJWSJson(option: JwsSerializationOption): JsonObject {
