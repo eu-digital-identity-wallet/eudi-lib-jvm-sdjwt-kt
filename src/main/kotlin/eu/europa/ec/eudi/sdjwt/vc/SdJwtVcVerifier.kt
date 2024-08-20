@@ -139,10 +139,10 @@ fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingV
  * Factory method for producing a SD-JWT-VC specific signature verifier.
  * This verifier will get the Issuer's public key from the JWT part of the SD-JWT.
  * In particular,
- * - If `iss` claim is a URI and there is no `x5c` and no `kid` in the header, SD-JWT-VC metadata will be used
- * - If `iss` claim is a DNS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
- * if it is trusted & it contains a SAN DNS equal to `iss`
- * - If `iss` claim is a URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ * - If `iss` claim is an HTTPS URI and there is no `x5c` in the header, SD-JWT-VC metadata will be used
+ * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ * if it is trusted & it contains a SAN DNS equal to `iss` FQDN
+ * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
  *  if it is trusted & it contains a SAN URI equal to `iss`
  * - If `iss` claim is a DID the key will be extracted by resolving it.
  *
