@@ -128,7 +128,7 @@ class SdJwtVcVerifier(
         SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
-    private suspend fun jwtSignatureVerifier(): JwtSignatureVerifier =
+    private fun jwtSignatureVerifier(): JwtSignatureVerifier =
         sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
 }
 
@@ -139,10 +139,10 @@ fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingV
  * Factory method for producing a SD-JWT-VC specific signature verifier.
  * This verifier will get the Issuer's public key from the JWT part of the SD-JWT.
  * In particular,
- * - If `iss` claim is a URI and there is no `x5c` and no `kid` in the header, SD-JWT-VC metadata will be used
- * - If `iss` claim is a DNS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
- * if it is trusted & it contains a SAN DNS equal to `iss`
- * - If `iss` claim is a URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ * - If `iss` claim is an HTTPS URI and there is no `x5c` in the header, SD-JWT-VC metadata will be used
+ * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
+ * if it is trusted & it contains a SAN DNS equal to `iss` FQDN
+ * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
  *  if it is trusted & it contains a SAN URI equal to `iss`
  * - If `iss` claim is a DID the key will be extracted by resolving it.
  *
@@ -156,7 +156,7 @@ fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingV
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
-suspend fun sdJwtVcSignatureVerifier(
+fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
     trust: X509CertificateTrust = X509CertificateTrust.None,
     lookup: LookupPublicKeysFromDIDDocument? = null,
@@ -213,12 +213,7 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
 
     data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
-    interface X509CertChain : SdJwtVcIssuerPublicKeySource {
-        val chain: List<X509Certificate>
-    }
-
-    data class X509SanDns(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
-    data class X509SanURI(val iss: Url, override val chain: List<X509Certificate>) : X509CertChain
+    data class X509CertChain(val iss: Url, val chain: List<X509Certificate>) : SdJwtVcIssuerPublicKeySource
 
     data class DIDUrl(val iss: String, val kid: String?) : SdJwtVcIssuerPublicKeySource
 }
@@ -227,16 +222,16 @@ private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
 internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
-    val kid = jwt.header.keyID
-    val certChain = jwt.header.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
-    val iss = jwt.jwtClaimsSet.issuer
+    val kid = jwt.header?.keyID
+    val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
+    val iss = jwt.jwtClaimsSet?.issuer
     val issUrl = iss?.let { runCatching { Url(it) }.getOrNull() }
     val issScheme = issUrl?.protocol?.name
 
-    fun X509Certificate.containsIssuerDnsName(iss: DnsUri): Boolean {
-        val issuerDnsName = iss.dnsName()
+    fun X509Certificate.containsIssuerDnsName(iss: Url): Boolean {
+        val issuerFQDN = iss.host
         val dnsNames = sanOfDNSName().getOrDefault(emptyList())
-        return issuerDnsName in dnsNames
+        return issuerFQDN in dnsNames
     }
 
     fun X509Certificate.containsIssuerUri(iss: Url): Boolean {
@@ -245,26 +240,13 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     }
 
     return when {
-        issUrl == null -> null
         issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() -> Metadata(issUrl, kid)
-
-        certChain.isNotEmpty() && kid == null ->
-            when (issScheme) {
-                DNS_URI_SCHEME ->
-                    certChain
-                        .takeIf { (leaf, _) -> DnsUri(issUrl)?.let { leaf.containsIssuerDnsName(it) } ?: false }
-                        ?.let { X509SanDns(issUrl, it) }
-
-                else ->
-                    certChain
-                        .takeIf { (leaf, _) -> leaf.containsIssuerUri(issUrl) }
-                        ?.let { X509SanURI(issUrl, it) }
-            }
-
-        issScheme == DID_URI_SCHEME && certChain.isEmpty() -> {
-            DIDUrl(iss, kid)
+        issScheme == HTTPS_URI_SCHEME -> {
+            val leaf = certChain.first()
+            if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
+            else null
         }
-
+        issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> null
     }
 }
