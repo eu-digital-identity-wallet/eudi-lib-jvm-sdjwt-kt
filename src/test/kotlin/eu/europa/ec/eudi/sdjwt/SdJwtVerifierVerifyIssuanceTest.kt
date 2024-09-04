@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.fail
 import kotlin.test.Test
@@ -223,8 +224,10 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
+            val mutableHeader = checkNotNull(this["header"]).jsonObject.toMutableMap()
+            mutableHeader["disclosures"] = JsonArray(listOf("d1", "d2").map { JsonPrimitive(it) })
             val mutable = toMutableMap()
-            mutable["disclosures"] = JsonArray(listOf("d1", "d2").map { JsonPrimitive(it) })
+            mutable["header"] = JsonObject(mutableHeader)
             JsonObject(mutable)
         }
         verifyIssuanceExpectingError(
@@ -255,8 +258,10 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
         val unverifiedSdJwt = unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened).run {
+            val mutableHeader = checkNotNull(this["header"]).jsonObject.toMutableMap()
+            mutableHeader["disclosures"] = JsonArray(listOf(d1, d1).map { JsonPrimitive(it) })
             val mutable = toMutableMap()
-            mutable["disclosures"] = JsonArray(listOf(d1, d1).map { JsonPrimitive(it) })
+            mutable["header"] = JsonObject(mutableHeader)
             JsonObject(mutable)
         }
         verifyIssuanceExpectingError(

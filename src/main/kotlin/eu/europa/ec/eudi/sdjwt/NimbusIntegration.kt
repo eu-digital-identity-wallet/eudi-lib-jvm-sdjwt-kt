@@ -357,7 +357,27 @@ fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
-): String = serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+): String =
+    serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+
+/**
+ * Serializes a [SdJwt.Presentation] with a Key Binding JWT  in JWS JSON
+ *
+ * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+ * in the generated Key Binding JWT
+ * @param keyBindingSigner function used to sign the generated Key Binding JWT
+ * @param claimSetBuilderAction a function that can be used to further customize the claims
+ * of the generated Key Binding JWT.
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to be serialized
+ * @return the serialized SD-JWT including the generated Key Binding JWT
+ */
+fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+): JsonObject =
+    serializeWithKeyBindingAsJwsJson(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
 
 /**
  * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
@@ -401,7 +421,7 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
  * @receiver the SD-JWT to be serialized
  * @return a pair of the serialized SD-JWT and the generated Key Binding JWT
  */
-fun <JWT> SdJwt.Presentation<JWT>.serializedAndKeyBinding(
+internal fun <JWT> SdJwt.Presentation<JWT>.serializedAndKeyBinding(
     jwtSerializer: (JWT) -> String,
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,
@@ -487,7 +507,7 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
  * @return a JSON object either general or flattened according to RFC7515 having an additional
  * disclosures array as per SD-JWT extension
  */
-fun SdJwt<NimbusSignedJWT>.serializeAsJwsJsonObject(
+fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
 ): JsonObject {
     return asJwsJsonObject(option, kbJwt = null) { jwt ->

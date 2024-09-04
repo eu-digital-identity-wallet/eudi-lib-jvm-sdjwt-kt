@@ -100,7 +100,7 @@ class JwsJsonSerialization {
         val trObj = TrObj.parse(ex1)
         val sdJwt: SdJwt.Issuance<SignedJWT> = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
         val actual =
-            sdJwt.serializeAsJwsJsonObject(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
+            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
         assertEquals(json.parseToJsonElement(ex1), actual)
     }
 
@@ -120,7 +120,7 @@ class JwsJsonSerialization {
         val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }
 
         assertDoesNotThrow {
-            sdJwt.serializeAsJwsJsonObject(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
+            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened).also { println(json.encodeToString(it)) }
         }
     }
 }
