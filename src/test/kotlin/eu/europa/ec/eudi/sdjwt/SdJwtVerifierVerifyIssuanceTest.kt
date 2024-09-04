@@ -98,7 +98,7 @@ class SdJwtVerifierVerifyIssuanceTest {
             wYeE4ISu3DQkOk7VeaMMYB73Hsdyjal6e9FS
         """.trimIndent().removeNewLine()
 
-        return option.jwsJsonObject(protected, payload, signature, setOf(d1))
+        return option.jwsJsonObject(protected, payload, signature, setOf(d1), kbJwt = null)
     }
 
     private val jwt = """
