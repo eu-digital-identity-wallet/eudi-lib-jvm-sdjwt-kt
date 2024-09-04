@@ -103,7 +103,8 @@ fun interface JwtSignatureVerifier {
      * @param jwt the JWT to validate
      * @return the payload of the JWT if signature is valid, otherwise raises [InvalidJwt]
      */
-    suspend fun verify(jwt: String): Result<Claims> = runCatching { checkSignature(jwt) ?: throw InvalidJwt.asException() }
+    suspend fun verify(jwt: String): Result<Claims> =
+        runCatching { checkSignature(jwt) ?: throw InvalidJwt.asException() }
 
     /**
      * Implement this method to check the signature of the JWT and extract its payload
@@ -239,7 +240,7 @@ typealias JwtAndClaims = Pair<Jwt, Claims>
 object SdJwtVerifier {
 
     /**
-     * Verifies an SD-JWT (in non enveloped, simple format)
+     * Verifies an SD-JWT (in simple format)
      * Typically, this is useful to Holder that wants to verify an issued SD-JWT
      *
      * @param jwtSignatureVerifier the verification the SD-JWT signature.
@@ -255,7 +256,7 @@ object SdJwtVerifier {
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
         verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
     }
 
@@ -280,7 +281,8 @@ object SdJwtVerifier {
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) = parseJWSJson(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) =
+            JwsJsonSupport.parseJWSJson(unverifiedSdJwt)
         if (null != unverifiedKbJwt) throw UnexpectedKeyBindingJwt.asException()
         verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
     }
@@ -332,7 +334,8 @@ object SdJwtVerifier {
         unverifiedSdJwt: String,
     ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         // Parse
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = parse(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
+            StandardSerialization.parse(unverifiedSdJwt)
         // Check JWT
         val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
         val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
@@ -371,12 +374,7 @@ object SdJwtVerifier {
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Presentation<JwtAndClaims>> = runCatching {
         // Parse and re-assemble it in combined form
-        val unverifiedSdJwtAsString = run {
-            val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = parseJWSJson(unverifiedSdJwt)
-            val concatenatedDs = unverifiedDisclosures.concat { it }
-            val serializedKbJwt = unverifiedKBJwt ?: ""
-            "$unverifiedJwt$concatenatedDs~$serializedKbJwt"
-        }
+        val unverifiedSdJwtAsString = JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt)
         verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
     }
 }
@@ -396,83 +394,6 @@ internal fun verifyIssuance(
 
     // Assemble it
     SdJwt.Issuance(unverifiedJwt to jwtClaims, disclosures)
-}
-
-/**
- * Parses an SD-JWT
- * @param unverifiedSdJwt the SD-JWT to be verified
- * @return the JWT and the list of disclosures. Raises a [ParsingError] or [UnexpectedKeyBindingJwt]
- * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed. It can raise also
- *  [UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
- */
-internal fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
-    val (jwt, ds, kbJwt) = parse(unverifiedSdJwt)
-    if (null != kbJwt) throw UnexpectedKeyBindingJwt.asException()
-    return jwt to ds
-}
-
-/**
- * Parses an SD-JWT
- * @param unverifiedSdJwt the SD-JWT to be verified
- * @return the JWT and the list of disclosures and the Key Binding JWT (as string), or raises [ParsingError]
- * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
- */
-private fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
-    val parts = unverifiedSdJwt.split('~')
-    if (parts.size <= 1) throw ParsingError.asException()
-    val jwt = parts[0]
-    val containsKeyBinding = !unverifiedSdJwt.endsWith('~')
-    val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
-    val kbJwt = if (containsKeyBinding) parts.last() else null
-    return Triple(jwt, ds, kbJwt)
-}
-
-/**
- * Extracts from [unverifiedSdJwt] the JWT and the disclosures
- *
- * @param unverifiedSdJwt a JSON Object that is expected to be in general or flatten form as defined in RFC7515 and
- * extended by SD-JWT specification.
- * @return the jwt and the disclosures (unverified).
- * @throws IllegalArgumentException if the given JSON Object is not compliant
- */
-private fun parseJWSJson(unverifiedSdJwt: Claims): Triple<Jwt, List<String>, Jwt?> {
-    fun JsonElement.stringContentOrNull() = if (this is JsonPrimitive && isString) contentOrNull else null
-
-    // selects the JsonObject that contains the pair of "protected" & "signature" claims
-    // According to RFC7515 General format this could be in "signatures" json array or
-    // in flatten format this could be the given root element itself
-    val signatureContainer = unverifiedSdJwt["signatures"]
-        ?.takeIf { it is JsonArray }
-        ?.jsonArray
-        ?.firstOrNull()
-        ?.takeIf { it is JsonObject }
-        ?.jsonObject
-        ?: unverifiedSdJwt
-
-    val unverifiedJwt = run {
-        val protected = signatureContainer["protected"]?.stringContentOrNull()
-        val signature = signatureContainer["signature"]?.stringContentOrNull()
-        val payload = unverifiedSdJwt["payload"]?.stringContentOrNull()
-        requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
-        requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
-        requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
-        "$protected.$payload.$signature"
-    }
-
-    val unprotectedHeader = signatureContainer["header"]
-        ?.takeIf { element -> element is JsonObject }
-        ?.jsonObject
-
-    // SD-JWT specification extends RFC7515 with a "disclosures" top-level json array
-    val unverifiedDisclosures = unprotectedHeader?.get("disclosures")
-        ?.takeIf { element -> element is JsonArray }
-        ?.jsonArray
-        ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
-        ?.mapNotNull { element -> element.stringContentOrNull() }
-        ?: emptyList()
-
-    val unverifiedKBJwt = unprotectedHeader?.get("kb_jwt")?.stringContentOrNull()
-    return Triple(unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt)
 }
 
 /**
@@ -621,4 +542,12 @@ object ClaimValidations {
 
     private fun Claims.objectClaim(name: String): JsonObject? =
         get(name)?.let { element -> if (element is JsonObject) element else null }
+}
+
+private fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: Claims): String {
+    val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
+        parseJWSJson(unverifiedSdJwt)
+    val jwtAndDisclosures = StandardSerialization.concat(unverifiedJwt, unverifiedDisclosures)
+    val kbJwtSerialized = unverifiedKBJwt ?: ""
+    return "$jwtAndDisclosures$kbJwtSerialized"
 }

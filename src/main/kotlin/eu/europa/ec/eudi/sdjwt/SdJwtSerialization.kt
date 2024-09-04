@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.KeyBindingError.UnexpectedKeyBindingJwt
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
+import eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError
 import kotlinx.serialization.json.*
 
 /**
@@ -29,21 +32,8 @@ fun <JWT> SdJwt<JWT>.serialize(
     serializeJwt: (JWT) -> String,
 ): String {
     val serializedJwt = serializeJwt(jwt)
-    val serializedDisclosures = disclosures.concat()
-    return "$serializedJwt$serializedDisclosures~"
+    return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
 }
-
-/**
- * Concatenates the given disclosures into a single string, separated by
- * `~`. The string also starts with "~".
- *
- * @receiver the disclosures to concatenate
- * @return the string as described above
- */
-private fun List<Disclosure>.concat(): String = concat(Disclosure::value)
-
-internal fun <T> List<T>.concat(get: (T) -> String): String =
-    joinToString(separator = "~", prefix = "~", transform = get)
 
 enum class JwsSerializationOption {
     General, Flattened
@@ -72,44 +62,149 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject {
     val (protected, payload, signature) = getParts(jwt)
-    return option.jwsJsonObject(protected, payload, signature, disclosures.map { it.value }.toSet(), kbJwt)
+
+    return with(JwsJsonSupport) {
+        option.buildJwsJson(protected, payload, signature, disclosures.map { it.value }.toSet(), kbJwt)
+    }
 }
 
-internal fun JwsSerializationOption.jwsJsonObject(
-    protected: String,
-    payload: String,
-    signature: String,
-    disclosures: Set<String>,
-    kbJwt: Jwt?,
-): JsonObject {
-    fun JsonObjectBuilder.putHeadersAndSignature() {
-        putJsonObject(JWS_JSON_HEADER) {
-            put(JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
-            if (kbJwt != null) {
-                put(JWS_JSON_KB_JWT, kbJwt)
+internal object StandardSerialization {
+
+    fun concat(
+        serializedJwt: Jwt,
+        disclosures: Iterable<String>,
+    ): String {
+        val serializedDisclosures = disclosures.concat { it }
+        return "$serializedJwt$serializedDisclosures~"
+    }
+
+    /**
+     * Parses an SD-JWT
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the JWT and the list of disclosures. Raises a [ParsingError] or [UnexpectedKeyBindingJwt]
+     * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed. It can raise also
+     *  [UnexpectedKeyBindingJwt] in case the SD-JWT contains a key bind JWT part
+     */
+    fun parseIssuance(unverifiedSdJwt: String): Pair<Jwt, List<String>> {
+        val (jwt, ds, kbJwt) = parse(unverifiedSdJwt)
+        if (null != kbJwt) throw UnexpectedKeyBindingJwt.asException()
+        return jwt to ds
+    }
+
+    /**
+     * Parses an SD-JWT
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the JWT and the list of disclosures and the Key Binding JWT (as string), or raises [ParsingError]
+     * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
+     */
+    fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
+        val parts = unverifiedSdJwt.split('~')
+        if (parts.size <= 1) throw ParsingError.asException()
+        val jwt = parts[0]
+        val containsKeyBinding = !unverifiedSdJwt.endsWith('~')
+        val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
+        val kbJwt = if (containsKeyBinding) parts.last() else null
+        return Triple(jwt, ds, kbJwt)
+    }
+
+    /**
+     * Concatenates the given disclosures into a single string, separated by
+     * `~`. The string also starts with "~".
+     *
+     * @receiver the disclosures to concatenate
+     * @return the string as described above
+     */
+    private fun Iterable<Disclosure>.concat(): String = concat(Disclosure::value)
+
+    fun <T> Iterable<T>.concat(get: (T) -> String): String =
+        joinToString(separator = "~", prefix = "~", transform = get)
+}
+
+internal object JwsJsonSupport {
+    private const val JWS_JSON_HEADER = "header"
+    private const val JWS_JSON_DISCLOSURES = "disclosures"
+    private const val JWS_JSON_KB_JWT = "kb_jwt"
+    private const val JWS_JSON_PROTECTED = "protected"
+    private const val JWS_JSON_SIGNATURE = "signature"
+    private const val JWS_JSON_SIGNATURES = "signatures"
+    private const val JWS_JSON_PAYLOAD = "payload"
+
+    fun JwsSerializationOption.buildJwsJson(
+        protected: String,
+        payload: String,
+        signature: String,
+        disclosures: Set<String>,
+        kbJwt: Jwt?,
+    ): JsonObject {
+        fun JsonObjectBuilder.putHeadersAndSignature() {
+            putJsonObject(JWS_JSON_HEADER) {
+                put(JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
+                if (kbJwt != null) {
+                    put(JWS_JSON_KB_JWT, kbJwt)
+                }
+            }
+            put(JWS_JSON_PROTECTED, protected)
+            put(JWS_JSON_SIGNATURE, signature)
+        }
+
+        return buildJsonObject {
+            put(JWS_JSON_PAYLOAD, payload)
+            when (this@buildJwsJson) {
+                JwsSerializationOption.General ->
+                    putJsonArray(JWS_JSON_SIGNATURES) {
+                        add(buildJsonObject { putHeadersAndSignature() })
+                    }
+
+                JwsSerializationOption.Flattened -> putHeadersAndSignature()
             }
         }
-        put(JWS_JSON_PROTECTED, protected)
-        put(JWS_JSON_SIGNATURE, signature)
     }
 
-    return buildJsonObject {
-        put(JWS_JSON_PAYLOAD, payload)
-        when (this@jwsJsonObject) {
-            JwsSerializationOption.General ->
-                putJsonArray(JWS_JSON_SIGNATURES) {
-                    add(buildJsonObject { putHeadersAndSignature() })
-                }
+    /**
+     * Extracts from [unverifiedSdJwt] the JWT and the disclosures
+     *
+     * @param unverifiedSdJwt a JSON Object that is expected to be in general or flatten form as defined in RFC7515 and
+     * extended by SD-JWT specification.
+     * @return the jwt and the disclosures (unverified).
+     * @throws IllegalArgumentException if the given JSON Object is not compliant
+     */
+    fun parseJWSJson(unverifiedSdJwt: Claims): Triple<Jwt, List<String>, Jwt?> {
+        fun JsonElement.stringContentOrNull() = if (this is JsonPrimitive && isString) contentOrNull else null
 
-            JwsSerializationOption.Flattened -> putHeadersAndSignature()
+        // selects the JsonObject that contains the pair of "protected" & "signature" claims
+        // According to RFC7515 General format this could be in "signatures" json array or
+        // in flatten format this could be the given root element itself
+        val signatureContainer = unverifiedSdJwt[JWS_JSON_SIGNATURES]
+            ?.takeIf { it is JsonArray }
+            ?.jsonArray
+            ?.firstOrNull()
+            ?.takeIf { it is JsonObject }
+            ?.jsonObject
+            ?: unverifiedSdJwt
+
+        val unverifiedJwt = run {
+            val protected = signatureContainer[JWS_JSON_PROTECTED]?.stringContentOrNull()
+            val signature = signatureContainer[JWS_JSON_SIGNATURE]?.stringContentOrNull()
+            val payload = unverifiedSdJwt[JWS_JSON_PAYLOAD]?.stringContentOrNull()
+            requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
+            requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
+            requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
+            "$protected.$payload.$signature"
         }
+
+        val unprotectedHeader = signatureContainer[JWS_JSON_HEADER]
+            ?.takeIf { element -> element is JsonObject }
+            ?.jsonObject
+
+        // SD-JWT specification extends RFC7515 with a "disclosures" top-level json array
+        val unverifiedDisclosures = unprotectedHeader?.get(JWS_JSON_DISCLOSURES)
+            ?.takeIf { element -> element is JsonArray }
+            ?.jsonArray
+            ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
+            ?.mapNotNull { element -> element.stringContentOrNull() }
+            ?: emptyList()
+
+        val unverifiedKBJwt = unprotectedHeader?.get("kb_jwt")?.stringContentOrNull()
+        return Triple(unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt)
     }
 }
-
-private const val JWS_JSON_HEADER = "header"
-private const val JWS_JSON_DISCLOSURES = "disclosures"
-private const val JWS_JSON_KB_JWT = "kb_jwt"
-private const val JWS_JSON_PROTECTED = "protected"
-private const val JWS_JSON_SIGNATURE = "signature"
-private const val JWS_JSON_SIGNATURES = "signatures"
-private const val JWS_JSON_PAYLOAD = "payload"

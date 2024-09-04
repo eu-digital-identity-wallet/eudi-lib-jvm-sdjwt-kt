@@ -191,7 +191,7 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
  */
 fun SdJwt.Companion.unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> =
     runCatching {
-        val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
+        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
         verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
             NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.asClaims()
         }.getOrThrow()
