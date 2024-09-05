@@ -70,6 +70,8 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
 
 internal object StandardSerialization {
 
+    private const val TILDE = '~'
+
     fun concat(
         serializedJwt: Jwt,
         disclosures: Iterable<String>,
@@ -98,26 +100,20 @@ internal object StandardSerialization {
      * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
      */
     fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
-        val parts = unverifiedSdJwt.split('~')
+        val parts = unverifiedSdJwt.split(TILDE)
         if (parts.size <= 1) throw ParsingError.asException()
         val jwt = parts[0]
-        val containsKeyBinding = !unverifiedSdJwt.endsWith('~')
-        val ds = parts.drop(1).run { if (containsKeyBinding) dropLast(1) else this }.filter { it.isNotBlank() }
+        val containsKeyBinding = !unverifiedSdJwt.endsWith(TILDE)
+        val ds = parts
+            .drop(1)
+            .run { if (containsKeyBinding) dropLast(1) else this }
+            .filter { it.isNotBlank() }
         val kbJwt = if (containsKeyBinding) parts.last() else null
         return Triple(jwt, ds, kbJwt)
     }
 
-    /**
-     * Concatenates the given disclosures into a single string, separated by
-     * `~`. The string also starts with "~".
-     *
-     * @receiver the disclosures to concatenate
-     * @return the string as described above
-     */
-    private fun Iterable<Disclosure>.concat(): String = concat(Disclosure::value)
-
-    fun <T> Iterable<T>.concat(get: (T) -> String): String =
-        joinToString(separator = "~", prefix = "~", transform = get)
+    private fun <T> Iterable<T>.concat(get: (T) -> String): String =
+        joinToString(separator = "$TILDE", prefix = "$TILDE", transform = get)
 }
 
 internal object JwsJsonSupport {
