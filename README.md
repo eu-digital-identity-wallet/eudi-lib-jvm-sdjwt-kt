@@ -195,7 +195,7 @@ should be left outside the scope of this library.
 
 ## Presentation Verification
 
-### In simple (not enveloped) format
+### In simple format
 
 In this case, the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
@@ -224,6 +224,11 @@ val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwtVerification01.kt).
+
+Library provides various variants of the above method that:
+
+- Preserve the KB-JWT, if present, to the successful outcome of a verification
+- Accept the unverified SD-JWT serialized in JWS JSON  
 
 <!--- TEST verifiedPresentationSdJwt.prettyPrint { it.second } -->
 
