@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.sdjwt
 import com.nimbusds.jose.*
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.proc.SecurityContext
@@ -189,12 +188,13 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
  * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
  *
  */
-fun SdJwt.Companion.unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-    val (unverifiedJwt, unverifiedDisclosures) = parseIssuance(unverifiedSdJwt)
-    verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
-        NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.asClaims()
-    }.getOrThrow()
-}
+fun SdJwt.Companion.unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> =
+    runCatching {
+        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
+        verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
+            NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.asClaims()
+        }.getOrThrow()
+    }
 
 //
 // JSON Support
@@ -356,7 +356,27 @@ fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
-): String = serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+): String =
+    serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+
+/**
+ * Serializes a [SdJwt.Presentation] with a Key Binding JWT  in JWS JSON
+ *
+ * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+ * in the generated Key Binding JWT
+ * @param keyBindingSigner function used to sign the generated Key Binding JWT
+ * @param claimSetBuilderAction a function that can be used to further customize the claims
+ * of the generated Key Binding JWT.
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to be serialized
+ * @return the serialized SD-JWT including the generated Key Binding JWT
+ */
+fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+): JsonObject =
+    serializeWithKeyBindingAsJwsJson(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
 
 /**
  * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
@@ -377,36 +397,117 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
 ): String {
-    // Serialize the presentation SD-JWT with no Key binding
-    val presentationSdJwt = serialize(jwtSerializer)
-    // Calculate its digest
-    val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
-    // Create the Key Binding JWT, sign it and serialize it
-    val kbJwt = NimbusSignedJWT(
-        with(JWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
-            type(JOSEObjectType("kb+jwt"))
-            val pk = keyBindingSigner.publicKey
-            if (pk is NimbusJWK) {
-                keyID(pk.keyID)
-            }
-            build()
-        },
-        JWTClaimsSet.Builder()
-            .apply(claimSetBuilderAction)
-            .claim(SdJwtDigest.CLAIM_NAME, sdJwtDigest.value)
-            .build(),
-    ).apply { sign(keyBindingSigner) }.serialize()
+    val (presentationSdJwt, kbJwt) = serializedAndKeyBinding(
+        jwtSerializer,
+        hashAlgorithm,
+        keyBindingSigner,
+        claimSetBuilderAction,
+    )
     // concatenate the two parts together
     return "$presentationSdJwt$kbJwt"
 }
 
 /**
+ * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
+ *
+ * @param jwtSerializer function used to serialize the [Presentation JWT][SdJwt.Presentation.jwt]
+ * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+ * in the generated Key Binding JWT
+ * @param keyBindingSigner function used to sign the generated Key Binding JWT
+ * @param claimSetBuilderAction a function that can be used to further customize the claims
+ * of the generated Key Binding JWT.
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to be serialized
+ * @return a pair of the serialized SD-JWT and the generated Key Binding JWT
+ */
+internal fun <JWT> SdJwt.Presentation<JWT>.serializedAndKeyBinding(
+    jwtSerializer: (JWT) -> String,
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+): Pair<String, Jwt> {
+    // Serialize the presentation SD-JWT with no Key binding
+    val presentationSdJwt = serialize(jwtSerializer)
+    // Calculate its digest
+    val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+    // Create the Key Binding JWT, sign it and serialize it
+    val kbJwt = kbJwt(keyBindingSigner, claimSetBuilderAction, sdJwtDigest).serialize()
+
+    return presentationSdJwt to kbJwt
+}
+
+internal fun kbJwt(
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+    sdJwtDigest: SdJwtDigest,
+): NimbusJWT {
+    val header = with(NimbusJWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
+        type(JOSEObjectType("kb+jwt"))
+        val pk = keyBindingSigner.publicKey
+        if (pk is NimbusJWK) {
+            keyID(pk.keyID)
+        }
+        build()
+    }
+    val claimSet = with(JWTClaimsSet.Builder()) {
+        claimSetBuilderAction()
+        claim(SdJwtDigest.CLAIM_NAME, sdJwtDigest.value)
+        build()
+    }
+
+    return NimbusSignedJWT(header, claimSet).apply { sign(keyBindingSigner) }
+}
+
+/**
+ * Serializes a [SdJwt.Presentation] with a Key Binding JWT in JWS JSON according to RFC7515.
+ * In addition to the General & Flattened representations defined in the RFC7515,
+ * the result JSON contains an unprotected header which includes
+ * an array with the disclosures of the [SdJwt] and the key binding JWT
+ *
+ * @param jwtSerializer function used to serialize the [Presentation JWT][SdJwt.Presentation.jwt]
+ * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+ * in the generated Key Binding JWT
+ * @param keyBindingSigner function used to sign the generated Key Binding JWT
+ * @param claimSetBuilderAction a function that can be used to further customize the claims
+ * of the generated Key Binding JWT.
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @param option
+ * @receiver the SD-JWT to be serialized
+ * @return the serialized SD-JWT including the generated Key Binding JWT
+ */
+fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
+    jwtSerializer: (JWT) -> String,
+    hashAlgorithm: HashAlgorithm,
+    keyBindingSigner: KeyBindingSigner,
+    claimSetBuilderAction: JWTClaimsSet.Builder.() -> Unit,
+    option: JwsSerializationOption = JwsSerializationOption.Flattened,
+): JsonObject {
+    val (presentationSdJwt, kbJwt) = serializedAndKeyBinding(
+        jwtSerializer,
+        hashAlgorithm,
+        keyBindingSigner,
+        claimSetBuilderAction,
+    )
+    val nimbusSdJwt =
+        SdJwt.Presentation(NimbusSignedJWT.parse(presentationSdJwt), disclosures)
+    return nimbusSdJwt.asJwsJsonObject(option, kbJwt) { jwt ->
+        Triple(
+            jwt.header.toBase64URL().toString(),
+            jwt.payload.toBase64URL().toString(),
+            jwt.signature.toString(),
+        )
+    }
+}
+
+/**
  * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
  * In addition to the General & Flattened representations defined in the RFC7515,
- * the result JSON contains a JSON array with the disclosures of the [SdJwt]
+ *  the result JSON contains an unprotected header which includes
+ *  an array with the disclosures of the [SdJwt]
  *
- * Please note that this serialization option cannot be used to convey the key binding JWT
- * of a [SdJwt.Presentation]
+ *  This method can be used with an [SdJwt.Issuance] or with an [SdJwt.Presentation] in case no Key binding JWT
+ *  is required. If key binding JWT is required for an [SdJwt.Presentation] there is [serializeWithKeyBindingAsJwsJson]
+ *  to support this
  *
  * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
  * representation as defined in RFC7515
@@ -415,8 +516,10 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
  * @return a JSON object either general or flattened according to RFC7515 having an additional
  * disclosures array as per SD-JWT extension
  */
-fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption = JwsSerializationOption.Flattened): JsonObject {
-    return asJwsJsonObject(option) { jwt ->
+fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
+    option: JwsSerializationOption = JwsSerializationOption.Flattened,
+): JsonObject {
+    return asJwsJsonObject(option, kbJwt = null) { jwt ->
         require(jwt.state == JWSObject.State.SIGNED || jwt.state == JWSObject.State.VERIFIED) {
             "It seems that the jwt is not signed"
         }

@@ -308,8 +308,9 @@ class VerifierActor(
     suspend fun acceptPresentation(
         unverifiedSdJwt: String,
     ) {
-        val presented = verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow().ensureContainsWhatRequested()
-        presentation = presented
+        val (presented, _) =
+            verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
+        presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
     }
 

@@ -114,7 +114,7 @@ class SdJwtVcVerifier(
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
-     * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
+     * @return the verified SD-JWT and KB-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
@@ -122,7 +122,27 @@ class SdJwtVcVerifier(
     suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject? = null,
-    ): Result<SdJwt.Presentation<JwtAndClaims>> = coroutineScope {
+    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
+        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
+        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
+    }
+
+    /**
+     * Verifies a SD-JWT in Combined Presentation Format
+     * Typically, this is useful to Verifier that wants to verify presentation SD-JWT communicated by Holder
+     *
+     * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
+     * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @return the verified SD-JWT and KB-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will the [JWT][SdJwt.Presentation.jwt] and key binding JWT
+     * are representing in both string and decoded payload.
+     * Expected errors are reported via a [SdJwtVerificationException]
+     */
+    suspend fun verifyPresentation(
+        unverifiedSdJwt: JsonObject,
+        challenge: JsonObject? = null,
+    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
         val jwtSignatureVerifier = async { jwtSignatureVerifier() }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
         SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
@@ -246,6 +266,7 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
             if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
             else null
         }
+
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> null
     }

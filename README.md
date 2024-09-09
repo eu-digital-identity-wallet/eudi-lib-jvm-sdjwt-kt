@@ -27,7 +27,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 This is a library offering a DSL (domain-specific language) for defining how a set of claims should be made selectively
 disclosable.
 
-Library implements [SD-JWT draft 8](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html)
+Library implements [SD-JWT draft 12](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-12.html)
 is implemented in Kotlin, targeting JVM.
 
 Library's SD-JWT DSL leverages the DSL provided by
@@ -195,7 +195,7 @@ should be left outside the scope of this library.
 
 ## Presentation Verification
 
-### In simple (not enveloped) format
+### In simple format
 
 In this case, the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
@@ -215,15 +215,21 @@ val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 
     val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    SdJwtVerifier.verifyPresentation(
+    val (sdJwt, _) = SdJwtVerifier.verifyPresentation(
         jwtSignatureVerifier = jwtSignatureVerifier,
         keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
         unverifiedSdJwt = unverifiedPresentationSdJwt,
     ).getOrThrow()
+    sdJwt
 }
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwtVerification01.kt).
+
+Library provides various variants of the above method that:
+
+- Preserve the KB-JWT, if present, to the successful outcome of a verification
+- Accept the unverified SD-JWT serialized in JWS JSON  
 
 <!--- TEST verifiedPresentationSdJwt.prettyPrint { it.second } -->
 
