@@ -24,9 +24,10 @@ val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 
     val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    SdJwtVerifier.verifyPresentation(
+    val (sdJwt, _) = SdJwtVerifier.verifyPresentation(
         jwtSignatureVerifier = jwtSignatureVerifier,
         keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
         unverifiedSdJwt = unverifiedPresentationSdJwt,
     ).getOrThrow()
+    sdJwt
 }

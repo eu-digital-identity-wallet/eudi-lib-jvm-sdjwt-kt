@@ -328,7 +328,7 @@ object SdJwtVerifier {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verifyPresentationKeepingKbJwt(
+    suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
@@ -370,38 +370,16 @@ object SdJwtVerifier {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verifyPresentationKeepingKbJwt(
+    suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: JsonObject,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = runCatching {
         // Parse and re-assemble it in combined form
         val unverifiedSdJwtAsString = JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt)
-        verifyPresentationKeepingKbJwt(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
+        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
     }
 }
-
-/**
- * Convenient method that performs the verification [SdJwtVerifier.verifyPresentationKeepKbJwt]
- * and discards key binding JWT
- */
-suspend fun SdJwtVerifier.verifyPresentation(
-    jwtSignatureVerifier: JwtSignatureVerifier,
-    keyBindingVerifier: KeyBindingVerifier,
-    unverifiedSdJwt: String,
-): Result<SdJwt.Presentation<JwtAndClaims>> =
-    verifyPresentationKeepingKbJwt(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).map { it.first }
-
-/**
- * Convenient method that performs the verification [SdJwtVerifier.verifyPresentationKeepKbJwt]
- * and discards key binding JWT
- */
-suspend fun SdJwtVerifier.verifyPresentation(
-    jwtSignatureVerifier: JwtSignatureVerifier,
-    keyBindingVerifier: KeyBindingVerifier,
-    unverifiedSdJwt: JsonObject,
-): Result<SdJwt.Presentation<JwtAndClaims>> =
-    verifyPresentationKeepingKbJwt(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).map { it.first }
 
 internal fun verifyIssuance(
     unverifiedJwt: Jwt,
@@ -543,7 +521,7 @@ object ClaimValidations {
 
     /**
      * Retrieves the iat claim, if present and within the provided time window.
-     * The time window will be calculated by obtaining the [current time][Clock.instant]
+     * The time window will be calculated by getting the [current time][Clock.instant]
      * and the [offset].
      * That is, iat less than equal to the clock's current time and not before the current time minus the offset
      *

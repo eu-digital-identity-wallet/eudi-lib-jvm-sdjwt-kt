@@ -61,7 +61,7 @@ class SpecExamples {
                 KeyBindingVerifier.MustNotBePresent,
                 unverifiedSdJwt,
             ).getOrThrow()
-        }.also { it.printRecreated() }
+        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
     }
 
     @Test
@@ -97,7 +97,7 @@ class SpecExamples {
                 KeyBindingVerifier.MustNotBePresent,
                 unverifiedSdJwt,
             ).getOrThrow()
-        }.also { it.printRecreated() }
+        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
     }
 
     @Test
@@ -140,7 +140,7 @@ class SpecExamples {
                 KeyBindingVerifier.MustNotBePresent,
                 unverifiedSdJwt,
             ).getOrThrow()
-        }.also { it.printRecreated() }
+        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.printRecreated() {

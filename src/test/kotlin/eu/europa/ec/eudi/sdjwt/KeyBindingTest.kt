@@ -309,7 +309,7 @@ class VerifierActor(
         unverifiedSdJwt: String,
     ) {
         val (presented, _) =
-            verifier.verifyPresentationKeepingKbJwt(unverifiedSdJwt, lastChallenge).getOrThrow()
+            verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
     }

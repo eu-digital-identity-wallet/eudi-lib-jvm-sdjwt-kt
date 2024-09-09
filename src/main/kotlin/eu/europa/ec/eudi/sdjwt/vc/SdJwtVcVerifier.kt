@@ -119,13 +119,13 @@ class SdJwtVcVerifier(
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verifyPresentationKeepingKbJwt(
+    suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject? = null,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
         val jwtSignatureVerifier = async { jwtSignatureVerifier() }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
-        SdJwtVerifier.verifyPresentationKeepingKbJwt(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
+        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
     /**
@@ -139,30 +139,18 @@ class SdJwtVcVerifier(
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verifyPresentationKeepingKbJwt(
+    suspend fun verifyPresentation(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject? = null,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
         val jwtSignatureVerifier = async { jwtSignatureVerifier() }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
-        SdJwtVerifier.verifyPresentationKeepingKbJwt(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
+        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
     private fun jwtSignatureVerifier(): JwtSignatureVerifier =
         sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
 }
-
-suspend fun SdJwtVcVerifier.verifyPresentation(
-    unverifiedSdJwt: String,
-    challenge: JsonObject? = null,
-): Result<SdJwt.Presentation<JwtAndClaims>> =
-    verifyPresentationKeepingKbJwt(unverifiedSdJwt, challenge).map { it.first }
-
-suspend fun SdJwtVcVerifier.verifyPresentation(
-    unverifiedSdJwt: JsonObject,
-    challenge: JsonObject? = null,
-): Result<SdJwt.Presentation<JwtAndClaims>> =
-    verifyPresentationKeepingKbJwt(unverifiedSdJwt, challenge).map { it.first }
 
 fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
     KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
@@ -278,6 +266,7 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
             if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
             else null
         }
+
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> null
     }
