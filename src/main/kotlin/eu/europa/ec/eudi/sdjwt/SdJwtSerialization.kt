@@ -77,7 +77,7 @@ internal object StandardSerialization {
         disclosures: Iterable<String>,
     ): String {
         val serializedDisclosures = disclosures.concat { it }
-        return "$serializedJwt$serializedDisclosures~"
+        return "$serializedJwt$serializedDisclosures"
     }
 
     /**
@@ -113,7 +113,7 @@ internal object StandardSerialization {
     }
 
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
-        joinToString(separator = "$TILDE", prefix = "$TILDE", transform = get)
+        joinToString(prefix = "$TILDE", separator = "") { "${get(it)}~" }
 }
 
 internal object JwsJsonSupport {
