@@ -92,8 +92,9 @@ val issuedSdJwt: String = run {
 
 <!--- TEST println(issuedSdJwt) -->
 
-Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
-issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
+> [!TIP]
+> Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
+> issuance scenario, including adding to the SD-JWT, holder public key, to leverage key binding.
 
 ## Holder Verification
 
@@ -188,10 +189,11 @@ The resulting presentation will contain 3 disclosures:
 This is because to disclose either the claim `region` or the claim `country`, the claim `address` must be 
 disclosed as well.
 
-Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
-requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
-either a set of JSON Pointers or a JSON Pointer predicate. We consider that bridging those two (JSON Path & Pointer)
-should be left outside the scope of this library.
+> [!NOTE]
+> Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
+> requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
+> either a set of JSON Pointers or a JSON Pointer predicate. We consider that bridging those two (JSON Path & Pointer)
+> should be left outside the scope of this library.
 
 ## Presentation Verification
 
@@ -297,14 +299,14 @@ The claims contents would be
 ```
 ## Decoy digests
 
-By default, library doesn't add decoy digests to the issued SD-JWT.
-If issuer wants to use digests, it can do so using the DSL.
+By default, the library doesn't add decoy digests to the issued SD-JWT.
+If an issuer wants to use digests, it can do so using the DSL.
 
-DSL functions that mark a container comprised of potentially selectively disclosable   
+DSL functions that mark a container composed of potentially selectively disclosable   
 elements, such as `sdJwt{}`, `structured{}` e.t,c, accept
 an optional parameter named `minimumDigests: Int? = null`.
 
-The issuer can use this parameter in order to set the minimum  number of digests
+The issuer can use this parameter to set the minimum number of digests
 for the immediate level of this container. Library will make sure that
 the underlying digests array will have at minimum a length equal to `digestNumberHint`.
 
@@ -345,9 +347,11 @@ sdJwt(digestNumberHint = 5) {
   
 }
 ```
-In addition to the DSL defined hints, the issuer may set a global hint to the `SdJwtFactory`.
-This will be used as a fallback limit for every container of selectively disclosable elements
-that don't explicit provide a limit.
+
+> [!TIP]
+> In addition to the DSL defined hints, the issuer may set a global hint to the `SdJwtFactory`.
+> This will be used as a fallback limit for every container of selectively disclosable elements
+> that don't explicitly provide a limit.
 
 ## DSL Examples
 
