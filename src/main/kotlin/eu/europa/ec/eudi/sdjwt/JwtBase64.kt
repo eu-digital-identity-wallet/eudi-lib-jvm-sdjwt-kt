@@ -21,11 +21,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 @OptIn(ExperimentalEncodingApi::class)
 object JwtBase64 {
 
-    fun decode(value: String): ByteArray = Base64.UrlSafe.decode(value)
+    /**
+     * Base64 UrlSafe encoder/decoder that doesn't add/require padding.
+     */
+    private val base64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
 
-    // Since the complement character "=" is optional,
-    // we can remove it to save some bits in the HTTP header
-    fun encode(value: ByteArray): String = removePadding(Base64.UrlSafe.encode(value))
+    fun decode(value: String): ByteArray = base64.decode(value)
+
+    fun encode(value: ByteArray): String = base64.encode(value)
 
     fun removePadding(value: String): String = value.replace("=", "")
 }
