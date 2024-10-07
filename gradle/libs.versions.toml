@@ -1,7 +1,6 @@
 [versions]
 dokka = "1.9.20"
 kotlin = "1.9.22"
-foojay = "0.8.0"
 spotless = "6.25.0"
 java = "17"
 kotlinxSerialization = "1.6.2"
@@ -28,7 +27,6 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 [plugins]
-foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
