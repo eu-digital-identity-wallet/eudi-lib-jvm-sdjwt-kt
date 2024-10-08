@@ -1,18 +1,18 @@
 [versions]
 dokka = "1.9.20"
-kotlin = "1.9.22"
+kotlin = "2.0.20"
 foojay = "0.8.0"
 spotless = "6.25.0"
 java = "17"
-kotlinxSerialization = "1.6.2"
-nimbusJoseWwt = "9.37.3"
+kotlinxSerialization = "1.7.3"
+nimbusJoseWwt = "9.41.2"
 ktlintVersion = "0.50.0"
 sonarqube = "5.1.0.4882"
 dependencycheck = "10.0.4"
 maven-publish = "0.29.0"
 kotlinx-knit = "0.5.0"
 tink = "1.15.0"
-kotlinxCoroutines = "1.8.1"
+kotlinxCoroutines = "1.9.0"
 ktor = "2.3.12"
 
 [libraries]
