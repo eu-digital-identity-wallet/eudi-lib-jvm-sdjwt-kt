@@ -36,13 +36,12 @@ value class SdJwtDigest private constructor(val value: String) {
          * Wraps the given [value] to a [SdJwtDigest].
          * The [value] is expected to be base64-url encoded.
          *
-         * @param value the base64-url encoded digest value to wrap
+         * @param value the base64-url encoded without padding digest value to wrap
          * @return the wrapped value
          */
         fun wrap(value: String): Result<SdJwtDigest> = runCatching {
-            val clean = JwtBase64.removePadding(value)
-            JwtBase64.decode(clean)
-            SdJwtDigest(clean)
+            JwtBase64.decode(value)
+            SdJwtDigest(value)
         }
 
         /**

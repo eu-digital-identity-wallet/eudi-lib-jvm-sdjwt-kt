@@ -21,17 +21,24 @@ import java.util.Base64.Encoder
 
 object JwtBase64 {
 
-    /**
-     * Base64 encoder that doesn't add padding.
-     */
     private val encoder: Encoder = Base64.getUrlEncoder().withoutPadding()
-
-    /**
-     * Base64 decoder that doesn't require padding.
-     */
     private val decoder: Decoder = Base64.getUrlDecoder()
 
-    fun decode(value: String): ByteArray = decoder.decode(value)
+    /**
+     * Decodes the given [value].
+     * @param value Expected to be base64 URL-encoded without padding
+     * @return the decoded content
+     * @throws IllegalArgumentException in case padding used
+     */
+    fun decode(value: String): ByteArray {
+        require(value.lastOrNull() != '=') { "No padding" }
+        return decoder.decode(value)
+    }
+
+    /**
+     * URL-Encodes the given [value] without padding
+     * @param value what to encode
+     * @return the base64 URL-encoded without padding
+     */
     fun encode(value: ByteArray): String = encoder.encodeToString(value)
-    fun removePadding(value: String): String = value.replace("=", "")
 }
