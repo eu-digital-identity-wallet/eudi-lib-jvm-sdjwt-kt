@@ -15,17 +15,30 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import java.util.*
+import java.util.Base64.Decoder
+import java.util.Base64.Encoder
 
-@OptIn(ExperimentalEncodingApi::class)
 object JwtBase64 {
 
-    fun decode(value: String): ByteArray = Base64.UrlSafe.decode(value)
+    private val encoder: Encoder = Base64.getUrlEncoder().withoutPadding()
+    private val decoder: Decoder = Base64.getUrlDecoder()
 
-    // Since the complement character "=" is optional,
-    // we can remove it to save some bits in the HTTP header
-    fun encode(value: ByteArray): String = removePadding(Base64.UrlSafe.encode(value))
+    /**
+     * Decodes the given [value].
+     * @param value Expected to be base64 URL-encoded without padding
+     * @return the decoded content
+     * @throws IllegalArgumentException in case padding used
+     */
+    fun decode(value: String): ByteArray {
+        require(value.lastOrNull() != '=') { "No padding" }
+        return decoder.decode(value)
+    }
 
-    fun removePadding(value: String): String = value.replace("=", "")
+    /**
+     * URL-Encodes the given [value] without padding
+     * @param value what to encode
+     * @return the base64 URL-encoded without padding
+     */
+    fun encode(value: ByteArray): String = encoder.encodeToString(value)
 }
