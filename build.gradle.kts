@@ -41,6 +41,7 @@ dependencies {
     testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.bouncy.castle)
 }
 
 java {
