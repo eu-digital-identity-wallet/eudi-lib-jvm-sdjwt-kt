@@ -142,10 +142,14 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
                 JWSAlgorithm.EdDSA, JWSAlgorithm.Ed25519 -> Ed25519Signer(jwk)
                 else -> throw IllegalArgumentException("Unknown ED JWSAlgorithm $algorithm")
             }
+            val verifier = when (algorithm) {
+                JWSAlgorithm.EdDSA, JWSAlgorithm.Ed25519 -> Ed25519Verifier(jwk.toPublicJWK()).asJwtVerifier()
+                else -> throw IllegalArgumentException("Unknown ED JWSAlgorithm $algorithm")
+            }
             Context(
                 jwk,
                 SdJwtIssuer.nimbus(signer = signer, signAlgorithm = algorithm),
-                Ed25519Verifier(jwk.toPublicJWK()).asJwtVerifier(),
+                verifier,
             )
         }
 
