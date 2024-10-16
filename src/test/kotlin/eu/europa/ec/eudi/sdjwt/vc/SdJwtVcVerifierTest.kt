@@ -203,8 +203,8 @@ class SdJwtVcVerifierTest {
                 val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
                     type(JOSEObjectType(SD_JWT_VC_TYPE))
                 }
-                signer.issue(spec)
-            }.getOrThrow()
+                signer.issue(spec).getOrThrow()
+            }
 
             val verifier = SdJwtVcVerifier { did, _ ->
                 assertEquals(didJwk, did)
