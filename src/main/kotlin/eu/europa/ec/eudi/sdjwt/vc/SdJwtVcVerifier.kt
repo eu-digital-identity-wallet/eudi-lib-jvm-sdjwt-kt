@@ -26,7 +26,6 @@ import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.BadJOSEException
-import com.nimbusds.jose.proc.BadJWSException
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.util.X509CertUtils
@@ -318,7 +317,7 @@ private class SdJwtVcJwtProcessor<C : SecurityContext>(
         }
 
         // No more keys to try out
-        throw BadJWSException("Signed JWT rejected: Invalid signature or no matching verifier(s) found")
+        throw BadJOSEException("Signed JWT rejected: Invalid signature or no matching verifier(s) found")
     }
 
     private fun ensureInitialized() {
