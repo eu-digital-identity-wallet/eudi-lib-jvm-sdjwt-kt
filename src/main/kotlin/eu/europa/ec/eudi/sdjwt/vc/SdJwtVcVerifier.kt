@@ -15,17 +15,12 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
-import com.nimbusds.jose.proc.*
+import com.nimbusds.jose.jwk.source.JWKSource
+import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.util.X509CertUtils
-import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import io.ktor.http.*
@@ -183,40 +178,38 @@ fun sdJwtVcSignatureVerifier(
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = SignedJWT.parse(unverifiedJwt)
-        val keySelector = issuerJwsKeySelector(httpClientFactory, trust, lookup, signedJwt)
-        checkNotNull(keySelector) { "Failed to resolve issuer public key" }
-        val jwtProcessor = sdJwtVcProcessor(keySelector)
+        val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
+        checkNotNull(jwkSource) { "Failed to resolve issuer public key" }
+        val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
         jwtProcessor.process(signedJwt, null).asClaims()
     } catch (e: Throwable) {
         null
     }
 }
 
-private suspend fun issuerJwsKeySelector(
+private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory,
     trust: X509CertificateTrust,
     lookup: LookupPublicKeysFromDIDDocument?,
     signedJwt: SignedJWT,
-): JWSKeySelector<SecurityContext>? {
-    val algorithm = requireNotNull(signedJwt.header.algorithm) { "missing 'alg'" }
-    suspend fun fromMetadata(source: Metadata): JWSKeySelector<SecurityContext> =
+): JWKSource<SecurityContext>? {
+    suspend fun fromMetadata(source: Metadata): JWKSource<SecurityContext> =
         httpClientFactory.invoke().use { httpClient ->
             val fetcher = SdJwtVcIssuerMetaDataFetcher(httpClient)
             val (_, jwks) = fetcher.fetchMetaData(source.iss)
-            JWSVerificationKeySelector(algorithm, ImmutableJWKSet(jwks))
+            ImmutableJWKSet(jwks)
         }
 
-    suspend fun fromX509CertChain(source: X509CertChain): JWSKeySelector<SecurityContext>? =
+    suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext>? =
         if (trust.isTrusted(source.chain)) {
-            val publicKey = source.chain.first().publicKey
-            SingleKeyJWSKeySelector(algorithm, publicKey)
+            val jwk = JWK.parse(source.chain.first())
+            ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
         } else null
 
-    suspend fun fromDid(source: DIDUrl): JWSKeySelector<SecurityContext>? =
+    suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext>? =
         lookup
             ?.lookup(source.iss, source.kid)
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { publicKeys -> JWSVerificationKeySelector(algorithm, ImmutableJWKSet(JWKSet(publicKeys))) }
+            ?.let { ImmutableJWKSet(JWKSet(it)) }
 
     return when (val source = keySource(signedJwt)) {
         null -> null
@@ -271,15 +264,3 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
         else -> null
     }
 }
-
-private fun sdJwtVcProcessor(keySelector: JWSKeySelector<SecurityContext>): JWTProcessor<SecurityContext> =
-    DefaultJWTProcessor<SecurityContext>().apply {
-        jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType(SD_JWT_VC_TYPE))
-        jwsKeySelector = keySelector
-        jwtClaimsSetVerifier = DefaultJWTClaimsVerifier(
-            JWTClaimsSet.Builder().build(),
-            setOf("iss"),
-        )
-    }
-
-const val SD_JWT_VC_TYPE = "vc+sd-jwt"

@@ -19,11 +19,13 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
@@ -41,6 +43,7 @@ import kotlinx.serialization.json.put
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import java.time.Instant
+import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -186,4 +189,28 @@ class SdJwtVcVerifierTest {
         }
         assertEquals(VerificationError.InvalidJwt, exception.reason)
     }
+
+    @Test
+    fun `SdJwtVcVerifier should verify an SD-JWT-VC that has been signed using an OctetKeyPair using Ed25519 curve and EdDSA algorithm`() =
+        runTest {
+            val key = OctetKeyPairGenerator(Curve.Ed25519).generate()
+            val didJwk = "did:jwk:${Base64.UrlSafe.encode(key.toPublicJWK().toJSONString().toByteArray())}"
+
+            val sdJwt = run {
+                val spec = sdJwt {
+                    iss(didJwk)
+                }
+                val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
+                    type(JOSEObjectType(SD_JWT_VC_TYPE))
+                }
+                signer.issue(spec).getOrThrow()
+            }
+
+            val verifier = SdJwtVcVerifier { did, _ ->
+                assertEquals(didJwk, did)
+                listOf(key.toPublicJWK())
+            }
+
+            verifier.verifyIssuance(sdJwt.serialize()).getOrThrow()
+        }
 }

@@ -44,4 +44,14 @@ class ExampleReadMeTest01 {
     fun testExampleRecreateClaims01() {
         println(claims)
     }
+
+    @Test
+    fun testExampleSdJwtWithMinimumDigest01() {
+        println(sdJwtWithMinimumDigests)
+    }
+
+    @Test
+    fun testExampleSdJwtVcVerification01() {
+        sdJwtVcVerification.getOrThrow()
+    }
 }

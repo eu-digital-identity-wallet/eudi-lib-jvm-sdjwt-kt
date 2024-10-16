@@ -314,39 +314,43 @@ Initially, during issuance, the digests array will contain disclosure digests an
 additional decoy digests to reach the hint provided. If the array
 contains more disclosure digests than the hint, no decoys will be added.
 
+<!--- INCLUDE
+import eu.europa.ec.eudi.sdjwt.*
+-->
 
 ```kotlin
-sdJwt(digestNumberHint = 5) {
-  // This 5 guarantees that at least 5 digests will be found
-  // to the digest array, regardless of the content of the SD-JWT
-    
-  structured("address", minimumDigests = 10) {
-    // This affects the nested array of the digests that will 
-    // have at list 10 digests.
-  }
-  
-  recursive("address1", minimumDigests = 8) {
-      // This will affect the digests array that will be found
-      // in the disclosure of this recursively disclosable item
-      // the whole object will be embedded in its parent
-      // as a single digest
-  }
+val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
+    // This 5 guarantees that at least 5 digests will be found
+    // to the digest array, regardless of the content of the SD-JWT
+    structured("address", minimumDigests = 10) {
+        // This affects the nested array of the digests that will
+        // have at list 10 digests.
+    }
 
-  sdArray("evidence", minimumDigests = 2) {
-    // Array will have at least 2 digests
-    // regardless of its elements
-  }
+    recursive("address1", minimumDigests = 8) {
+        // This will affect the digests array that will be found
+        // in the disclosure of this recursively disclosable item
+        // the whole object will be embedded in its parent
+        // as a single digest
+    }
 
-  recursiveArray("evidence1", minimumDigests = 2) {
-    // Array will have at least 2 digests
-    // regardless of its elements
-    // the whole array will be embedded in its parent  
-    // as a single digest  
-  }
+    sdArray("evidence", minimumDigests = 2) {
+        // Array will have at least 2 digests
+        // regardless of its elements
+    }
 
-  
+    recursiveArray("evidence1", minimumDigests = 2) {
+        // Array will have at least 2 digests
+        // regardless of its elements
+        // the whole array will be embedded in its parent
+        // as a single digest
+    }
 }
 ```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtWithMinimumDigest01.kt).
+
+<!--- TEST println(sdJwtWithMinimumDigests) -->
 
 > [!TIP]
 > In addition to the DSL defined hints, the issuer may set a global hint to the `SdJwtFactory`.
@@ -385,6 +389,51 @@ More specifically, Issuer-signed JWT Verification Key Validation support is prov
 [SdJwtVcVerifier](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/SdJwtVcVerifier.kt).  
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for code examples of
 verifying an Issuance SD-JWT VC and a Presentation SD-JWT VC (including verification of the Key Binding JWT).
+
+Example:
+
+<!--- INCLUDE
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.Ed25519Signer
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
+import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
+import kotlinx.coroutines.runBlocking
+import kotlin.io.encoding.Base64
+import kotlin.test.assertEquals
+-->
+
+```kotlin
+val sdJwtVcVerification = runBlocking {
+    val key = OctetKeyPairGenerator(Curve.Ed25519).generate()
+    val didJwk = "did:jwk:${Base64.UrlSafe.encode(key.toPublicJWK().toJSONString().toByteArray())}"
+
+    val sdJwt = run {
+        val spec = sdJwt {
+            iss(didJwk)
+        }
+        val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
+            type(JOSEObjectType("vc+sd-jwt"))
+        }
+        signer.issue(spec).getOrThrow()
+    }
+
+    val verifier = SdJwtVcVerifier { did, _ ->
+        assertEquals(didJwk, did)
+        listOf(key.toPublicJWK())
+    }
+    verifier.verifyIssuance(sdJwt.serialize())
+}
+```
+
+> You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVcVerification01.kt).
+
+<!--- TEST sdJwtVcVerification.getOrThrow() -->
+
+> [!NOTE]
+> Support for OctetKeyPair required the optional dependency **com.google.crypto.tink:tink**.
 
 ## How to contribute
 
