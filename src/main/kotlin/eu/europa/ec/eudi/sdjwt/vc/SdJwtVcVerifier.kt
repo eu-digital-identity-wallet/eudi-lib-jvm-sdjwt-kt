@@ -209,7 +209,7 @@ private suspend fun issuerJwkSource(
     suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext>? =
         lookup
             ?.lookup(source.iss, source.kid)
-            ?.let { ImmutableJWKSet(JWKSet(it)) }
+            ?.let { SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(it)) }
 
     return when (val source = keySource(signedJwt)) {
         null -> null

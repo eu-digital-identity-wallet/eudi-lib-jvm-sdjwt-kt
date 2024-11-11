@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.Ed25519Verifier
@@ -99,6 +100,14 @@ internal class SdJwtVcJwtProcessor<C : SecurityContext>(
             throw BadJOSEException("Signed JWT rejected: No JWTClaimSet verifier is configured")
         }
     }
+
+    companion object {
+
+        /**
+         * Gets a [JWKSource] for a DID Document.
+         */
+        fun <C : SecurityContext> didJwkSet(jwsHeader: JWSHeader, jwkSet: JWKSet): JWKSource<C> = DIDJWKSet<C>(jwsHeader, jwkSet)
+    }
 }
 
 private fun SignedJWT.jwtClaimSet(): JWTClaimsSet =
@@ -124,3 +133,37 @@ private inline fun <reified T> JWK.expectIs(): T =
     } else {
         throw BadJOSEException("Expected a JWK of type ${T::class.java.simpleName}")
     }
+
+/**
+ * [JWKSource] implementation for DID Documents.
+ *
+ * When [JWKSource.get] is invoked, it ignores the provided [JWKSelector], and instead uses one that matches
+ * all the properties of the provided [JWSHeader] besides the Key ID.
+ */
+private class DIDJWKSet<C : SecurityContext>(jwsHeader: JWSHeader, val jwkSet: JWKSet) : JWKSource<C> {
+    private val jwkSelector: JWKSelector by lazy {
+        // Create a JWKMatcher that considers all attributes of the JWK but the Key ID.
+        // The matcher here doesn't support HMAC Secret Key resolution, since DID Documents cannot contain private keys.
+        // See also: JWKMatcher.forJWSHeader().
+        val matcher = when (val algorithm = jwsHeader.algorithm) {
+            in JWSAlgorithm.Family.RSA, in JWSAlgorithm.Family.EC ->
+                JWKMatcher.Builder()
+                    .keyType(KeyType.forAlgorithm(algorithm))
+                    .keyUses(KeyUse.SIGNATURE, null)
+                    .algorithms(algorithm, null)
+                    .x509CertSHA256Thumbprint(jwsHeader.x509CertSHA256Thumbprint)
+                    .build()
+            in JWSAlgorithm.Family.ED ->
+                JWKMatcher.Builder()
+                    .keyType(KeyType.forAlgorithm(algorithm))
+                    .keyUses(KeyUse.SIGNATURE, null)
+                    .algorithms(algorithm, null)
+                    .curves(Curve.forJWSAlgorithm(algorithm))
+                    .build()
+            else -> error("Unsupported JWSAlgorithm '$algorithm'")
+        }
+        JWKSelector(matcher)
+    }
+
+    override fun get(jwkSelector: JWKSelector, context: C?): MutableList<JWK> = this.jwkSelector.select(jwkSet)
+}
