@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
@@ -211,7 +209,7 @@ private suspend fun issuerJwkSource(
     suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext>? =
         lookup
             ?.lookup(source.iss, source.kid)
-            ?.let { DIDJWKSet(signedJwt.header, JWKSet(it)) }
+            ?.let { SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(it)) }
 
     return when (val source = keySource(signedJwt)) {
         null -> null
@@ -219,40 +217,6 @@ private suspend fun issuerJwkSource(
         is X509CertChain -> fromX509CertChain(source)
         is DIDUrl -> fromDid(source)
     }
-}
-
-/**
- * [JWKSource] implementation for DID Documents.
- *
- * When [JWKSource.get] is invoked, it ignores the [JWKSelector] provided and instead one that matches all
- * the properties of the provided [JWSHeader], but the Key ID.
- */
-private class DIDJWKSet<C : SecurityContext>(jwsHeader: JWSHeader, val jwkSet: JWKSet) : JWKSource<C> {
-    private val jwkSelector: JWKSelector by lazy {
-        // Create a JWKMatcher that considers all attributes of the JWK but the Key ID.
-        // The matcher here doesn't support HMAC Secret Key resolution, since DID Documents cannot contain private keys.
-        // See also: JWKMatcher.forJWSHeader().
-        val matcher = when (val algorithm = jwsHeader.algorithm) {
-            in JWSAlgorithm.Family.RSA, in JWSAlgorithm.Family.EC ->
-                JWKMatcher.Builder()
-                    .keyType(KeyType.forAlgorithm(algorithm))
-                    .keyUses(KeyUse.SIGNATURE, null)
-                    .algorithms(algorithm, null)
-                    .x509CertSHA256Thumbprint(jwsHeader.x509CertSHA256Thumbprint)
-                    .build()
-            in JWSAlgorithm.Family.ED ->
-                JWKMatcher.Builder()
-                    .keyType(KeyType.forAlgorithm(algorithm))
-                    .keyUses(KeyUse.SIGNATURE, null)
-                    .algorithms(algorithm, null)
-                    .curves(Curve.forJWSAlgorithm(algorithm))
-                    .build()
-            else -> error("Unsupported JWSAlgorithm '$algorithm'")
-        }
-        JWKSelector(matcher)
-    }
-
-    override fun get(jwkSelector: JWKSelector, context: C?): MutableList<JWK> = this.jwkSelector.select(jwkSet)
 }
 
 /**
