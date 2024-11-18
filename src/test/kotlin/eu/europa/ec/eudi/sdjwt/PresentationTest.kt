@@ -253,7 +253,7 @@ class PresentationTest {
         }
 
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
-        // All claims bellow should not require a disclosure
+        // All claims below should not require a disclosure
         val q1 = setOf("/evidence", "/evidence/1", "/evidence/1/foo").map { it.claimPointer() }.toSet()
         val p1 = sdJwt.present(q1)
         assertNotNull(p1)

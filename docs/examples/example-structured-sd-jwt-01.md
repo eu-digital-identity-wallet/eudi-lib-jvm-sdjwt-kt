@@ -4,7 +4,7 @@
 
 Check [specification Example 2: Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-structured-sd-jwt)
 
-The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
+The example below demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
 
 <!--- INCLUDE

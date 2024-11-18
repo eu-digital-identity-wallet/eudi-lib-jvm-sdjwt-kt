@@ -25,9 +25,9 @@ To issue a SD-JWT, an `Issuer` should have:
 - Decided on how the issued claims will be selectively disclosed (check [DSL examples](#dsl-examples))
 - Whether to use decoy digests or not
 - An appropriate signing key pair
-- optionally, decided if and how will include holder's public key to the SD-JWT
+- optionally, decided if and how to include the holder's public key in the SD-JWT
 
-In the example bellow, Issuer decides to issue an SD-JWT as follows:
+In the example below, the Issuer decides to issue an SD-JWT as follows:
 
 - Includes in plain standard JWT claims (`sub`,`iss`, `iat`, `exp`)
 - Makes selectively disclosable a claim named `address` using structured disclosure. This allows individually
@@ -96,7 +96,7 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = run {
 In this case, the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
 to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
-know a how the public key of the Holder was included in the SD-JWT and which algorithm
+know how the public key of the Holder was included in the SD-JWT and which algorithm
 the Holder used to sign the `Key Binding JWT`
 
 ```kotlin

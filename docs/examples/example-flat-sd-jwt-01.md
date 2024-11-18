@@ -4,7 +4,7 @@
 
 Check [specification Example 1: Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-flat-sd-jwt)
 
-The example bellow demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
+The example below demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT.
 The Issuer in this case made the following decisions:
 * The `sub` element and essential verification data (`iss`, `iat`, etc.) are always visible.
