@@ -65,7 +65,7 @@ private fun issuerMetadataUrl(issuer: Url): Url =
 
 @Serializable
 private data class SdJwtVcIssuerMetadataTO(
-    val issuer: String,
+    @SerialName("issuer") val issuer: String,
     @SerialName("jwks_uri") val jwksUri: String? = null,
     @SerialName("jwks") val jwks: JsonObject? = null,
 )
