@@ -37,9 +37,20 @@ dependencies {
     api(libs.ktor.client.serialization)
     api(libs.ktor.serialization.kotlinx.json)
     testImplementation(kotlin("test"))
-    testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.tink) {
+        because("To allow tests against ECDSA curves")
+    }
+    testImplementation(libs.ktor.client.java) {
+        because("Register an Engine for tests")
+    }
+    testImplementation(libs.ktor.client.logging) {
+        because("Allow logging of HTTP requests/responses")
+    }
+    testImplementation(libs.logback.classic) {
+        because("Allow logging of HTTP requests/responses. Ktor client delegates logging")
+    }
 }
 
 java {
