@@ -107,7 +107,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer) ?: error("Unexpected")
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
@@ -147,7 +147,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer) ?: error("Unexpected")
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
