@@ -77,7 +77,7 @@ sealed interface VerificationError {
     data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
 
     @JvmInline
-    value class Cause(val value: String) : VerificationError {
+    value class Other(val value: String) : VerificationError {
         override fun toString(): String = value
     }
 }

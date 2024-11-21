@@ -188,7 +188,7 @@ fun sdJwtVcSignatureVerifier(
     }
 }
 
-private fun invalidSdJwtVc(msg: String): Nothing = throw VerificationError.Cause(msg).asException()
+private fun invalidSdJwtVc(msg: String): Nothing = throw VerificationError.Other(msg).asException()
 
 private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory,
@@ -260,11 +260,11 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource {
         issScheme == HTTPS_URI_SCHEME && certChain.isNotEmpty() -> {
             val leaf = certChain.first()
             if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
-            else invalidSdJwtVc("Failed to find $issUrl to URI or DNS entries of provided leaft certificate")
+            else invalidSdJwtVc("Failed to find $issUrl in URI or DNS entries of provided leaf certificate")
         }
 
         issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
-        else -> invalidSdJwtVc("Failed to find identify a source for Issuer's pub key")
+        else -> invalidSdJwtVc("Failed to identify a source for Issuer's pub key")
     }
 }
