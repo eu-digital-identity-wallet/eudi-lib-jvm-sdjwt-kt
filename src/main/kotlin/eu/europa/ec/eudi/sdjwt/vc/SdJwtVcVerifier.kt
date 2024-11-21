@@ -15,9 +15,11 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
+import com.nimbusds.jose.proc.BadJOSEException
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
@@ -179,40 +181,42 @@ fun sdJwtVcSignatureVerifier(
     try {
         val signedJwt = SignedJWT.parse(unverifiedJwt)
         val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
-        checkNotNull(jwkSource) { "Failed to resolve issuer public key" }
         val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
         jwtProcessor.process(signedJwt, null).asClaims()
-    } catch (e: Throwable) {
+    } catch (t: BadJOSEException) {
         null
     }
 }
+
+private fun invalidSdJwtVc(msg: String): Nothing = throw VerificationError.Cause(msg).asException()
 
 private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory,
     trust: X509CertificateTrust,
     lookup: LookupPublicKeysFromDIDDocument?,
     signedJwt: SignedJWT,
-): JWKSource<SecurityContext>? {
+): JWKSource<SecurityContext> {
     suspend fun fromMetadata(source: Metadata): JWKSource<SecurityContext> =
         httpClientFactory.invoke().use { httpClient ->
             val fetcher = SdJwtVcIssuerMetaDataFetcher(httpClient)
-            val (_, jwks) = fetcher.fetchMetaData(source.iss)
-            ImmutableJWKSet(jwks)
+            fetcher.fetchMetaData(source.iss)
+                ?.let { (_, jwks) -> ImmutableJWKSet(jwks) }
+                ?: invalidSdJwtVc("Failed to get SD-JWT-VC metadata of ${source.iss}")
         }
 
-    suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext>? =
+    suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext> =
         if (trust.isTrusted(source.chain)) {
             val jwk = JWK.parse(source.chain.first())
             ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
-        } else null
+        } else invalidSdJwtVc("Leaf certificate is not trusted")
 
-    suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext>? =
+    suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext> =
         lookup
             ?.lookup(source.iss, source.kid)
             ?.let { SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(it)) }
+            ?: invalidSdJwtVc("Failed to resolve $source")
 
     return when (val source = keySource(signedJwt)) {
-        null -> null
         is Metadata -> fromMetadata(source)
         is X509CertChain -> fromX509CertChain(source)
         is DIDUrl -> fromDid(source)
@@ -234,7 +238,7 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
 private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
-internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
+internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource {
     val kid = jwt.header?.keyID
     val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet?.issuer
@@ -253,14 +257,14 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource? {
     }
 
     return when {
-        issScheme == HTTPS_URI_SCHEME && certChain.isEmpty() -> Metadata(issUrl, kid)
-        issScheme == HTTPS_URI_SCHEME -> {
+        issScheme == HTTPS_URI_SCHEME && certChain.isNotEmpty() -> {
             val leaf = certChain.first()
             if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
-            else null
+            else invalidSdJwtVc("Failed to find $issUrl to URI or DNS entries of provided leaft certificate")
         }
 
+        issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
-        else -> null
+        else -> invalidSdJwtVc("Failed to find identify a source for Issuer's pub key")
     }
 }

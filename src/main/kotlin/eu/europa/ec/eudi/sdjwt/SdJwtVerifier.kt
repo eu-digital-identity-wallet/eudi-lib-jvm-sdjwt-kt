@@ -19,6 +19,7 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
+import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
 import java.time.Clock
@@ -74,6 +75,11 @@ sealed interface VerificationError {
      * @param disclosures The disclosures for which there are no digests
      */
     data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
+
+    @JvmInline
+    value class Cause(val value: String) : VerificationError {
+        override fun toString(): String = value
+    }
 }
 
 /**
@@ -103,7 +109,9 @@ fun interface JwtSignatureVerifier {
      * @return the payload of the JWT if signature is valid, otherwise raises [InvalidJwt]
      */
     suspend fun verify(jwt: String): Result<Claims> =
-        runCatching { checkSignature(jwt) ?: throw InvalidJwt.asException() }
+        runCatching {
+            checkSignature(jwt) ?: throw InvalidJwt.asException()
+        }
 
     /**
      * Implement this method to check the signature of the JWT and extract its payload
