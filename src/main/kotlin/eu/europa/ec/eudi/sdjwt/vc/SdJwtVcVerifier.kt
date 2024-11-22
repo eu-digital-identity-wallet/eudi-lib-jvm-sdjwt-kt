@@ -59,17 +59,24 @@ fun interface LookupPublicKeysFromDIDDocument {
 /**
  * An SD-JWT-VC specific verifier
  *
- * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
+ * @param httpClientFactory a factory for getting http clients, used to fetch SD-JWT-VC Issuer metadata. A `null`
+ * value indicates that holder doesn't support fetching SD-JWT-VC Issuer metadata.
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
- * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
+ * indicates whether is trusted or not. A `null` value indicates that holder doesn't support X509 Certificate trust.
  * @param lookup an optional way of looking up keys from DID Documents. A `null` value indicates that holder doesn't
- * support DIDs
+ * support DIDs.
  */
-class SdJwtVcVerifier private constructor(
+class SdJwtVcVerifier(
     private val httpClientFactory: KtorHttpClientFactory? = null,
     private val trust: X509CertificateTrust? = null,
     private val lookup: LookupPublicKeysFromDIDDocument? = null,
 ) {
+    init {
+        require(httpClientFactory != null || trust != null || lookup != null) {
+            "at least one of httpClientFactory, trust, or lookup must be provided"
+        }
+    }
+
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
      * Typically, this is useful to Holder that wants to verify an issued SD-JWT
@@ -148,33 +155,29 @@ class SdJwtVcVerifier private constructor(
     companion object {
 
         /**
-         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, and optionally DID resolution enabled.
+         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
          */
-        operator fun invoke(
+        fun usingIssuerMetadata(
             httpClientFactory: KtorHttpClientFactory,
-            didLookup: LookupPublicKeysFromDIDDocument? = null,
-        ): SdJwtVcVerifier =
-            SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = null, lookup = didLookup)
+        ): SdJwtVcVerifier = SdJwtVcVerifier(httpClientFactory = httpClientFactory)
 
         /**
-         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled, and optionally DID resolution enabled.
+         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled.
          */
-        operator fun invoke(
-            x509CertificateTrust: X509CertificateTrust,
-            didLookup: LookupPublicKeysFromDIDDocument? = null,
-        ): SdJwtVcVerifier =
-            SdJwtVcVerifier(httpClientFactory = null, trust = x509CertificateTrust, lookup = didLookup)
+        fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier = SdJwtVcVerifier(trust = x509CertificateTrust)
 
         /**
-         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, X509 Certificate trust enabled,
-         * and optionally DID resolution enabled.
+         * Creates a new [SdJwtVcVerifier] with DID resolution enabled.
          */
-        operator fun invoke(
+        fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier = SdJwtVcVerifier(lookup = didLookup)
+
+        /**
+         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, X509 Certificate trust enabled.
+         */
+        fun usingIssuerMetadataOrX5c(
             httpClientFactory: KtorHttpClientFactory,
             x509CertificateTrust: X509CertificateTrust,
-            didLookup: LookupPublicKeysFromDIDDocument? = null,
-        ): SdJwtVcVerifier =
-            SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust, lookup = didLookup)
+        ): SdJwtVcVerifier = SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
     }
 }
 

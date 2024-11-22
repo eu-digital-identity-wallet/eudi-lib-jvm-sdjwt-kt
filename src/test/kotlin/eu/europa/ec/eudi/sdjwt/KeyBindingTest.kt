@@ -54,7 +54,7 @@ class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
-    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, didLookup = lookup)
+    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
     private val holder = HolderActor(genKey("holder"), lookup)
 
     /**
@@ -239,7 +239,7 @@ class HolderActor(
     holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
-    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, didLookup = lookup)
+    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
     private val keyBindingSigner: KeyBindingSigner by lazy {
         val actualSigner = ECDSASigner(holderKey)
         object : KeyBindingSigner {
@@ -298,7 +298,7 @@ class VerifierActor(
     private val whatToDisclose: Set<String>,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
-    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, didLookup = lookup)
+    private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
