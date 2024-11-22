@@ -46,6 +46,7 @@ import java.time.Instant
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 private object SampleIssuer {
     private val iss = Url("https://example.com")
@@ -206,7 +207,9 @@ class SdJwtVcVerifierTest {
                 signer.issue(spec).getOrThrow()
             }
 
-            val verifier = SdJwtVcVerifier { did, _ ->
+            val verifier = SdJwtVcVerifier(
+                httpClientFactory = { fail("Issuer metadata resolution should not have been used") },
+            ) { did, _ ->
                 assertEquals(didJwk, did)
                 listOf(key.toPublicJWK())
             }

@@ -59,17 +59,24 @@ fun interface LookupPublicKeysFromDIDDocument {
 /**
  * An SD-JWT-VC specific verifier
  *
- * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
+ * @param httpClientFactory a factory for getting http clients, used to fetch SD-JWT-VC Issuer metadata. A `null`
+ * value indicates that holder doesn't support fetching SD-JWT-VC Issuer metadata.
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
- * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
+ * indicates whether is trusted or not. A `null` value indicates that holder doesn't support X509 Certificate trust.
  * @param lookup an optional way of looking up keys from DID Documents. A `null` value indicates that holder doesn't
- * support DIDs
+ * support DIDs.
  */
 class SdJwtVcVerifier(
-    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    private val trust: X509CertificateTrust = X509CertificateTrust.None,
+    private val httpClientFactory: KtorHttpClientFactory? = null,
+    private val trust: X509CertificateTrust? = null,
     private val lookup: LookupPublicKeysFromDIDDocument? = null,
 ) {
+    init {
+        require(httpClientFactory != null || trust != null || lookup != null) {
+            "at least one of httpClientFactory, trust, or lookup must be provided"
+        }
+    }
+
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
      * Typically, this is useful to Holder that wants to verify an issued SD-JWT
@@ -81,7 +88,7 @@ class SdJwtVcVerifier(
     suspend fun verifyIssuance(
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
-        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
@@ -101,7 +108,7 @@ class SdJwtVcVerifier(
     suspend fun verifyIssuance(
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
-        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
@@ -120,7 +127,7 @@ class SdJwtVcVerifier(
         unverifiedSdJwt: String,
         challenge: JsonObject? = null,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
-        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
         SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
@@ -140,13 +147,38 @@ class SdJwtVcVerifier(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject? = null,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
-        val jwtSignatureVerifier = async { jwtSignatureVerifier() }
+        val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
         SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
-    private fun jwtSignatureVerifier(): JwtSignatureVerifier =
-        sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
+    companion object {
+
+        /**
+         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
+         */
+        fun usingIssuerMetadata(
+            httpClientFactory: KtorHttpClientFactory,
+        ): SdJwtVcVerifier = SdJwtVcVerifier(httpClientFactory = httpClientFactory)
+
+        /**
+         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled.
+         */
+        fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier = SdJwtVcVerifier(trust = x509CertificateTrust)
+
+        /**
+         * Creates a new [SdJwtVcVerifier] with DID resolution enabled.
+         */
+        fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier = SdJwtVcVerifier(lookup = didLookup)
+
+        /**
+         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust, and SD-JWT-VC Issuer Metadata resolution enabled.
+         */
+        fun usingX5cOrIssuerMetadata(
+            x509CertificateTrust: X509CertificateTrust,
+            httpClientFactory: KtorHttpClientFactory,
+        ): SdJwtVcVerifier = SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
+    }
 }
 
 fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid =
@@ -174,8 +206,8 @@ fun KeyBindingVerifier.Companion.forSdJwtVc(challenge: JsonObject?): KeyBindingV
  * @return a SD-JWT-VC specific signature verifier as described above
  */
 fun sdJwtVcSignatureVerifier(
-    httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    trust: X509CertificateTrust = X509CertificateTrust.None,
+    httpClientFactory: KtorHttpClientFactory? = null,
+    trust: X509CertificateTrust? = null,
     lookup: LookupPublicKeysFromDIDDocument? = null,
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
@@ -191,30 +223,32 @@ fun sdJwtVcSignatureVerifier(
 private fun invalidSdJwtVc(msg: String): Nothing = throw VerificationError.Other(msg).asException()
 
 private suspend fun issuerJwkSource(
-    httpClientFactory: KtorHttpClientFactory,
-    trust: X509CertificateTrust,
+    httpClientFactory: KtorHttpClientFactory?,
+    trust: X509CertificateTrust?,
     lookup: LookupPublicKeysFromDIDDocument?,
     signedJwt: SignedJWT,
 ): JWKSource<SecurityContext> {
     suspend fun fromMetadata(source: Metadata): JWKSource<SecurityContext> =
-        httpClientFactory.invoke().use { httpClient ->
+        httpClientFactory?.invoke()?.use { httpClient ->
             val fetcher = SdJwtVcIssuerMetaDataFetcher(httpClient)
             fetcher.fetchMetaData(source.iss)
                 ?.let { (_, jwks) -> ImmutableJWKSet(jwks) }
                 ?: invalidSdJwtVc("Failed to get SD-JWT-VC metadata of ${source.iss}")
-        }
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires Issuer's metadata resolution, which is not enabled")
 
     suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext> =
-        if (trust.isTrusted(source.chain)) {
-            val jwk = JWK.parse(source.chain.first())
-            ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
-        } else invalidSdJwtVc("Leaf certificate is not trusted")
+        trust?.let {
+            if (it.isTrusted(source.chain)) {
+                val jwk = JWK.parse(source.chain.first())
+                ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
+            } else invalidSdJwtVc("Leaf certificate is not trusted")
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires x5c validation, which is not enabled")
 
     suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext> =
-        lookup
-            ?.lookup(source.iss, source.kid)
-            ?.let { SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(it)) }
-            ?: invalidSdJwtVc("Failed to resolve $source")
+        lookup?.let {
+            val jwks = it.lookup(source.iss, source.kid) ?: invalidSdJwtVc("Failed to resolve $source")
+            SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(jwks))
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires DID resolution, which is not enabled")
 
     return when (val source = keySource(signedJwt)) {
         is Metadata -> fromMetadata(source)
