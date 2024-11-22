@@ -107,7 +107,13 @@ class SdJwtVcVerifierTest {
 
     @Test
     fun `keySource should return a Metadata when iss is a https url`() {
-        val expectedSource = SdJwtVcIssuerPublicKeySource.Metadata(Url("https://example.com"))
+        val expectedSource = SdJwtVcIssuerPublicKeySource.Metadata(Url("https://example.com"), null)
+        testForMetaDataSource(expectedSource)
+    }
+
+    @Test
+    fun `keySource should return a Metadata when iss is a https url and kid is provided`() {
+        val expectedSource = SdJwtVcIssuerPublicKeySource.Metadata(Url("https://example.com"), "some-kid")
         testForMetaDataSource(expectedSource)
     }
 
@@ -115,6 +121,7 @@ class SdJwtVcVerifierTest {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
                 type(JOSEObjectType(SD_JWT_VC_TYPE))
+                expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
                 issuer(expectedSource.iss.toString())

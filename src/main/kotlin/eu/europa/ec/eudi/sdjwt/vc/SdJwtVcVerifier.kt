@@ -262,7 +262,7 @@ private suspend fun issuerJwkSource(
  */
 internal sealed interface SdJwtVcIssuerPublicKeySource {
 
-    data class Metadata(val iss: Url) : SdJwtVcIssuerPublicKeySource
+    data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
     data class X509CertChain(val iss: Url, val chain: List<X509Certificate>) : SdJwtVcIssuerPublicKeySource
 
@@ -297,7 +297,7 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource {
             else invalidSdJwtVc("Failed to find $issUrl in URI or DNS entries of provided leaf certificate")
         }
 
-        issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl)
+        issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> invalidSdJwtVc("Failed to identify a source for Issuer's pub key")
     }
