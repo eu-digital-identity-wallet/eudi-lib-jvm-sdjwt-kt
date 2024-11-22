@@ -231,7 +231,7 @@ private suspend fun issuerJwkSource(
             fetcher.fetchMetaData(source.iss)
                 ?.let { (_, jwks) -> ImmutableJWKSet(jwks) }
                 ?: invalidSdJwtVc("Failed to get SD-JWT-VC metadata of ${source.iss}")
-        } ?: invalidSdJwtVc("SD-JWT-VC Issuer metadata resolution is not enabled")
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires Issuer's metadata resolution, which is not enabled")
 
     suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext> =
         trust?.let {
@@ -239,13 +239,13 @@ private suspend fun issuerJwkSource(
                 val jwk = JWK.parse(source.chain.first())
                 ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
             } else invalidSdJwtVc("Leaf certificate is not trusted")
-        } ?: invalidSdJwtVc("X509 Certificate trust is not enabled")
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires x5c validation, which is not enabled")
 
     suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext> =
         lookup?.let {
             val jwks = it.lookup(source.iss, source.kid) ?: invalidSdJwtVc("Failed to resolve $source")
             SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(jwks))
-        } ?: invalidSdJwtVc("DID resolution is not enabled")
+        } ?: invalidSdJwtVc("SD-JWT-VC validation requires DID resolution, which is not enabled")
 
     return when (val source = keySource(signedJwt)) {
         is Metadata -> fromMetadata(source)
