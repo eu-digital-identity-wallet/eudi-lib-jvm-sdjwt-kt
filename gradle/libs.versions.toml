@@ -15,6 +15,7 @@ tink = "1.15.0"
 kotlinxCoroutines = "1.8.1"
 ktor = "2.3.12"
 logback = "1.5.12"
+bouncyCastle = "1.78.1"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -30,6 +31,7 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-client-logging = {module ="io.ktor:ktor-client-logging", version.ref="ktor"}
 ktor-client-java = {module ="io.ktor:ktor-client-java", version.ref="ktor"}
 logback-classic = {module="ch.qos.logback:logback-classic", version.ref="logback"}
+bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 
 [plugins]
 foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }

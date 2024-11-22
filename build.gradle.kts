@@ -51,6 +51,9 @@ dependencies {
     testImplementation(libs.logback.classic) {
         because("Allow logging of HTTP requests/responses. Ktor client delegates logging")
     }
+    testImplementation(libs.bouncy.castle) {
+        because("To generate self-signed X509 Certificates")
+    }
 }
 
 java {

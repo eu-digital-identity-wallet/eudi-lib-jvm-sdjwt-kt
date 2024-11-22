@@ -395,34 +395,67 @@ Example:
 <!--- INCLUDE
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.crypto.Ed25519Signer
+import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
-import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
-import kotlin.io.encoding.Base64
-import kotlin.test.assertEquals
+import org.bouncycastle.asn1.DERSequence
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
+import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import java.math.BigInteger
+import java.net.URL
+import java.time.Clock
+import java.util.*
+import javax.security.auth.x500.X500Principal
+import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaDuration
 -->
 
 ```kotlin
 val sdJwtVcVerification = runBlocking {
-    val key = OctetKeyPairGenerator(Curve.Ed25519).generate()
-    val didJwk = "did:jwk:${Base64.UrlSafe.encode(key.toPublicJWK().toJSONString().toByteArray())}"
+    val issuer = URL("https://issuer.example.com")
+    val key = ECKeyGenerator(Curve.P_521).generate()
+    val certificate = run {
+        val clock = Clock.systemDefaultZone()
+        val issuedAt = clock.instant()
+        val expiresAt = issuedAt + 365.days.toJavaDuration()
+        val subject = X500Principal("CN=${issuer.host}")
+        val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())
+        val holder = JcaX509v3CertificateBuilder(
+            subject,
+            BigInteger.ONE,
+            Date.from(issuedAt),
+            Date.from(expiresAt),
+            subject,
+            key.toECPublicKey(),
+        ).addExtension(
+            Extension.subjectAlternativeName,
+            true,
+            GeneralNames.getInstance(DERSequence(GeneralName(GeneralName.dNSName, issuer.host))),
+        ).build(signer)
+        X509CertUtils.parse(holder.encoded)
+    }
 
     val sdJwt = run {
         val spec = sdJwt {
-            iss(didJwk)
+            iss(issuer.toExternalForm())
         }
-        val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
+        val signer = SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {
             type(JOSEObjectType("vc+sd-jwt"))
+            x509CertChain(listOf(Base64.encode(certificate.encoded)))
         }
         signer.issue(spec).getOrThrow()
     }
 
-    val verifier = SdJwtVcVerifier.usingDID { did, _ ->
-        assertEquals(didJwk, did)
-        listOf(key.toPublicJWK())
+    val verifier = SdJwtVcVerifier.usingX5c { chain ->
+        chain.isNotEmpty() && chain.first() == certificate
     }
 
     verifier.verifyIssuance(sdJwt.serialize())
