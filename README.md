@@ -421,13 +421,13 @@ val sdJwtVcVerification = runBlocking {
         signer.issue(spec).getOrThrow()
     }
 
-    val verifier = SdJwtVcVerifier.builder()
-        .enableX509CertificateTrust { _ -> fail("X509Certificate trust should not have been used") }
-        .enableDidResolution { did, _ ->
-            assertEquals(didJwk, did)
-            listOf(key.toPublicJWK())
-        }
-        .build()
+    val verifier = SdJwtVcVerifier(
+        x509CertificateTrust = { _ -> fail("X509Certificate trust should not have been used") },
+    ) { did, _ ->
+        assertEquals(didJwk, did)
+        listOf(key.toPublicJWK())
+    }
+
     verifier.verifyIssuance(sdJwt.serialize())
 }
 ```

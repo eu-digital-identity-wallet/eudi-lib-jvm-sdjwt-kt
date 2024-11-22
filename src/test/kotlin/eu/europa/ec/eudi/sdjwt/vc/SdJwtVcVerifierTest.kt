@@ -155,9 +155,7 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
-        val verifier = SdJwtVcVerifier.builder()
-            .enableIssuerMetadataResolution { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
-            .build()
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         assertDoesNotThrow {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
@@ -167,9 +165,7 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
-        val verifier = SdJwtVcVerifier.builder()
-            .enableIssuerMetadataResolution { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
-            .build()
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         assertDoesNotThrow {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
@@ -180,9 +176,7 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
-        val verifier = SdJwtVcVerifier.builder()
-            .enableIssuerMetadataResolution { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
-            .build()
+        val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
 
         val exception = assertThrows<SdJwtVerificationException> {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
@@ -206,13 +200,12 @@ class SdJwtVcVerifierTest {
                 signer.issue(spec).getOrThrow()
             }
 
-            val verifier = SdJwtVcVerifier.builder()
-                .enableIssuerMetadataResolution { fail("Issuer metadata resolution should not have been used") }
-                .enableDidResolution { did, _ ->
-                    assertEquals(didJwk, did)
-                    listOf(key.toPublicJWK())
-                }
-                .build()
+            val verifier = SdJwtVcVerifier(
+                httpClientFactory = { fail("Issuer metadata resolution should not have been used") },
+            ) { did, _ ->
+                assertEquals(didJwk, did)
+                listOf(key.toPublicJWK())
+            }
 
             verifier.verifyIssuance(sdJwt.serialize()).getOrThrow()
         }

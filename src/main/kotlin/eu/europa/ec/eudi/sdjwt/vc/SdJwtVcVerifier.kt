@@ -148,60 +148,33 @@ class SdJwtVcVerifier private constructor(
     companion object {
 
         /**
-         * Gets a new [Builder].
+         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, and optionally DID resolution enabled.
          */
-        fun builder(): Builder = Builder()
-    }
-
-    /**
-     * Builder for [SdJwtVcVerifier].
-     *
-     * To successfully instantiate an [SdJwtVcVerifier] you must either enable SD-JWT-VC Issuer metadata resolution using
-     * [enableIssuerMetadataResolution], or X509 Certificate trust using [enableX509CertificateTrust]. You can optionally
-     * enable DID resolution using [enableDidResolution].
-     */
-    class Builder(
-        private var _httpClientFactory: KtorHttpClientFactory? = null,
-        private var _x509CertificateTrust: X509CertificateTrust? = null,
-        private var _didLookup: LookupPublicKeysFromDIDDocument? = null,
-    ) {
+        operator fun invoke(
+            httpClientFactory: KtorHttpClientFactory,
+            didLookup: LookupPublicKeysFromDIDDocument? = null,
+        ): SdJwtVcVerifier =
+            SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = null, lookup = didLookup)
 
         /**
-         * Enables SD-JWT-VC Issuer metadata resolution using [httpClientFactory].
+         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled, and optionally DID resolution enabled.
          */
-        fun enableIssuerMetadataResolution(httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory): Builder =
-            apply {
-                _httpClientFactory = httpClientFactory
-            }
+        operator fun invoke(
+            x509CertificateTrust: X509CertificateTrust,
+            didLookup: LookupPublicKeysFromDIDDocument? = null,
+        ): SdJwtVcVerifier =
+            SdJwtVcVerifier(httpClientFactory = null, trust = x509CertificateTrust, lookup = didLookup)
 
         /**
-         * Enables [X509CertificateTrust] using [x509CertificateTrust].
+         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, X509 Certificate trust enabled,
+         * and optionally DID resolution enabled.
          */
-        fun enableX509CertificateTrust(x509CertificateTrust: X509CertificateTrust): Builder =
-            apply {
-                _x509CertificateTrust = x509CertificateTrust
-            }
-
-        /**
-         * Enables DID document resolution using [didLookup].
-         */
-        fun enableDidResolution(didLookup: LookupPublicKeysFromDIDDocument): Builder =
-            apply {
-                _didLookup = didLookup
-            }
-
-        /**
-         * Builds a new [SdJwtVcVerifier] based on the configuration provided.
-         */
-        fun build(): SdJwtVcVerifier {
-            val httpClientFactory = _httpClientFactory
-            val x509CertificateTrust = _x509CertificateTrust
-            val didLookup = _didLookup
-
-            return if (httpClientFactory != null || x509CertificateTrust != null) {
-                SdJwtVcVerifier(httpClientFactory, x509CertificateTrust, didLookup)
-            } else throw IllegalStateException("SD-JWT VC Issuer Metadata resolution or X509 Certificate trust must be enabled")
-        }
+        operator fun invoke(
+            httpClientFactory: KtorHttpClientFactory,
+            x509CertificateTrust: X509CertificateTrust,
+            didLookup: LookupPublicKeysFromDIDDocument? = null,
+        ): SdJwtVcVerifier =
+            SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust, lookup = didLookup)
     }
 }
 
