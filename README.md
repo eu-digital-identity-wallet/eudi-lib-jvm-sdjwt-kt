@@ -403,6 +403,7 @@ import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
 import kotlin.io.encoding.Base64
 import kotlin.test.assertEquals
+import kotlin.test.fail
 -->
 
 ```kotlin
@@ -420,10 +421,13 @@ val sdJwtVcVerification = runBlocking {
         signer.issue(spec).getOrThrow()
     }
 
-    val verifier = SdJwtVcVerifier { did, _ ->
-        assertEquals(didJwk, did)
-        listOf(key.toPublicJWK())
-    }
+    val verifier = SdJwtVcVerifier.builder()
+        .enableX509CertificateTrust { _ -> fail("X509Certificate trust should not have been used") }
+        .enableDidResolution { did, _ ->
+            assertEquals(didJwk, did)
+            listOf(key.toPublicJWK())
+        }
+        .build()
     verifier.verifyIssuance(sdJwt.serialize())
 }
 ```

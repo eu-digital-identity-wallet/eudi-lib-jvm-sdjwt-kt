@@ -46,10 +46,10 @@ class PidDevVerificationTest : Printer {
     fun testPy() = doTest(pid2, enableLogging = false)
 
     private fun doTest(unverifiedSdJwtVc: String, enableLogging: Boolean = false) = runTest {
-        val verifier = SdJwtVcVerifier(
-            httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
-            trust = { x5c -> true },
-        )
+        val verifier = SdJwtVcVerifier.builder()
+            .enableIssuerMetadataResolution { createHttpClient(enableLogging = enableLogging) }
+            .enableX509CertificateTrust { _ -> true }
+            .build()
 
         val issuedSdJwt = try {
             val tmp = verifier.verifyIssuance(unverifiedSdJwtVc).getOrThrow()
