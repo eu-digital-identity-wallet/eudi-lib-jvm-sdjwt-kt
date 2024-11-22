@@ -172,11 +172,11 @@ class SdJwtVcVerifier(
         fun usingDID(didLookup: LookupPublicKeysFromDIDDocument): SdJwtVcVerifier = SdJwtVcVerifier(lookup = didLookup)
 
         /**
-         * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled, X509 Certificate trust enabled.
+         * Creates a new [SdJwtVcVerifier] with X509 Certificate trust, and SD-JWT-VC Issuer Metadata resolution enabled.
          */
-        fun usingIssuerMetadataOrX5c(
-            httpClientFactory: KtorHttpClientFactory,
+        fun usingX5cOrIssuerMetadata(
             x509CertificateTrust: X509CertificateTrust,
+            httpClientFactory: KtorHttpClientFactory,
         ): SdJwtVcVerifier = SdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
     }
 }

@@ -46,7 +46,7 @@ class PidDevVerificationTest : Printer {
     fun testPy() = doTest(pid2, enableLogging = false)
 
     private fun doTest(unverifiedSdJwtVc: String, enableLogging: Boolean = false) = runTest {
-        val verifier = SdJwtVcVerifier.usingIssuerMetadataOrX5c(
+        val verifier = SdJwtVcVerifier.usingX5cOrIssuerMetadata(
             httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
             x509CertificateTrust = { _ -> true },
         )
