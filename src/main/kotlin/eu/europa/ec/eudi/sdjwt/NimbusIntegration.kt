@@ -49,6 +49,7 @@ import com.nimbusds.jose.proc.SecurityContext as NimbusSecurityContext
 import com.nimbusds.jwt.EncryptedJWT as NimbusEncryptedJWT
 import com.nimbusds.jwt.JWT as NimbusJWT
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
+import com.nimbusds.jwt.JWTParser as NimbusJWTParser
 import com.nimbusds.jwt.PlainJWT as NimbusPlainJWT
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 import com.nimbusds.jwt.proc.BadJWTException as NimbusBadJWTException
@@ -594,11 +595,16 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     private val jwkSource: NimbusJWKSource<C>,
 ) : NimbusJWTProcessor<C> {
 
-    private fun notSupported(): Nothing = throw RuntimeException("Operation not supported")
-    override fun process(jwtString: String?, context: C?): NimbusJWTClaimsSet? = notSupported()
-    override fun process(jwt: NimbusJWT?, context: C?): NimbusJWTClaimsSet? = notSupported()
-    override fun process(plainJWT: NimbusPlainJWT?, context: C?): NimbusJWTClaimsSet? = notSupported()
-    override fun process(encryptedJWT: NimbusEncryptedJWT?, context: C?): NimbusJWTClaimsSet? = notSupported()
+    private fun notSupported(): Nothing = throw NimbusBadJOSEException("Only Nimbus SignedJWTs are supported")
+    override fun process(plainJWT: NimbusPlainJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
+    override fun process(encryptedJWT: NimbusEncryptedJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
+
+    override fun process(jwtString: String, context: C?): NimbusJWTClaimsSet? = process(NimbusJWTParser.parse(jwtString), context)
+    override fun process(jwt: NimbusJWT, context: C?): NimbusJWTClaimsSet? =
+        when (jwt) {
+            is NimbusSignedJWT -> process(jwt, context)
+            else -> notSupported()
+        }
 
     override fun process(signedJWT: NimbusSignedJWT, context: C?): NimbusJWTClaimsSet {
         typeVerifier?.verify(signedJWT.header.type, context)
