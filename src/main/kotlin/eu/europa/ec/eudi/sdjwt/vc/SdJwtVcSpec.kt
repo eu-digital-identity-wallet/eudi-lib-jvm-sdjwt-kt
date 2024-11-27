@@ -52,7 +52,7 @@ object SdJwtVcSpec {
     const val RENDERING: String = "rendering"
 
     const val SIMPLE: String = "simple"
-    const val SVG_TEMPLATE: String = "svg_template"
+    const val SVG_TEMPLATES: String = "svg_templates"
 
     const val LOGO: String = "logo"
     const val LOGO_URI: String = "uri"

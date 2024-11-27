@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.shaded.gson.annotations.SerializedName
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -107,7 +106,7 @@ data class ClaimMetadata(
     /**
      * display information for the claim
      */
-    @SerialName(SdJwtVcSpec.CLAIM_DISPLAY) val display: ClaimDisplay? = null,
+    @SerialName(SdJwtVcSpec.CLAIM_DISPLAY) val display: List<ClaimDisplay>? = null,
 
     /**
      *  Indicates whether the claim is selectively disclosable.
@@ -355,10 +354,7 @@ data class DisplayMetadata(
 @Serializable
 data class RenderingMetadata(
     @SerialName(SdJwtVcSpec.SIMPLE) val simple: SimpleRenderingMethod? = null,
-
-    // TODO Check this
-    //  No clear description
-    @SerialName(SdJwtVcSpec.SVG_TEMPLATE) val svgTemplate: SvgTemplate? = null,
+    @SerialName(SdJwtVcSpec.SVG_TEMPLATES) val svgTemplates: List<SvgTemplate>? = null,
 )
 
 /**
@@ -370,6 +366,9 @@ data class SimpleRenderingMethod(
      * An object containing information about the logo to be displayed for the type
      */
     @SerialName(SdJwtVcSpec.LOGO) val logo: LogoMetadata? = null,
+    /**
+     * An RGB color value
+     */
     @SerialName(SdJwtVcSpec.BACKGROUND_COLOR) val backgroundColor: CssColor? = null,
     @SerialName(SdJwtVcSpec.TEXT_COLOR) val textColor: CssColor? = null,
 )
@@ -396,10 +395,10 @@ data class SvgTemplate(
 @Suppress("UNUSED")
 @Serializable
 enum class SvgOrientation {
-    @SerializedName(SdJwtVcSpec.SVG_ORIENTATION_PORTRAIT)
+    @SerialName(SdJwtVcSpec.SVG_ORIENTATION_PORTRAIT)
     Portrait,
 
-    @SerializedName(SdJwtVcSpec.SVG_ORIENTATION_LANDSCAPE)
+    @SerialName(SdJwtVcSpec.SVG_ORIENTATION_LANDSCAPE)
     Landscape,
 }
 
@@ -481,6 +480,8 @@ data class LogoMetadata(
 @JvmInline
 value class DocumentIntegrity(val value: String)
 
+// TODO Check this
+//  https://www.w3.org/TR/css-color-3/
 /**
  * An RGB color value as defined in W3C.CSS-COLOR
  */
