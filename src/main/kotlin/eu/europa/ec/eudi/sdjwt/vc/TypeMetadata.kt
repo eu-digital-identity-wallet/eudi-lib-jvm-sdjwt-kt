@@ -17,17 +17,13 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
-import kotlinx.serialization.serializer
 import java.net.URI
 
 @Serializable
@@ -91,7 +87,7 @@ private fun ensureIntegrityIsNotPresent(
 ) {
     if (attributeValue == null) {
         require(integrityValue == null) {
-            "`$attributeName#integrity` must not be provided, if `$attributeName` is not present"
+            "`$attributeName${SdJwtVcSpec.INTEGRITY}` must not be provided, if `$attributeName` is not present"
         }
     }
 }
@@ -136,7 +132,7 @@ data class ClaimDisplay(
     /**
      *  A language tag
      */
-    @SerialName(SdJwtVcSpec.CLAIM_LANG) @Required val lang: String,
+    @SerialName(SdJwtVcSpec.CLAIM_LANG) @Required val lang: LangTag,
 
     /**
      * A human-readable label for the claim, intended for end users
@@ -149,6 +145,18 @@ data class ClaimDisplay(
     @SerialName(SdJwtVcSpec.CLAIM_DESCRIPTION) val description: String? = null,
 )
 
+// TODO Check https://www.rfc-editor.org/info/rfc5646
+@Serializable
+@JvmInline
+value class LangTag(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Lang tag cannot be blank" }
+    }
+
+    override fun toString(): String = value
+}
+
+@Suppress("UNUSED")
 @Serializable
 enum class ClaimSelectivelyDisclosable {
     /**
@@ -209,6 +217,7 @@ sealed interface ClaimPathElement {
         init {
             require(value >= 0) { "Index should be non-negative" }
         }
+
         override fun toString() = value.toString()
     }
 
@@ -217,10 +226,14 @@ sealed interface ClaimPathElement {
         init {
             require(value.isNotBlank()) { "Attribute must not be blank" }
         }
+
         override fun toString() = value
     }
 }
 
+/**
+ * Serializer for [ClaimPath]
+ */
 object ClaimPathSerializer : KSerializer<ClaimPath> {
 
     private fun claimPathElement(json: JsonPrimitive): ClaimPathElement =
@@ -230,6 +243,7 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
             json.intOrNull != null -> ClaimPathElement.Index(json.int)
             else -> throw IllegalArgumentException("Only string, null, int can be used")
         }
+
     private fun claimPath(array: JsonArray): ClaimPath {
         val elements = array.map {
             require(it is JsonPrimitive)
@@ -283,11 +297,10 @@ value class Display(val value: List<DisplayMetadata>) {
 @Serializable
 data class DisplayMetadata(
 
-    // TODO Check https://www.rfc-editor.org/info/rfc5646
     /**
      * A language tag
      */
-    @SerialName(SdJwtVcSpec.LANG) @Required val lang: String,
+    @SerialName(SdJwtVcSpec.LANG) @Required val lang: LangTag,
 
     /**
      * A human-readable name for the type, intended for end users
@@ -347,6 +360,7 @@ data class SvgTemplate(
     }
 }
 
+@Suppress("UNUSED")
 @Serializable
 enum class SvgOrientation {
     @SerializedName(SdJwtVcSpec.SVG_ORIENTATION_PORTRAIT)
@@ -356,6 +370,7 @@ enum class SvgOrientation {
     Landscape,
 }
 
+@Suppress("UNUSED")
 @Serializable
 enum class SvgColorScheme {
     @SerialName(SdJwtVcSpec.SVG_COLOR_SCHEME_LIGHT)
@@ -365,6 +380,7 @@ enum class SvgColorScheme {
     Dark,
 }
 
+@Suppress("UNUSED")
 @Serializable
 enum class SvgContrast {
     @SerialName(SdJwtVcSpec.SVG_CONTRAST_NORMAL)
@@ -396,7 +412,12 @@ data class SvgTemplateProperties(
 ) {
     init {
         require(orientation != null || colorScheme != null || contrast != null) {
-            "At least one of `orientation`, `color_scheme`, `contrast` is required"
+            val attributes = listOf(
+                SdJwtVcSpec.SVG_ORIENTATION,
+                SdJwtVcSpec.SVG_COLOR_SCHEME,
+                SdJwtVcSpec.SVG_CONTRAST,
+            )
+            "At least one of $attributes is required"
         }
     }
 }
@@ -411,6 +432,7 @@ data class LogoMetadata(
     @Required val uri: URI,
 
     @SerialName(SdJwtVcSpec.LOGO_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
+
     /**
      * A string containing alternative text for the logo image
      */
