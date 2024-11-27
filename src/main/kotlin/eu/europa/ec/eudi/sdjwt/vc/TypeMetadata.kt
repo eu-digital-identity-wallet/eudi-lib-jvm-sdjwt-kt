@@ -202,18 +202,52 @@ value class SvgId(val value: String) {
 @Serializable(with = ClaimPathSerializer::class)
 @JvmInline
 value class ClaimPath(val value: List<ClaimPathElement>) {
+
     init {
         require(value.isNotEmpty())
+    }
+
+    override fun toString(): String = value.toString()
+
+    operator fun plus(other: ClaimPathElement): ClaimPath =
+        ClaimPath(this.value + other)
+
+    operator fun plus(other: ClaimPath): ClaimPath =
+        ClaimPath(this.value + other.value)
+
+    /**
+     * Appends a wild-card indicator [ClaimPathElement.All]
+     */
+    fun all(): ClaimPath = this + ClaimPathElement.All
+
+    /**
+     * Appends an indexed path [ClaimPathElement.Indexed]
+     */
+    fun at(i: Int): ClaimPath = this + ClaimPathElement.Indexed(i)
+    fun attribute(name: String): ClaimPath = this + ClaimPathElement.Named(name)
+
+    fun head(): ClaimPathElement = value.first()
+    fun tail(): ClaimPath? {
+        val tailElements = value.drop(1)
+        return if (tailElements.isEmpty()) return null
+        else ClaimPath(tailElements)
+    }
+
+    operator fun component1(): ClaimPathElement = head()
+    operator fun component2(): ClaimPath? = tail()
+
+    companion object {
+        fun attribute(name: String): ClaimPath = ClaimPath(listOf(ClaimPathElement.Named(name)))
     }
 }
 
 sealed interface ClaimPathElement {
-    data object Null : ClaimPathElement {
+    data object All : ClaimPathElement {
         override fun toString() = "null"
     }
 
     @JvmInline
-    value class Index(val value: Int) : ClaimPathElement {
+    value class Indexed(val value: Int) : ClaimPathElement {
         init {
             require(value >= 0) { "Index should be non-negative" }
         }
@@ -222,7 +256,7 @@ sealed interface ClaimPathElement {
     }
 
     @JvmInline
-    value class Attribute(val value: String) : ClaimPathElement {
+    value class Named(val value: String) : ClaimPathElement {
         init {
             require(value.isNotBlank()) { "Attribute must not be blank" }
         }
@@ -236,11 +270,11 @@ sealed interface ClaimPathElement {
  */
 object ClaimPathSerializer : KSerializer<ClaimPath> {
 
-    private fun claimPathElement(json: JsonPrimitive): ClaimPathElement =
+    private fun claimPathElement(it: JsonPrimitive): ClaimPathElement =
         when {
-            json is JsonNull -> ClaimPathElement.Null
-            json.isString -> ClaimPathElement.Attribute(json.content)
-            json.intOrNull != null -> ClaimPathElement.Index(json.int)
+            it is JsonNull -> ClaimPathElement.All
+            it.isString -> ClaimPathElement.Named(it.content)
+            it.intOrNull != null -> ClaimPathElement.Indexed(it.int)
             else -> throw IllegalArgumentException("Only string, null, int can be used")
         }
 
@@ -255,9 +289,9 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
     private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
 
     private fun ClaimPathElement.toJson(): JsonPrimitive = when (this) {
-        is ClaimPathElement.Attribute -> JsonPrimitive(value)
-        is ClaimPathElement.Index -> JsonPrimitive(value)
-        ClaimPathElement.Null -> JsonNull
+        is ClaimPathElement.Named -> JsonPrimitive(value)
+        is ClaimPathElement.Indexed -> JsonPrimitive(value)
+        ClaimPathElement.All -> JsonNull
     }
 
     val arraySerializer = serializer<JsonArray>()
@@ -351,8 +385,7 @@ data class SvgTemplate(
 
     @SerialName(SdJwtVcSpec.SVG_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
-    // TODO We need to check this with the spec
-    //  There is no clear description
+    // TODO We need to check this with the spec There is no clear description
     @SerialName(SdJwtVcSpec.SVG_PROPERTIES) val properties: SvgTemplateProperties? = null,
 ) {
     init {
