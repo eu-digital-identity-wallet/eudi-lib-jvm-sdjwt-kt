@@ -53,7 +53,7 @@ class ClaimPathTest {
         }
     }
     private fun assertMatchEquals(expected: JsonElement, path: ClaimPath) {
-        val actual = ClaimPathMatcher.Default.match(sampleJson, path).getOrThrow()
+        val actual = MatchClaimPath.Default.match(sampleJson, path).getOrThrow()
         assertEquals(expected, actual)
     }
 

@@ -29,7 +29,7 @@ import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
-import eu.europa.ec.eudi.sdjwt.vc.SD_JWT_VC_TYPE
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
@@ -175,7 +175,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 class IssuerActor(val issuerKey: ECKey) {
 
     private val signAlgorithm = JWSAlgorithm.ES256
-    private val jwtType = JOSEObjectType(SD_JWT_VC_TYPE)
+    private val jwtType = JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE)
     private val iss: String by lazy {
         "did:jwk:${JwtBase64.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }

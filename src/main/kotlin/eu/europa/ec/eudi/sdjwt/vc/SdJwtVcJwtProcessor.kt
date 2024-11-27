@@ -34,8 +34,6 @@ import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.JwkSourceJWTProcessor
 import java.security.Key
 
-const val SD_JWT_VC_TYPE = "vc+sd-jwt"
-
 /**
  * [JWTProcessor] that supports [RSAKey], [ECKey], [OctetKeyPair], and [OctetSequenceKey] signature verification.
  *
@@ -56,7 +54,7 @@ internal class SdJwtVcJwtProcessor<C : SecurityContext>(
 
     companion object {
         private fun <C : SecurityContext> typeVerifier(): JOSEObjectTypeVerifier<C> =
-            DefaultJOSEObjectTypeVerifier(JOSEObjectType(SD_JWT_VC_TYPE))
+            DefaultJOSEObjectTypeVerifier(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
 
         private fun <C : SecurityContext> claimSetVerifier(): JWTClaimsSetVerifier<C> = DefaultJWTClaimsVerifier(
             JWTClaimsSet.Builder().build(),

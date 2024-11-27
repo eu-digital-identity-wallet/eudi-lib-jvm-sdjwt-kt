@@ -67,7 +67,7 @@ private object SampleIssuer {
 
     private fun issuer(kid: String?) =
         SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
-            type(JOSEObjectType(SD_JWT_VC_TYPE))
+            type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
             kid?.let { keyID(it) }
         }
 
@@ -120,7 +120,7 @@ class SdJwtVcVerifierTest {
     private fun testForMetaDataSource(expectedSource: SdJwtVcIssuerPublicKeySource.Metadata) {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-                type(JOSEObjectType(SD_JWT_VC_TYPE))
+                type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
                 expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
@@ -146,7 +146,7 @@ class SdJwtVcVerifierTest {
     private fun testForDid(expectedSource: SdJwtVcIssuerPublicKeySource.DIDUrl) {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-                type(JOSEObjectType(SD_JWT_VC_TYPE))
+                type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
                 expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
@@ -202,7 +202,7 @@ class SdJwtVcVerifierTest {
                     iss(didJwk)
                 }
                 val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
-                    type(JOSEObjectType(SD_JWT_VC_TYPE))
+                    type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
                 }
                 signer.issue(spec).getOrThrow()
             }

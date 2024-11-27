@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
 class TypeMetadataTest {
-    val jsonSupport = Json { ignoreUnknownKeys = true }
+    val jsonSupport = Json { ignoreUnknownKeys = false }
 
     @Test
     fun `simple parsing`() {
@@ -189,10 +189,10 @@ class TypeMetadataTest {
                   "sd": "allowed"
                 }
               ],
-              "schema_url": "https://exampleuniversity.com/public/credential-schema-0.9",
-              "schema_url#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
+              "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
+              "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
             }
         """.trimIndent()
-        jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json)
+        jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json).also(::println)
     }
 }

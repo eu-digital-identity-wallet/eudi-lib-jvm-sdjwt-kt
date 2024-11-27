@@ -22,7 +22,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Matches a [ClaimPath] to a [JsonElement]
  */
-fun interface ClaimPathMatcher {
+fun interface MatchClaimPath {
 
     /**
      * Matches the given [path] to the [jsonElement]
@@ -34,23 +34,23 @@ fun interface ClaimPathMatcher {
      */
     fun match(jsonElement: JsonElement, path: ClaimPath): Result<JsonElement?>
 
-    companion object {
-        /**
-         * Default implementation
-         */
-        val Default: ClaimPathMatcher = ClaimPathMatcher { jsonElement, path ->
-            try {
-                Result.success(jsonElement.matchPath(path))
-            } catch (e: IllegalArgumentException) {
-                Result.failure(e)
-            }
-        }
-    }
+    /**
+     * Default implementation
+     */
+    companion object Default : MatchClaimPath by default()
 }
 
 //
 // Implementation
 //
+
+private fun default(): MatchClaimPath = MatchClaimPath { jsonElement, path ->
+    try {
+        Result.success(jsonElement.matchPath(path))
+    } catch (e: IllegalStateException) {
+        Result.failure(e)
+    }
+}
 
 private fun JsonElement.matchPath(path: ClaimPath): JsonElement? {
     val (head, tail) = path

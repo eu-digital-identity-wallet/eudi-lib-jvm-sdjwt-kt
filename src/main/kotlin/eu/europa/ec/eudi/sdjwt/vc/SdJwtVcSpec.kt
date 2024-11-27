@@ -19,22 +19,23 @@ package eu.europa.ec.eudi.sdjwt.vc
  * [SD-JWT-based Verifiable Credentials](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/06/)
  */
 object SdJwtVcSpec {
+    const val SD_JWT_VC_TYPE = "vc+sd-jwt"
+    const val HASH_INTEGRITY: String = "#integrity"
     const val VCT: String = "vct"
-    const val VCT_INTEGRITY: String = "vct#integrity"
+    const val VCT_INTEGRITY: String = "$VCT$HASH_INTEGRITY"
     const val STATUS: String = "status"
 
     const val ISSUER: String = "issuer"
 
-    const val INTEGRITY: String = "#integrity"
     const val NAME: String = "name"
     const val DESCRIPTION: String = "description"
     const val EXTENDS: String = "extends"
-    const val EXTENDS_INTEGRITY: String = "$EXTENDS$INTEGRITY"
+    const val EXTENDS_INTEGRITY: String = "$EXTENDS$HASH_INTEGRITY"
     const val DISPLAY: String = "display"
     const val CLAIMS: String = "claims"
     const val SCHEMA: String = "schema"
     const val SCHEMA_URI: String = "schema_uri"
-    const val SCHEMA_URI_INTEGRITY: String = "$SCHEMA_URI$INTEGRITY"
+    const val SCHEMA_URI_INTEGRITY: String = "$SCHEMA_URI$HASH_INTEGRITY"
 
     const val CLAIM_PATH: String = "path"
     const val CLAIM_DISPLAY: String = "display"
@@ -56,14 +57,14 @@ object SdJwtVcSpec {
 
     const val LOGO: String = "logo"
     const val LOGO_URI: String = "uri"
-    const val LOGO_URI_INTEGRITY: String = "$LOGO_URI$INTEGRITY"
+    const val LOGO_URI_INTEGRITY: String = "$LOGO_URI$HASH_INTEGRITY"
     const val LOGO_ALT_TEXT: String = "alt_text"
 
     const val BACKGROUND_COLOR: String = "background_color"
     const val TEXT_COLOR: String = "text_color"
 
     const val SVG_URI: String = "uri"
-    const val SVG_URI_INTEGRITY: String = "$SVG_URI$INTEGRITY"
+    const val SVG_URI_INTEGRITY: String = "$SVG_URI$HASH_INTEGRITY"
     const val SVG_PROPERTIES: String = "properties"
     const val SVG_ORIENTATION: String = "orientation"
     const val SVG_ORIENTATION_PORTRAIT: String = "portrait"

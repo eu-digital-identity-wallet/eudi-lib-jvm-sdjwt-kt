@@ -27,6 +27,11 @@ import java.net.URI
 
 @Serializable
 data class SdJwtVcTypeMetadata(
+
+    @SerialName(SdJwtVcSpec.VCT) @Required val vct: Vct,
+
+    @SerialName(SdJwtVcSpec.VCT_INTEGRITY) val vctIntegrity: DocumentIntegrity? = null,
+
     /**
      * A human-readable name for the type, intended for developers reading the JSON document
      */
@@ -74,11 +79,21 @@ data class SdJwtVcTypeMetadata(
         if (schema != null) {
             require(schemaUri == null)
         }
+        ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
     }
 }
 
+@Serializable
+@JvmInline
+value class Vct(val value: String) {
+    init {
+        require(value.isNotBlank()) { "Vct value must not be blank" }
+    }
+
+    override fun toString(): String = value
+}
 private fun ensureIntegrityIsNotPresent(
     attributeName: String,
     attributeValue: Any?,
@@ -86,7 +101,7 @@ private fun ensureIntegrityIsNotPresent(
 ) {
     if (attributeValue == null) {
         require(integrityValue == null) {
-            "`$attributeName${SdJwtVcSpec.INTEGRITY}` must not be provided, if `$attributeName` is not present"
+            "`$attributeName${SdJwtVcSpec.HASH_INTEGRITY}` must not be provided, if `$attributeName` is not present"
         }
     }
 }
@@ -384,7 +399,6 @@ data class SvgTemplate(
 
     @SerialName(SdJwtVcSpec.SVG_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
-    // TODO We need to check this with the spec There is no clear description
     @SerialName(SdJwtVcSpec.SVG_PROPERTIES) val properties: SvgTemplateProperties? = null,
 ) {
     init {
