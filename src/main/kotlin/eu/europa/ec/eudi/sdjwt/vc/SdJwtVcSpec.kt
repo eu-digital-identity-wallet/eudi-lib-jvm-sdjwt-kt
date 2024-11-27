@@ -30,9 +30,22 @@ object SdJwtVcSpec {
     const val EXTENDS: String = "extends"
     const val EXTENDS_INTEGRITY: String = "extends#integrity"
     const val DISPLAY: String = "display"
+    const val CLAIMS: String = "claims"
     const val SCHEMA: String = "schema"
     const val SCHEMA_URI: String = "schema_uri"
     const val SCHEMA_URI_INTEGRITY: String = "schema_uri#integrity"
+
+    const val CLAIM_PATH: String = "path"
+    const val CLAIM_DISPLAY: String = "display"
+    const val CLAIM_SD: String = "sd"
+    const val CLAIM_SD_ALWAYS: String = "always"
+    const val CLAIM_SD_ALLOWED: String = "allowed"
+    const val CLAIM_SD_NEVER: String = "never"
+
+    const val CLAIM_SVG_ID: String = "svg_id"
+    const val CLAIM_LANG: String = "lang"
+    const val CLAIM_LABEL = "label"
+    const val CLAIM_DESCRIPTION = DESCRIPTION
 
     const val LANG: String = "lang"
     const val RENDERING: String = "rendering"

@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName
+import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -25,7 +26,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.*
+import kotlinx.serialization.serializer
 import java.net.URI
 
 @Serializable
@@ -51,6 +53,11 @@ data class SdJwtVcTypeMetadata(
      * It MUST contain an object for each language that is supported by the type.
      */
     @SerialName(SdJwtVcSpec.DISPLAY) val display: Display? = null,
+
+    /**
+     *  List containing claim information for the type
+     */
+    @SerialName(SdJwtVcSpec.CLAIMS) val claims: List<ClaimMetadata>? = null,
 
     /**
      * An embedded JSON Schema document describing the structure of the Verifiable Credential
@@ -92,6 +99,167 @@ private fun ensureIntegrityIsNotPresent(
 @Serializable
 @JvmInline
 value class JsonSchema(val value: JsonObject)
+
+@Serializable
+data class ClaimMetadata(
+
+    /**
+     * The claim or claims that are being addressed
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_PATH) @Required val path: ClaimPath,
+
+    /**
+     * display information for the claim
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_DISPLAY) val display: ClaimDisplay? = null,
+
+    /**
+     *  Indicates whether the claim is selectively disclosable.
+     *  If omitted, the default value is [DefaultSelectivelyDisclosable]
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_SD) val selectivelyDisclosable: ClaimSelectivelyDisclosable? = DefaultSelectivelyDisclosable,
+    /**
+     *The ID of the claim for reference in the SVG template
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_SVG_ID) val svgId: SvgId? = null,
+) {
+    companion object {
+        /**
+         * Default [ClaimSelectivelyDisclosable] value is [ClaimSelectivelyDisclosable.Allowed]
+         */
+        val DefaultSelectivelyDisclosable: ClaimSelectivelyDisclosable = ClaimSelectivelyDisclosable.Allowed
+    }
+}
+
+@Serializable
+data class ClaimDisplay(
+    /**
+     *  A language tag
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_LANG) @Required val lang: String,
+
+    /**
+     * A human-readable label for the claim, intended for end users
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_LABEL) @Required val label: String,
+
+    /**
+     * A human-readable description for the claim, intended for end users
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_DESCRIPTION) val description: String? = null,
+)
+
+@Serializable
+enum class ClaimSelectivelyDisclosable {
+    /**
+     *  The Issuer MUST make the claim selectively disclosable
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_SD_ALWAYS)
+    Always,
+
+    /**
+     * The Issuer MAY make the claim selectively disclosable
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_SD_ALLOWED)
+    Allowed,
+
+    /**
+     * The Issuer MUST NOT make the claim selectively disclosable
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_SD_NEVER)
+    Never,
+}
+
+/**
+ * It MUST consist of only alphanumeric characters and underscores and MUST NOT start with a digit
+ */
+@Serializable
+@JvmInline
+value class SvgId(val value: String) {
+    init {
+        require(value.isNotEmpty()) {
+            "SvgId cannot be empty"
+        }
+        require(value.all { it.isLetterOrDigit() || it == '_' }) {
+            "SvgId must consist of only alphanumeric characters and underscores"
+        }
+        require(!value[0].isDigit()) {
+            "SvgId must not start with a digit"
+        }
+    }
+
+    override fun toString() = value
+}
+
+@Serializable(with = ClaimPathSerializer::class)
+@JvmInline
+value class ClaimPath(val value: List<ClaimPathElement>) {
+    init {
+        require(value.isNotEmpty())
+    }
+}
+
+sealed interface ClaimPathElement {
+    data object Null : ClaimPathElement {
+        override fun toString() = "null"
+    }
+
+    @JvmInline
+    value class Index(val value: Int) : ClaimPathElement {
+        init {
+            require(value >= 0) { "Index should be non-negative" }
+        }
+        override fun toString() = value.toString()
+    }
+
+    @JvmInline
+    value class Attribute(val value: String) : ClaimPathElement {
+        init {
+            require(value.isNotBlank()) { "Attribute must not be blank" }
+        }
+        override fun toString() = value
+    }
+}
+
+object ClaimPathSerializer : KSerializer<ClaimPath> {
+
+    private fun claimPathElement(json: JsonPrimitive): ClaimPathElement =
+        when {
+            json is JsonNull -> ClaimPathElement.Null
+            json.isString -> ClaimPathElement.Attribute(json.content)
+            json.intOrNull != null -> ClaimPathElement.Index(json.int)
+            else -> throw IllegalArgumentException("Only string, null, int can be used")
+        }
+    private fun claimPath(array: JsonArray): ClaimPath {
+        val elements = array.map {
+            require(it is JsonPrimitive)
+            claimPathElement(it)
+        }
+        return ClaimPath(elements)
+    }
+
+    private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
+
+    private fun ClaimPathElement.toJson(): JsonPrimitive = when (this) {
+        is ClaimPathElement.Attribute -> JsonPrimitive(value)
+        is ClaimPathElement.Index -> JsonPrimitive(value)
+        ClaimPathElement.Null -> JsonNull
+    }
+
+    val arraySerializer = serializer<JsonArray>()
+
+    override val descriptor: SerialDescriptor = arraySerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: ClaimPath) {
+        val array = value.toJson()
+        arraySerializer.serialize(encoder, array)
+    }
+
+    override fun deserialize(decoder: Decoder): ClaimPath {
+        val array = arraySerializer.deserialize(decoder)
+        return claimPath(array)
+    }
+}
 
 @Serializable
 @JvmInline
