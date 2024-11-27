@@ -19,10 +19,25 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+/**
+ * Matches a [ClaimPath] to a [JsonElement]
+ */
 fun interface ClaimPathMatcher {
+
+    /**
+     * Matches the given [path] to the [jsonElement]
+     *
+     * @param path the path to match
+     * @param jsonElement the JSON to match against
+     * @return a [JsonElement] if present. In case the structure of the given [jsonElement]
+     * doesn't complies with the [path] a [Result.Failure] is being returned
+     */
     fun match(jsonElement: JsonElement, path: ClaimPath): Result<JsonElement?>
 
     companion object {
+        /**
+         * Default implementation
+         */
         val Default: ClaimPathMatcher = ClaimPathMatcher { jsonElement, path ->
             try {
                 Result.success(jsonElement.matchPath(path))
@@ -33,33 +48,39 @@ fun interface ClaimPathMatcher {
     }
 }
 
+//
+// Implementation
+//
+
 private fun JsonElement.matchPath(path: ClaimPath): JsonElement? {
     val (head, tail) = path
     return when (head) {
         is ClaimPathElement.Named -> {
             check(this is JsonObject) {
-                "Path element is $head. Was expecting a JSON object"
+                "Path element is $head. Was expecting a JSON object, found $this"
             }
-            matchAttribute(head.value, tail)
+            val name = head.value
+            matchAttributeAndThen(name, tail)
         }
 
         is ClaimPathElement.Indexed -> {
             check(this is JsonArray) {
-                "Path element is $head. Was expecting a JSON array"
+                "Path element is $head. Was expecting a JSON array, found $this"
             }
-            matchIndex(head.value, tail)
+            val index = head.value
+            matchIndexAndThen(index, tail)
         }
 
         ClaimPathElement.All -> {
             check(this is JsonArray) {
-                "Path element is $head. Was expecting a JSON array"
+                "Path element is $head. Was expecting a JSON array, found $this"
             }
-            matchWildCard(tail)
+            matchWildCardAndThen(tail)
         }
     }
 }
 
-private fun JsonArray.matchWildCard(tail: ClaimPath?): JsonElement? {
+private fun JsonArray.matchWildCardAndThen(tail: ClaimPath?): JsonElement? {
     val selectedElement = this
     return if (tail != null) {
         val newValue = selectedElement.map { element ->
@@ -69,7 +90,7 @@ private fun JsonArray.matchWildCard(tail: ClaimPath?): JsonElement? {
     } else selectedElement
 }
 
-private fun JsonArray.matchIndex(index: Int, tail: ClaimPath?): JsonElement? {
+private fun JsonArray.matchIndexAndThen(index: Int, tail: ClaimPath?): JsonElement? {
     val selectedElement = this[index]
     return if (tail != null) {
         checkNotNull(selectedElement)
@@ -77,7 +98,7 @@ private fun JsonArray.matchIndex(index: Int, tail: ClaimPath?): JsonElement? {
     } else selectedElement
 }
 
-private fun JsonObject.matchAttribute(
+private fun JsonObject.matchAttributeAndThen(
     claimName: String,
     tail: ClaimPath?,
 ): JsonElement? {
