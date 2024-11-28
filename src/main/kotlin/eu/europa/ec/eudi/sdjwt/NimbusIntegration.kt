@@ -548,8 +548,8 @@ private fun sign(
 /**
  *  Tries to create a presentation that discloses the claims that satisfy
  *  [query]
- * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
- * is relative to the unprotected JSON (not the JWT payload)
+ * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+ * are relative to the unprotected JSON (not the JWT payload)
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @return the presentation if possible to satisfy the [query]
  */

@@ -87,6 +87,15 @@ fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
     }
 }
 
+/**
+ * Tries to create a presentation that discloses the [requested claims][query].
+ * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+ * are relative to the unprotected JSON (not the JWT payload)
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @return the presentation if possible to satisfy the [query]
+ */
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
     claimsOf: (JWT) -> Claims,
