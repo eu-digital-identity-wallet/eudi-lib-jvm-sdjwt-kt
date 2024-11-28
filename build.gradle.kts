@@ -64,7 +64,13 @@ kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get()))
         compilerOptions {
-            optIn = listOf("kotlin.io.encoding.ExperimentalEncodingApi")
+            optIn = listOf(
+                "kotlin.io.encoding.ExperimentalEncodingApi",
+                "kotlin.contracts.ExperimentalContracts",
+            )
+            freeCompilerArgs = listOf(
+                "-Xconsistent-data-class-copy-visibility",
+            )
         }
     }
 }

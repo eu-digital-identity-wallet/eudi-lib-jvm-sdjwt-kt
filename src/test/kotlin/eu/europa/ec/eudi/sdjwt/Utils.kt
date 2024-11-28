@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
+import eu.europa.ec.eudi.sdjwt.vc.toClaimPath
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
@@ -70,7 +71,7 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
 fun DisclosuresPerClaim.prettyPrint() {
     println("SD-JWT disclosures per claim")
     forEach { (claim, disclosures) ->
-        println("$claim ->")
+        println("$claim <=> ${claim.toClaimPath() ?: "N/A"} ->")
         disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {

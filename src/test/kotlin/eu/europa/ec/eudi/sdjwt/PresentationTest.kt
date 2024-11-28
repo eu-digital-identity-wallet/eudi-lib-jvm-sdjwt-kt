@@ -113,7 +113,7 @@ class PresentationTest {
         sdJwt.prettyPrint { it.jwtClaimsSet.asClaims() }
         sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.asClaims() }.also { (json, map) ->
             println(json.pretty())
-            map.forEach { (name, ds) -> println("$name - $ds") }
+            map.prettyPrint()
         }
         sdJwt
     }
