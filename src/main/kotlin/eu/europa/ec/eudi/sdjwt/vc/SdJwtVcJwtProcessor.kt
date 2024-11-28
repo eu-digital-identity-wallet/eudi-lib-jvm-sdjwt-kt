@@ -54,8 +54,15 @@ internal class SdJwtVcJwtProcessor<C : SecurityContext>(
 ) : JwkSourceJWTProcessor<C>(typeVerifier(), claimSetVerifier(), jwkSource) {
 
     companion object {
+        /**
+         * Accepts both the [SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT]
+         * and the deprecated [SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT]
+         */
         private fun <C : SecurityContext> typeVerifier(): JOSEObjectTypeVerifier<C> =
-            DefaultJOSEObjectTypeVerifier(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
+            DefaultJOSEObjectTypeVerifier(
+                JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT),
+                JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT),
+            )
 
         private fun <C : SecurityContext> claimSetVerifier(): JWTClaimsSetVerifier<C> = DefaultJWTClaimsVerifier(
             JWTClaimsSet.Builder().build(),

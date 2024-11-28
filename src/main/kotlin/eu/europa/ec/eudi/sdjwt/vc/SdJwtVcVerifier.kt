@@ -164,7 +164,8 @@ class SdJwtVcVerifier(
         /**
          * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled.
          */
-        fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier = SdJwtVcVerifier(trust = x509CertificateTrust)
+        fun usingX5c(x509CertificateTrust: X509CertificateTrust): SdJwtVcVerifier =
+            SdJwtVcVerifier(trust = x509CertificateTrust)
 
         /**
          * Creates a new [SdJwtVcVerifier] with DID resolution enabled.
@@ -231,8 +232,8 @@ private suspend fun issuerJwkSource(
     suspend fun fromMetadata(source: Metadata): JWKSource<SecurityContext> =
         httpClientFactory?.invoke()?.use { httpClient ->
             val fetcher = SdJwtVcIssuerMetaDataFetcher(httpClient)
-            fetcher.fetchMetaData(source.iss)
-                ?.let { (_, jwks) -> ImmutableJWKSet(jwks) }
+            fetcher.fetchJWKSetFromMetaData(source.iss)
+                ?.let { jwks -> ImmutableJWKSet(jwks) }
                 ?: invalidSdJwtVc("Failed to get SD-JWT-VC metadata of ${source.iss}")
         } ?: invalidSdJwtVc("SD-JWT-VC validation requires Issuer's metadata resolution, which is not enabled")
 

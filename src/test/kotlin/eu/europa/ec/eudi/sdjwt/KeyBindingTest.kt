@@ -198,7 +198,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 class IssuerActor(val issuerKey: ECKey) {
 
     private val signAlgorithm = JWSAlgorithm.ES256
-    private val jwtType = JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE)
+    private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
     private val iss: String by lazy {
         "did:jwk:${JwtBase64.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }

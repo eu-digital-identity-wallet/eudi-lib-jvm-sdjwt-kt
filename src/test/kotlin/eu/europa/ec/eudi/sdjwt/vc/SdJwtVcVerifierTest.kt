@@ -29,6 +29,7 @@ import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -67,7 +68,7 @@ private object SampleIssuer {
 
     private fun issuer(kid: String?) =
         SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
-            type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
+            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
             kid?.let { keyID(it) }
         }
 
@@ -120,7 +121,7 @@ class SdJwtVcVerifierTest {
     private fun testForMetaDataSource(expectedSource: SdJwtVcIssuerPublicKeySource.Metadata) {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-                type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
+                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
                 expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
@@ -146,7 +147,7 @@ class SdJwtVcVerifierTest {
     private fun testForDid(expectedSource: SdJwtVcIssuerPublicKeySource.DIDUrl) {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-                type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
+                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
@@ -202,7 +203,7 @@ class SdJwtVcVerifierTest {
                     iss(didJwk)
                 }
                 val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
-                    type(JOSEObjectType(SdJwtVcSpec.SD_JWT_VC_TYPE))
+                    type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 }
                 signer.issue(spec).getOrThrow()
             }
