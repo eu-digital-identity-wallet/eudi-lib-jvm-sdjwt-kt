@@ -25,12 +25,12 @@ import kotlinx.serialization.json.JsonObject
 fun interface SelectPath {
 
     /**
-     * Matches the given [path] to the [this@select]
+     * Matches the given [path] to the [JsonElement]
      *
+     * @receiver the JSON to match against
      * @param path the path to match
-     * @param this@select the JSON to match against
      * @return a [JsonElement] if present. In case the structure of the given [this@select]
-     * doesn't complies with the [path] a [Result.Failure] is being returned
+     * doesn't comply with the [path] a [Result.Failure] is being returned
      */
     fun JsonElement.select(path: ClaimPath): Result<JsonElement?>
 
@@ -59,54 +59,25 @@ private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
             check(this is JsonObject) {
                 "Path element is $head. Was expecting a JSON object, found $this"
             }
-            matchAttributeAndThen(name, tail)
+            val selectedElement = this[name]
+            if (tail == null) selectedElement
+            else selectedElement?.selectPath(tail)
         },
         ifIndexed = { index ->
             check(this is JsonArray) {
                 "Path element is $head. Was expecting a JSON array, found $this"
             }
-            matchIndexAndThen(index, tail)
+            val selectedElement = this.getOrNull(index)
+            if (tail == null) selectedElement
+            else selectedElement?.selectPath(tail)
         },
         ifAll = {
             check(this is JsonArray) {
                 "Path element is $head. Was expecting a JSON array, found $this"
             }
-            matchWildCardAndThen(tail)
+            val selectedElement = this
+            if (tail == null) selectedElement
+            else selectedElement.mapNotNull { element -> element.selectPath(tail) }.let(::JsonArray)
         },
     )
-}
-
-private fun JsonArray.matchWildCardAndThen(tail: ClaimPath?): JsonElement? {
-    val selectedElement = this
-    return if (tail != null) {
-        // TODO Confirm whether we should enforce not null
-        //  or just return the null
-        val newValue = selectedElement.map { element ->
-            checkNotNull(element.selectPath(tail))
-        }
-        JsonArray(newValue)
-    } else selectedElement
-}
-
-private fun JsonArray.matchIndexAndThen(index: Int, tail: ClaimPath?): JsonElement? {
-    val selectedElement = this[index]
-    return if (tail != null) {
-        // TODO Confirm whether we should enforce not null
-        //  or just return the null
-        checkNotNull(selectedElement)
-        selectedElement.selectPath(tail)
-    } else selectedElement
-}
-
-private fun JsonObject.matchAttributeAndThen(
-    claimName: String,
-    tail: ClaimPath?,
-): JsonElement? {
-    val selectedElement = this[claimName]
-    return if (tail != null) {
-        // TODO Confirm whether we should enforce not null
-        //  or just return the null
-        checkNotNull(selectedElement)
-        selectedElement.selectPath(tail)
-    } else selectedElement
 }

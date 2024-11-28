@@ -66,7 +66,7 @@ fun SdJwt.Issuance<JwtAndClaims>.present(
     replaceWith = ReplaceWith("presentJsonPointersMatching({ pointer: JsonPointer-> pointer in query }, claimsOf)"),
     level = DeprecationLevel.WARNING,
 )
-@JvmName("presentMatching")
+@JvmName("presentMatchingSetOfPointers")
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<JsonPointer>,
     claimsOf: (JWT) -> Claims,
@@ -108,7 +108,7 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     replaceWith = ReplaceWith("presentJsonPointersMatching { it in query }"),
     level = DeprecationLevel.WARNING,
 )
-@JvmName("nimbusPresentMatching")
+@JvmName("presentMatchingSetOfPointers")
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<NimbusSignedJWT>? =
     presentJsonPointersMatching { it in query }
 

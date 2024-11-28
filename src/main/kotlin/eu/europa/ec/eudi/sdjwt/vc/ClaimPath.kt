@@ -52,13 +52,16 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
         ClaimPath(this.value + other.value)
 
     operator fun plus(other: String): ClaimPath = plus(ClaimPathElement.Named(other))
+
+    /**
+     * Appends an indexed path [ClaimPathElement.Indexed]
+     */
     operator fun plus(other: Int): ClaimPath = plus(ClaimPathElement.Indexed(other))
+
     operator fun contains(other: ClaimPath): Boolean =
         value.foldIndexed(true) { index, acc, thisElement ->
-            fun comp() = other.value.getOrNull(index)
-                ?.let { it in thisElement }
-                ?: false
-
+            fun comp() =
+                other.value.getOrNull(index)?.let { otherElement -> otherElement in thisElement } == true
             acc and comp()
         }
 
