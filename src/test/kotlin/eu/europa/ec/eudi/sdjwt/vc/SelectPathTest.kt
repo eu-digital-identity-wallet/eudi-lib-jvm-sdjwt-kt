@@ -49,7 +49,7 @@ class SelectPathTest {
     @Test
     fun matchTopLevel() {
         sampleJson.forEach { (attributeName, attribute) ->
-            assetSelectionEquals(expected = attribute, path = ClaimPath.attribute(attributeName))
+            assetSelectionEquals(expected = attribute, path = ClaimPath.claim(attributeName))
         }
     }
 
@@ -61,27 +61,27 @@ class SelectPathTest {
     @Test
     fun matchNestedAttribute() = assetSelectionEquals(
         expected = checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"]),
-        path = ClaimPath.attribute("address").attribute("street_address"),
+        path = ClaimPath.claim("address").claim("street_address"),
     )
 
     @Test
     fun matchArray() = assetSelectionEquals(
         expected = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray),
-        path = ClaimPath.attribute("degrees"),
+        path = ClaimPath.claim("degrees"),
     )
 
     @Test
     fun matchAll() = assetSelectionEquals(
         expected = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray),
-        path = ClaimPath.attribute("degrees").all(),
+        path = ClaimPath.claim("degrees").allArrayElements(),
     )
 
     @Test
     fun matchArrayElement() {
-        val degreesPath = ClaimPath.attribute("degrees")
+        val degreesPath = ClaimPath.claim("degrees")
         val degrees = checkNotNull(sampleJson["degrees"]).jsonArray
         degrees.forEachIndexed { index, degree ->
-            assetSelectionEquals(expected = degree, path = degreesPath.at(index))
+            assetSelectionEquals(expected = degree, path = degreesPath.arrayElement(index))
         }
     }
 
@@ -94,6 +94,6 @@ class SelectPathTest {
                 checkNotNull(element["type"])
             }.let(::JsonArray)
         },
-        path = ClaimPath.attribute("degrees").all().attribute("type"),
+        path = ClaimPath.claim("degrees").allArrayElements().claim("type"),
     )
 }

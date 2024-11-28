@@ -45,7 +45,7 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
         issuer.issue(sdJwtSpec).getOrThrow()
     }
 
-    val addressPath = ClaimPath.attribute("address")
-    val claimsToInclude = setOf(addressPath + "region", addressPath + "country")
+    val addressPath = ClaimPath.claim("address")
+    val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
     issuedSdJwt.present(claimsToInclude)!!
 }

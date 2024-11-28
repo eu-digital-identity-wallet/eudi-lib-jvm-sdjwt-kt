@@ -94,9 +94,9 @@ class KeyBindingTest {
     @Test
     fun holderBindingFullTest() = runTest {
         val whatToDisclose = setOf(
-            ClaimPath.attribute("credentialSubject") + "email",
-            ClaimPath.attribute("credentialSubject") + "countries",
-            ClaimPath.attribute("addresses").at(1).attribute("street"),
+            ClaimPath.claim("credentialSubject").claim("email"),
+            ClaimPath.claim("credentialSubject").claim("countries"),
+            ClaimPath.claim("addresses").arrayElement(0).claim("street"),
         )
         val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
 

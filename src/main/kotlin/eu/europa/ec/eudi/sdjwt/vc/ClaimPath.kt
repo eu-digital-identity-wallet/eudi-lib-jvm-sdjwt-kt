@@ -51,13 +51,6 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
     operator fun plus(other: ClaimPath): ClaimPath =
         ClaimPath(this.value + other.value)
 
-    operator fun plus(other: String): ClaimPath = plus(ClaimPathElement.Named(other))
-
-    /**
-     * Appends an indexed path [ClaimPathElement.Indexed]
-     */
-    operator fun plus(other: Int): ClaimPath = plus(ClaimPathElement.Indexed(other))
-
     operator fun contains(other: ClaimPath): Boolean =
         value.foldIndexed(true) { index, acc, thisElement ->
             fun comp() =
@@ -68,19 +61,19 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
     infix fun matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
 
     /**
-     * Appends a wild-card indicator [ClaimPathElement.All]
+     * Appends a wild-card indicator [ClaimPathElement.AllArrayElements]
      */
-    fun all(): ClaimPath = this + ClaimPathElement.All
+    fun allArrayElements(): ClaimPath = this + ClaimPathElement.AllArrayElements
 
     /**
-     * Appends an indexed path [ClaimPathElement.Indexed]
+     * Appends an indexed path [ClaimPathElement.ArrayElement]
      */
-    fun at(i: Int): ClaimPath = this + ClaimPathElement.Indexed(i)
+    fun arrayElement(i: Int): ClaimPath = this + ClaimPathElement.ArrayElement(i)
 
     /**
-     * Appends a named path [ClaimPathElement.Named]
+     * Appends a named path [ClaimPathElement.Claim]
      */
-    fun attribute(name: String): ClaimPath = this + ClaimPathElement.Named(name)
+    fun claim(name: String): ClaimPath = this + ClaimPathElement.Claim(name)
 
     fun head(): ClaimPathElement = value.first()
     fun tail(): ClaimPath? {
@@ -100,15 +93,15 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
     operator fun component2(): ClaimPath? = tail()
 
     companion object {
-        fun attribute(name: String): ClaimPath = ClaimPath(listOf(ClaimPathElement.Named(name)))
+        fun claim(name: String): ClaimPath = ClaimPath(listOf(ClaimPathElement.Claim(name)))
     }
 }
 
 /**
  * Elements of a [ClaimPath]
- * - [Named] indicates that the respective [key][Named.value] is to be selected
- * - [All] indicates that all elements of the currently selected array(s) are to be selected, and
- * - [Indexed] indicates that the respective [index][Indexed.value] in an array is to be selected
+ * - [Claim] indicates that the respective [key][Claim.name] is to be selected
+ * - [AllArrayElements] indicates that all elements of the currently selected array(s) are to be selected, and
+ * - [ArrayElement] indicates that the respective [index][ArrayElement.index] in an array is to be selected
  */
 sealed interface ClaimPathElement {
 
@@ -116,75 +109,75 @@ sealed interface ClaimPathElement {
      * Indicates that all elements of the currently selected array(s) are to be selected
      * It is serialized as a [JsonNull]
      */
-    data object All : ClaimPathElement {
+    data object AllArrayElements : ClaimPathElement {
         override fun toString() = "null"
     }
 
     /**
-     * Indicates that the respective [index][value] in an array is to be selected.
+     * Indicates that the respective [index][index] in an array is to be selected.
      * It is serialized as an [integer][JsonPrimitive]
-     * @param value Non-negative index
+     * @param index Non-negative index
      */
     @JvmInline
-    value class Indexed(val value: Int) : ClaimPathElement {
+    value class ArrayElement(val index: Int) : ClaimPathElement {
         init {
-            require(value >= 0) { "Index should be non-negative" }
+            require(index >= 0) { "Index should be non-negative" }
         }
 
-        override fun toString() = value.toString()
+        override fun toString() = index.toString()
     }
 
     /**
-     * Indicates that the respective [key][value] is to be selected.
+     * Indicates that the respective [key][name] is to be selected.
      * It is serialized as a [string][JsonPrimitive]
-     * @param value a non-blank attribute name
+     * @param name a non-blank attribute name
      */
     @JvmInline
-    value class Named(val value: String) : ClaimPathElement {
+    value class Claim(val name: String) : ClaimPathElement {
         init {
-            require(value.isNotBlank()) { "Attribute must not be blank" }
+            require(name.isNotBlank()) { "Attribute must not be blank" }
         }
 
-        override fun toString() = value
+        override fun toString() = name
     }
 }
 
 operator fun ClaimPathElement.contains(thatElement: ClaimPathElement): Boolean =
     when (this) {
-        ClaimPathElement.All -> when (thatElement) {
-            ClaimPathElement.All -> true
-            is ClaimPathElement.Indexed -> true
-            is ClaimPathElement.Named -> false
+        ClaimPathElement.AllArrayElements -> when (thatElement) {
+            ClaimPathElement.AllArrayElements -> true
+            is ClaimPathElement.ArrayElement -> true
+            is ClaimPathElement.Claim -> false
         }
 
-        is ClaimPathElement.Indexed -> thatElement == this
-        is ClaimPathElement.Named -> thatElement == this
+        is ClaimPathElement.ArrayElement -> thatElement == this
+        is ClaimPathElement.Claim -> thatElement == this
     }
 
 inline fun <T> ClaimPathElement.fold(
-    ifAll: () -> T,
-    ifIndexed: (Int) -> T,
-    ifNamed: (String) -> T,
+    ifAllArrayElements: () -> T,
+    ifArrayElement: (Int) -> T,
+    ifClaim: (String) -> T,
 ): T {
     contract {
-        callsInPlace(ifAll, InvocationKind.AT_MOST_ONCE)
-        callsInPlace(ifIndexed, InvocationKind.AT_MOST_ONCE)
-        callsInPlace(ifNamed, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(ifAllArrayElements, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(ifArrayElement, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(ifClaim, InvocationKind.AT_MOST_ONCE)
     }
     return when (this) {
-        ClaimPathElement.All -> ifAll()
-        is ClaimPathElement.Indexed -> ifIndexed(value)
-        is ClaimPathElement.Named -> ifNamed(value)
+        ClaimPathElement.AllArrayElements -> ifAllArrayElements()
+        is ClaimPathElement.ArrayElement -> ifArrayElement(index)
+        is ClaimPathElement.Claim -> ifClaim(name)
     }
 }
 
 /**
  * Maps a [JsonPointer] to a [ClaimPath], that either contains exactly the same information, or
- * index tokens are replaced by [`null`][ClaimPathElement.All].
+ * index tokens are replaced by [`null`][ClaimPathElement.AllArrayElements].
  *
  * @receiver The JSON pointer to transform. It should be other than [""]
  * @param replaceIndexesWithWildcard if `true` integer indexes found in the [JsonPointer] tokens
- * will be replaced by [`null`][ClaimPathElement.All]. Otherwise, indexes will be preserved.
+ * will be replaced by [`null`][ClaimPathElement.AllArrayElements]. Otherwise, indexes will be preserved.
  * If omitted default value is `false`
  * @return the [ClaimPath] as described above.
  * @throws IllegalArgumentException in case the [JsonPointer] is [""][JsonPointer.Root]
@@ -194,10 +187,10 @@ fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimP
     fun asElement(token: String): ClaimPathElement =
         token.toIntOrNull()
             ?.let { index ->
-                if (replaceIndexesWithWildcard) ClaimPathElement.All
-                else ClaimPathElement.Indexed(index)
+                if (replaceIndexesWithWildcard) ClaimPathElement.AllArrayElements
+                else ClaimPathElement.ArrayElement(index)
             }
-            ?: ClaimPathElement.Named(token)
+            ?: ClaimPathElement.Claim(token)
 
     require(JsonPointer.Root != this) { "Cannot map JsonPointer `\"\"` to a path" }
     return tokens.map(::asElement).let(::ClaimPath)
@@ -213,9 +206,9 @@ fun ClaimPath.toJsonPointers(maxWildcardExpansions: Int = 10): List<JsonPointer>
         else {
             val (head, tail) = path
             head.fold(
-                ifNamed = { name -> buildPointers(tail, currentPointer.child(name)) },
-                ifIndexed = { index -> buildPointers(tail, currentPointer.child(index)) },
-                ifAll = {
+                ifClaim = { name -> buildPointers(tail, currentPointer.child(name)) },
+                ifArrayElement = { index -> buildPointers(tail, currentPointer.child(index)) },
+                ifAllArrayElements = {
                     // Handle wildcard: generate multiple pointers with index expansions
                     (0..maxWildcardExpansions).flatMap { index ->
                         buildPointers(tail, currentPointer.child(index))
@@ -234,9 +227,9 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
 
     private fun claimPathElement(it: JsonPrimitive): ClaimPathElement =
         when {
-            it is JsonNull -> ClaimPathElement.All
-            it.isString -> ClaimPathElement.Named(it.content)
-            it.intOrNull != null -> ClaimPathElement.Indexed(it.int)
+            it is JsonNull -> ClaimPathElement.AllArrayElements
+            it.isString -> ClaimPathElement.Claim(it.content)
+            it.intOrNull != null -> ClaimPathElement.ArrayElement(it.int)
             else -> throw IllegalArgumentException("Only string, null, int can be used")
         }
 
@@ -251,9 +244,9 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
     private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
 
     private fun ClaimPathElement.toJson(): JsonPrimitive = when (this) {
-        is ClaimPathElement.Named -> JsonPrimitive(value)
-        is ClaimPathElement.Indexed -> JsonPrimitive(value)
-        ClaimPathElement.All -> JsonNull
+        is ClaimPathElement.Claim -> JsonPrimitive(name)
+        is ClaimPathElement.ArrayElement -> JsonPrimitive(index)
+        ClaimPathElement.AllArrayElements -> JsonNull
     }
 
     val arraySerializer = serializer<JsonArray>()

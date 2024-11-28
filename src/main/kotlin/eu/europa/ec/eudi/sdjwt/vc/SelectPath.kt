@@ -55,7 +55,7 @@ private fun default(): SelectPath = SelectPath { path ->
 private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
     val (head, tail) = path
     return head.fold(
-        ifNamed = { name ->
+        ifClaim = { name ->
             check(this is JsonObject) {
                 "Path element is $head. Was expecting a JSON object, found $this"
             }
@@ -63,7 +63,7 @@ private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
             if (tail == null) selectedElement
             else selectedElement?.selectPath(tail)
         },
-        ifIndexed = { index ->
+        ifArrayElement = { index ->
             check(this is JsonArray) {
                 "Path element is $head. Was expecting a JSON array, found $this"
             }
@@ -71,7 +71,7 @@ private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
             if (tail == null) selectedElement
             else selectedElement?.selectPath(tail)
         },
-        ifAll = {
+        ifAllArrayElements = {
             check(this is JsonArray) {
                 "Path element is $head. Was expecting a JSON array, found $this"
             }
