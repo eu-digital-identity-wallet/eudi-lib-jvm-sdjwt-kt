@@ -15,21 +15,22 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet
-import com.nimbusds.jose.jwk.source.JWKSource
-import com.nimbusds.jose.proc.BadJOSEException
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jose.util.X509CertUtils
-import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
+import io.ktor.client.*
 import io.ktor.http.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
+import com.nimbusds.jose.jwk.JWK as NimbusJWK
+import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet as NimbusImmutableJWKSet
+import com.nimbusds.jose.jwk.source.JWKSource as NimbusJWKSource
+import com.nimbusds.jose.proc.BadJOSEException as NimbusBadJOSEException
+import com.nimbusds.jose.proc.SecurityContext as NimbusSecurityContext
+import com.nimbusds.jose.util.X509CertUtils as NimbusX509CertUtils
+import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 fun interface X509CertificateTrust {
     suspend fun isTrusted(chain: List<X509Certificate>): Boolean
@@ -53,7 +54,7 @@ fun interface LookupPublicKeysFromDIDDocument {
      *
      * @return the matching public keys or null in case lookup fails for any reason
      */
-    suspend fun lookup(did: String, didUrl: String?): List<JWK>?
+    suspend fun lookup(did: String, didUrl: String?): List<NimbusJWK>?
 }
 
 /**
@@ -212,11 +213,11 @@ fun sdJwtVcSignatureVerifier(
     lookup: LookupPublicKeysFromDIDDocument? = null,
 ): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
     try {
-        val signedJwt = SignedJWT.parse(unverifiedJwt)
+        val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
         val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
         val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
         jwtProcessor.process(signedJwt, null).asClaims()
-    } catch (t: BadJOSEException) {
+    } catch (_: NimbusBadJOSEException) {
         null
     }
 }
@@ -227,28 +228,29 @@ private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory?,
     trust: X509CertificateTrust?,
     lookup: LookupPublicKeysFromDIDDocument?,
-    signedJwt: SignedJWT,
-): JWKSource<SecurityContext> {
-    suspend fun fromMetadata(source: Metadata): JWKSource<SecurityContext> =
-        httpClientFactory?.invoke()?.use { httpClient ->
-            val fetcher = SdJwtVcIssuerMetaDataFetcher(httpClient)
-            fetcher.fetchJWKSetFromMetaData(source.iss)
-                ?.let { jwks -> ImmutableJWKSet(jwks) }
-                ?: invalidSdJwtVc("Failed to get SD-JWT-VC metadata of ${source.iss}")
-        } ?: invalidSdJwtVc("SD-JWT-VC validation requires Issuer's metadata resolution, which is not enabled")
+    signedJwt: NimbusSignedJWT,
+): NimbusJWKSource<NimbusSecurityContext> {
+    suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
+        if (httpClientFactory == null) invalidSdJwtVc("SD-JWT-VC validation requires Issuer's metadata resolution, which is not enabled")
+        val jwks = httpClientFactory().use { httpClient ->
+            with(MetadataOps) { httpClient.getJWKSetFromSdJwtVcIssuerMetadata(source.iss) }
+        }
+        return NimbusImmutableJWKSet(jwks)
+    }
 
-    suspend fun fromX509CertChain(source: X509CertChain): JWKSource<SecurityContext> =
-        trust?.let {
+    suspend fun fromX509CertChain(source: X509CertChain): NimbusJWKSource<NimbusSecurityContext> {
+        return trust?.let {
             if (it.isTrusted(source.chain)) {
-                val jwk = JWK.parse(source.chain.first())
-                ImmutableJWKSet(JWKSet(mutableListOf(jwk)))
+                val jwk = NimbusJWK.parse(source.chain.first())
+                NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk)))
             } else invalidSdJwtVc("Leaf certificate is not trusted")
         } ?: invalidSdJwtVc("SD-JWT-VC validation requires x5c validation, which is not enabled")
+    }
 
-    suspend fun fromDid(source: DIDUrl): JWKSource<SecurityContext> =
+    suspend fun fromDid(source: DIDUrl): NimbusJWKSource<NimbusSecurityContext> =
         lookup?.let {
             val jwks = it.lookup(source.iss, source.kid) ?: invalidSdJwtVc("Failed to resolve $source")
-            SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, JWKSet(jwks))
+            SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, NimbusJWKSet(jwks))
         } ?: invalidSdJwtVc("SD-JWT-VC validation requires DID resolution, which is not enabled")
 
     return when (val source = keySource(signedJwt)) {
@@ -273,9 +275,9 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
 private const val HTTPS_URI_SCHEME = "https"
 private const val DID_URI_SCHEME = "did"
 
-internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource {
+internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     val kid = jwt.header?.keyID
-    val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { X509CertUtils.parse(it.decode()) }
+    val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { NimbusX509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet?.issuer
     val issUrl = iss?.let { runCatching { Url(it) }.getOrNull() }
     val issScheme = issUrl?.protocol?.name
@@ -302,4 +304,28 @@ internal fun keySource(jwt: SignedJWT): SdJwtVcIssuerPublicKeySource {
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> invalidSdJwtVc("Failed to identify a source for Issuer's pub key")
     }
+}
+
+internal interface MetadataOps : GetSdJwtVcIssuerMetadataOps, GetJwkSetKtorOps {
+
+    suspend fun HttpClient.getJWKSetFromSdJwtVcIssuerMetadata(issuer: Url): NimbusJWKSet = coroutineScope {
+        val metadata = getSdJwtVcIssuerMetadata(issuer)
+        checkNotNull(metadata) { "Failed to obtain issuer metadata for $issuer" }
+        val jwkSet = jwkSetOf(metadata)
+        checkNotNull(jwkSet) { "Failed to obtain JWKSet from metadata" }
+        val nJwkSet = jwkSet.asNimbusJWKSet().getOrNull()
+        checkNotNull(nJwkSet) { "Failed to parse JWKSet" }
+    }
+
+    private suspend fun HttpClient.jwkSetOf(metadata: SdJwtVcIssuerMetadata): JsonObject? = coroutineScope {
+        when {
+            metadata.jwksUri != null -> getJWKSet(Url(metadata.jwksUri))
+            else -> metadata.jwks
+        }
+    }
+
+    private fun JsonObject.asNimbusJWKSet(): Result<NimbusJWKSet> =
+        runCatching { NimbusJWKSet.parse(toString()) }
+
+    companion object : MetadataOps
 }

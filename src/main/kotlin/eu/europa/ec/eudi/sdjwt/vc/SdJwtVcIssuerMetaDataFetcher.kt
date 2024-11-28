@@ -22,52 +22,44 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
-import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
 
 /**
  * Fetches the metadata of an SD-JWT VC issuer.
  */
-internal class SdJwtVcIssuerMetaDataFetcher(private val httpClient: HttpClient) {
+interface GetSdJwtVcIssuerMetadataOps {
 
-    suspend fun fetchMetaData(issuer: Url): SdJwtVcIssuerMetadata? = coroutineScope {
-        metadata(issuer)?.also { metadata ->
-            check(issuer == Url(metadata.issuer)) { "Issuer does not match the expected value" }
-        }
-    }
-
-    suspend fun fetchJWKSetFromMetaData(issuer: Url): NimbusJWKSet? = coroutineScope {
-        fetchMetaData(issuer)?.let { metadata ->
-            val jwkSet = jwkSetOf(metadata)
-            checkNotNull(jwkSet) { "Failed to obtain JWKSet from metadata" }
-        }
-    }
-
-    private suspend fun metadata(issuer: Url): SdJwtVcIssuerMetadata? = coroutineScope {
+    suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? = coroutineScope {
         val issuerMetadataUrl = issuerMetadataUrl(issuer)
-        val httpResponse = httpClient.get(issuerMetadataUrl)
-        if (httpResponse.status.isSuccess()) httpResponse.body()
-        else null
-    }
-
-    private suspend fun jwkSetOf(metadata: SdJwtVcIssuerMetadata): NimbusJWKSet? = coroutineScope {
-        val jwks = when {
-            metadata.jwksUri != null -> fetchJwkSet(Url(metadata.jwksUri))
-            else -> metadata.jwks
-        }
-        jwks?.let {
-            val jwksJsonString = it.toString()
-            runCatching { NimbusJWKSet.parse(jwksJsonString) }.getOrNull()
+        val httpResponse = get(issuerMetadataUrl)
+        when {
+            httpResponse.status.isSuccess() -> {
+                httpResponse.body<SdJwtVcIssuerMetadata>()
+                    .also { metadata ->
+                        check(issuer == Url(metadata.issuer)) { "Issuer does not match the expected value" }
+                    }
+            }
+            else -> null
         }
     }
 
-    private suspend fun fetchJwkSet(jwksUri: Url): JsonObject? = coroutineScope {
-        val httpResponse = httpClient.get(jwksUri)
-        if (httpResponse.status.isSuccess()) httpResponse.body<JsonObject>()
-        else null
+    companion object : GetSdJwtVcIssuerMetadataOps {
+
+        private fun issuerMetadataUrl(issuer: Url): Url =
+            URLBuilder(issuer).apply {
+                path("/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}${issuer.pathSegments.joinToString("/")}")
+            }.build()
     }
 }
 
-private fun issuerMetadataUrl(issuer: Url): Url =
-    URLBuilder(issuer).apply {
-        path("/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}${issuer.pathSegments.joinToString("/")}")
-    }.build()
+interface GetJwkSetKtorOps {
+
+    suspend fun HttpClient.getJWKSet(jwksUri: Url): JsonObject? = getJWKSetAs(jwksUri)
+
+    companion object : GetJwkSetKtorOps {
+        suspend inline fun <reified JWK> HttpClient.getJWKSetAs(jwksUri: Url): JWK? = coroutineScope {
+            val httpResponse = get(jwksUri)
+            if (httpResponse.status.isSuccess()) httpResponse.body()
+            else null
+        }
+    }
+}

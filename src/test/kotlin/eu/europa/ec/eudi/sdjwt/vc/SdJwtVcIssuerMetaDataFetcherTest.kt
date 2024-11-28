@@ -30,10 +30,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.*
 
-/**
- * Test cases for [SdJwtVcIssuerMetaDataFetcher].
- */
-internal class SdJwtVcIssuerMetaDataFetcherTest {
+internal class SdJwtVcIssuerMetaDataFetcherTest :
+    MetadataOps {
 
     @Test
     fun `verify issuer jwks resolution fails when issuer is mismatched`() = runTest {
@@ -57,7 +55,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
         }
 
         assertFailsWith(IllegalStateException::class, "issuer does not match the expected value") {
-            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            client.getSdJwtVcIssuerMetadata(issuer)
         }
         assertEquals(1, requests)
     }
@@ -84,7 +82,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
             }
         }
         assertFailsWith(JsonConvertException::class, "either 'jwks' or 'jwks_uri' must be provided") {
-            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            client.getSdJwtVcIssuerMetadata(issuer)
         }
         assertEquals(1, requests)
     }
@@ -108,7 +106,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val jwks = SdJwtVcIssuerMetaDataFetcher(client).fetchJWKSetFromMetaData(issuer) ?: error("Unexpected")
+            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
@@ -148,7 +146,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val jwks = SdJwtVcIssuerMetaDataFetcher(client).fetchJWKSetFromMetaData(issuer) ?: error("Unexpected")
+            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
