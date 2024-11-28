@@ -79,7 +79,7 @@ class KeyBindingTest {
             issuedSdJwt.recreateClaims { it.jwtClaimsSet.asClaims() }["credentialSubject"]?.jsonObject
                 ?: JsonObject(emptyMap())
 
-        assertEquals(4, selectivelyDisclosedClaims.size)
+        assertEquals(5, selectivelyDisclosedClaims.size)
         assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
         assertEquals(emailCredential.familyName, selectivelyDisclosedClaims["family_name"]?.jsonPrimitive?.content)
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
@@ -96,7 +96,7 @@ class KeyBindingTest {
         val whatToDisclose = setOf(
             ClaimPath.claim("credentialSubject").claim("email"),
             ClaimPath.claim("credentialSubject").claim("countries"),
-            ClaimPath.claim("addresses").arrayElement(0).claim("street"),
+            ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0).claim("street"),
         )
         val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
 
@@ -203,13 +203,13 @@ class IssuerActor(val issuerKey: ECKey) {
                 cnf(holderPubKey as JWK)
                 structured("credentialSubject") {
                     sd(credential)
-                }
-                recursiveArray("addresses") {
-                    buildSdObject {
-                        sd("street", "street1")
-                    }
-                    buildSdObject {
-                        sd("street", "street2")
+                    recursiveArray("addresses") {
+                        buildSdObject {
+                            sd("street", "street1")
+                        }
+                        buildSdObject {
+                            sd("street", "street2")
+                        }
                     }
                 }
             }
