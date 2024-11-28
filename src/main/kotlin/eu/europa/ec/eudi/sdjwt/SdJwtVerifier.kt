@@ -21,9 +21,6 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
-import java.time.Clock
-import java.time.Duration
-import java.time.Instant
 
 /**
  * Errors that may occur during SD-JWT verification
@@ -502,54 +499,6 @@ internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
             else -> emptyList()
         }
     return claims.map { (attribute, json) -> digestsOf(attribute, json) }.flatten()
-}
-
-/**
- * Validations for the contents of an envelope JWT
- */
-object ClaimValidations {
-
-    /**
-     * Retrieves the aud claim
-     *
-     * @receiver the claims to check
-     * @return the aud claim
-     */
-    fun Claims.aud(): List<String> =
-        when (val audElement = get(RFC7519.AUDIENCE)) {
-            is JsonPrimitive -> audElement.contentOrNull?.let { listOf(it) } ?: emptyList()
-            is JsonArray -> audElement.mapNotNull {
-                if (it is JsonPrimitive) it.contentOrNull else null
-            }
-
-            else -> emptyList()
-        }
-
-    /**
-     * Retrieves the iat claim, if present and within the provided time window.
-     * The time window will be calculated by getting the [current time][Clock.instant]
-     * and the [offset].
-     * That is, iat less than equal to the clock's current time and not before the current time minus the offset
-     *
-     * @param clock the clock to use
-     * @param offset a time window within which the iat is expecting
-     * @receiver the claims to check
-     * @return the iat claim
-     */
-    fun Claims.iat(clock: Clock, offset: Duration): Instant? =
-        primitiveClaim(RFC7519.ISSUED_AT)?.longOrNull?.let { iatValue ->
-            val iat = Instant.ofEpochSecond(iatValue)
-            val now = clock.instant()
-            iat.takeIf { (iat >= now.minusSeconds(offset.seconds) && iat <= now) }
-        }
-
-    fun Claims.nonce(): String? = primitiveClaim("nonce")?.contentOrNull
-
-    fun Claims.primitiveClaim(name: String): JsonPrimitive? =
-        get(name)?.let { element -> element as? JsonPrimitive }
-
-    private fun Claims.objectClaim(name: String): JsonObject? =
-        get(name)?.let { element -> element as? JsonObject }
 }
 
 internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: Claims): String {
