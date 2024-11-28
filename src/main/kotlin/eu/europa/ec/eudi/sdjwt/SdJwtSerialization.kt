@@ -70,8 +70,6 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
 
 internal object StandardSerialization {
 
-    private const val TILDE = '~'
-
     fun concat(
         serializedJwt: Jwt,
         disclosures: Iterable<String>,
@@ -100,10 +98,10 @@ internal object StandardSerialization {
      * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
      */
     fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
-        val parts = unverifiedSdJwt.split(TILDE)
+        val parts = unverifiedSdJwt.split(SdJwtSpec.TILDE)
         if (parts.size <= 1) throw ParsingError.asException()
         val jwt = parts[0]
-        val containsKeyBinding = !unverifiedSdJwt.endsWith(TILDE)
+        val containsKeyBinding = !unverifiedSdJwt.endsWith(SdJwtSpec.TILDE)
         val ds = parts
             .drop(1)
             .run { if (containsKeyBinding) dropLast(1) else this }
@@ -113,17 +111,10 @@ internal object StandardSerialization {
     }
 
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
-        joinToString(prefix = "$TILDE", separator = "") { "${get(it)}~" }
+        joinToString(prefix = "${SdJwtSpec.TILDE}", separator = "") { "${get(it)}${SdJwtSpec.TILDE}" }
 }
 
 internal object JwsJsonSupport {
-    private const val JWS_JSON_HEADER = "header"
-    private const val JWS_JSON_DISCLOSURES = "disclosures"
-    private const val JWS_JSON_KB_JWT = "kb_jwt"
-    private const val JWS_JSON_PROTECTED = "protected"
-    private const val JWS_JSON_SIGNATURE = "signature"
-    private const val JWS_JSON_SIGNATURES = "signatures"
-    private const val JWS_JSON_PAYLOAD = "payload"
 
     fun JwsSerializationOption.buildJwsJson(
         protected: String,
@@ -133,21 +124,21 @@ internal object JwsJsonSupport {
         kbJwt: Jwt?,
     ): JsonObject {
         fun JsonObjectBuilder.putHeadersAndSignature() {
-            putJsonObject(JWS_JSON_HEADER) {
-                put(JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
+            putJsonObject(RFC7515.JWS_JSON_HEADER) {
+                put(SdJwtSpec.JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
                 if (kbJwt != null) {
-                    put(JWS_JSON_KB_JWT, kbJwt)
+                    put(SdJwtSpec.JWS_JSON_KB_JWT, kbJwt)
                 }
             }
-            put(JWS_JSON_PROTECTED, protected)
-            put(JWS_JSON_SIGNATURE, signature)
+            put(RFC7515.JWS_JSON_PROTECTED, protected)
+            put(RFC7515.JWS_JSON_SIGNATURE, signature)
         }
 
         return buildJsonObject {
-            put(JWS_JSON_PAYLOAD, payload)
+            put(RFC7515.JWS_JSON_PAYLOAD, payload)
             when (this@buildJwsJson) {
                 JwsSerializationOption.General ->
-                    putJsonArray(JWS_JSON_SIGNATURES) {
+                    putJsonArray(RFC7515.JWS_JSON_SIGNATURES) {
                         add(buildJsonObject { putHeadersAndSignature() })
                     }
 
@@ -170,7 +161,7 @@ internal object JwsJsonSupport {
         // selects the JsonObject that contains the pair of "protected" & "signature" claims
         // According to RFC7515 General format this could be in "signatures" json array or
         // in flatten format this could be the given root element itself
-        val signatureContainer = unverifiedSdJwt[JWS_JSON_SIGNATURES]
+        val signatureContainer = unverifiedSdJwt[RFC7515.JWS_JSON_SIGNATURES]
             ?.takeIf { it is JsonArray }
             ?.jsonArray
             ?.firstOrNull()
@@ -179,21 +170,21 @@ internal object JwsJsonSupport {
             ?: unverifiedSdJwt
 
         val unverifiedJwt = run {
-            val protected = signatureContainer[JWS_JSON_PROTECTED]?.stringContentOrNull()
-            val signature = signatureContainer[JWS_JSON_SIGNATURE]?.stringContentOrNull()
-            val payload = unverifiedSdJwt[JWS_JSON_PAYLOAD]?.stringContentOrNull()
+            val protected = signatureContainer[RFC7515.JWS_JSON_PROTECTED]?.stringContentOrNull()
+            val signature = signatureContainer[RFC7515.JWS_JSON_SIGNATURE]?.stringContentOrNull()
+            val payload = unverifiedSdJwt[RFC7515.JWS_JSON_PAYLOAD]?.stringContentOrNull()
             requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
             requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
             requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
             "$protected.$payload.$signature"
         }
 
-        val unprotectedHeader = signatureContainer[JWS_JSON_HEADER]
+        val unprotectedHeader = signatureContainer[RFC7515.JWS_JSON_HEADER]
             ?.takeIf { element -> element is JsonObject }
             ?.jsonObject
 
-        // SD-JWT specification extends RFC7515 with a "disclosures" top-level json array
-        val unverifiedDisclosures = unprotectedHeader?.get(JWS_JSON_DISCLOSURES)
+        // SD-JWT specification extends RFC7515 with a "disclosures" top-level JSON array
+        val unverifiedDisclosures = unprotectedHeader?.get(SdJwtSpec.JWS_JSON_DISCLOSURES)
             ?.takeIf { element -> element is JsonArray }
             ?.jsonArray
             ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }

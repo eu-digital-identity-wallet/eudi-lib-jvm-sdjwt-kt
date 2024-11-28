@@ -77,7 +77,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return discloseJwt(
             hashAlgorithm,
-            JsonObject(jwtClaims - "_sd_alg"),
+            JsonObject(jwtClaims - SdJwtSpec._SD_ALG),
             disclosures,
         )
     }
@@ -307,7 +307,7 @@ private sealed interface DisclosedArrayElement {
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
 internal fun Claims.directDigests(): Set<DisclosureDigest> =
-    this["_sd"]?.jsonArray
+    this[SdJwtSpec._SD]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?.toSet()
         ?: emptySet()
@@ -318,4 +318,4 @@ internal fun Claims.directDigests(): Set<DisclosureDigest> =
  * @return The [HashAlgorithm] if found
  */
 internal fun Claims.hashAlgorithm(): HashAlgorithm? =
-    this["_sd_alg"]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
+    this[SdJwtSpec._SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }

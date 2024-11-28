@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
@@ -196,7 +195,7 @@ sealed interface KeyBindingVerifier {
 
                 return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
                     ?.takeIf { kbClaims ->
-                        val sdHash = kbClaims[SdJwtDigest.CLAIM_NAME]
+                        val sdHash = kbClaims[SdJwtSpec.SD_HASH]
                             ?.takeIf { element -> element is JsonPrimitive && element.isString }
                             ?.jsonPrimitive
                             ?.contentOrNull
@@ -547,10 +546,10 @@ object ClaimValidations {
     fun Claims.nonce(): String? = primitiveClaim("nonce")?.contentOrNull
 
     fun Claims.primitiveClaim(name: String): JsonPrimitive? =
-        get(name)?.let { element -> if (element is JsonPrimitive) element else null }
+        get(name)?.let { element -> element as? JsonPrimitive }
 
     private fun Claims.objectClaim(name: String): JsonObject? =
-        get(name)?.let { element -> if (element is JsonObject) element else null }
+        get(name)?.let { element -> element as? JsonObject }
 }
 
 internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: Claims): String {

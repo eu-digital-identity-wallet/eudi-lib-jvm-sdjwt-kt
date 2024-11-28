@@ -25,8 +25,10 @@ value class MinimumDigests(val value: Int) {
     init {
         require(value > 0) { "value must be greater than zero." }
     }
+
     operator fun plus(that: MinimumDigests) = MinimumDigests(this.value + that.value)
 }
+
 fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
 
 /**
@@ -180,7 +182,7 @@ class SdJwtFactory(
         val (jwtClaimSet, disclosures) = this
         return if (disclosures.isEmpty()) this
         else {
-            val newClaimSet = JsonObject(jwtClaimSet + ("_sd_alg" to JsonPrimitive(h.alias)))
+            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec._SD_ALG to JsonPrimitive(h.alias)))
             newClaimSet to disclosures
         }
     }
@@ -197,7 +199,7 @@ class SdJwtFactory(
 
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
         if (isEmpty()) JsonObject(emptyMap())
-        else JsonObject(mapOf("_sd" to JsonArray(map { JsonPrimitive(it.value) })))
+        else JsonObject(mapOf(SdJwtSpec._SD to JsonArray(map { JsonPrimitive(it.value) })))
 
     private fun Claims.sdClaim(): List<JsonElement> = this["_sd"]?.jsonArray ?: emptyList()
 
@@ -259,13 +261,6 @@ class SdJwtFactory(
          */
         val Default: SdJwtFactory =
             SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
-
-        @Deprecated(
-            message = "Deprecated and will be removed in a future release",
-            replaceWith = ReplaceWith("SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)"),
-        )
-        fun of(hashAlgorithm: HashAlgorithm, fallbackMinimumDigests: Int?): SdJwtFactory =
-            SdJwtFactory(hashAlgorithm, fallbackMinimumDigests = fallbackMinimumDigests.atLeastDigests())
     }
 }
 

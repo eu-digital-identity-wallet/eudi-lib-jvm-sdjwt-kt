@@ -27,12 +27,6 @@ value class SdJwtDigest private constructor(val value: String) {
     companion object {
 
         /**
-         * The name of the claim, under which the SD-JWT
-         * digest is expected to be found in a Key Binding JWT
-         */
-        const val CLAIM_NAME = "sd_hash"
-
-        /**
          * Wraps the given [value] to a [SdJwtDigest].
          * The [value] is expected to be base64-url encoded.
          *
@@ -52,12 +46,12 @@ value class SdJwtDigest private constructor(val value: String) {
          * @return the calculated digest
          */
         fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
-            require(value.contains("~"))
+            require(value.contains(SdJwtSpec.TILDE))
             fun String.noKeyBinding() =
-                if (endsWith("~")) {
+                if (endsWith(SdJwtSpec.TILDE)) {
                     this
                 } else {
-                    removeRange(lastIndexOf("~") + 1, length)
+                    removeRange(lastIndexOf(SdJwtSpec.TILDE) + 1, length)
                 }
 
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())

@@ -32,6 +32,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import com.nimbusds.jwt.proc.JWTClaimsSetVerifier
 import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.JwkSourceJWTProcessor
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import java.security.Key
 
 /**

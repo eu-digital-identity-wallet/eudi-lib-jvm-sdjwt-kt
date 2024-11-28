@@ -13,7 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.vc
+package eu.europa.ec.eudi.sdjwt
+
+/**
+ * [Selective Disclosure for JWTs (SD-JWT)](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+ */
+object SdJwtSpec {
+    const val _SD: String = "_sd"
+    const val _SD_ALG: String = "_sd_alg"
+    const val SD_HASH: String = "sd_hash"
+    const val THREE_DOTS: String = "..."
+    const val KB_PLUS_JWT: String = "kb+jwt"
+
+    const val TILDE: Char = '~'
+    const val JWS_JSON_DISCLOSURES = "disclosures"
+    const val JWS_JSON_KB_JWT = "kb_jwt"
+}
+
+/**
+ * [JSON Web Signature (JWS)](https://datatracker.ietf.org/doc/html/rfc7515)
+ */
+object RFC7515 {
+    const val JWS_JSON_HEADER = "header"
+    const val JWS_JSON_PROTECTED = "protected"
+    const val JWS_JSON_SIGNATURE = "signature"
+    const val JWS_JSON_SIGNATURES = "signatures"
+    const val JWS_JSON_PAYLOAD = "payload"
+}
 
 /**
  * [SD-JWT-based Verifiable Credentials](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/06/)
