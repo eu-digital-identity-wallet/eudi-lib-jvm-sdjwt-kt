@@ -100,11 +100,10 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
-    val (_, disclosuresPerClaimTmp) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
-    val disclosuresPerClaim = disclosuresPerClaimTmp.usePath()
-    val keys = disclosuresPerClaim.keys.filter { disclosed ->
+    val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf).second.usePath()
+    val keys = disclosuresPerClaim.keys.filter { claim ->
         query.any { requested ->
-            disclosed in requested
+            claim matches requested
         }
     }
     return if (keys.isEmpty()) null

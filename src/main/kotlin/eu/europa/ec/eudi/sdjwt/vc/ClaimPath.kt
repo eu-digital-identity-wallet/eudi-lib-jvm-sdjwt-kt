@@ -65,6 +65,8 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
             acc and comp()
         }
 
+    infix fun matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
+
     /**
      * Appends a wild-card indicator [ClaimPathElement.All]
      */

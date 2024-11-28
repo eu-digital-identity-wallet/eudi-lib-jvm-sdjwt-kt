@@ -96,9 +96,8 @@ class KeyBindingTest {
         val whatToDisclose = setOf(
             ClaimPath.attribute("credentialSubject") + "email",
             ClaimPath.attribute("credentialSubject") + "countries",
-            ClaimPath.attribute("addresses").all() + "street",
+            ClaimPath.attribute("addresses").at(1).attribute("street"),
         )
-
         val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
 
         val emailCredential = SampleCredential(
@@ -205,12 +204,12 @@ class IssuerActor(val issuerKey: ECKey) {
                 structured("credentialSubject") {
                     sd(credential)
                 }
-                sdArray("addresses") {
-                    sd {
-                        put("street", "street1")
+                recursiveArray("addresses") {
+                    buildSdObject {
+                        sd("street", "street1")
                     }
-                    sd {
-                        put("street", "street2")
+                    buildSdObject {
+                        sd("street", "street2")
                     }
                 }
             }
