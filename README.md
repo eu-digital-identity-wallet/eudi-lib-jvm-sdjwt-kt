@@ -136,11 +136,12 @@ as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
 
 
 <!--- INCLUDE
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
-import com.nimbusds.jwt.*
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.serialization.json.put
 -->
 
 ```kotlin
@@ -167,10 +168,8 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
         issuer.issue(sdJwtSpec).getOrThrow()
     }
 
-    val claimsToInclude = listOf("/address/region", "/address/country")
-        .mapNotNull { JsonPointer.parse(it) }
-        .toSet()
-
+    val addressPath = ClaimPath.attribute("address")
+    val claimsToInclude = setOf(addressPath + "region", addressPath + "country")
     issuedSdJwt.present(claimsToInclude)!!
 }
 ```
