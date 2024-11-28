@@ -32,7 +32,7 @@ sealed interface Disclosure {
      */
     fun claim(): Claim {
         val (_, name, value) = decode(value).getOrThrow()
-        return (name ?: SdJwtSpec.THREE_DOTS) to value
+        return (name ?: SdJwtSpec.CLAIM_THREE_DOTS) to value
     }
 
     @JvmInline
@@ -113,7 +113,7 @@ sealed interface Disclosure {
             allowNestedDigests: Boolean = false,
         ): Result<ObjectProperty> {
             // Make sure that claim name is not _sd
-            fun isValidAttributeName(attribute: String): Boolean = attribute != SdJwtSpec._SD
+            fun isValidAttributeName(attribute: String): Boolean = attribute != SdJwtSpec.CLAIM_SD
 
             // Make sure that claim value doesn't contain an attribute named _sd
             // is not Json null
@@ -127,11 +127,11 @@ sealed interface Disclosure {
                 }
             return runCatching {
                 require(isValidAttributeName(claim.name())) {
-                    "Given claim should not contain an attribute named ${SdJwtSpec._SD}"
+                    "Given claim should not contain an attribute named ${SdJwtSpec.CLAIM_SD}"
                 }
 
                 require(isValidJsonElement(claim.value())) {
-                    "Claim should not contain a null value or an JSON object with attribute named ${SdJwtSpec._SD}"
+                    "Claim should not contain a null value or an JSON object with attribute named ${SdJwtSpec.CLAIM_SD}"
                 }
 
                 // Create a Json Array [salt, claimName, claimValue]

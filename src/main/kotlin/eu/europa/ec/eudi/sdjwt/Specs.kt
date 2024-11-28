@@ -18,16 +18,72 @@ package eu.europa.ec.eudi.sdjwt
 /**
  * [Selective Disclosure for JWTs (SD-JWT)](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
  */
+@Suppress("UNUSED")
 object SdJwtSpec {
-    const val _SD: String = "_sd"
-    const val _SD_ALG: String = "_sd_alg"
-    const val SD_HASH: String = "sd_hash"
-    const val THREE_DOTS: String = "..."
-    const val KB_PLUS_JWT: String = "kb+jwt"
+    /**
+     * Digests of Disclosures for object properties
+     */
+    const val CLAIM_SD: String = "_sd"
 
-    const val TILDE: Char = '~'
+    /**
+     *  Hash algorithm used to generate Disclosure digests and digest over presentation
+     */
+    const val CLAIM_SD_ALG: String = "_sd_alg"
+
+    /**
+     * Digest of the SD-JWT to which the KB-JWT is tied
+     */
+    const val CLAIM_SD_HASH: String = "sd_hash"
+
+    /**
+     * Digest of the Disclosure for an array element
+     */
+    const val CLAIM_THREE_DOTS: String = "..."
+
+    //
+    //  Header parameters, for JWS JSON
+    //
+    /**
+     * An array of strings where each element is an individual Disclosure
+     */
     const val JWS_JSON_DISCLOSURES = "disclosures"
+
+    /**
+     * Present only in an SD-JWT+KB, the Key Binding JWT
+     */
     const val JWS_JSON_KB_JWT = "kb_jwt"
+
+    //
+    // Other
+    //
+    const val TILDE: Char = '~'
+
+    //
+    // Media types
+    //
+
+    const val MEDIA_SUBTYPE_SD_JWT: String = "sd-jwt"
+
+    /**
+     * To indicate that the content is an SD-JWT
+     */
+    const val MEDIA_TYPE_APPLICATION_SD_JWT: String = "application/$MEDIA_SUBTYPE_SD_JWT"
+
+    const val MEDIA_SUBTYPE_SD_JWT_JSON: String = "sd-jwt+json"
+
+    /**
+     * To indicate that the content is a JWS JSON serialized SD-JWT
+     */
+    const val MEDIA_TYPE_APPLICATION_SD_JWT_JSON: String = "application/$MEDIA_SUBTYPE_SD_JWT_JSON"
+
+    const val MEDIA_SUBTYPE_KB_JWT: String = "kb+jwt"
+
+    /**
+     * To indicate that the content is a Key Binding JWT
+     */
+    const val MEDIA_TYPE_APPLICATION_KB_JWT_JSON: String = "application/$MEDIA_SUBTYPE_KB_JWT"
+
+    const val SUFFIX_SD_JWT: String = "+sd-jwt"
 }
 
 /**
@@ -103,4 +159,17 @@ object SdJwtVcSpec {
     const val SVG_CONTRAST: String = "contrast"
     const val SVG_CONTRAST_NORMAL: String = "normal"
     const val SVG_CONTRAST_HIGH: String = "high"
+}
+
+/**
+ * [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)
+ */
+object RFC7519 {
+    const val ISSUER: String = "iss"
+    const val SUBJECT: String = "sub"
+    const val AUDIENCE: String = "aud"
+    const val EXPIRATION_TIME: String = "exp"
+    const val NOT_BEFORE: String = "nbf"
+    const val ISSUED_AT: String = "iat"
+    const val JWT_ID: String = "jti"
 }

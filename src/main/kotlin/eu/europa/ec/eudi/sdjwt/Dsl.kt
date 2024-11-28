@@ -460,16 +460,16 @@ fun SdObjectBuilder.recursive(name: String, minimumDigests: Int? = null, action:
  */
 private typealias BuilderAction<V> = (String, V) -> Unit
 
-private fun sub(value: String, action: BuilderAction<String>) = action("sub", value)
-private fun iss(value: String, action: BuilderAction<String>) = action("iss", value)
-private fun iat(value: Long, action: BuilderAction<Long>) = action("iat", value)
-private fun exp(value: Long, action: BuilderAction<Long>) = action("exp", value)
-private fun jti(value: String, action: BuilderAction<String>) = action("jti", value)
-private fun nbf(value: Long, action: BuilderAction<Long>) = action("nbf", value)
+private fun sub(value: String, action: BuilderAction<String>) = action(RFC7519.SUBJECT, value)
+private fun iss(value: String, action: BuilderAction<String>) = action(RFC7519.ISSUER, value)
+private fun iat(value: Long, action: BuilderAction<Long>) = action(RFC7519.ISSUED_AT, value)
+private fun exp(value: Long, action: BuilderAction<Long>) = action(RFC7519.EXPIRATION_TIME, value)
+private fun jti(value: String, action: BuilderAction<String>) = action(RFC7519.JWT_ID, value)
+private fun nbf(value: Long, action: BuilderAction<Long>) = action(RFC7519.NOT_BEFORE, value)
 private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (aud.size) {
     0 -> Unit
-    1 -> action("aud", JsonPrimitive(aud[0]))
-    else -> action("aud", JsonArray(aud.map { JsonPrimitive(it) }))
+    1 -> action(RFC7519.AUDIENCE, JsonPrimitive(aud[0]))
+    else -> action(RFC7519.AUDIENCE, JsonArray(aud.map { JsonPrimitive(it) }))
 }
 
 /**

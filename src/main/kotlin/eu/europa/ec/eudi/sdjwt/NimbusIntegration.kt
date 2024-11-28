@@ -428,7 +428,7 @@ internal fun kbJwt(
     sdJwtDigest: SdJwtDigest,
 ): NimbusJWT {
     val header = with(NimbusJWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
-        type(NimbusJOSEObjectType(SdJwtSpec.KB_PLUS_JWT))
+        type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
         val pk = keyBindingSigner.publicKey
         if (pk is NimbusJWK) {
             keyID(pk.keyID)
@@ -437,7 +437,7 @@ internal fun kbJwt(
     }
     val claimSet = with(NimbusJWTClaimsSet.Builder()) {
         claimSetBuilderAction()
-        claim(SdJwtSpec.SD_HASH, sdJwtDigest.value)
+        claim(SdJwtSpec.CLAIM_SD_HASH, sdJwtDigest.value)
         build()
     }
 

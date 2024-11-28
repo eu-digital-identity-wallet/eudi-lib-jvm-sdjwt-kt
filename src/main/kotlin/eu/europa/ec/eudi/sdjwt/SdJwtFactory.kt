@@ -72,7 +72,7 @@ class SdJwtFactory(
             val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
             encodedClaims += encodedClaim
             if (mergedSdClaim.isNotEmpty()) {
-                encodedClaims["_sd"] = mergedSdClaim
+                encodedClaims[SdJwtSpec.CLAIM_SD] = mergedSdClaim
             }
         }
 
@@ -82,7 +82,7 @@ class SdJwtFactory(
             val decoys = genDecoys(digests.size, sdObject.minimumDigests).map { JsonPrimitive(it.value) }
             val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
             if (digestAndDecoys.isNotEmpty()) {
-                encodedClaims["_sd"] = JsonArray(digestAndDecoys)
+                encodedClaims[SdJwtSpec.CLAIM_SD] = JsonArray(digestAndDecoys)
             }
         }
 
@@ -182,7 +182,7 @@ class SdJwtFactory(
         val (jwtClaimSet, disclosures) = this
         return if (disclosures.isEmpty()) this
         else {
-            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec._SD_ALG to JsonPrimitive(h.alias)))
+            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec.CLAIM_SD_ALG to JsonPrimitive(h.alias)))
             newClaimSet to disclosures
         }
     }
@@ -199,12 +199,12 @@ class SdJwtFactory(
 
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
         if (isEmpty()) JsonObject(emptyMap())
-        else JsonObject(mapOf(SdJwtSpec._SD to JsonArray(map { JsonPrimitive(it.value) })))
+        else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
 
-    private fun Claims.sdClaim(): List<JsonElement> = this["_sd"]?.jsonArray ?: emptyList()
+    private fun Claims.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
 
     private fun DisclosureDigest.asDigestClaim(): JsonObject {
-        return JsonObject(mapOf("..." to JsonPrimitive(value)))
+        return JsonObject(mapOf(SdJwtSpec.CLAIM_THREE_DOTS to JsonPrimitive(value)))
     }
 
     private fun objectPropertyDisclosure(

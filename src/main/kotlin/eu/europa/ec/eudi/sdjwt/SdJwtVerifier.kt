@@ -195,7 +195,7 @@ sealed interface KeyBindingVerifier {
 
                 return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
                     ?.takeIf { kbClaims ->
-                        val sdHash = kbClaims[SdJwtSpec.SD_HASH]
+                        val sdHash = kbClaims[SdJwtSpec.CLAIM_SD_HASH]
                             ?.takeIf { element -> element is JsonPrimitive && element.isString }
                             ?.jsonPrimitive
                             ?.contentOrNull
@@ -456,7 +456,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
  * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
  */
 private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
-    val element = jwtClaims["_sd_alg"] ?: JsonPrimitive("sha-256")
+    val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive("sha-256")
     val alg =
         if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
         else null
@@ -489,7 +489,7 @@ private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Se
 internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
     fun digestsOf(attribute: String, json: JsonElement): List<DisclosureDigest> =
         when {
-            attribute == "_sd" && json is JsonArray -> json.mapNotNull { element ->
+            attribute == SdJwtSpec.CLAIM_SD && json is JsonArray -> json.mapNotNull { element ->
                 if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
                 else null
             }
@@ -516,7 +516,7 @@ object ClaimValidations {
      * @return the aud claim
      */
     fun Claims.aud(): List<String> =
-        when (val audElement = get("aud")) {
+        when (val audElement = get(RFC7519.AUDIENCE)) {
             is JsonPrimitive -> audElement.contentOrNull?.let { listOf(it) } ?: emptyList()
             is JsonArray -> audElement.mapNotNull {
                 if (it is JsonPrimitive) it.contentOrNull else null
@@ -537,7 +537,7 @@ object ClaimValidations {
      * @return the iat claim
      */
     fun Claims.iat(clock: Clock, offset: Duration): Instant? =
-        primitiveClaim("iat")?.longOrNull?.let { iatValue ->
+        primitiveClaim(RFC7519.ISSUED_AT)?.longOrNull?.let { iatValue ->
             val iat = Instant.ofEpochSecond(iatValue)
             val now = clock.instant()
             iat.takeIf { (iat >= now.minusSeconds(offset.seconds) && iat <= now) }

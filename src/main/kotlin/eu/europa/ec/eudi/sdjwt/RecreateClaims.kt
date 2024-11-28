@@ -77,7 +77,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return discloseJwt(
             hashAlgorithm,
-            JsonObject(jwtClaims - SdJwtSpec._SD_ALG),
+            JsonObject(jwtClaims - SdJwtSpec.CLAIM_SD_ALG),
             disclosures,
         )
     }
@@ -196,7 +196,7 @@ private class DiscloseObject(
         fun replace(digest: DisclosureDigest) {
             disclosuresPerDigest.remove(digest)?.let { disclosure ->
                 check(disclosure is Disclosure.ObjectProperty) {
-                    "Found array element disclosure ${disclosure.value} within _sd claim"
+                    "Found array element disclosure ${disclosure.value} within ${SdJwtSpec.CLAIM_SD} claim"
                 }
                 val (name, value) = disclosure.claim()
                 require(!jsonObject.containsKey(name)) {
@@ -212,7 +212,7 @@ private class DiscloseObject(
         jsonObject.directDigests().forEach { replace(it) }
 
         // Remove _sd claim, if present
-        resultingClaims.remove("_sd")
+        resultingClaims.remove(SdJwtSpec.CLAIM_SD)
 
         return JsonObject(resultingClaims)
     }
@@ -290,7 +290,7 @@ private sealed interface DisclosedArrayElement {
 
         private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
             if (obj.size == 1)
-                obj["..."]
+                obj[SdJwtSpec.CLAIM_THREE_DOTS]
                     ?.takeIf { element -> element is JsonPrimitive }
                     ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
             else null
@@ -307,7 +307,7 @@ private sealed interface DisclosedArrayElement {
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
 internal fun Claims.directDigests(): Set<DisclosureDigest> =
-    this[SdJwtSpec._SD]?.jsonArray
+    this[SdJwtSpec.CLAIM_SD]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?.toSet()
         ?: emptySet()
@@ -318,4 +318,4 @@ internal fun Claims.directDigests(): Set<DisclosureDigest> =
  * @return The [HashAlgorithm] if found
  */
 internal fun Claims.hashAlgorithm(): HashAlgorithm? =
-    this[SdJwtSpec._SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
+    this[SdJwtSpec.CLAIM_SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
