@@ -23,6 +23,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
+import kotlin.Throws
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
@@ -49,6 +50,17 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
 
     operator fun plus(other: ClaimPath): ClaimPath =
         ClaimPath(this.value + other.value)
+
+    operator fun plus(other: String): ClaimPath = plus(ClaimPathElement.Named(other))
+    operator fun plus(other: Int): ClaimPath = plus(ClaimPathElement.Indexed(other))
+    operator fun contains(other: ClaimPath): Boolean =
+        value.foldIndexed(true) { index, acc, thisElement ->
+            fun comp() = other.value.getOrNull(index)
+                ?.let { it in thisElement }
+                ?: false
+
+            acc and comp()
+        }
 
     /**
      * Appends a wild-card indicator [ClaimPathElement.All]
@@ -132,6 +144,18 @@ sealed interface ClaimPathElement {
     }
 }
 
+operator fun ClaimPathElement.contains(thatElement: ClaimPathElement): Boolean =
+    when (this) {
+        ClaimPathElement.All -> when (thatElement) {
+            ClaimPathElement.All -> true
+            is ClaimPathElement.Indexed -> true
+            is ClaimPathElement.Named -> false
+        }
+
+        is ClaimPathElement.Indexed -> thatElement == this
+        is ClaimPathElement.Named -> thatElement == this
+    }
+
 inline fun <T> ClaimPathElement.fold(
     ifAll: () -> T,
     ifIndexed: (Int) -> T,
@@ -153,13 +177,15 @@ inline fun <T> ClaimPathElement.fold(
  * Maps a [JsonPointer] to a [ClaimPath], that either contains exactly the same information, or
  * index tokens are replaced by [`null`][ClaimPathElement.All].
  *
- * @receiver The JSON pointer to transform
+ * @receiver The JSON pointer to transform. It should be other than [""]
  * @param replaceIndexesWithWildcard if `true` integer indexes found in the [JsonPointer] tokens
  * will be replaced by [`null`][ClaimPathElement.All]. Otherwise, indexes will be preserved.
  * If omitted default value is `false`
- * @return the [ClaimPath] as described above
+ * @return the [ClaimPath] as described above.
+ * @throws IllegalArgumentException in case the [JsonPointer] is [""][JsonPointer.Root]
  */
-fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimPath? {
+@Throws(IllegalArgumentException::class)
+fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimPath {
     fun asElement(token: String): ClaimPathElement =
         token.toIntOrNull()
             ?.let { index ->
@@ -168,7 +194,8 @@ fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimP
             }
             ?: ClaimPathElement.Named(token)
 
-    return tokens.takeUnless { it.isEmpty() }?.map(::asElement)?.let(::ClaimPath)
+    require(JsonPointer.Root != this) { "Cannot map JsonPointer `\"\"` to a path" }
+    return tokens.map(::asElement).let(::ClaimPath)
 }
 
 // TODO make stack safe

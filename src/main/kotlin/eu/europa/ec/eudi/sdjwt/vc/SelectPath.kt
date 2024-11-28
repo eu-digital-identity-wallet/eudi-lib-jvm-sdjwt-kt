@@ -79,6 +79,8 @@ private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
 private fun JsonArray.matchWildCardAndThen(tail: ClaimPath?): JsonElement? {
     val selectedElement = this
     return if (tail != null) {
+        // TODO Confirm whether we should enforce not null
+        //  or just return the null
         val newValue = selectedElement.map { element ->
             checkNotNull(element.selectPath(tail))
         }
@@ -89,6 +91,8 @@ private fun JsonArray.matchWildCardAndThen(tail: ClaimPath?): JsonElement? {
 private fun JsonArray.matchIndexAndThen(index: Int, tail: ClaimPath?): JsonElement? {
     val selectedElement = this[index]
     return if (tail != null) {
+        // TODO Confirm whether we should enforce not null
+        //  or just return the null
         checkNotNull(selectedElement)
         selectedElement.selectPath(tail)
     } else selectedElement
@@ -100,6 +104,8 @@ private fun JsonObject.matchAttributeAndThen(
 ): JsonElement? {
     val selectedElement = this[claimName]
     return if (tail != null) {
+        // TODO Confirm whether we should enforce not null
+        //  or just return the null
         checkNotNull(selectedElement)
         selectedElement.selectPath(tail)
     } else selectedElement

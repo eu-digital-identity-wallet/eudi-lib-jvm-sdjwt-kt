@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.toClaimPath
+
 /**
  * Represents a map which contains all the claims - selectively disclosable or not -
  * found in a SD-JWT.
@@ -22,6 +25,17 @@ package eu.europa.ec.eudi.sdjwt
  * required to revel the claim
  */
 typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
+
+/**
+ * Represents a map which contains all the claims - selectively disclosable or not -
+ * found in a SD-JWT.
+ * Each entry contains the [path][ClaimPath] and the [disclosures][Disclosure]
+ * required to revel the claim
+ */
+typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
+
+fun DisclosuresPerClaim.usePath(): DisclosuresPerClaimPath =
+    mapKeys { (jsonPointer, _) -> jsonPointer.toClaimPath(false) }
 
 /**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
@@ -51,21 +65,6 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
 }
 
 /**
- * Tries to create a presentation that discloses the claims are in [query]
- * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
- * claims that are always disclosable can be omitted
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @param JWT the type representing the JWT part of the SD-JWT
- * @return the presentation if possible to satisfy the [query]
- */
-fun <JWT> SdJwt.Issuance<JWT>.present(
-    query: Set<JsonPointer>,
-    claimsOf: (JWT) -> Claims,
-): SdJwt.Presentation<JWT>? =
-    present({ it in query }, claimsOf)
-
-/**
  * Tries to create a presentation that discloses the claims that satisfy
  * [query]
  * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
@@ -75,7 +74,7 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
  * @param JWT the type representing the JWT part of the SD-JWT
  * @return the presentation if possible to satisfy the [query]
  */
-fun <JWT> SdJwt.Issuance<JWT>.present(
+fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
     query: (JsonPointer) -> Boolean,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
@@ -88,25 +87,20 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     }
 }
 
-/**
- *  Tries to create a presentation that discloses the claims are in [query]
- *  @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
- *  * claims that are always disclosable can be omitted
- *  @receiver The issuance SD-JWT upon which the presentation will be based
- *  @return the presentation if possible to satisfy the [query]
- */
-fun SdJwt.Issuance<JwtAndClaims>.present(
-    query: Set<JsonPointer>,
-): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
-
-/**
- * Tries to create a presentation that discloses the claims that satisfy
- * [query]
- * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
- * is relative to the unprotected JSON (not the JWT payload)
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @return the presentation if possible to satisfy the [query]
- */
-fun SdJwt.Issuance<JwtAndClaims>.present(
-    query: (JsonPointer) -> Boolean,
-): SdJwt.Presentation<JwtAndClaims>? = present(query) { (_, claims) -> claims }
+fun <JWT> SdJwt.Issuance<JWT>.present(
+    query: Set<ClaimPath>,
+    claimsOf: (JWT) -> Claims,
+): SdJwt.Presentation<JWT>? {
+    val (_, disclosuresPerClaimTmp) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
+    val disclosuresPerClaim = disclosuresPerClaimTmp.usePath()
+    val keys = disclosuresPerClaim.keys.filter { disclosed ->
+        query.any { requested ->
+            disclosed in requested
+        }
+    }
+    return if (keys.isEmpty()) null
+    else {
+        val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
+        SdJwt.Presentation(jwt, ds.toList())
+    }
+}

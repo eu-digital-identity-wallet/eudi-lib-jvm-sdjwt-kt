@@ -71,7 +71,7 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
 fun DisclosuresPerClaim.prettyPrint() {
     println("SD-JWT disclosures per claim")
     forEach { (claim, disclosures) ->
-        println("$claim <=> ${claim.toClaimPath() ?: "N/A"} ->")
+        println("$claim <=> ${claim.toClaimPath()} ->")
         disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {

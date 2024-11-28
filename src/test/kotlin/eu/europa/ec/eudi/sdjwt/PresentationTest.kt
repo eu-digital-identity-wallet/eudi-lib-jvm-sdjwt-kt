@@ -130,7 +130,7 @@ class PresentationTest {
             }
         }
 
-        val allClaims = sdJwt.present { true }
+        val allClaims = sdJwt.presentJsonPointersMatching { true }
 
         assertNotNull(allClaims)
         assertEquals(sdJwt.jwt, allClaims.jwt)
@@ -140,7 +140,7 @@ class PresentationTest {
 
     @Test
     fun `query for all claims should returned the issued sd-jwt`() {
-        val presentationSdJwt = issuedSdJwt.present { true }
+        val presentationSdJwt = issuedSdJwt.presentJsonPointersMatching { true }
         assertNotNull(presentationSdJwt)
         assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
         assertEquals(issuedSdJwt.disclosures.size, presentationSdJwt.disclosures.size)
@@ -150,7 +150,7 @@ class PresentationTest {
     fun `query for non SD claim should not reveal disclosure`() {
         val claimsToPresent = setOf("iss", "vct", "cnf")
         val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
+        val presentation = issuedSdJwt.presentJsonPointersMatching { it in query }
         assertNotNull(presentation)
         assertTrue { presentation.disclosures.isEmpty() }
     }
@@ -159,7 +159,7 @@ class PresentationTest {
     fun `query for top-level SD claims reveal equal number of disclosures`() {
         val claimsToPresent = listOf("given_name", "also_known_as", "nationalities")
         val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
+        val presentation = issuedSdJwt.presentJsonPointersMatching { it in query }
         assertNotNull(presentation)
         assertEquals(claimsToPresent.size, presentation.disclosures.size)
         assertTrue {
@@ -174,7 +174,7 @@ class PresentationTest {
     fun `query for recursive claim's with no nested SD claims should reveal equal no of disclosures`() {
         val claimsToPresent = listOf("place_of_birth", "address")
         val query = claimsToPresent.map { JsonPointer.Root.child(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
+        val presentation = issuedSdJwt.presentJsonPointersMatching { it in query }
         assertNotNull(presentation)
         assertEquals(claimsToPresent.size, presentation.disclosures.size)
         assertTrue {
@@ -188,7 +188,7 @@ class PresentationTest {
     @Test
     fun `query for a sd claim nested inside a recursive object should reveal parent & child disclosures`() {
         val query = setOf("/place_of_birth/locality".claimPointer())
-        val presentation = issuedSdJwt.present(query)
+        val presentation = issuedSdJwt.presentJsonPointersMatching { it in query }
         assertNotNull(presentation)
         assertEquals(2, presentation.disclosures.size)
         val disclosedClaimNames = presentation.disclosures.map { it.claim().name() }
@@ -199,7 +199,7 @@ class PresentationTest {
     @Test
     fun `query for a sd claim nested inside a structured SD object should reveal the child disclosure`() {
         val query = setOf("/age_equal_or_over/18".claimPointer())
-        val presentation = issuedSdJwt.present(query)
+        val presentation = issuedSdJwt.presentJsonPointersMatching { it in query }
         assertNotNull(presentation)
         assertEquals(1, presentation.disclosures.size)
         assertEquals("18", presentation.disclosures.first().claim().name())
@@ -215,7 +215,7 @@ class PresentationTest {
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
-        val p = sdJwt.present(setOf("/credentialSubject/type".claimPointer()))
+        val p = sdJwt.presentJsonPointersMatching { it in setOf("/credentialSubject/type".claimPointer()) }
         assertNotNull(p)
         assertTrue { p.disclosures.isEmpty() }
     }
@@ -231,7 +231,7 @@ class PresentationTest {
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
 
-        val p = sdJwt.present(setOf("/credentialSubject/type".claimPointer()))
+        val p = sdJwt.presentJsonPointersMatching { it in setOf("/credentialSubject/type".claimPointer()) }
         assertNotNull(p)
         assertEquals(1, p.disclosures.size)
         assertEquals("credentialSubject", p.disclosures.firstOrNull()?.claim()?.name())
@@ -255,11 +255,11 @@ class PresentationTest {
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
         // All claims below should not require a disclosure
         val q1 = setOf("/evidence", "/evidence/1", "/evidence/1/foo").map { it.claimPointer() }.toSet()
-        val p1 = sdJwt.present(q1)
+        val p1 = sdJwt.presentJsonPointersMatching { it in q1 }
         assertNotNull(p1)
         assertTrue { p1.disclosures.isEmpty() }
 
-        val p2 = sdJwt.present(setOf("/evidence/0/type".claimPointer()))
+        val p2 = sdJwt.presentJsonPointersMatching { it in setOf("/evidence/0/type".claimPointer()) }
         assertNotNull(p2)
         // To reveal `type` we need
         // - an array disclosure for the first element of the array
@@ -285,12 +285,12 @@ class PresentationTest {
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
 
         val q1 = setOf("/evidence", "/evidence/1", "/evidence/1/foo").map { it.claimPointer() }.toSet()
-        val p1 = sdJwt.present(q1)
+        val p1 = sdJwt.presentJsonPointersMatching { it in q1 }
         assertNotNull(p1)
         assertEquals(1, p1.disclosures.size)
         assertEquals("evidence", p1.disclosures.firstOrNull()?.claim()?.name())
 
-        val p2 = sdJwt.present(setOf("/evidence/0/type".claimPointer()))
+        val p2 = sdJwt.presentJsonPointersMatching { it in setOf("/evidence/0/type".claimPointer()) }
         assertNotNull(p2)
         // To reveal `type` we need
         // - "evidence" <- since it is a recursive array
@@ -302,14 +302,15 @@ class PresentationTest {
     @Test
     fun complexStructuredSdJwt() {
         val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
-        val p = sdJwt.present(setOf("/verified_claims/verification/evidence/0/document".claimPointer()))
+        val p =
+            sdJwt.presentJsonPointersMatching { it in setOf("/verified_claims/verification/evidence/0/document".claimPointer()) }
         assertNotNull(p)
     }
 
     @Test
     fun sdJwtVcDataV2() {
         val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
-        val p = sdJwt.present(setOf("/credentialSubject/recipient/gender".claimPointer()))
+        val p = sdJwt.presentJsonPointersMatching { it in setOf("/credentialSubject/recipient/gender".claimPointer()) }
         assertNotNull(p)
     }
 }

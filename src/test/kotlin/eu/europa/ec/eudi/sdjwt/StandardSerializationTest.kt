@@ -94,10 +94,14 @@ class StandardSerializationTest {
             }
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.present { true }
+        val sdJwt = issuedSdJwt.presentJsonPointersMatching { true }
         assertNotNull(sdJwt)
 
-        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding({ it.serialize() }, HashAlgorithm.SHA_256, keyBindingSigner) {}
+        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(
+            { it.serialize() },
+            HashAlgorithm.SHA_256,
+            keyBindingSigner,
+        ) {}
         val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner) {}
         assertTrue { actual.startsWith(pSdJwt) }
         assertTrue { actual.count { it == '~' } == 1 }
@@ -118,10 +122,14 @@ class StandardSerializationTest {
             }
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.present { true }
+        val sdJwt = issuedSdJwt.presentJsonPointersMatching { true }
         assertNotNull(sdJwt)
 
-        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding({ it.serialize() }, HashAlgorithm.SHA_256, keyBindingSigner) {}
+        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(
+            { it.serialize() },
+            HashAlgorithm.SHA_256,
+            keyBindingSigner,
+        ) {}
         val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner) {}
         assertTrue { actual.startsWith(pSdJwt) }
         assertTrue { actual.count { it == '~' } == 2 }

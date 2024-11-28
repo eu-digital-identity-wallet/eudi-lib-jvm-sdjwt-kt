@@ -27,10 +27,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
-import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
+import eu.europa.ec.eudi.sdjwt.vc.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -97,8 +94,9 @@ class KeyBindingTest {
     @Test
     fun holderBindingFullTest() = runTest {
         val whatToDisclose = setOf(
-            "/credentialSubject/email",
-            "/credentialSubject/countries",
+            ClaimPath.attribute("credentialSubject") + "email",
+            ClaimPath.attribute("credentialSubject") + "countries",
+            ClaimPath.attribute("addresses").all() + "street",
         )
 
         val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
@@ -161,13 +159,7 @@ data class VerifierChallenge(
 }
 
 @Serializable
-data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<String>) {
-
-    fun whatToDiscloseAsPointers(): Set<JsonPointer> =
-        whatToDisclose
-            .map { requireNotNull(JsonPointer.parse(it)) }
-            .toSet()
-}
+data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<ClaimPath>)
 
 /**
  * Sample issuer
@@ -212,6 +204,14 @@ class IssuerActor(val issuerKey: ECKey) {
                 cnf(holderPubKey as JWK)
                 structured("credentialSubject") {
                     sd(credential)
+                }
+                sdArray("addresses") {
+                    sd {
+                        put("street", "street1")
+                    }
+                    sd {
+                        put("street", "street2")
+                    }
                 }
             }
         return sdJwtIssuer.issue(sdElements = sdJwtElements).fold(
@@ -276,8 +276,8 @@ class HolderActor(
 
         val presentationSdJwt = run {
             val issuanceSdJwt = checkNotNull(credentialSdJwt)
-            val whatToDisclose = verifierQuery.whatToDiscloseAsPointers()
-            issuanceSdJwt.present(whatToDisclose)
+            val whatToDisclose = verifierQuery.whatToDisclose
+            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }
         }
         checkNotNull(presentationSdJwt)
 
@@ -295,7 +295,7 @@ class HolderActor(
 
 class VerifierActor(
     private val clientId: String,
-    private val whatToDisclose: Set<String>,
+    private val whatToDisclose: Set<ClaimPath>,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
@@ -311,18 +311,23 @@ class VerifierActor(
     ) {
         val (presented, _) =
             verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
+        presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
         val disclosedPaths = disclosedClaims()
-        whatToDisclose.forEach { check(it in disclosedPaths) { "Requested $it was not disclosed" } }
+        whatToDisclose.forEach { requested ->
+            check(disclosedPaths.any { disclosed -> disclosed in requested }) {
+                "Requested $requested was not disclosed"
+            }
+        }
     }
 
-    private fun SdJwt<JwtAndClaims>.disclosedClaims(): List<String> {
+    private fun SdJwt<JwtAndClaims>.disclosedClaims(): Iterable<ClaimPath> {
         val (_, ds) = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }
-        return ds.keys.map { it.toString() }.toList()
+        return ds.usePath().keys.toList()
     }
 
     private fun verifierDebug(s: String) {
