@@ -38,6 +38,7 @@ dependencies {
     api(libs.ktor.serialization.kotlinx.json)
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.coroutines.debug)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.tink) {
         because("To allow tests against ECDSA curves")
