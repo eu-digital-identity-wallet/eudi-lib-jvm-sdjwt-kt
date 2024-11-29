@@ -27,9 +27,9 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
-import eu.europa.ec.eudi.sdjwt.vc.SD_JWT_VC_TYPE
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
@@ -43,6 +43,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * This is an advanced test.
@@ -82,7 +83,7 @@ class KeyBindingTest {
             issuedSdJwt.recreateClaims { it.jwtClaimsSet.asClaims() }["credentialSubject"]?.jsonObject
                 ?: JsonObject(emptyMap())
 
-        assertEquals(4, selectivelyDisclosedClaims.size)
+        assertEquals(5, selectivelyDisclosedClaims.size)
         assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
         assertEquals(emailCredential.familyName, selectivelyDisclosedClaims["family_name"]?.jsonPrimitive?.content)
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
@@ -96,41 +97,72 @@ class KeyBindingTest {
 
     @Test
     fun holderBindingFullTest() = runTest {
-        val whatToDisclose = setOf(
-            "/credentialSubject/email",
-            "/credentialSubject/countries",
-        )
+        suspend fun test(whatToDisclose: Set<ClaimPath>, expectedNumberOfDisclosures: Int) {
+            val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, expectedNumberOfDisclosures, lookup)
 
-        val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, lookup)
+            val emailCredential = SampleCredential(
+                givenName = "John",
+                familyName = "Doe",
+                email = "john@foobar.com",
+                countries = listOf("GR", "DE"),
+            )
 
-        val emailCredential = SampleCredential(
-            givenName = "John",
-            familyName = "Doe",
-            email = "john@foobar.com",
-            countries = listOf("GR", "DE"),
-        )
+            // Issuer should know holder's public key
 
-        // Issuer should know holder's public key
+            val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
+                val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
+                hashAlg to serialize()
+            }
 
-        val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
-            val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
-            hashAlg to serialize()
+            // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
+            // Holder expects to find algorithm inside SD-JWT, header
+            holder.storeCredential(issuedSdJwt)
+
+            // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
+            // Also Holder should know what verifier wants to be presented
+            val verifierQuery = verifier.query()
+            val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
+
+            // Verifier should know/trust the issuer.
+            // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
+            verifier.acceptPresentation(presentedSdJwt)
         }
 
-        // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
-        // Holder expects to find algorithm inside SD-JWT, header
-        holder.storeCredential(issuedSdJwt)
+        val testData: Map<Set<ClaimPath>, Int> = mapOf(
+            setOf(
+                ClaimPath.claim("credentialSubject").claim("email"),
+                ClaimPath.claim("credentialSubject").claim("countries"),
+                ClaimPath.claim("credentialSubject").claim("addresses"),
+            ) to 3,
 
-        // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
-        // Also Holder should know what verifier wants to be presented
-        val verifierQuery = verifier.query()
-        val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
+            setOf(
+                ClaimPath.claim("credentialSubject").claim("email"),
+                ClaimPath.claim("credentialSubject").claim("countries"),
+                ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0),
+            ) to 4,
 
-        // Verifier should know/trust the issuer.
-        // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
-        verifier.acceptPresentation(
-            presentedSdJwt,
+            setOf(
+                ClaimPath.claim("credentialSubject").claim("email"),
+                ClaimPath.claim("credentialSubject").claim("countries"),
+                ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0).claim("street"),
+            ) to 5,
+
+            setOf(
+                ClaimPath.claim("credentialSubject").claim("email"),
+                ClaimPath.claim("credentialSubject").claim("countries"),
+                ClaimPath.claim("credentialSubject").claim("addresses").allArrayElements(),
+            ) to 5,
+
+            setOf(
+                ClaimPath.claim("credentialSubject").claim("email"),
+                ClaimPath.claim("credentialSubject").claim("countries"),
+                ClaimPath.claim("credentialSubject").claim("addresses").allArrayElements().claim("street"),
+            ) to 7,
         )
+
+        testData.forEach { (whatToDisclose, expectedNumberOfDisclosures) ->
+            test(whatToDisclose, expectedNumberOfDisclosures)
+        }
     }
 
     private fun genKey(kid: String) = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
@@ -161,13 +193,7 @@ data class VerifierChallenge(
 }
 
 @Serializable
-data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<String>) {
-
-    fun whatToDiscloseAsPointers(): Set<JsonPointer> =
-        whatToDisclose
-            .map { requireNotNull(JsonPointer.parse(it)) }
-            .toSet()
-}
+data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<ClaimPath>)
 
 /**
  * Sample issuer
@@ -175,7 +201,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 class IssuerActor(val issuerKey: ECKey) {
 
     private val signAlgorithm = JWSAlgorithm.ES256
-    private val jwtType = JOSEObjectType(SD_JWT_VC_TYPE)
+    private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
     private val iss: String by lazy {
         "did:jwk:${JwtBase64.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }
@@ -212,6 +238,14 @@ class IssuerActor(val issuerKey: ECKey) {
                 cnf(holderPubKey as JWK)
                 structured("credentialSubject") {
                     sd(credential)
+                    recursiveArray("addresses") {
+                        buildSdObject {
+                            sd("street", "street1")
+                        }
+                        buildSdObject {
+                            sd("street", "street2")
+                        }
+                    }
                 }
             }
         return sdJwtIssuer.issue(sdElements = sdJwtElements).fold(
@@ -276,8 +310,8 @@ class HolderActor(
 
         val presentationSdJwt = run {
             val issuanceSdJwt = checkNotNull(credentialSdJwt)
-            val whatToDisclose = verifierQuery.whatToDiscloseAsPointers()
-            issuanceSdJwt.present(whatToDisclose)
+            val whatToDisclose = verifierQuery.whatToDisclose
+            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }
         }
         checkNotNull(presentationSdJwt)
 
@@ -295,7 +329,8 @@ class HolderActor(
 
 class VerifierActor(
     private val clientId: String,
-    private val whatToDisclose: Set<String>,
+    private val whatToDisclose: Set<ClaimPath>,
+    private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
@@ -306,23 +341,25 @@ class VerifierActor(
         whatToDisclose,
     ).also { lastChallenge = it.challenge.asJson() }
 
-    suspend fun acceptPresentation(
-        unverifiedSdJwt: String,
-    ) {
-        val (presented, _) =
-            verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
+    suspend fun acceptPresentation(unverifiedSdJwt: String) {
+        val (presented, _) = verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
+        presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths = disclosedClaims()
-        whatToDisclose.forEach { check(it in disclosedPaths) { "Requested $it was not disclosed" } }
-    }
-
-    private fun SdJwt<JwtAndClaims>.disclosedClaims(): List<String> {
-        val (_, ds) = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }
-        return ds.keys.map { it.toString() }.toList()
+        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }.second.keys
+        whatToDisclose.forEach { requested ->
+            assertTrue("Requested $requested was not disclosed") {
+                disclosedPaths.any { disclosed -> disclosed in requested }
+            }
+        }
+        assertEquals(
+            expectedNumberOfDisclosures,
+            disclosures.size,
+            "Expected $expectedNumberOfDisclosures but found ${disclosures.size}",
+        )
     }
 
     private fun verifierDebug(s: String) {

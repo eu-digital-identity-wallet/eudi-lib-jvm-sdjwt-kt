@@ -16,6 +16,14 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
+import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
@@ -67,10 +75,10 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     }.run(::println)
 }
 
-fun DisclosuresPerClaim.prettyPrint() {
+fun DisclosuresPerClaimPath.prettyPrint() {
     println("SD-JWT disclosures per claim")
     forEach { (claim, disclosures) ->
-        println("$claim ->")
+        println("$claim <=> ${claim.toJsonPointer().getOrThrow()} ->")
         disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {
@@ -97,3 +105,24 @@ internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
 internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
 
 internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()
+
+internal object HttpMock {
+
+    fun clientReturning(issuerMeta: SdJwtVcIssuerMetadata): HttpClient =
+        HttpClient { _ ->
+            respond(
+                Json.encodeToString(issuerMeta),
+                HttpStatusCode.OK,
+                headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+            )
+        }
+
+    @Suppress("TestFunctionName")
+    private fun HttpClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
+        HttpClient(MockEngine(handler)) {
+            expectSuccess = true
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+}

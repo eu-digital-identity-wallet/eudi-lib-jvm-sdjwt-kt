@@ -15,94 +15,92 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSVerifier
-import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory
-import com.nimbusds.jose.jwk.*
-import com.nimbusds.jose.jwk.source.JWKSource
-import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
-import com.nimbusds.jose.proc.JOSEObjectTypeVerifier
-import com.nimbusds.jose.proc.JWSVerificationKeySelector
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import com.nimbusds.jwt.proc.JWTClaimsSetVerifier
-import com.nimbusds.jwt.proc.JWTProcessor
 import eu.europa.ec.eudi.sdjwt.JwkSourceJWTProcessor
-import java.security.Key
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
+import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
+import com.nimbusds.jose.jwk.Curve as NimbusCurve
+import com.nimbusds.jose.jwk.JWK as NimbusJWK
+import com.nimbusds.jose.jwk.JWKMatcher as NimbusJWKMatcher
+import com.nimbusds.jose.jwk.JWKSelector as NimbusJWKSelector
+import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
+import com.nimbusds.jose.jwk.KeyType as NimbusKeyType
+import com.nimbusds.jose.jwk.KeyUse as NimbusKeyUse
+import com.nimbusds.jose.jwk.source.JWKSource as NimbusJWKSource
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier as NimbusDefaultJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.JOSEObjectTypeVerifier as NimbusJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.SecurityContext as NimbusSecurityContext
+import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
+import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier as NimbusDefaultJWTClaimsVerifier
+import com.nimbusds.jwt.proc.JWTClaimsSetVerifier as NimbusJWTClaimsSetVerifier
 
-const val SD_JWT_VC_TYPE = "vc+sd-jwt"
-
-/**
- * [JWTProcessor] that supports [RSAKey], [ECKey], [OctetKeyPair], and [OctetSequenceKey] signature verification.
- *
- * It overrides the default behavior of [DefaultJWTProcessor] and instead of using [JWSVerificationKeySelector] to
- * select the verification [Key], and [DefaultJWSVerifierFactory] to instantiate a [JWSVerifier], it instantiates
- * the appropriate [JWSVerifier] directly, based on the type of the selected verification [JWK] that has been
- * selected using a [JWKSelector] instead.
- *
- * This allows for full support of [OctetKeyPair] which otherwise cannot be supported due the lack of
- * [OctetKeyPair.toKeyPair], [OctetKeyPair.toPublicKey], and [OctetKeyPair.toPrivateKey] implementations required
- * by [JWSVerificationKeySelector].
- *
- * **Note:** The optional dependency 'com.google.crypto.tink:tink' is required when support for [OctetKeyPair] is required.
- */
-internal class SdJwtVcJwtProcessor<C : SecurityContext>(
-    jwkSource: JWKSource<C>,
+internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
+    jwkSource: NimbusJWKSource<C>,
 ) : JwkSourceJWTProcessor<C>(typeVerifier(), claimSetVerifier(), jwkSource) {
 
     companion object {
-        private fun <C : SecurityContext> typeVerifier(): JOSEObjectTypeVerifier<C> =
-            DefaultJOSEObjectTypeVerifier(JOSEObjectType(SD_JWT_VC_TYPE))
+        /**
+         * Accepts both the [SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT]
+         * and the deprecated [SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT]
+         */
+        private fun <C : NimbusSecurityContext> typeVerifier(): NimbusJOSEObjectTypeVerifier<C> =
+            NimbusDefaultJOSEObjectTypeVerifier(
+                NimbusJOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT),
+                NimbusJOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT),
+            )
 
-        private fun <C : SecurityContext> claimSetVerifier(): JWTClaimsSetVerifier<C> = DefaultJWTClaimsVerifier(
-            JWTClaimsSet.Builder().build(),
-            setOf("iss"),
-        )
+        private fun <C : NimbusSecurityContext> claimSetVerifier(): NimbusJWTClaimsSetVerifier<C> =
+            NimbusDefaultJWTClaimsVerifier(
+                NimbusJWTClaimsSet.Builder().build(),
+                setOf("iss"),
+            )
 
         /**
-         * Gets a [JWKSource] for a DID Document.
+         * Gets a [NimbusJWKSource] for a DID Document.
          */
-        fun <C : SecurityContext> didJwkSet(jwsHeader: JWSHeader, jwkSet: JWKSet): JWKSource<C> =
+        fun <C : NimbusSecurityContext> didJwkSet(
+            jwsHeader: NimbusJWSHeader,
+            jwkSet: NimbusJWKSet,
+        ): NimbusJWKSource<C> =
             DIDJWKSet<C>(jwsHeader, jwkSet)
     }
 }
 
 /**
- * [JWKSource] implementation for DID Documents.
+ * [NimbusJWKSource] implementation for DID Documents.
  *
- * When [JWKSource.get] is invoked, it ignores the provided [JWKSelector], and instead uses one that matches
- * all the properties of the provided [JWSHeader] besides the Key ID.
+ * When [NimbusJWKSource.get] is invoked, it ignores the provided [NimbusJWKSet], and instead uses one that matches
+ * all the properties of the provided [NimbusJWSHeader] besides the Key ID.
  */
-private class DIDJWKSet<C : SecurityContext>(jwsHeader: JWSHeader, val jwkSet: JWKSet) : JWKSource<C> {
-    private val jwkSelector: JWKSelector by lazy {
-        // Create a JWKMatcher that considers all attributes of the JWK but the Key ID.
-        // The matcher here doesn't support HMAC Secret Key resolution, since DID Documents cannot contain private keys.
-        // See also: JWKMatcher.forJWSHeader().
-        val matcher = when (val algorithm = jwsHeader.algorithm) {
-            in JWSAlgorithm.Family.RSA, in JWSAlgorithm.Family.EC ->
-                JWKMatcher.Builder()
-                    .keyType(KeyType.forAlgorithm(algorithm))
-                    .keyUses(KeyUse.SIGNATURE, null)
-                    .algorithms(algorithm, null)
-                    .x509CertSHA256Thumbprint(jwsHeader.x509CertSHA256Thumbprint)
-                    .build()
+private class DIDJWKSet<C : NimbusSecurityContext>(jwsHeader: NimbusJWSHeader, val jwkSet: NimbusJWKSet) :
+    NimbusJWKSource<C> {
+        private val jwkSelector: NimbusJWKSelector by lazy {
+            // Create a JWKMatcher that considers all attributes of the JWK but the Key ID.
+            // The matcher here doesn't support HMAC Secret Key resolution, since DID Document cannot contain private keys.
+            // See also: JWKMatcher.forJWSHeader().
+            val matcher = when (val algorithm = jwsHeader.algorithm) {
+                in NimbusJWSAlgorithm.Family.RSA, in NimbusJWSAlgorithm.Family.EC ->
+                    NimbusJWKMatcher.Builder()
+                        .keyType(NimbusKeyType.forAlgorithm(algorithm))
+                        .keyUses(NimbusKeyUse.SIGNATURE, null)
+                        .algorithms(algorithm, null)
+                        .x509CertSHA256Thumbprint(jwsHeader.x509CertSHA256Thumbprint)
+                        .build()
 
-            in JWSAlgorithm.Family.ED ->
-                JWKMatcher.Builder()
-                    .keyType(KeyType.forAlgorithm(algorithm))
-                    .keyUses(KeyUse.SIGNATURE, null)
-                    .algorithms(algorithm, null)
-                    .curves(Curve.forJWSAlgorithm(algorithm))
-                    .build()
+                in NimbusJWSAlgorithm.Family.ED ->
+                    NimbusJWKMatcher.Builder()
+                        .keyType(NimbusKeyType.forAlgorithm(algorithm))
+                        .keyUses(NimbusKeyUse.SIGNATURE, null)
+                        .algorithms(algorithm, null)
+                        .curves(NimbusCurve.forJWSAlgorithm(algorithm))
+                        .build()
 
-            else -> error("Unsupported JWSAlgorithm '$algorithm'")
+                else -> error("Unsupported JWSAlgorithm '$algorithm'")
+            }
+            NimbusJWKSelector(matcher)
         }
-        JWKSelector(matcher)
-    }
 
-    override fun get(jwkSelector: JWKSelector, context: C?): MutableList<JWK> = this.jwkSelector.select(jwkSet)
-}
+        override fun get(jwkSelector: NimbusJWKSelector, context: C?): MutableList<NimbusJWK> =
+            this.jwkSelector.select(jwkSet)
+    }

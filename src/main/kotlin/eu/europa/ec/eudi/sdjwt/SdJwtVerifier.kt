@@ -17,14 +17,10 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
-import java.time.Clock
-import java.time.Duration
-import java.time.Instant
 
 /**
  * Errors that may occur during SD-JWT verification
@@ -196,7 +192,7 @@ sealed interface KeyBindingVerifier {
 
                 return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
                     ?.takeIf { kbClaims ->
-                        val sdHash = kbClaims[SdJwtDigest.CLAIM_NAME]
+                        val sdHash = kbClaims[SdJwtSpec.CLAIM_SD_HASH]
                             ?.takeIf { element -> element is JsonPrimitive && element.isString }
                             ?.jsonPrimitive
                             ?.contentOrNull
@@ -457,7 +453,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
  * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
  */
 private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
-    val element = jwtClaims["_sd_alg"] ?: JsonPrimitive("sha-256")
+    val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive("sha-256")
     val alg =
         if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
         else null
@@ -490,7 +486,7 @@ private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Se
 internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
     fun digestsOf(attribute: String, json: JsonElement): List<DisclosureDigest> =
         when {
-            attribute == "_sd" && json is JsonArray -> json.mapNotNull { element ->
+            attribute == SdJwtSpec.CLAIM_SD && json is JsonArray -> json.mapNotNull { element ->
                 if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
                 else null
             }
@@ -503,54 +499,6 @@ internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
             else -> emptyList()
         }
     return claims.map { (attribute, json) -> digestsOf(attribute, json) }.flatten()
-}
-
-/**
- * Validations for the contents of an envelope JWT
- */
-object ClaimValidations {
-
-    /**
-     * Retrieves the aud claim
-     *
-     * @receiver the claims to check
-     * @return the aud claim
-     */
-    fun Claims.aud(): List<String> =
-        when (val audElement = get("aud")) {
-            is JsonPrimitive -> audElement.contentOrNull?.let { listOf(it) } ?: emptyList()
-            is JsonArray -> audElement.mapNotNull {
-                if (it is JsonPrimitive) it.contentOrNull else null
-            }
-
-            else -> emptyList()
-        }
-
-    /**
-     * Retrieves the iat claim, if present and within the provided time window.
-     * The time window will be calculated by getting the [current time][Clock.instant]
-     * and the [offset].
-     * That is, iat less than equal to the clock's current time and not before the current time minus the offset
-     *
-     * @param clock the clock to use
-     * @param offset a time window within which the iat is expecting
-     * @receiver the claims to check
-     * @return the iat claim
-     */
-    fun Claims.iat(clock: Clock, offset: Duration): Instant? =
-        primitiveClaim("iat")?.longOrNull?.let { iatValue ->
-            val iat = Instant.ofEpochSecond(iatValue)
-            val now = clock.instant()
-            iat.takeIf { (iat >= now.minusSeconds(offset.seconds) && iat <= now) }
-        }
-
-    fun Claims.nonce(): String? = primitiveClaim("nonce")?.contentOrNull
-
-    fun Claims.primitiveClaim(name: String): JsonPrimitive? =
-        get(name)?.let { element -> if (element is JsonPrimitive) element else null }
-
-    private fun Claims.objectClaim(name: String): JsonObject? =
-        get(name)?.let { element -> if (element is JsonObject) element else null }
 }
 
 internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: Claims): String {

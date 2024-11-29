@@ -131,16 +131,17 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
 
 In this case, a `Holder` of an SD-JWT issued by an `Issuer`, wants to create a presentation for a `Verifier`.
 The `Holder` should know which of the selectively disclosed claims to include in the presentation.
-The selectively disclosed claims to include in the presentation are expressed using JSON Pointers
-as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
-
+The selectively disclosed claims to include in the presentation are expressed using either Claim Paths as per 
+[SD-JWT VC draft 6](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-06.html#name-claim-path), or 
+JSON Pointers as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
 
 <!--- INCLUDE
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
-import com.nimbusds.jwt.*
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.serialization.json.put
 -->
 
 ```kotlin
@@ -167,10 +168,8 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
         issuer.issue(sdJwtSpec).getOrThrow()
     }
 
-    val claimsToInclude = listOf("/address/region", "/address/country")
-        .mapNotNull { JsonPointer.parse(it) }
-        .toSet()
-
+    val addressPath = ClaimPath.claim("address")
+    val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
     issuedSdJwt.present(claimsToInclude)!!
 }
 ```
@@ -192,8 +191,8 @@ disclosed as well.
 > [!NOTE]
 > Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
 > requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
-> either a set of JSON Pointers or a JSON Pointer predicate. We consider that bridging those two (JSON Path & Pointer)
-> should be left outside the scope of this library.
+> either a set of Claim Paths, or a JSON Pointer predicate. We consider that bridging those (Claim Path, JSON Path,
+> and JSON Pointer) should be left outside the scope of this library.
 
 ## Presentation Verification
 

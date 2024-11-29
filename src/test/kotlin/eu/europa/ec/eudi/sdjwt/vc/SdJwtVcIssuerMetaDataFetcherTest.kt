@@ -16,11 +16,13 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.jwk.RSAKey
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.serialization.JsonConvertException
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -28,15 +30,13 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.*
 
-/**
- * Test cases for [SdJwtVcIssuerMetaDataFetcher].
- */
-internal class SdJwtVcIssuerMetaDataFetcherTest {
+internal class SdJwtVcIssuerMetaDataFetcherTest :
+    MetadataOps {
 
     @Test
     fun `verify issuer jwks resolution fails when issuer is mismatched`() = runTest {
         val issuer = Url("https://example.com")
-        val metadata = Url("https://example.com/.well-known/jwt-vc-issuer")
+        val metadata = Url("https://example.com/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}")
 
         var requests = 0
         val client = HttpClient { request ->
@@ -55,7 +55,9 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
         }
 
         assertFailsWith(IllegalStateException::class, "issuer does not match the expected value") {
-            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+            with(GetSdJwtVcIssuerMetadataOps) {
+                client.getSdJwtVcIssuerMetadata(issuer, BySpec)
+            }
         }
         assertEquals(1, requests)
     }
@@ -81,9 +83,10 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 else -> error("Unexpected request $request")
             }
         }
-
-        assertFailsWith(IllegalStateException::class, "either 'jwks' or 'jwks_uri' must be provided") {
-            SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer)
+        assertFailsWith(JsonConvertException::class, "either 'jwks' or 'jwks_uri' must be provided") {
+            with(GetSdJwtVcIssuerMetadataOps) {
+                client.getSdJwtVcIssuerMetadata(issuer, BySpec)
+            }
         }
         assertEquals(1, requests)
     }
@@ -107,7 +110,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer) ?: error("Unexpected")
+            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
@@ -147,7 +150,7 @@ internal class SdJwtVcIssuerMetaDataFetcherTest {
                 }
             }
 
-            val (_, jwks) = SdJwtVcIssuerMetaDataFetcher(client).fetchMetaData(issuer) ?: error("Unexpected")
+            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)

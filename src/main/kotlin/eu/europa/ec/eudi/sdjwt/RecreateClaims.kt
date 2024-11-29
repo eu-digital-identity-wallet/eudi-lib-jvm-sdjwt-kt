@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.*
 
 /**
@@ -60,10 +61,10 @@ fun interface ClaimVisitor {
 
     /**
      * Invoked whenever a selectively disclosed claim is encountered while recreating the claims of an [SdJwt].
-     * @param pointer a JsonPointer to the current element
+     * @param path a ClaimPath to the current element
      * @param disclosure the disclosure of the current selectively disclosed element
      */
-    operator fun invoke(pointer: JsonPointer, disclosure: Disclosure?)
+    operator fun invoke(path: ClaimPath, disclosure: Disclosure?)
 }
 
 private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
@@ -77,7 +78,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return discloseJwt(
             hashAlgorithm,
-            JsonObject(jwtClaims - "_sd_alg"),
+            JsonObject(jwtClaims - SdJwtSpec.CLAIM_SD_ALG),
             disclosures,
         )
     }
@@ -105,7 +106,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         }.toMutableMap()
 
         val discloseObject = DiscloseObject(visitor, disclosuresPerDigest)
-        val disclosedClaims = discloseObject(JsonPointer.Root, jwtClaims)
+        val disclosedClaims = discloseObject(currentPath = null, jsonObject = jwtClaims)
 
         // Make sure, all disclosures have been embedded
         require(disclosuresPerDigest.isEmpty()) {
@@ -127,15 +128,15 @@ private class DiscloseObject(
      * that are either objects or arrays
      *
      * @param jsonObject the claims to use
-     * @param currentPointer the [JsonPointer] of the current element
+     * @param currentPath the [ClaimPath] of the current element, or `null` if the root element
      *
      * @return the given [jsonObject] with the digests, if any, replaced by disclosures, including
      * all nested objects and/or array of objects
      */
     operator fun invoke(
-        currentPointer: JsonPointer,
+        currentPath: ClaimPath?,
         jsonObject: JsonObject,
-    ): JsonObject = discloseObject(currentPointer, jsonObject)
+    ): JsonObject = discloseObject(currentPath, jsonObject)
 
     //
     // Any JSON Element
@@ -147,18 +148,18 @@ private class DiscloseObject(
      * including nested elements.
      *
      * @param element the element to use
-     * @param currentPointer the [JsonPointer] of the current element
+     * @param currentPath the [ClaimPath] of the current element
      *
      * @return a json element where all digests have been replaced by disclosed claims
      */
     private fun discloseElement(
-        currentPointer: JsonPointer,
+        currentPath: ClaimPath,
         element: JsonElement,
     ): JsonElement {
-        visited(currentPointer, null)
+        visited(currentPath, null)
         return when (element) {
-            is JsonObject -> discloseObject(currentPointer, element)
-            is JsonArray -> discloseArray(currentPointer, element)
+            is JsonObject -> discloseObject(currentPath, element)
+            is JsonArray -> discloseArray(currentPath, element)
             else -> element
         }
     }
@@ -168,12 +169,12 @@ private class DiscloseObject(
     //
 
     private fun discloseObject(
-        currentPointer: JsonPointer,
+        currentPath: ClaimPath?,
         jsonObject: JsonObject,
     ): JsonObject =
-        replaceObjectDigests(currentPointer, jsonObject)
+        replaceObjectDigests(currentPath, jsonObject)
             .mapValues { (name, element) ->
-                val nestedPath = currentPointer.child(name)
+                val nestedPath = currentPath?.claim(name) ?: ClaimPath.claim(name)
                 discloseElement(nestedPath, element)
             }
             .let { obj -> JsonObject(obj) }
@@ -183,12 +184,12 @@ private class DiscloseObject(
      * with the [Disclosure.ObjectProperty.claim] from [disclosuresPerDigest]
      *
      * @param jsonObject the claims to use
-     * @param current the [JsonPointer] of the current element
+     * @param current the [ClaimPath] of the current element, or `null` if the root element
      *
      * @return the given [jsonObject] with the digests, if any, replaced by disclosures.
      */
     private fun replaceObjectDigests(
-        current: JsonPointer,
+        current: ClaimPath?,
         jsonObject: JsonObject,
     ): JsonObject {
         val resultingClaims = jsonObject.toMutableMap()
@@ -196,13 +197,14 @@ private class DiscloseObject(
         fun replace(digest: DisclosureDigest) {
             disclosuresPerDigest.remove(digest)?.let { disclosure ->
                 check(disclosure is Disclosure.ObjectProperty) {
-                    "Found array element disclosure ${disclosure.value} within _sd claim"
+                    "Found array element disclosure ${disclosure.value} within ${SdJwtSpec.CLAIM_SD} claim"
                 }
                 val (name, value) = disclosure.claim()
                 require(!jsonObject.containsKey(name)) {
                     "Failed to embed disclosure with key $name. Already present"
                 }
-                visited(current.child(name), disclosure)
+                val visitedClaim = current?.claim(name) ?: ClaimPath.claim(name)
+                visited(visitedClaim, disclosure)
                 resultingClaims[name] = value
             }
         }
@@ -212,7 +214,7 @@ private class DiscloseObject(
         jsonObject.directDigests().forEach { replace(it) }
 
         // Remove _sd claim, if present
-        resultingClaims.remove("_sd")
+        resultingClaims.remove(SdJwtSpec.CLAIM_SD)
 
         return JsonObject(resultingClaims)
     }
@@ -222,20 +224,20 @@ private class DiscloseObject(
     //
 
     private fun discloseArray(
-        currentPointer: JsonPointer,
+        currentPath: ClaimPath,
         jsonArray: JsonArray,
     ): JsonArray =
         jsonArray
             .zip(0..<jsonArray.size)
-            .mapNotNull { (element, index) -> discloseArrayElement(currentPointer, element, index) }
+            .mapNotNull { (element, index) -> discloseArrayElement(currentPath, element, index) }
             .let { elements -> JsonArray(elements) }
 
     private fun discloseArrayElement(
-        currentPointer: JsonPointer,
+        currentPath: ClaimPath,
         arrayElement: JsonElement,
         index: Int,
     ): JsonElement? {
-        val elementPath = currentPointer.child(index)
+        val elementPath = currentPath.arrayElement(index)
         val disclosedElement =
             when (val disclosed = DisclosedArrayElement.of(arrayElement)) {
                 is DisclosedArrayElement.Digest -> {
@@ -254,7 +256,7 @@ private class DiscloseObject(
     }
 
     private fun replaceArrayDigest(
-        current: JsonPointer,
+        current: ClaimPath,
         digest: DisclosureDigest,
     ): JsonElement? =
         disclosuresPerDigest.remove(digest)?.let { disclosure ->
@@ -265,8 +267,8 @@ private class DiscloseObject(
             disclosure.claim().value()
         }
 
-    private fun visited(pointer: JsonPointer, disclosure: Disclosure?) {
-        visitor?.invoke(pointer, disclosure)
+    private fun visited(path: ClaimPath, disclosure: Disclosure?) {
+        visitor?.invoke(path, disclosure)
     }
 }
 
@@ -290,7 +292,7 @@ private sealed interface DisclosedArrayElement {
 
         private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
             if (obj.size == 1)
-                obj["..."]
+                obj[SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST]
                     ?.takeIf { element -> element is JsonPrimitive }
                     ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
             else null
@@ -307,7 +309,7 @@ private sealed interface DisclosedArrayElement {
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
 internal fun Claims.directDigests(): Set<DisclosureDigest> =
-    this["_sd"]?.jsonArray
+    this[SdJwtSpec.CLAIM_SD]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?.toSet()
         ?: emptySet()
@@ -318,4 +320,4 @@ internal fun Claims.directDigests(): Set<DisclosureDigest> =
  * @return The [HashAlgorithm] if found
  */
 internal fun Claims.hashAlgorithm(): HashAlgorithm? =
-    this["_sd_alg"]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
+    this[SdJwtSpec.CLAIM_SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }

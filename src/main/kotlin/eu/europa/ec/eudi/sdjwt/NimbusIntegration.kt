@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -30,7 +31,6 @@ import com.nimbusds.jose.crypto.ECDSAVerifier as NimbusECDSAVerifier
 import com.nimbusds.jose.crypto.Ed25519Verifier as NimbusEd25519Verifier
 import com.nimbusds.jose.crypto.MACVerifier as NimbusMACVerifier
 import com.nimbusds.jose.crypto.RSASSAVerifier as NimbusRSASSAVerifier
-import com.nimbusds.jose.crypto.factories.DefaultJWSSignerFactory as NimbusDefaultJWSSignerFactory
 import com.nimbusds.jose.jwk.AsymmetricJWK as NimbusAsymmetricJWK
 import com.nimbusds.jose.jwk.ECKey as NimbusECKey
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -72,7 +72,7 @@ val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier b
         try {
             val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
             parsedJwt.jwtClaimsSet.asClaims()
-        } catch (e: ParseException) {
+        } catch (_: ParseException) {
             null
         }
     }
@@ -148,7 +148,7 @@ val HolderPubKeyInConfirmationClaim: (Claims) -> NimbusAsymmetricJWK? = { claims
 
     claims["cnf"]
         ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
-        ?.let { jwk -> if (jwk is JsonObject) jwk else null }
+        ?.let { jwk -> jwk as? JsonObject }
         ?.let { jwk ->
             runCatching {
                 val key = NimbusJWK.parse(jwk.toString())
@@ -170,9 +170,9 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifi
         val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
         if (!signedJwt.verify(this)) null
         else signedJwt.jwtClaimsSet.asClaims()
-    } catch (e: ParseException) {
+    } catch (_: ParseException) {
         null
-    } catch (e: NimbusJOSEException) {
+    } catch (_: NimbusJOSEException) {
         null
     }
 }
@@ -237,7 +237,7 @@ fun SdObjectBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
  * @param sdJwtFactory factory for creating the unsigned SD-JWT
  * @param signer the signer that will sign the SD-JWT
  * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
- * @param digestNumberHint This is an optional hint, that expresses the number of digests on the immediate level
+ * @param digestNumberHint This is an optional hint; that expresses the number of digests on the immediate level
  * of this SD-JWT, that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
  * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
  *
@@ -300,28 +300,6 @@ private object NimbusSdJwtIssuerFactory {
         val (claims, disclosures) = unsignedSdJwt
         val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         SdJwt.Issuance(signedJwt, disclosures)
-    }
-
-    /**
-     * Factory method for creating a [SdJwtIssuer] that uses Nimbus
-     *
-     * @param sdJwtFactory factory for creating the unsigned SD-JWT
-     * @param signingKey the [key][NimbusJWK] that will sign the SD-JWT
-     * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
-     * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
-     *
-     * @return [SdJwtIssuer] that uses Nimbus
-     *
-     * @see SdJwtFactory.Default
-     */
-    fun createIssuer(
-        sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
-        signingKey: NimbusJWK,
-        signAlgorithm: NimbusJWSAlgorithm,
-        jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-    ): SdJwtIssuer<NimbusSignedJWT> {
-        val signer = NimbusDefaultJWSSignerFactory().createJWSSigner(signingKey, signAlgorithm)
-        return createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
     }
 }
 
@@ -450,7 +428,7 @@ internal fun kbJwt(
     sdJwtDigest: SdJwtDigest,
 ): NimbusJWT {
     val header = with(NimbusJWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
-        type(NimbusJOSEObjectType("kb+jwt"))
+        type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
         val pk = keyBindingSigner.publicKey
         if (pk is NimbusJWK) {
             keyID(pk.keyID)
@@ -459,7 +437,7 @@ internal fun kbJwt(
     }
     val claimSet = with(NimbusJWTClaimsSet.Builder()) {
         claimSetBuilderAction()
-        claim(SdJwtDigest.CLAIM_NAME, sdJwtDigest.value)
+        claim(SdJwtSpec.CLAIM_SD_HASH, sdJwtDigest.value)
         build()
     }
 
@@ -568,26 +546,19 @@ private fun sign(
 //
 
 /**
- * Tries to create a presentation that discloses the claims are in [query]
- * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
- * claims that are always disclosable can be omitted
- * @receiver The issuance SD-JWT upon which the presentation will be based
- *
- * @return the presentation if possible to satisfy the [query]
- */
-fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Presentation<NimbusSignedJWT>? =
-    present(query) { it.jwtClaimsSet.asClaims() }
-
-/**
  *  Tries to create a presentation that discloses the claims that satisfy
  *  [query]
- * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
- * is relative to the unprotected JSON (not the JWT payload)
+ * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+ * are relative to the unprotected JSON (not the JWT payload)
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @return the presentation if possible to satisfy the [query]
  */
-fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
+
+//
+// JWT Processor, works on JWKSource
+//
 
 internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     private val typeVerifier: NimbusJOSEObjectTypeVerifier<C>? = null,
@@ -599,7 +570,9 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     override fun process(plainJWT: NimbusPlainJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
     override fun process(encryptedJWT: NimbusEncryptedJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
 
-    override fun process(jwtString: String, context: C?): NimbusJWTClaimsSet? = process(NimbusJWTParser.parse(jwtString), context)
+    override fun process(jwtString: String, context: C?): NimbusJWTClaimsSet? =
+        process(NimbusJWTParser.parse(jwtString), context)
+
     override fun process(jwt: NimbusJWT, context: C?): NimbusJWTClaimsSet? =
         when (jwt) {
             is NimbusSignedJWT -> process(jwt, context)

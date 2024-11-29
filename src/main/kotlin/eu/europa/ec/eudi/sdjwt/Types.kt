@@ -49,7 +49,6 @@ typealias Claims = Map<String, JsonElement>
 
 /**
  * Salt to be included in a [Disclosure] claim.
- * Check [SD-JWT][https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-disclosures]
  */
 typealias Salt = String
 

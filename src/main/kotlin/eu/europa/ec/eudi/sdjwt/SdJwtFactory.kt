@@ -25,8 +25,10 @@ value class MinimumDigests(val value: Int) {
     init {
         require(value > 0) { "value must be greater than zero." }
     }
+
     operator fun plus(that: MinimumDigests) = MinimumDigests(this.value + that.value)
 }
+
 fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
 
 /**
@@ -70,7 +72,7 @@ class SdJwtFactory(
             val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
             encodedClaims += encodedClaim
             if (mergedSdClaim.isNotEmpty()) {
-                encodedClaims["_sd"] = mergedSdClaim
+                encodedClaims[SdJwtSpec.CLAIM_SD] = mergedSdClaim
             }
         }
 
@@ -80,7 +82,7 @@ class SdJwtFactory(
             val decoys = genDecoys(digests.size, sdObject.minimumDigests).map { JsonPrimitive(it.value) }
             val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
             if (digestAndDecoys.isNotEmpty()) {
-                encodedClaims["_sd"] = JsonArray(digestAndDecoys)
+                encodedClaims[SdJwtSpec.CLAIM_SD] = JsonArray(digestAndDecoys)
             }
         }
 
@@ -180,7 +182,7 @@ class SdJwtFactory(
         val (jwtClaimSet, disclosures) = this
         return if (disclosures.isEmpty()) this
         else {
-            val newClaimSet = JsonObject(jwtClaimSet + ("_sd_alg" to JsonPrimitive(h.alias)))
+            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec.CLAIM_SD_ALG to JsonPrimitive(h.alias)))
             newClaimSet to disclosures
         }
     }
@@ -197,12 +199,12 @@ class SdJwtFactory(
 
     private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
         if (isEmpty()) JsonObject(emptyMap())
-        else JsonObject(mapOf("_sd" to JsonArray(map { JsonPrimitive(it.value) })))
+        else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
 
-    private fun Claims.sdClaim(): List<JsonElement> = this["_sd"]?.jsonArray ?: emptyList()
+    private fun Claims.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
 
     private fun DisclosureDigest.asDigestClaim(): JsonObject {
-        return JsonObject(mapOf("..." to JsonPrimitive(value)))
+        return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
     }
 
     private fun objectPropertyDisclosure(
@@ -259,13 +261,6 @@ class SdJwtFactory(
          */
         val Default: SdJwtFactory =
             SdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
-
-        @Deprecated(
-            message = "Deprecated and will be removed in a future release",
-            replaceWith = ReplaceWith("SdJwtFactory(hashAlgorithm, globalDigestNumberHint = globalDigestNumberHint)"),
-        )
-        fun of(hashAlgorithm: HashAlgorithm, fallbackMinimumDigests: Int?): SdJwtFactory =
-            SdJwtFactory(hashAlgorithm, fallbackMinimumDigests = fallbackMinimumDigests.atLeastDigests())
     }
 }
 
