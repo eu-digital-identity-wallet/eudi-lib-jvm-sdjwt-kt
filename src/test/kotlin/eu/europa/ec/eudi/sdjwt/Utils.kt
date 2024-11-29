@@ -16,7 +16,22 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import eu.europa.ec.eudi.sdjwt.vc.toClaimPath
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngine.Companion.invoke
+import io.ktor.client.engine.mock.MockRequestHandleScope
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestData
+import io.ktor.client.request.HttpResponseData
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.append
+import io.ktor.http.headers
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
@@ -98,3 +113,24 @@ internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
 internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
 
 internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()
+
+internal object HttpMock {
+
+    fun clientReturning(issuerMeta: SdJwtVcIssuerMetadata): HttpClient =
+        HttpClient { _ ->
+            respond(
+                Json.encodeToString(issuerMeta),
+                HttpStatusCode.OK,
+                headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
+            )
+        }
+
+    @Suppress("TestFunctionName")
+    private fun HttpClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
+        HttpClient(MockEngine(handler)) {
+            expectSuccess = true
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+}

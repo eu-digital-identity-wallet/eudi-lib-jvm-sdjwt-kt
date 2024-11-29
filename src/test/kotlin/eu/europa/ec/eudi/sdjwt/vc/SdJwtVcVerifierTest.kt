@@ -29,20 +29,13 @@ import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import io.ktor.client.*
-import io.ktor.client.engine.mock.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
+import java.net.URI
 import java.time.Instant
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
@@ -50,7 +43,6 @@ import kotlin.test.assertEquals
 import kotlin.test.fail
 
 private object SampleIssuer {
-    private val iss = Url("https://example.com")
     const val KEY_ID = "signing-key-01"
     private val alg = JWSAlgorithm.ES256
     private val key: ECKey = ECKeyGenerator(Curve.P_256)
@@ -58,50 +50,26 @@ private object SampleIssuer {
         .keyUse(KeyUse.SIGNATURE)
         .algorithm(alg)
         .generate()
-    val issuerMeta = run {
-        val jwks = Json.parseToJsonElement(JWKSet(key.toPublicJWK()).toString())
-        buildJsonObject {
-            put("issuer", iss.toString())
-            put("jwks", jwks)
-        }
-    }
+    val issuerMeta = SdJwtVcIssuerMetadata(
+        issuer = URI.create("https://example.com"),
+        jwks = Json.parseToJsonElement(JWKSet(key.toPublicJWK()).toString()).jsonObject,
+    )
 
-    private fun issuer(kid: String?) =
+    private fun sdJwtVcIssuer(kid: String?) =
         SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
-            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
+            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
             kid?.let { keyID(it) }
         }
 
     fun issueUsingKid(kid: String?): String {
-        val issuer = issuer(kid)
+        val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
-            iss(iss.toString())
+            iss(issuerMeta.issuer.toASCIIString())
             iat(Instant.now().toEpochMilli())
             sd("foo", "bar")
         }
         return issuer.issue(sdJwtSpec).getOrThrow().serialize()
     }
-}
-
-private object HttpMock {
-
-    fun clientReturning(issuerMeta: JsonObject): HttpClient =
-        HttpClient { _ ->
-            respond(
-                issuerMeta.toString(),
-                HttpStatusCode.OK,
-                headers { append(HttpHeaders.ContentType, ContentType.Application.Json) },
-            )
-        }
-
-    @Suppress("TestFunctionName")
-    private fun HttpClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
-        HttpClient(MockEngine(handler)) {
-            expectSuccess = true
-            install(ContentNegotiation) {
-                json()
-            }
-        }
 }
 
 class SdJwtVcVerifierTest {
@@ -121,7 +89,7 @@ class SdJwtVcVerifierTest {
     private fun testForMetaDataSource(expectedSource: SdJwtVcIssuerPublicKeySource.Metadata) {
         val jwt = run {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).apply {
-                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT))
+                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 expectedSource.kid?.let { keyID(it) }
             }.build()
             val payload = JWTClaimsSet.Builder().apply {
