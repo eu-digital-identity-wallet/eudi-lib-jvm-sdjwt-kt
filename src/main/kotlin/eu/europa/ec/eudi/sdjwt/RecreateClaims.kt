@@ -290,7 +290,7 @@ private sealed interface DisclosedArrayElement {
 
         private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
             if (obj.size == 1)
-                obj[SdJwtSpec.CLAIM_THREE_DOTS]
+                obj[SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST]
                     ?.takeIf { element -> element is JsonPrimitive }
                     ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
             else null

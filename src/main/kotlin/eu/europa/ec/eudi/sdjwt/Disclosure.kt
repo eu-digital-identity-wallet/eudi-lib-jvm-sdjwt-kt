@@ -32,7 +32,7 @@ sealed interface Disclosure {
      */
     fun claim(): Claim {
         val (_, name, value) = decode(value).getOrThrow()
-        return (name ?: SdJwtSpec.CLAIM_THREE_DOTS) to value
+        return (name ?: SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST) to value
     }
 
     @JvmInline

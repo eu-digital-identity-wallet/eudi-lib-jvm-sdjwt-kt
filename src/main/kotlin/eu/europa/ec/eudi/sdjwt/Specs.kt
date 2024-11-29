@@ -38,7 +38,7 @@ object SdJwtSpec {
     /**
      * Digest of the Disclosure for an array element
      */
-    const val CLAIM_THREE_DOTS: String = "..."
+    const val CLAIM_ARRAY_ELEMENT_DIGEST: String = "..."
 
     //
     //  Header parameters, for JWS JSON
@@ -56,7 +56,7 @@ object SdJwtSpec {
     //
     // Other
     //
-    const val TILDE: Char = '~'
+    const val DISCLOSURE_SEPARATOR: Char = '~'
 
     //
     // Media types

@@ -204,7 +204,7 @@ class SdJwtFactory(
     private fun Claims.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
 
     private fun DisclosureDigest.asDigestClaim(): JsonObject {
-        return JsonObject(mapOf(SdJwtSpec.CLAIM_THREE_DOTS to JsonPrimitive(value)))
+        return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
     }
 
     private fun objectPropertyDisclosure(

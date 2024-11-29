@@ -98,10 +98,10 @@ internal object StandardSerialization {
      * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
      */
     fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
-        val parts = unverifiedSdJwt.split(SdJwtSpec.TILDE)
+        val parts = unverifiedSdJwt.split(SdJwtSpec.DISCLOSURE_SEPARATOR)
         if (parts.size <= 1) throw ParsingError.asException()
         val jwt = parts[0]
-        val containsKeyBinding = !unverifiedSdJwt.endsWith(SdJwtSpec.TILDE)
+        val containsKeyBinding = !unverifiedSdJwt.endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)
         val ds = parts
             .drop(1)
             .run { if (containsKeyBinding) dropLast(1) else this }
@@ -111,7 +111,7 @@ internal object StandardSerialization {
     }
 
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
-        joinToString(prefix = "${SdJwtSpec.TILDE}", separator = "") { "${get(it)}${SdJwtSpec.TILDE}" }
+        joinToString(prefix = "${SdJwtSpec.DISCLOSURE_SEPARATOR}", separator = "") { "${get(it)}${SdJwtSpec.DISCLOSURE_SEPARATOR}" }
 }
 
 internal object JwsJsonSupport {

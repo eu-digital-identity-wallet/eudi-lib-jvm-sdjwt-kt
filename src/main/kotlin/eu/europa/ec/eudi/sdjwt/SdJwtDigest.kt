@@ -46,12 +46,12 @@ value class SdJwtDigest private constructor(val value: String) {
          * @return the calculated digest
          */
         fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
-            require(value.contains(SdJwtSpec.TILDE))
+            require(value.contains(SdJwtSpec.DISCLOSURE_SEPARATOR))
             fun String.noKeyBinding() =
-                if (endsWith(SdJwtSpec.TILDE)) {
+                if (endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)) {
                     this
                 } else {
-                    removeRange(lastIndexOf(SdJwtSpec.TILDE) + 1, length)
+                    removeRange(lastIndexOf(SdJwtSpec.DISCLOSURE_SEPARATOR) + 1, length)
                 }
 
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
