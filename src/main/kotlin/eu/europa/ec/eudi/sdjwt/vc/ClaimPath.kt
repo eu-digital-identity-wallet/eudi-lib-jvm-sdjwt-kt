@@ -197,7 +197,8 @@ fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimP
 }
 
 // TODO make stack safe
-fun ClaimPath.toJsonPointers(maxWildcardExpansions: Int = 10): List<JsonPointer> {
+//  Make it to return JsonPoint (single)
+internal fun ClaimPath.toJsonPointers(maxWildcardExpansions: Int = 10): List<JsonPointer> {
     fun buildPointers(
         path: ClaimPath?,
         currentPointer: JsonPointer,
