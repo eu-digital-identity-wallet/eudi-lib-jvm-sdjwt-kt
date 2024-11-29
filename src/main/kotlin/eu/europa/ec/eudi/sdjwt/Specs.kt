@@ -102,7 +102,8 @@ object RFC7515 {
  */
 object SdJwtVcSpec {
 
-    const val WELL_KNOWN_SUFFIX_JWT_VC_ISSUER = "jwt-vc-issuer"
+    const val WELL_KNOWN_SUFFIX_JWT_VC_ISSUER: String = "jwt-vc-issuer"
+    const val WELL_KNOWN_JWT_VC_ISSUER: String = "/.well-known/$WELL_KNOWN_SUFFIX_JWT_VC_ISSUER"
 
     @Deprecated(
         message = "Removed from SD-JWT-VC",

@@ -35,9 +35,8 @@ interface GetSdJwtVcIssuerMetadataOps {
         }
 
     companion object : GetSdJwtVcIssuerMetadataOps {
-        private const val WELL_KNOWN = "/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}"
-        internal val BySpec get() = FormWellKnownURL.prepend(WELL_KNOWN)
-        internal val Alt get() = FormWellKnownURL.appendAtTheEnd(WELL_KNOWN)
+        internal val BySpec get() = FormWellKnownURL.prepend(SdJwtVcSpec.WELL_KNOWN_JWT_VC_ISSUER)
+        internal val Alt get() = FormWellKnownURL.appendAtTheEnd(SdJwtVcSpec.WELL_KNOWN_JWT_VC_ISSUER)
         private val alternatives get() = listOf(BySpec, Alt)
 
         private fun SdJwtVcIssuerMetadata.ensureIssuerIs(expected: URI) {
