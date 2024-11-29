@@ -55,7 +55,9 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
         }
 
         assertFailsWith(IllegalStateException::class, "issuer does not match the expected value") {
-            client.getSdJwtVcIssuerMetadata(issuer)
+            with(GetSdJwtVcIssuerMetadataOps) {
+                client.getSdJwtVcIssuerMetadata(issuer, BySpec)
+            }
         }
         assertEquals(1, requests)
     }
@@ -82,7 +84,9 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
             }
         }
         assertFailsWith(JsonConvertException::class, "either 'jwks' or 'jwks_uri' must be provided") {
-            client.getSdJwtVcIssuerMetadata(issuer)
+            with(GetSdJwtVcIssuerMetadataOps) {
+                client.getSdJwtVcIssuerMetadata(issuer, BySpec)
+            }
         }
         assertEquals(1, requests)
     }

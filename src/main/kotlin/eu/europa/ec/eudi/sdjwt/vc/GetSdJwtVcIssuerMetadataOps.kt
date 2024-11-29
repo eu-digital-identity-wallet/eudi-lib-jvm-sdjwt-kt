@@ -22,35 +22,52 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
+import java.net.URI
 
 /**
- * Fetches the metadata of an SD-JWT VC issuer.
+ * Gets the metadata of an SD-JWT VC issuer.
  */
 interface GetSdJwtVcIssuerMetadataOps {
 
-    suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? = coroutineScope {
-        val issuerMetadataUrl = issuerMetadataUrl(issuer)
-        val httpResponse = get(issuerMetadataUrl)
-        when {
-            httpResponse.status.isSuccess() -> {
-                httpResponse.body<SdJwtVcIssuerMetadata>()
-                    .also { metadata ->
-                        check(issuer == Url(metadata.issuer)) { "Issuer does not match the expected value" }
-                    }
-            }
-            else -> null
+    suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? =
+        alternatives.firstNotNullOfOrNull { formWellKnownUrl ->
+            runCatching { getSdJwtVcIssuerMetadata(issuer, formWellKnownUrl) }.getOrNull()
         }
-    }
 
     companion object : GetSdJwtVcIssuerMetadataOps {
+        private const val WELL_KNOWN = "/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}"
+        internal val BySpec get() = FormWellKnownURL.prepend(WELL_KNOWN)
+        internal val Alt get() = FormWellKnownURL.appendAtTheEnd(WELL_KNOWN)
+        private val alternatives get() = listOf(BySpec, Alt)
 
-        private fun issuerMetadataUrl(issuer: Url): Url =
-            URLBuilder(issuer).apply {
-                path("/.well-known/${SdJwtVcSpec.WELL_KNOWN_SUFFIX_JWT_VC_ISSUER}${issuer.pathSegments.joinToString("/")}")
-            }.build()
+        private fun SdJwtVcIssuerMetadata.ensureIssuerIs(expected: URI) {
+            check(expected == issuer) { "Metadata do not contain expected ${SdJwtVcSpec.ISSUER}" }
+        }
+
+        internal suspend fun HttpClient.getSdJwtVcIssuerMetadata(
+            issuer: Url,
+            formWellKnownUrl: FormWellKnownURL,
+        ): SdJwtVcIssuerMetadata? =
+            coroutineScope {
+                val expectedIssuer = issuer.toURI()
+
+                val issuerMetadataUrl = formWellKnownUrl(issuer)
+                val httpResponse = get(issuerMetadataUrl)
+                when {
+                    httpResponse.status.isSuccess() -> {
+                        val metadata = httpResponse.body<SdJwtVcIssuerMetadata>()
+                        metadata.apply { ensureIssuerIs(expectedIssuer) }
+                    }
+
+                    else -> null
+                }
+            }
     }
 }
 
+/**
+ * Gets the JWKSet given a location
+ */
 interface GetJwkSetKtorOps {
 
     suspend fun HttpClient.getJWKSet(jwksUri: Url): JsonObject? = getJWKSetAs(jwksUri)
@@ -61,5 +78,32 @@ interface GetJwkSetKtorOps {
             if (httpResponse.status.isSuccess()) httpResponse.body()
             else null
         }
+    }
+}
+
+internal fun interface FormWellKnownURL {
+    /**
+     * Forms a well-known [Url], given a [baseUrl]
+     */
+    operator fun invoke(baseUrl: Url): Url
+
+    companion object {
+        fun prepend(wellKnownPath: String): FormWellKnownURL =
+            FormWellKnownURL { url ->
+                val pathSegment =
+                    buildString {
+                        append("/${wellKnownPath.removePrefixAndSuffix("/")}")
+                        append(url.pathSegments.joinToString("/"))
+                    }
+                URLBuilder(url).apply { path(pathSegment) }.build()
+            }
+
+        fun appendAtTheEnd(wellKnownPath: String): FormWellKnownURL =
+            FormWellKnownURL { baseUrl: Url ->
+                val segment = "/${wellKnownPath.removePrefixAndSuffix("/")}"
+                URLBuilder(baseUrl).apply { appendPathSegments(segment, encodeSlash = false) }.build()
+            }
+
+        private fun String.removePrefixAndSuffix(s: CharSequence): String = removePrefix(s).removeSuffix(s)
     }
 }
