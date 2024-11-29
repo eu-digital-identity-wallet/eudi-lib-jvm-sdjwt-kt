@@ -192,29 +192,24 @@ fun JsonPointer.toClaimPath(replaceIndexesWithWildcard: Boolean = false): ClaimP
     return tokens.map(::asElement).let(::ClaimPath)
 }
 
-// TODO make stack safe
-//  Make it to return JsonPoint (single)
-internal fun ClaimPath.toJsonPointers(maxWildcardExpansions: Int = 10): List<JsonPointer> {
-    fun buildPointers(
-        path: ClaimPath?,
-        currentPointer: JsonPointer,
-    ): List<JsonPointer> {
-        return if (path == null) listOf(currentPointer)
-        else {
-            val (head, tail) = path
-            head.fold(
-                ifClaim = { name -> buildPointers(tail, currentPointer.child(name)) },
-                ifArrayElement = { index -> buildPointers(tail, currentPointer.child(index)) },
-                ifAllArrayElements = {
-                    // Handle wildcard: generate multiple pointers with index expansions
-                    (0..maxWildcardExpansions).flatMap { index ->
-                        buildPointers(tail, currentPointer.child(index))
-                    }
-                },
-            )
+/**
+ * Converts this ClaimPath to a JsonPointer, given it doesn't contain any wildcards.
+ */
+internal fun ClaimPath.toJsonPointer(): Result<JsonPointer> = runCatching {
+    tailrec fun build(parent: JsonPointer, remainder: ClaimPath?): JsonPointer =
+        when (remainder) {
+            is ClaimPath -> {
+                val (head, tail) = remainder
+                val newParent = head.fold(
+                    ifClaim = { name -> parent.child(name) },
+                    ifArrayElement = { index -> parent.child(index) },
+                    ifAllArrayElements = { throw IllegalArgumentException("${this@toJsonPointer} cannot be converted to a JsonPointer") },
+                )
+                build(newParent, tail)
+            }
+            else -> parent
         }
-    }
-    return buildPointers(this, JsonPointer.Root)
+    build(JsonPointer.Root, this)
 }
 
 /**
