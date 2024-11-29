@@ -189,10 +189,8 @@ This is because to disclose either the claim `region` or the claim `country`, th
 disclosed as well.
 
 > [!NOTE]
-> Please note that OpenId4VP uses Presentation Exchange, to allow an RP/Verifier to describe the presentation
-> requirements, which depends on JSON Path expressions. On the other hand, the `present` function shown above expects
-> either a set of Claim Paths, or a JSON Pointer predicate. We consider that bridging those (Claim Path, JSON Path,
-> and JSON Pointer) should be left outside the scope of this library.
+> The `present` function shown above expects either a set of Claim Paths, or a JSON Pointer predicate. Support for 
+> JSON Pointers though has been marked as deprecated, and is scheduled to be removed in a future release.
 
 ## Presentation Verification
 
