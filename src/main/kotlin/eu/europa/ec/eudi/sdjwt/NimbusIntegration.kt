@@ -556,6 +556,10 @@ private fun sign(
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
 
+//
+// JWT Processor, works on JWKSource
+//
+
 internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     private val typeVerifier: NimbusJOSEObjectTypeVerifier<C>? = null,
     private val claimSetVerifier: NimbusJWTClaimsSetVerifier<C>? = null,

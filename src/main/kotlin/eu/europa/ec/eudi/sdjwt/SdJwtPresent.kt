@@ -65,11 +65,10 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
-    val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf).second
-    val keys = disclosuresPerClaim.keys.filter { claim ->
-        query.any { requested ->
-            claim matches requested
-        }
+    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
+    infix fun ClaimPath.matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
+    val keys = disclosuresPerClaim.keys.filter { claimFound ->
+        query.any { requested -> claimFound matches requested }
     }
     return if (keys.isEmpty()) null
     else {

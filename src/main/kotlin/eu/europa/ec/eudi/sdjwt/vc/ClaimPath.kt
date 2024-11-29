@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.JsonPointer
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -51,14 +50,12 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
     operator fun plus(other: ClaimPath): ClaimPath =
         ClaimPath(this.value + other.value)
 
-    operator fun contains(other: ClaimPath): Boolean =
-        value.foldIndexed(true) { index, acc, thisElement ->
+    operator fun contains(that: ClaimPath): Boolean =
+        value.foldIndexed(this.value.size <= that.value.size) { index, acc, thisElement ->
             fun comp() =
-                other.value.getOrNull(index)?.let { otherElement -> otherElement in thisElement } == true
+                that.value.getOrNull(index)?.let { thatElement -> thatElement in thisElement } == true
             acc and comp()
         }
-
-    infix fun matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
 
     /**
      * Appends a wild-card indicator [ClaimPathElement.AllArrayElements]
@@ -144,19 +141,26 @@ sealed interface ClaimPathElement {
     value class Claim(val name: String) : ClaimPathElement {
         override fun toString() = name
     }
-}
 
-operator fun ClaimPathElement.contains(thatElement: ClaimPathElement): Boolean =
-    when (this) {
-        ClaimPathElement.AllArrayElements -> when (thatElement) {
-            ClaimPathElement.AllArrayElements -> true
-            is ClaimPathElement.ArrayElement -> true
-            is ClaimPathElement.Claim -> false
+    /**
+     * Indication of whether the current instance contains the other.
+     * @param that the element to compare with
+     * @return in case that the two elements are of the same type, and if they are equal (including attribute),
+     * then true is being returned. Also, an [AllArrayElements] contains [ArrayElement].
+     * In all other cases, a false is being returned.
+     */
+    operator fun contains(that: ClaimPathElement): Boolean =
+        when (this) {
+            AllArrayElements -> when (that) {
+                AllArrayElements -> true
+                is ArrayElement -> true
+                is Claim -> false
+            }
+
+            is ArrayElement -> this == that
+            is Claim -> this == that
         }
-
-        is ClaimPathElement.ArrayElement -> thatElement == this
-        is ClaimPathElement.Claim -> thatElement == this
-    }
+}
 
 inline fun <T> ClaimPathElement.fold(
     ifAllArrayElements: () -> T,
@@ -176,7 +180,10 @@ inline fun <T> ClaimPathElement.fold(
 }
 
 /**
- * Converts this ClaimPath to a JsonPointer, given it doesn't contain any wildcards.
+ * Converts this ClaimPath to a JsonPointer, given the path doesn't contain any wildcards.
+ *
+ * @receiver the path to convert. Must not include ["null"][ClaimPathElement.AllArrayElements]
+ * @return the resulting JSON pointer. We fail if the path contains ["null"][ClaimPathElement.AllArrayElements]
  */
 internal fun ClaimPath.toJsonPointer(): Result<JsonPointer> = runCatching {
     tailrec fun build(parent: JsonPointer, remainder: ClaimPath?): JsonPointer =
@@ -190,6 +197,7 @@ internal fun ClaimPath.toJsonPointer(): Result<JsonPointer> = runCatching {
                 )
                 build(newParent, tail)
             }
+
             else -> parent
         }
     build(JsonPointer.Root, this)
