@@ -65,29 +65,6 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
 }
 
 /**
- * Tries to create a presentation that discloses the claims that satisfy
- * [query]
- * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
- * is relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @param JWT the type representing the JWT part of the SD-JWT
- * @return the presentation if possible to satisfy the [query]
- */
-fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
-    query: (JsonPointer) -> Boolean,
-    claimsOf: (JWT) -> Claims,
-): SdJwt.Presentation<JWT>? {
-    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
-    val keys = disclosuresPerClaim.keys.filter(query)
-    return if (keys.isEmpty()) null
-    else {
-        val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
-        SdJwt.Presentation(jwt, ds.toList())
-    }
-}
-
-/**
  * Tries to create a presentation that discloses the [requested claims][query].
  * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
  * are relative to the unprotected JSON (not the JWT payload)

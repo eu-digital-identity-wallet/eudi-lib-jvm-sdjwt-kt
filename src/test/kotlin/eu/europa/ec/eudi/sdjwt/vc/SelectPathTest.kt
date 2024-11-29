@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 class SelectPathTest {
-    val jsonSupport = Json { ignoreUnknownKeys = true }
+    val jsonSupport = Json { ignoreUnknownKeys = false }
     val sampleJson = """
         {
           "vct": "https://betelgeuse.example.com/education_credential",
@@ -43,7 +43,7 @@ class SelectPathTest {
           "nationalities": ["British", "Betelgeusian"]
         }
     """.trimIndent().let {
-        Json.parseToJsonElement(it).jsonObject
+        jsonSupport.parseToJsonElement(it).jsonObject
     }
 
     @Test

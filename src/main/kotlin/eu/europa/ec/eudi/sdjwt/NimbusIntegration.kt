@@ -556,17 +556,6 @@ private fun sign(
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
     present(query) { it.jwtClaimsSet.asClaims() }
 
-/**
- *  Tries to create a presentation that discloses the claims that satisfy
- *  [query]
- * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
- * is relative to the unprotected JSON (not the JWT payload)
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @return the presentation if possible to satisfy the [query]
- */
-fun SdJwt.Issuance<NimbusSignedJWT>.presentJsonPointersMatching(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
-    presentJsonPointersMatching(query) { it.jwtClaimsSet.asClaims() }
-
 internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     private val typeVerifier: NimbusJOSEObjectTypeVerifier<C>? = null,
     private val claimSetVerifier: NimbusJWTClaimsSetVerifier<C>? = null,

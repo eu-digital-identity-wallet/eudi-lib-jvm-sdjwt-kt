@@ -128,3 +128,45 @@ fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<JsonPointer>): SdJwt.Pres
 @JvmName("nimbusPresentMatching")
 fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
     presentJsonPointersMatching(query)
+
+/**
+ *  Tries to create a presentation that discloses the claims that satisfy
+ *  [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @return the presentation if possible to satisfy the [query]
+ */
+@Deprecated(
+    message = "It will be removed from a future release. Use ClaimPath",
+    level = DeprecationLevel.WARNING,
+)
+fun SdJwt.Issuance<NimbusSignedJWT>.presentJsonPointersMatching(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
+    presentJsonPointersMatching(query) { it.jwtClaimsSet.asClaims() }
+
+/**
+ * Tries to create a presentation that discloses the claims that satisfy
+ * [query]
+ * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
+ * is relative to the unprotected JSON (not the JWT payload)
+ * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @return the presentation if possible to satisfy the [query]
+ */
+@Deprecated(
+    message = "It will be removed from a future release. Use ClaimPath",
+    level = DeprecationLevel.WARNING,
+)
+fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
+    query: (JsonPointer) -> Boolean,
+    claimsOf: (JWT) -> Claims,
+): SdJwt.Presentation<JWT>? {
+    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
+    val keys = disclosuresPerClaim.keys.filter(query)
+    return if (keys.isEmpty()) null
+    else {
+        val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
+        SdJwt.Presentation(jwt, ds.toList())
+    }
+}
