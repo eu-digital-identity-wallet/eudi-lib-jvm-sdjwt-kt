@@ -103,7 +103,8 @@ fun KeyBindingVerifier.Companion.mustBePresentAndValid(
 ): KeyBindingVerifier.MustBePresentAndValid {
     val keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier = { sdJwtClaims ->
         holderPubKeyExtractor(sdJwtClaims)?.let { holderPubKey ->
-            val challengeClaimSet: NimbusJWTClaimsSet = NimbusJWTClaimsSet.parse(challenge.toString())
+            val challengeClaimSet: NimbusJWTClaimsSet? =
+                challenge?.let { NimbusJWTClaimsSet.parse(it.toString()) }
             check(holderPubKey is NimbusJWK)
             keyBindingJWTProcess(holderPubKey, challengeClaimSet).asJwtVerifier()
         } ?: throw KeyBindingError.MissingHolderPubKey.asException()
