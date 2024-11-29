@@ -27,7 +27,10 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.vc.*
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
+import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -346,7 +349,7 @@ class VerifierActor(
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths = disclosedClaims()
+        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }.second.keys
         whatToDisclose.forEach { requested ->
             assertTrue("Requested $requested was not disclosed") {
                 disclosedPaths.any { disclosed -> disclosed in requested }
@@ -357,11 +360,6 @@ class VerifierActor(
             disclosures.size,
             "Expected $expectedNumberOfDisclosures but found ${disclosures.size}",
         )
-    }
-
-    private fun SdJwt<JwtAndClaims>.disclosedClaims(): Iterable<ClaimPath> {
-        val (_, ds) = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }
-        return ds.usePath().keys.toList()
     }
 
     private fun verifierDebug(s: String) {

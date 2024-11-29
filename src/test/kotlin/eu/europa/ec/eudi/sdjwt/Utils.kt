@@ -17,21 +17,13 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
-import eu.europa.ec.eudi.sdjwt.vc.toClaimPath
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.MockEngine.Companion.invoke
-import io.ktor.client.engine.mock.MockRequestHandleScope
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.HttpRequestData
-import io.ktor.client.request.HttpResponseData
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.append
-import io.ktor.http.headers
-import io.ktor.serialization.kotlinx.json.json
+import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
@@ -83,10 +75,10 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
     }.run(::println)
 }
 
-fun DisclosuresPerClaim.prettyPrint() {
+fun DisclosuresPerClaimPath.prettyPrint() {
     println("SD-JWT disclosures per claim")
     forEach { (claim, disclosures) ->
-        println("$claim <=> ${claim.toClaimPath()} ->")
+        println("$claim <=> ${claim.toJsonPointer().getOrThrow()} ->")
         disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {

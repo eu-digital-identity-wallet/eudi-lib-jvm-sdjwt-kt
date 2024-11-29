@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 /**
@@ -138,7 +139,7 @@ fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): Sd
  * @return the presentation if possible to satisfy the [query]
  */
 @Deprecated(
-    message = "It will be removed from a future release. Use ClaimPath",
+    message = "It will be removed from a future release. Use ClaimPath.",
     level = DeprecationLevel.WARNING,
 )
 fun SdJwt.Issuance<NimbusSignedJWT>.presentJsonPointersMatching(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
@@ -162,7 +163,10 @@ fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
     query: (JsonPointer) -> Boolean,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
-    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
+    val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf)
+        .second
+        .mapKeys { it.key.toJsonPointer().getOrThrow() }
+
     val keys = disclosuresPerClaim.keys.filter(query)
     return if (keys.isEmpty()) null
     else {
@@ -170,3 +174,15 @@ fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
         SdJwt.Presentation(jwt, ds.toList())
     }
 }
+
+/**
+ * Represents a map which contains all the claims - selectively disclosable or not -
+ * found in a SD-JWT.
+ * Each entry contains the [pointer][JsonPointer] and the [disclosures][Disclosure]
+ * required to revel the claim
+ */
+@Deprecated(
+    message = "It will be removed from a future release. Use DisclosuresPerClaimPath.",
+    level = DeprecationLevel.WARNING,
+)
+typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>

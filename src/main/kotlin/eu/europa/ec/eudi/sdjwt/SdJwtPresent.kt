@@ -16,15 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import eu.europa.ec.eudi.sdjwt.vc.toClaimPath
-
-/**
- * Represents a map which contains all the claims - selectively disclosable or not -
- * found in a SD-JWT.
- * Each entry contains the [pointer][JsonPointer] and the [disclosures][Disclosure]
- * required to revel the claim
- */
-typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
 
 /**
  * Represents a map which contains all the claims - selectively disclosable or not -
@@ -34,9 +25,6 @@ typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
  */
 typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
 
-fun DisclosuresPerClaim.usePath(): DisclosuresPerClaimPath =
-    mapKeys { (jsonPointer, _) -> jsonPointer.toClaimPath(false) }
-
 /**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
  *
@@ -45,8 +33,8 @@ fun DisclosuresPerClaim.usePath(): DisclosuresPerClaimPath =
  *
  * @see SdJwt.recreateClaims
  */
-fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaim> {
-    val disclosuresPerClaim = mutableMapOf<JsonPointer, List<Disclosure>>()
+fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaimPath> {
+    val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
     val visitor = ClaimVisitor { path, disclosure ->
         if (disclosure != null) {
             require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
@@ -77,7 +65,7 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
     claimsOf: (JWT) -> Claims,
 ): SdJwt.Presentation<JWT>? {
-    val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf).second.usePath()
+    val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf).second
     val keys = disclosuresPerClaim.keys.filter { claim ->
         query.any { requested ->
             claim matches requested

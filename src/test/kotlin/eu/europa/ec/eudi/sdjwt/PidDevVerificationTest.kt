@@ -86,7 +86,7 @@ private interface Printer {
         println(json.encodeToString(claims))
     }
 
-    fun printDisclosureMap(disclosureMap: DisclosuresPerClaim) {
+    fun printDisclosureMap(disclosureMap: DisclosuresPerClaimPath) {
         printHeader("Disclosure map")
         disclosureMap.prettyPrint()
     }
