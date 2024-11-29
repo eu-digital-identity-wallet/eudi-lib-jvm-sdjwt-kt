@@ -130,14 +130,10 @@ sealed interface ClaimPathElement {
     /**
      * Indicates that the respective [key][name] is to be selected.
      * It is serialized as a [string][JsonPrimitive]
-     * @param name a non-blank attribute name
+     * @param name the attribute name
      */
     @JvmInline
     value class Claim(val name: String) : ClaimPathElement {
-        init {
-            require(name.isNotBlank()) { "Attribute must not be blank" }
-        }
-
         override fun toString() = name
     }
 }
