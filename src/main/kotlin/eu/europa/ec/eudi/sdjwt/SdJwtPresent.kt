@@ -89,3 +89,8 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
         SdJwt.Presentation(jwt, ds.toList())
     }
 }
+
+/**
+ * Creates a Presentation that discloses **ALL** the claims of this Issuance.
+ */
+fun <JWT> SdJwt.Issuance<JWT>.present(): SdJwt.Presentation<JWT> = SdJwt.Presentation(jwt, disclosures)

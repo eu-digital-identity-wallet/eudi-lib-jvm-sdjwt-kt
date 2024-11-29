@@ -94,7 +94,7 @@ class StandardSerializationTest {
             }
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.presentJsonPointersMatching { true }
+        val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
         val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(
@@ -122,7 +122,7 @@ class StandardSerializationTest {
             }
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.presentJsonPointersMatching { true }
+        val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
         val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(

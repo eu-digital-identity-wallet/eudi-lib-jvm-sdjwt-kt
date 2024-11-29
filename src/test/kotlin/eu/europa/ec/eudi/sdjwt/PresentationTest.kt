@@ -131,7 +131,7 @@ class PresentationTest {
             }
         }
 
-        val allClaims = sdJwt.presentJsonPointersMatching { true }
+        val allClaims = sdJwt.present()
 
         assertNotNull(allClaims)
         assertEquals(sdJwt.jwt, allClaims.jwt)
@@ -141,7 +141,7 @@ class PresentationTest {
 
     @Test
     fun `query for all claims should returned the issued sd-jwt`() {
-        val presentationSdJwt = issuedSdJwt.presentJsonPointersMatching { true }
+        val presentationSdJwt = issuedSdJwt.present()
         assertNotNull(presentationSdJwt)
         assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
         assertEquals(issuedSdJwt.disclosures.size, presentationSdJwt.disclosures.size)
