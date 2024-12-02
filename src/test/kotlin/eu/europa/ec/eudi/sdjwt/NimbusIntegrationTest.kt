@@ -27,6 +27,7 @@ import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Clock
 import java.util.*
 import kotlin.test.Test
@@ -48,8 +49,7 @@ internal class NimbusIntegrationTest {
             verifier.verify(issued.jwt.serialize()).onFailure { fail(it.message, it) }
         }
 
-        (JWSAlgorithm.Family.SIGNATURE + JWSAlgorithm.Family.HMAC_SHA)
-            .filter { it != JWSAlgorithm.ES256K }
+        (JWSAlgorithm.Family.SIGNATURE + JWSAlgorithm.Family.HMAC_SHA - JWSAlgorithm.Ed448)
             .forEach { algorithm ->
                 test(createContext(algorithm))
                 println("JWSAlgorithm $algorithm tested OK")
@@ -100,14 +100,20 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
                 JWSAlgorithm.ES512 -> Curve.P_521
                 else -> throw IllegalArgumentException("Unknown EC JWSAlgorithm $algorithm")
             }
+            val provider = BouncyCastleProvider()
             val jwk = ECKeyGenerator(curve)
+                .provider(provider)
                 .keyID(keyId)
                 .issueTime(issuedAt)
                 .generate()
+            val signer = ECDSASigner(jwk).apply { jcaContext.provider = provider }
+            val verifier = ECDSAVerifier(jwk.toPublicJWK())
+                .apply { jcaContext.provider = provider }
+                .asJwtVerifier()
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = ECDSASigner(jwk), signAlgorithm = algorithm),
-                ECDSAVerifier(jwk.toPublicJWK()).asJwtVerifier(),
+                SdJwtIssuer.nimbus(signer = signer, signAlgorithm = algorithm),
+                verifier,
             )
         }
 
@@ -124,14 +130,26 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
         }
 
         in JWSAlgorithm.Family.ED -> {
-            val jwk = OctetKeyPairGenerator(Curve.Ed25519)
+            val curve = when (algorithm) {
+                JWSAlgorithm.EdDSA, JWSAlgorithm.Ed25519 -> Curve.Ed25519
+                else -> throw IllegalArgumentException("Unknown ED JWSAlgorithm $algorithm")
+            }
+            val jwk = OctetKeyPairGenerator(curve)
                 .keyID(keyId)
                 .issueTime(issuedAt)
                 .generate()
+            val signer = when (algorithm) {
+                JWSAlgorithm.EdDSA, JWSAlgorithm.Ed25519 -> Ed25519Signer(jwk)
+                else -> throw IllegalArgumentException("Unknown ED JWSAlgorithm $algorithm")
+            }
+            val verifier = when (algorithm) {
+                JWSAlgorithm.EdDSA, JWSAlgorithm.Ed25519 -> Ed25519Verifier(jwk.toPublicJWK()).asJwtVerifier()
+                else -> throw IllegalArgumentException("Unknown ED JWSAlgorithm $algorithm")
+            }
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = Ed25519Signer(jwk), signAlgorithm = algorithm),
-                Ed25519Verifier(jwk.toPublicJWK()).asJwtVerifier(),
+                SdJwtIssuer.nimbus(signer = signer, signAlgorithm = algorithm),
+                verifier,
             )
         }
 
