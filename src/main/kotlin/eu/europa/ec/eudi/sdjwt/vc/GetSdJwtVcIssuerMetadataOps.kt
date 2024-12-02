@@ -92,7 +92,12 @@ internal fun interface FormWellKnownURL {
                 val pathSegment =
                     buildString {
                         append("/${wellKnownPath.removePrefixAndSuffix("/")}")
-                        append(url.pathSegments.joinToString("/"))
+
+                        val joinedSegments = url.segments.joinToString(separator = "/")
+                        if (joinedSegments.isNotBlank()) {
+                            append("/")
+                        }
+                        append(joinedSegments)
                     }
                 URLBuilder(url).apply { path(pathSegment) }.build()
             }
