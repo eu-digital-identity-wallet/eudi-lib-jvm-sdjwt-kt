@@ -34,7 +34,7 @@ Library's SD-JWT DSL leverages the DSL provided by
 [KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements
 
 ## Installation
-```kotlin
+```
 // Include library in dependencies in build.gradle.kts
 dependencies {
     implementation("eu.europa.ec.euidw:eudi-lib-jvm-sdjwt-kt:$version")
