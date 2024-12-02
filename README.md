@@ -33,6 +33,14 @@ is implemented in Kotlin, targeting JVM.
 Library's SD-JWT DSL leverages the DSL provided by
 [KotlinX Serialization](https://github.com/Kotlin/kotlinx.serialization) library for defining JSON elements
 
+## Installation
+```
+// Include library in dependencies in build.gradle.kts
+dependencies {
+    implementation("eu.europa.ec.euidw:eudi-lib-jvm-sdjwt-kt:$version")
+}
+```
+
 ## Use cases supported
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT
