@@ -68,7 +68,7 @@ class SdJwtFactory(
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
         // Add the given claim to encodedClaims
-        fun add(encodedClaim: Claims) {
+        fun add(encodedClaim: JsonObject) {
             val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
             encodedClaims += encodedClaim
             if (mergedSdClaim.isNotEmpty()) {
@@ -175,7 +175,7 @@ class SdJwtFactory(
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
-     * @return a new [EncodedSdElement] with an updated [Claims] to
+     * @return a new [EncodedSdElement] with an updated claims to
      * contain the hash algorithm claim, if disclosures are present
      */
     private fun EncodedSdElement.addHashAlgClaim(h: HashAlgorithm): EncodedSdElement {
@@ -201,7 +201,7 @@ class SdJwtFactory(
         if (isEmpty()) JsonObject(emptyMap())
         else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
 
-    private fun Claims.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
+    private fun Map<String, JsonElement>.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
 
     private fun DisclosureDigest.asDigestClaim(): JsonObject {
         return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))

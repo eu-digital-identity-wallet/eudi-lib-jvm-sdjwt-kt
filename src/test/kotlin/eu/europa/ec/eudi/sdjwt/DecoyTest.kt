@@ -82,7 +82,7 @@ internal class DecoyTest {
 
     // That's not safe, but it will do for them example
     // counts only top-level digests
-    private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.asClaims().directDigests().count()
+    private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.jsonObject().directDigests().count()
 
     private fun Membership.sdJwtSpec(minimumDigests: Int?) =
         sdJwt(minimumDigests) {

@@ -48,7 +48,7 @@ val json = Json {
 
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 
-fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> Claims) {
+fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
     val type = when (this) {
         is SdJwt.Issuance -> "issuance"
         is SdJwt.Presentation -> "presentation"

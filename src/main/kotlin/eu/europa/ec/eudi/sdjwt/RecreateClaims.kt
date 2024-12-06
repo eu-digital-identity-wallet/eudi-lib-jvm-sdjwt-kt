@@ -25,12 +25,12 @@ import kotlinx.serialization.json.*
  * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
  *   be replaced by [Disclosure.claim]
  *
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> JsonObject): JsonObject {
     return recreateClaims(visitor = null, claimsOf = claimsOf)
 }
 
@@ -42,12 +42,12 @@ fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> Claims): Claims {
  *   be replaced by [Disclosure.claim]
  *
  * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to use
  * @return the claims that were used to produce the SD-JWT
  */
-fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> Claims): Claims {
+fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> JsonObject): JsonObject {
     val disclosedClaims = JsonObject(claimsOf(jwt))
     return RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
 }
@@ -74,7 +74,7 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
  */
 private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
-    fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): Claims {
+    fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): JsonObject {
         val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
         return discloseJwt(
             hashAlgorithm,
@@ -308,16 +308,16 @@ private sealed interface DisclosedArrayElement {
  *  @receiver the claims to check
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
-internal fun Claims.directDigests(): Set<DisclosureDigest> =
+internal fun JsonObject.directDigests(): Set<DisclosureDigest> =
     this[SdJwtSpec.CLAIM_SD]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?.toSet()
         ?: emptySet()
 
 /**
- * Gets from the [Claims] the hash algorithm claim ("_sd_alg")
+ * Gets from the claims the hash algorithm claim ("_sd_alg")
  * @receiver the claims to check
  * @return The [HashAlgorithm] if found
  */
-internal fun Claims.hashAlgorithm(): HashAlgorithm? =
+internal fun JsonObject.hashAlgorithm(): HashAlgorithm? =
     this[SdJwtSpec.CLAIM_SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }

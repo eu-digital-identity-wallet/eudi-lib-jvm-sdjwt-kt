@@ -16,6 +16,9 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 /**
@@ -51,13 +54,14 @@ fun SdJwt.Issuance<JwtAndClaims>.present(
 @JvmName("presentMatching")
 fun SdJwt.Issuance<JwtAndClaims>.present(
     query: Set<JsonPointer>,
-): SdJwt.Presentation<JwtAndClaims>? = presentJsonPointersMatching({ pointer: JsonPointer -> pointer in query }) { (_, claims) -> claims }
+): SdJwt.Presentation<JwtAndClaims>? =
+    presentJsonPointersMatching({ pointer: JsonPointer -> pointer in query }) { (_, claims) -> claims }
 
 /**
  * Tries to create a presentation that discloses the claims are in [query]
  * @param query a set of [JsonPointer] relative to the unprotected JSON (not the JWT payload). Pointers for
  * claims that are always disclosable can be omitted
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @param JWT the type representing the JWT part of the SD-JWT
  * @return the presentation if possible to satisfy the [query]
@@ -70,7 +74,7 @@ fun SdJwt.Issuance<JwtAndClaims>.present(
 @JvmName("presentMatchingSetOfPointers")
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<JsonPointer>,
-    claimsOf: (JWT) -> Claims,
+    claimsOf: (JWT) -> JsonObject,
 ): SdJwt.Presentation<JWT>? =
     presentJsonPointersMatching({ pointer: JsonPointer -> pointer in query }, claimsOf)
 
@@ -79,7 +83,7 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
  * [query]
  * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
  * is relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @param JWT the type representing the JWT part of the SD-JWT
  * @return the presentation if possible to satisfy the [query]
@@ -92,7 +96,7 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
 @JvmName("presentMatching")
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: (JsonPointer) -> Boolean,
-    claimsOf: (JWT) -> Claims,
+    claimsOf: (JWT) -> JsonObject,
 ): SdJwt.Presentation<JWT>? =
     presentJsonPointersMatching(query, claimsOf)
 
@@ -143,14 +147,14 @@ fun SdJwt.Issuance<NimbusSignedJWT>.present(query: (JsonPointer) -> Boolean): Sd
     level = DeprecationLevel.WARNING,
 )
 fun SdJwt.Issuance<NimbusSignedJWT>.presentJsonPointersMatching(query: (JsonPointer) -> Boolean): SdJwt.Presentation<NimbusSignedJWT>? =
-    presentJsonPointersMatching(query) { it.jwtClaimsSet.asClaims() }
+    presentJsonPointersMatching(query) { it.jwtClaimsSet.jsonObject() }
 
 /**
  * Tries to create a presentation that discloses the claims that satisfy
  * [query]
  * @param query a predicate for the claims to include in the presentation. The [JsonPointer]
  * is relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @param JWT the type representing the JWT part of the SD-JWT
  * @return the presentation if possible to satisfy the [query]
@@ -161,7 +165,7 @@ fun SdJwt.Issuance<NimbusSignedJWT>.presentJsonPointersMatching(query: (JsonPoin
 )
 fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
     query: (JsonPointer) -> Boolean,
-    claimsOf: (JWT) -> Claims,
+    claimsOf: (JWT) -> JsonObject,
 ): SdJwt.Presentation<JWT>? {
     val disclosuresPerClaim = recreateClaimsAndDisclosuresPerClaim(claimsOf)
         .second
@@ -186,3 +190,24 @@ fun <JWT> SdJwt.Issuance<JWT>.presentJsonPointersMatching(
     level = DeprecationLevel.WARNING,
 )
 typealias DisclosuresPerClaim = Map<JsonPointer, List<Disclosure>>
+
+/**
+ * Representations of multiple claims
+ *
+ */
+@Deprecated(
+    message = "Deprecated and will be removed in a future version",
+    replaceWith = ReplaceWith("JsonObject"),
+    level = DeprecationLevel.WARNING,
+)
+typealias Claims = Map<String, JsonElement>
+
+/**
+ * An adapter that transforms the [payload][NimbusJWTClaimsSet] of a [Nimbus JWT][NimbusJWT]
+ * to a KotlinX Serialization compatible representation
+ */
+@Deprecated(
+    message = "Deprecated and will be removed in a future release",
+    replaceWith = ReplaceWith("jsonObject()"),
+)
+fun NimbusJWTClaimsSet.asClaims(): JsonObject = jsonObject()

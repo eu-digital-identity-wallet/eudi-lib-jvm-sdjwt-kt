@@ -323,7 +323,7 @@ fun SdObjectBuilder.sd(name: String, element: SdObjectElement) = put(name, eleme
 fun SdObjectBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
 fun SdObjectBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
-fun SdObjectBuilder.sd(obj: Claims) = obj.forEach { (k, v) -> sd(k, v) }
+fun SdObjectBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> sd(k, v) }
 
 /**
  * Adds into an [SdObject] an element [claims] that will be translated into a
@@ -377,7 +377,7 @@ fun SdObjectBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(build
 fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
-fun SdObjectBuilder.plain(obj: Claims) = obj.forEach { (k, v) -> plain(k, v) }
+fun SdObjectBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
 
 /**
  * Adds into an [SdObject] an element [claims] that will be translated into a

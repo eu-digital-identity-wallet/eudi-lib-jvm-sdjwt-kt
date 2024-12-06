@@ -42,12 +42,6 @@ fun Claim.name(): String = first
 fun Claim.value(): JsonElement = second
 
 /**
- * Representations of multiple claims
- *
- */
-typealias Claims = Map<String, JsonElement>
-
-/**
  * Salt to be included in a [Disclosure] claim.
  */
 typealias Salt = String

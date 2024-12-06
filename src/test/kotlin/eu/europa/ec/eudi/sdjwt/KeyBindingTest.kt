@@ -80,7 +80,7 @@ class KeyBindingTest {
         }
         // Assert Disclosed claims
         val selectivelyDisclosedClaims =
-            issuedSdJwt.recreateClaims { it.jwtClaimsSet.asClaims() }["credentialSubject"]?.jsonObject
+            issuedSdJwt.recreateClaims { it.jwtClaimsSet.jsonObject() }["credentialSubject"]?.jsonObject
                 ?: JsonObject(emptyMap())
 
         assertEquals(5, selectivelyDisclosedClaims.size)
