@@ -29,7 +29,7 @@ typealias SignSdJwt<SIGNED_JWT> = (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
  * @param signSdJwt signer
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  */
-class SdJwtIssuer<SIGNED_JWT>(
+class SdJwtIssuer<out SIGNED_JWT>(
     private val sdJwtFactory: SdJwtFactory,
     private val signSdJwt: SignSdJwt<SIGNED_JWT>,
 ) {
