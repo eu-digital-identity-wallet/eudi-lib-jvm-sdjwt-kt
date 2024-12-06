@@ -23,6 +23,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.jsonObject
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -260,7 +261,7 @@ class SdJwtVcIssuanceTest {
     }
 
     private fun SdJwt.Issuance<SignedJWT>.print() {
-        prettyPrint { it.jwtClaimsSet.asClaims() }
+        prettyPrint { it.jwtClaimsSet.jsonObject() }
     }
 
     private fun SdJwt.Issuance<SignedJWT>.printInJwsJson(option: JwsSerializationOption) {

@@ -42,12 +42,6 @@ fun Claim.name(): String = first
 fun Claim.value(): JsonElement = second
 
 /**
- * Representations of multiple claims
- *
- */
-typealias Claims = Map<String, JsonElement>
-
-/**
  * Salt to be included in a [Disclosure] claim.
  */
 typealias Salt = String
@@ -101,7 +95,7 @@ sealed interface SdJwt<out JWT> {
      * @param jwt The JWT part of the SD-JWT
      * @param disclosures the full set of disclosures
      */
-    data class Issuance<JWT>(
+    data class Issuance<out JWT>(
         override val jwt: JWT,
         override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
@@ -111,10 +105,22 @@ sealed interface SdJwt<out JWT> {
      * @param jwt the JWT part of the SD-JWT
      * @param disclosures the disclosures that holder decided to disclose to the verifier
      */
-    data class Presentation<JWT>(
+    data class Presentation<out JWT>(
         override val jwt: JWT,
         override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
 
-    companion object
+    companion object : UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom
+}
+
+fun interface UnverifiedIssuanceFrom {
+    /**
+     * A method for obtaining an [SdJwt.Issuance] given an [unverifiedSdJwt], without checking the signature
+     * of the issuer.
+     *
+     * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+     * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
+     *
+     */
+    fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>>
 }

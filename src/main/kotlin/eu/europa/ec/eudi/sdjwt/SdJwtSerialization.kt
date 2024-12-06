@@ -155,7 +155,7 @@ internal object JwsJsonSupport {
      * @return the jwt and the disclosures (unverified).
      * @throws IllegalArgumentException if the given JSON Object is not compliant
      */
-    fun parseJWSJson(unverifiedSdJwt: Claims): Triple<Jwt, List<String>, Jwt?> {
+    fun parseJWSJson(unverifiedSdJwt: JsonObject): Triple<Jwt, List<String>, Jwt?> {
         fun JsonElement.stringContentOrNull() = if (this is JsonPrimitive && isString) contentOrNull else null
 
         // selects the JsonObject that contains the pair of "protected" & "signature" claims

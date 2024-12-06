@@ -25,14 +25,9 @@ typealias SignSdJwt<SIGNED_JWT> = (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
 /**
  * Representation of a function capable of producing an [issuance SD-JWT][SdJwt.Issuance]
  *
- * @param sdJwtFactory factory for unsigned SD-JWT
- * @param signSdJwt signer
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  */
-class SdJwtIssuer<SIGNED_JWT>(
-    private val sdJwtFactory: SdJwtFactory,
-    private val signSdJwt: SignSdJwt<SIGNED_JWT>,
-) {
+fun interface SdJwtIssuer<out SIGNED_JWT> {
 
     /**
      * Issues an SD-JWT
@@ -40,10 +35,22 @@ class SdJwtIssuer<SIGNED_JWT>(
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>> = runCatching {
-        val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
-        signSdJwt(unsignedSdJwt)
-    }
+    fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>>
 
-    companion object
+    companion object {
+        /**
+         * Factory method
+         * @param sdJwtFactory factory for unsigned SD-JWT
+         * @param signSdJwt signer
+         */
+        operator fun <SIGNED_JWT> invoke(
+            sdJwtFactory: SdJwtFactory,
+            signSdJwt: SignSdJwt<SIGNED_JWT>,
+        ): SdJwtIssuer<SIGNED_JWT> = SdJwtIssuer { sdElements ->
+            runCatching {
+                val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
+                signSdJwt(unsignedSdJwt)
+            }
+        }
+    }
 }

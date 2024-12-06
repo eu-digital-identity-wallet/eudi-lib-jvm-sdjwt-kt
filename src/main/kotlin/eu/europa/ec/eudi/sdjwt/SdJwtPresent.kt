@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Represents a map which contains all the claims - selectively disclosable or not -
@@ -28,12 +29,12 @@ typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
 /**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
  *
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @param JWT the type representing the JWT part of the SD-JWT
  *
  * @see SdJwt.recreateClaims
  */
-fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Claims): Pair<Claims, DisclosuresPerClaimPath> {
+fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> JsonObject): Pair<JsonObject, DisclosuresPerClaimPath> {
     val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
     val visitor = ClaimVisitor { path, disclosure ->
         if (disclosure != null) {
@@ -56,14 +57,14 @@ fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> Cla
  * Tries to create a presentation that discloses the [requested claims][query].
  * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
  * are relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the [Claims] of the [SdJwt.jwt]
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @receiver The issuance SD-JWT upon which the presentation will be based
  * @param JWT the type representing the JWT part of the SD-JWT
  * @return the presentation if possible to satisfy the [query]
  */
 fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
-    claimsOf: (JWT) -> Claims,
+    claimsOf: (JWT) -> JsonObject,
 ): SdJwt.Presentation<JWT>? {
     val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
     infix fun ClaimPath.matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)

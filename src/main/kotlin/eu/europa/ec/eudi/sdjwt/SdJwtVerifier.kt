@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.MustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
@@ -104,7 +105,7 @@ fun interface JwtSignatureVerifier {
      * @param jwt the JWT to validate
      * @return the payload of the JWT if signature is valid, otherwise raises [InvalidJwt]
      */
-    suspend fun verify(jwt: String): Result<Claims> =
+    suspend fun verify(jwt: String): Result<JsonObject> =
         runCatching {
             checkSignature(jwt) ?: throw InvalidJwt.asException()
         }
@@ -114,7 +115,7 @@ fun interface JwtSignatureVerifier {
      * @param jwt the JWT to validate
      * @return the payload of the JWT if signature is valid, otherwise null
      */
-    suspend fun checkSignature(jwt: String): Claims?
+    suspend fun checkSignature(jwt: String): JsonObject?
 
     /**
      * Constructs a new [JwtSignatureVerifier] that in addition applies to the
@@ -123,11 +124,20 @@ fun interface JwtSignatureVerifier {
      * @return a new [JwtSignatureVerifier] that in addition applies to the
      *  extracted payload the [additionalCondition]
      */
-    fun and(additionalCondition: suspend (Claims) -> Boolean): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
+    fun and(additionalCondition: suspend (JsonObject) -> Boolean): JwtSignatureVerifier = JwtSignatureVerifier { jwt ->
         this.checkSignature(jwt)?.let { claims -> if (additionalCondition(claims)) claims else null }
     }
 
-    companion object
+    companion object {
+
+        /**
+         * A [JwtSignatureVerifier] is added to the companion object, which just checks/parses the JWT,
+         * without performing signature validation.
+         *
+         * <em>Should not be used in production use cases</em>
+         */
+        val NoSignatureValidation: JwtSignatureVerifier = PlatformJwtSignatureVerifierNoSignatureValidation
+    }
 }
 
 /**
@@ -178,13 +188,17 @@ sealed interface KeyBindingVerifier {
      *
      * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
      */
-    suspend fun verify(jwtClaims: Claims, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<Claims?> =
+    suspend fun verify(
+        jwtClaims: JsonObject,
+        expectedDigest: SdJwtDigest,
+        unverifiedKbJwt: String?,
+    ): Result<JsonObject?> =
         runCatching {
-            fun mustBeNotPresent(): Claims? =
+            fun mustBeNotPresent(): JsonObject? =
                 if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
                 else null
 
-            suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?): Claims {
+            suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier?): JsonObject {
                 if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
                 val keyBindingJwtVerifier =
@@ -220,10 +234,19 @@ sealed interface KeyBindingVerifier {
      * It assumes that Issuer has included somehow the holder pub key to SD-JWT.
      *
      */
-    class MustBePresentAndValid(val keyBindingVerifierProvider: (Claims) -> JwtSignatureVerifier?) :
+    class MustBePresentAndValid(val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier?) :
         KeyBindingVerifier
 
     companion object {
+        /**
+         * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present, and it's indeed a JWT
+         * without performing signature validation
+         *
+         * <em>Should not be used in production</em>
+         */
+        val MustBePresent: MustBePresentAndValid by lazy {
+            MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
+        }
 
         internal fun KeyBindingError.asException(): SdJwtVerificationException =
             KeyBindingFailed(this).asException()
@@ -231,9 +254,9 @@ sealed interface KeyBindingVerifier {
 }
 
 /**
- * Representation of a JWT both as [string][Jwt] and its [payload][Claims]
+ * Representation of a JWT both as [string][Jwt] and its payload claims
  */
-typealias JwtAndClaims = Pair<Jwt, Claims>
+typealias JwtAndClaims = Pair<Jwt, JsonObject>
 
 /**
  * A single point for verifying SD-JWTs in both [Combined Issuance Format][verifyIssuance]
@@ -387,7 +410,7 @@ object SdJwtVerifier {
 internal fun verifyIssuance(
     unverifiedJwt: Jwt,
     unverifiedDisclosures: List<String>,
-    jwtClaimsExtractor: (Jwt) -> Claims,
+    jwtClaimsExtractor: (Jwt) -> JsonObject,
 ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
     val jwtClaims = jwtClaimsExtractor(unverifiedJwt)
     val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
@@ -452,7 +475,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
  * @return the hashing algorithm, if a hashing algorithm is present and contains a string
  * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
  */
-private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
+private fun hashingAlgorithmClaim(jwtClaims: JsonObject): HashAlgorithm {
     val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive("sha-256")
     val alg =
         if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
@@ -466,7 +489,7 @@ private fun hashingAlgorithmClaim(jwtClaims: Claims): HashAlgorithm {
  * @param disclosures the disclosures, of the SD-JWT
  * @return digests from both the JWT payload and the [disclosures][Disclosure], assuring that they are unique
  */
-private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Set<DisclosureDigest> {
+private fun collectDigests(jwtClaims: JsonObject, disclosures: List<Disclosure>): Set<DisclosureDigest> {
     // Get Digests
     val jwtDigests = collectDigests(jwtClaims)
     val disclosureDigests = disclosures.map { d -> collectDigests(JsonObject(mapOf(d.claim()))) }.flatten()
@@ -483,7 +506,7 @@ private fun collectDigests(jwtClaims: Claims, disclosures: List<Disclosure>): Se
  * @param claims to use
  * @return the digests found in the given [claims]
  */
-internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
+internal fun collectDigests(claims: JsonObject): List<DisclosureDigest> {
     fun digestsOf(attribute: String, json: JsonElement): List<DisclosureDigest> =
         when {
             attribute == SdJwtSpec.CLAIM_SD && json is JsonArray -> json.mapNotNull { element ->
@@ -501,7 +524,7 @@ internal fun collectDigests(claims: Claims): List<DisclosureDigest> {
     return claims.map { (attribute, json) -> digestsOf(attribute, json) }.flatten()
 }
 
-internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: Claims): String {
+internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): String {
     val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
         parseJWSJson(unverifiedSdJwt)
     val jwtAndDisclosures = StandardSerialization.concat(unverifiedJwt, unverifiedDisclosures)

@@ -254,12 +254,13 @@ import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import com.nimbusds.jose.jwk.*
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.jsonObject
 import kotlinx.serialization.json.*
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 -->
 
 ```kotlin
-val claims: Claims = run {
+val claims: JsonObject = run {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
         signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
@@ -278,7 +279,7 @@ val claims: Claims = run {
                 }
             }
         }
-    sdJwt.recreateClaims { jwt -> jwt.jwtClaimsSet.asClaims() }
+    sdJwt.recreateClaims { jwt -> jwt.jwtClaimsSet.jsonObject() }
 }
 ```
 

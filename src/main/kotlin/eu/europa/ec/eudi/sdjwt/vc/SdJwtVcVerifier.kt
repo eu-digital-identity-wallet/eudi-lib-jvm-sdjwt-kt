@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.jsonObject
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import io.ktor.client.*
 import io.ktor.http.*
@@ -216,7 +217,7 @@ fun sdJwtVcSignatureVerifier(
         val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
         val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
         val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
-        jwtProcessor.process(signedJwt, null).asClaims()
+        jwtProcessor.process(signedJwt, null).jsonObject()
     } catch (_: NimbusBadJOSEException) {
         null
     }

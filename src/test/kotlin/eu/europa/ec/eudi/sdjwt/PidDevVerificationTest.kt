@@ -75,7 +75,7 @@ class PidDevVerificationTest : Printer {
 
 private interface Printer {
 
-    fun prettyPrint(issuedSdJwt: SdJwt.Issuance<Claims>) {
+    fun prettyPrint(issuedSdJwt: SdJwt.Issuance<JsonObject>) {
         // Output the debug info
         printHeader("Debug info")
         issuedSdJwt.prettyPrint { it }
