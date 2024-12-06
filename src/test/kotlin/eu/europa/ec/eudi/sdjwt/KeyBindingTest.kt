@@ -226,7 +226,7 @@ class IssuerActor(val issuerKey: ECKey) {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
+    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Instant.now()
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)

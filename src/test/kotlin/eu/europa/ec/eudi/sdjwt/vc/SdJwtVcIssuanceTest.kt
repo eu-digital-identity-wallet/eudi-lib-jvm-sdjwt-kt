@@ -44,7 +44,7 @@ private data class IssuerConfig(
 
 private class SdJwtVCIssuer(val config: IssuerConfig) {
 
-    fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt.Issuance<SignedJWT> {
+    suspend fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt.Issuance<SignedJWT> {
         val sdJwtSpec = holderData.sdJwtSpec(
             holderPubKey,
             iat = Instant.ofEpochSecond(1683000000),

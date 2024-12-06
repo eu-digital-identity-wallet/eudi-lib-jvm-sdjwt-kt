@@ -22,6 +22,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -38,7 +39,7 @@ internal class DecoyTest {
     private val premiumMembership = Membership.Premium(name = "Markus", premiumMembershipNumber = "1234")
 
     @Test
-    fun `make sure that kind membership is not revealed via digests number using hint on the spec`() {
+    fun `make sure that kind membership is not revealed via digests number using hint on the spec`() = runTest {
         val minimumDigests = 5
         val simpleMembershipSpec = simpleMembership.sdJwtSpec(minimumDigests)
         val premiumMembershipSpec = premiumMembership.sdJwtSpec(minimumDigests)
@@ -62,7 +63,7 @@ internal class DecoyTest {
     }
 
     @Test
-    fun `make sure that kind membership is not revealed via digests number using global hint`() {
+    fun `make sure that kind membership is not revealed via digests number using global hint`() = runTest {
         val simpleMembershipSpec = simpleMembership.sdJwtSpec(null)
         val premiumMembershipSpec = premiumMembership.sdJwtSpec(null)
 
@@ -109,6 +110,6 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = globalMinDigests?.let(::MinimumDigests)),
         )
 
-    fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =
+    suspend fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =
         issuer.issue(sdElements).getOrThrow()
 }

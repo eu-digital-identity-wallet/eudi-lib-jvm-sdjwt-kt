@@ -24,6 +24,7 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +50,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() {
+    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
             plain {
                 put("foo", "bar")
@@ -66,7 +67,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() {
+    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
             sd {
                 put("foo", "bar")
@@ -87,7 +88,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() {
+    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() = runTest() {
         val sdJwtSpec = sdJwt {
             plain {
                 put("foo", "bar")
@@ -115,7 +116,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() {
+    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
             sd {
                 put("foo", "bar")
