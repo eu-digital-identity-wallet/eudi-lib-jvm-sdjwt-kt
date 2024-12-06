@@ -110,7 +110,7 @@ class JwsJsonSerialization {
     }
 
     @Test
-    fun `get a JwsJSON for an Issued SDJWT`() {
+    fun `get a JwsJSON for an Issued SDJWT`() = runTest {
         val issuer = run {
             val issuerKey = ECKeyGenerator(Curve.P_256).generate()
             SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)

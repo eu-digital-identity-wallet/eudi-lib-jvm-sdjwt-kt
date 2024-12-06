@@ -20,9 +20,10 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.put
 
-val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
+val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
     val issuedSdJwt = run {
         val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
         val sdJwtSpec = sdJwt {

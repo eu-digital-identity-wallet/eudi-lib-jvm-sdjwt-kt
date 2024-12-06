@@ -237,7 +237,7 @@ fun SdObjectBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
  *
  * @see SdJwtIssuer.Companion.nimbus which in addition allows customization of JWS Header
  */
-inline fun signedSdJwt(
+suspend inline fun signedSdJwt(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,

@@ -25,6 +25,7 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
 import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.time.Instant
@@ -108,7 +109,7 @@ class PresentationTest {
         keyID(issuerKey.keyID)
     }
 
-    private val issuedSdJwt: SdJwt.Issuance<SignedJWT> by lazy {
+    private suspend fun issuedSdJwt(): SdJwt.Issuance<SignedJWT> {
         val sdJwt = issuer.issue(pidSpec).getOrThrow()
         println("Issued: ${sdJwt.serialize()}")
         sdJwt.prettyPrint { it.jwtClaimsSet.jsonObject() }
@@ -116,11 +117,11 @@ class PresentationTest {
             println(json.pretty())
             map.prettyPrint()
         }
-        sdJwt
+        return sdJwt
     }
 
     @Test
-    fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() {
+    fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() = runTest {
         val sdJwt = run {
             val spec = sdJwt {
                 iss("foo")
@@ -140,7 +141,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for all claims should returned the issued sd-jwt`() {
+    fun `query for all claims should returned the issued sd-jwt`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val presentationSdJwt = issuedSdJwt.present()
         assertNotNull(presentationSdJwt)
         assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
@@ -148,7 +150,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for non SD claim should not reveal disclosure`() {
+    fun `query for non SD claim should not reveal disclosure`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val claimsToPresent = setOf("iss", "vct", "cnf")
         val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
@@ -157,7 +160,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for top-level SD claims reveal equal number of disclosures`() {
+    fun `query for top-level SD claims reveal equal number of disclosures`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val claimsToPresent = listOf("given_name", "also_known_as", "nationalities")
         val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
@@ -172,7 +176,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for recursive claim's with no nested SD claims should reveal equal no of disclosures`() {
+    fun `query for recursive claim's with no nested SD claims should reveal equal no of disclosures`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val claimsToPresent = listOf("place_of_birth", "address")
         val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
         val presentation = issuedSdJwt.present(query)
@@ -187,7 +192,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for a sd claim nested inside a recursive object should reveal parent & child disclosures`() {
+    fun `query for a sd claim nested inside a recursive object should reveal parent & child disclosures`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val query = setOf(ClaimPath.claim("place_of_birth").claim("locality"))
         val presentation = issuedSdJwt.present(query)
         assertNotNull(presentation)
@@ -198,7 +204,8 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for a sd claim nested inside a structured SD object should reveal the child disclosure`() {
+    fun `query for a sd claim nested inside a structured SD object should reveal the child disclosure`() = runTest {
+        val issuedSdJwt = issuedSdJwt()
         val query = setOf(ClaimPath.claim("age_equal_or_over").claim("18"))
         val presentation = issuedSdJwt.present(query)
         assertNotNull(presentation)
@@ -207,7 +214,7 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() {
+    fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
         val spec = sdJwt {
             structured("credentialSubject") {
                 plain {
@@ -222,7 +229,7 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() {
+    fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
         val spec = sdJwt {
             recursive("credentialSubject") {
                 plain {
@@ -239,7 +246,7 @@ class PresentationTest {
     }
 
     @Test
-    fun `query for sd array`() {
+    fun `query for sd array`() = runTest {
         val spec = sdJwt {
             sdArray("evidence") {
                 buildSdObject {
@@ -277,7 +284,7 @@ class PresentationTest {
     }
 
     @Test
-    fun `querying for a recursive SD array`() {
+    fun `querying for a recursive SD array`() = runTest {
         val spec = sdJwt {
             recursiveArray("evidence") {
                 buildSdObject {
@@ -317,7 +324,7 @@ class PresentationTest {
     }
 
     @Test
-    fun complexStructuredSdJwt() {
+    fun complexStructuredSdJwt() = runTest {
         val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
         val p =
             sdJwt.present(
@@ -333,7 +340,7 @@ class PresentationTest {
     }
 
     @Test
-    fun sdJwtVcDataV2() {
+    fun sdJwtVcDataV2() = runTest {
         val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
         val p = sdJwt.present(
             setOf(

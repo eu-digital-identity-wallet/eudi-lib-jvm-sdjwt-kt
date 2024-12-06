@@ -69,11 +69,12 @@ In the example below, the Issuer decides to issue an SD-JWT as follows:
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 -->
 
 ```kotlin
-val issuedSdJwt: String = run {
+val issuedSdJwt: String = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
         plain {
@@ -149,11 +150,12 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.put
 -->
 
 ```kotlin
-val presentationSdJwt: SdJwt.Presentation<SignedJWT> = run {
+val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
     val issuedSdJwt = run {
         val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
         val sdJwtSpec = sdJwt {
@@ -255,12 +257,13 @@ import com.nimbusds.jose.crypto.*
 import com.nimbusds.jose.jwk.*
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.jsonObject
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 -->
 
 ```kotlin
-val claims: JsonObject = run {
+val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
         signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {

@@ -61,7 +61,7 @@ private object SampleIssuer {
             kid?.let { keyID(it) }
         }
 
-    fun issueUsingKid(kid: String?): String {
+    suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
             iss(issuerMeta.issuer.toASCIIString())
