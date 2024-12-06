@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.MustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
@@ -127,7 +128,16 @@ fun interface JwtSignatureVerifier {
         this.checkSignature(jwt)?.let { claims -> if (additionalCondition(claims)) claims else null }
     }
 
-    companion object
+    companion object {
+
+        /**
+         * A [JwtSignatureVerifier] is added to the companion object, which just checks/parses the JWT,
+         * without performing signature validation.
+         *
+         * <em>Should not be used in production use cases</em>
+         */
+        val NoSignatureValidation: JwtSignatureVerifier = PlatformJwtSignatureVerifierNoSignatureValidation
+    }
 }
 
 /**
@@ -178,7 +188,11 @@ sealed interface KeyBindingVerifier {
      *
      * @return the claims of the Key Binding JWT, in case of [MustBePresentAndValid], otherwise null.
      */
-    suspend fun verify(jwtClaims: JsonObject, expectedDigest: SdJwtDigest, unverifiedKbJwt: String?): Result<JsonObject?> =
+    suspend fun verify(
+        jwtClaims: JsonObject,
+        expectedDigest: SdJwtDigest,
+        unverifiedKbJwt: String?,
+    ): Result<JsonObject?> =
         runCatching {
             fun mustBeNotPresent(): JsonObject? =
                 if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()

@@ -67,7 +67,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  *
  * <em>Should not be used in production use cases</em>
  */
-val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier by lazy {
+internal val PlatformJwtSignatureVerifierNoSignatureValidation: JwtSignatureVerifier by lazy {
     JwtSignatureVerifier { unverifiedJwt ->
         try {
             val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
