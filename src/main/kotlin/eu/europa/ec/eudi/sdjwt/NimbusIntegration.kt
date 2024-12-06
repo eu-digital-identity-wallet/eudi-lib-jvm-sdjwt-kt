@@ -79,16 +79,6 @@ val JwtSignatureVerifier.Companion.NoSignatureValidation: JwtSignatureVerifier b
 }
 
 /**
- * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present, and it's indeed a JWT
- * without performing signature validation
- *
- * <em>Should not be used in production</em>
- */
-val KeyBindingVerifier.Companion.MustBePresent: KeyBindingVerifier.MustBePresentAndValid by lazy {
-    KeyBindingVerifier.MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
-}
-
-/**
  * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
  * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
  * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.

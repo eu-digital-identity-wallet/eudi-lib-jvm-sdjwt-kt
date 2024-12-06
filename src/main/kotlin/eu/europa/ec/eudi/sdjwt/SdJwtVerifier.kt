@@ -224,6 +224,15 @@ sealed interface KeyBindingVerifier {
         KeyBindingVerifier
 
     companion object {
+        /**
+         * Declares a [KeyBindingVerifier] that just makes sure that the Key Binding JWT is present, and it's indeed a JWT
+         * without performing signature validation
+         *
+         * <em>Should not be used in production</em>
+         */
+        val MustBePresent: MustBePresentAndValid by lazy {
+            MustBePresentAndValid { JwtSignatureVerifier.NoSignatureValidation }
+        }
 
         internal fun KeyBindingError.asException(): SdJwtVerificationException =
             KeyBindingFailed(this).asException()
