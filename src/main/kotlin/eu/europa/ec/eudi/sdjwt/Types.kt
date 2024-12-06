@@ -110,5 +110,17 @@ sealed interface SdJwt<out JWT> {
         override val disclosures: List<Disclosure>,
     ) : SdJwt<JWT>
 
-    companion object
+    companion object : UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom
+}
+
+fun interface UnverifiedIssuanceFrom {
+    /**
+     * A method for obtaining an [SdJwt.Issuance] given an [unverifiedSdJwt], without checking the signature
+     * of the issuer.
+     *
+     * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+     * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
+     *
+     */
+    fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>>
 }

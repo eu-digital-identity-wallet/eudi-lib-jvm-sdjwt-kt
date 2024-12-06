@@ -187,13 +187,14 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
  * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
  *
  */
-fun SdJwt.Companion.unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>> =
+internal val PlatformSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom = UnverifiedIssuanceFrom { unverifiedSdJwt ->
     runCatching {
         val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
         verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
             NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.jsonObject()
         }.getOrThrow()
     }
+}
 
 //
 // JSON Support
