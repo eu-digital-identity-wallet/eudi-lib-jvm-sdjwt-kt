@@ -247,7 +247,9 @@ private object NimbusSdJwtIssuerFactory {
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
     ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
         val (claims, disclosures) = unsignedSdJwt
-        val signedJwt = sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
+        val signedJwt = withContext(Dispatchers.IO) {
+            sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
+        }
         SdJwt.Issuance(signedJwt, disclosures)
     }
 }
