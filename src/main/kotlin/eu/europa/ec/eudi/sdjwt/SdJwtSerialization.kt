@@ -134,55 +134,9 @@ interface SdJwtSerializationOps<JWT> {
     }
 }
 
-/**
- * Serializes an [SdJwt] in combined format without key binding
- *
- * @param serializeJwt a function to serialize the [JWT]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT to serialize
- * @return the serialized format of the SD-JWT
- */
-@Deprecated(
-    message = "Deprecated and will be removed in a future release",
-    replaceWith = ReplaceWith("with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }"),
-)
-fun <JWT> SdJwt<JWT>.serialize(
-    serializeJwt: (JWT) -> String,
-): String = with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }
-
 enum class JwsSerializationOption {
     General, Flattened
 }
-
-/**
- * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
- * In addition to the General & Flattened representations defined in the RFC7515,
- *  the result JSON contains an unprotected header which includes
- *  an array with the disclosures of the [SdJwt] and optionally the key binding JWT
- *
- * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
- *   representation as defined in RFC7515
- * @param kbJwt the key binding JWT for the SD-JWT.
- * @param getParts a function to extract out of the [jwt][SdJwt.jwt]  of the SD-JWT
- * the three JWS parts: protected header, payload and signature.
- * Each part is base64 encoded
- * @receiver the [SdJwt] to serialize
- *
- * @return a JSON object either general or flattened according to RFC7515 having an additional
- * disclosures array and possibly the KB-JWT in an unprotected header as per SD-JWT extension
- */
-@Deprecated(
-    message = "Deprecated and will be removed in a future release",
-    replaceWith = ReplaceWith(
-        "with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(\".\")})) { asJwsJsonObject(option, kbJwt) }",
-    ),
-)
-fun <JWT> SdJwt<JWT>.asJwsJsonObject(
-    option: JwsSerializationOption = JwsSerializationOption.Flattened,
-    kbJwt: Jwt?,
-    getParts: (JWT) -> Triple<String, String, String>,
-): JsonObject =
-    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) { asJwsJsonObject(option, kbJwt) }
 
 internal object StandardSerialization {
 

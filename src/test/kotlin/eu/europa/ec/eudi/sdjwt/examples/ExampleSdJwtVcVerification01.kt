@@ -77,6 +77,9 @@ val sdJwtVcVerification = runBlocking {
     val verifier = SdJwtVcVerifier.usingX5c { chain ->
         chain.isNotEmpty() && chain.first() == certificate
     }
+    val serialized = with(NimbusSdJwtOps) {
+        sdJwt.serialize()
+    }
 
-    verifier.verifyIssuance(sdJwt.serialize())
+    verifier.verifyIssuance(serialized).getOrThrow()
 }

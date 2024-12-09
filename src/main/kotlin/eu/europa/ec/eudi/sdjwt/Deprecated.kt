@@ -289,7 +289,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
     claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
 ): JsonObject =
     runBlocking {
-        with(NimbusSdJwtSerializationOps) {
+        with(NimbusSdJwtOps) {
             asJwsJsonObjectWithKeyBinding(
                 option = JwsSerializationOption.Flattened,
                 hashAlgorithm,
@@ -319,7 +319,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
 fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
 ): JsonObject =
-    with(NimbusSdJwtSerializationOps) { asJwsJsonObject(option = option, kbJwt = null) }
+    with(NimbusSdJwtOps) { asJwsJsonObject(option = option, kbJwt = null) }
 
 /**
  * Serializes a [SdJwt] without a key binding part.
@@ -332,7 +332,7 @@ fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
     replaceWith = ReplaceWith(" with(NimbusSdJwtSerializationOps){serialize()}"),
 )
 fun SdJwt<NimbusSignedJWT>.serialize(): String =
-    with(NimbusSdJwtSerializationOps) { serialize() }
+    with(NimbusSdJwtOps) { serialize() }
 
 /**
  * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
@@ -355,7 +355,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
     claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
 ): String =
     runBlocking {
-        with(NimbusSdJwtSerializationOps) {
+        with(NimbusSdJwtOps) {
             serializeWithKeyBinding(
                 hashAlgorithm,
                 keyBindingSigner,
@@ -363,3 +363,49 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
             )
         }.getOrThrow()
     }
+
+/**
+ * Serializes an [SdJwt] in combined format without key binding
+ *
+ * @param serializeJwt a function to serialize the [JWT]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to serialize
+ * @return the serialized format of the SD-JWT
+ */
+@Deprecated(
+    message = "Deprecated and will be removed in a future release",
+    replaceWith = ReplaceWith("with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }"),
+)
+fun <JWT> SdJwt<JWT>.serialize(
+    serializeJwt: (JWT) -> String,
+): String = with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }
+
+/**
+ * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+ * In addition to the General & Flattened representations defined in the RFC7515,
+ *  the result JSON contains an unprotected header which includes
+ *  an array with the disclosures of the [SdJwt] and optionally the key binding JWT
+ *
+ * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+ *   representation as defined in RFC7515
+ * @param kbJwt the key binding JWT for the SD-JWT.
+ * @param getParts a function to extract out of the [jwt][SdJwt.jwt]  of the SD-JWT
+ * the three JWS parts: protected header, payload and signature.
+ * Each part is base64 encoded
+ * @receiver the [SdJwt] to serialize
+ *
+ * @return a JSON object either general or flattened according to RFC7515 having an additional
+ * disclosures array and possibly the KB-JWT in an unprotected header as per SD-JWT extension
+ */
+@Deprecated(
+    message = "Deprecated and will be removed in a future release",
+    replaceWith = ReplaceWith(
+        "with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(\".\")})) { asJwsJsonObject(option, kbJwt) }",
+    ),
+)
+fun <JWT> SdJwt<JWT>.asJwsJsonObject(
+    option: JwsSerializationOption = JwsSerializationOption.Flattened,
+    kbJwt: Jwt?,
+    getParts: (JWT) -> Triple<String, String, String>,
+): JsonObject =
+    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) { asJwsJsonObject(option, kbJwt) }

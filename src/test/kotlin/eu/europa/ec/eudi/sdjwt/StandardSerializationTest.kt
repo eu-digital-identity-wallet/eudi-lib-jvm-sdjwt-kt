@@ -30,7 +30,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class StandardSerializationTest : NimbusSdJwtSerializationOps {
+class StandardSerializationTest : NimbusSdJwtOps {
 
     private val issuer by lazy {
         val issuerKey = ECKeyGenerator(Curve.P_256).generate()

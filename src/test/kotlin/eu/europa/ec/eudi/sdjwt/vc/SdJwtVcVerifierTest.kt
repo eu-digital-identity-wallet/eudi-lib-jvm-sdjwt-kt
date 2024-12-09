@@ -68,7 +68,9 @@ private object SampleIssuer {
             iat(Instant.now().toEpochMilli())
             sd("foo", "bar")
         }
-        return issuer.issue(sdJwtSpec).getOrThrow().serialize()
+        return with(NimbusSdJwtOps) {
+            issuer.issue(sdJwtSpec).getOrThrow().serialize()
+        }
     }
 }
 
@@ -183,6 +185,8 @@ class SdJwtVcVerifierTest {
                 listOf(key.toPublicJWK())
             }
 
-            verifier.verifyIssuance(sdJwt.serialize()).getOrThrow()
+            val serialized =
+                with(NimbusSdJwtOps) { sdJwt.serialize() }
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 }

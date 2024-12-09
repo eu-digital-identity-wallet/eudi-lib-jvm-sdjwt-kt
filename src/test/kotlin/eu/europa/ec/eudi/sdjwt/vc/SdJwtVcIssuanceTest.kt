@@ -168,7 +168,8 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
         val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuingService.issue(JohnDoe, HolderKey.toPublicJWK())
         issuedSdJwt.print()
         issuedSdJwt.printInJwsJson(JwsSerializationOption.Flattened)
-        verify(issuedSdJwt.serialize())
+        val serialized = with(NimbusSdJwtOps) { issuedSdJwt.serialize() }
+        verify(serialized)
     }
 
     @Test
@@ -205,11 +206,9 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
         """.trimIndent().removeNewLine()
 
         val sdJwt = sdJwtVcVerifier.verifyIssuance(unverified).getOrThrow()
-        val jwsJson =
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened, null) {
-                val (a, b, c) = it.first.split(".")
-                Triple(a, b, c)
-            }
+        val jwsJson = with(DefaultSdJwtOps) {
+            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened, null)
+        }
         println(json.encodeToString(jwsJson))
     }
 
@@ -262,7 +261,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
     }
 
     private fun SdJwt.Issuance<SignedJWT>.printInJwsJson(option: JwsSerializationOption) {
-        with(NimbusSdJwtSerializationOps) {
+        with(NimbusSdJwtOps) {
             val jwsJson = asJwsJsonObject(option, null)
             println(json.encodeToString(jwsJson))
         }

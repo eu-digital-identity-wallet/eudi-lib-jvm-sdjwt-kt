@@ -31,7 +31,7 @@ import kotlinx.serialization.json.*
 import java.time.Instant
 import kotlin.test.*
 
-class PresentationTest {
+class PresentationTest : NimbusSdJwtOps {
 
     private val issuerKey = genKey("issuer")
     private val holderKey = genKey("holder")

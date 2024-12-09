@@ -51,7 +51,7 @@ import kotlin.test.assertTrue
  * It demonstrates the issuance, holder verification, holder presentation and presentation verification
  * use cases, including key binding.
  */
-class KeyBindingTest {
+class KeyBindingTest : NimbusSdJwtOps {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
@@ -317,7 +317,7 @@ class HolderActor(
         }
         checkNotNull(presentationSdJwt)
 
-        return with(NimbusSdJwtSerializationOps) {
+        return with(NimbusSdJwtOps) {
             presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, keyBindingSigner) {
                 audience(verifierQuery.challenge.aud)
                 claim("nonce", verifierQuery.challenge.nonce)

@@ -300,7 +300,7 @@ private object NimbusSdJwtIssuerFactory {
 //
 // Serialization
 //
-interface NimbusSdJwtSerializationOps : SdJwtSerializationOps<NimbusSignedJWT> {
+interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
@@ -341,7 +341,7 @@ interface NimbusSdJwtSerializationOps : SdJwtSerializationOps<NimbusSignedJWT> {
         return asJwsJsonObjectWithKeyBinding(option, hashAlgorithm, kbJwtBuilder, JsonObject(emptyMap()))
     }
 
-    companion object : NimbusSdJwtSerializationOps {
+    companion object : NimbusSdJwtOps {
         private val defaultOps = SdJwtSerializationOps<NimbusSignedJWT>({ jwt -> jwt.serialize() })
     }
 }

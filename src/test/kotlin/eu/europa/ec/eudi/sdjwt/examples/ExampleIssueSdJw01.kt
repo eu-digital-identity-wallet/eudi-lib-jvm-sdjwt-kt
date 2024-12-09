@@ -40,5 +40,7 @@ val issuedSdJwt: String = runBlocking {
         }
     }
     val issuer = SdJwtIssuer.nimbus(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-    issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    with(NimbusSdJwtOps) {
+        issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    }
 }
