@@ -91,7 +91,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {
         val sdJwtFactory = SdJwtFactory(hashAlgorithm = config.hashAlgorithm)
         val signer = ECDSASigner(config.issuerKey)
-        SdJwtIssuer.Companion.nimbus(sdJwtFactory, signer, config.signAlg) {
+        NimbusSdJwtOps.issuer(sdJwtFactory, signer, config.signAlg) {
             keyID(config.issuerKey.keyID)
             type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
         }

@@ -42,7 +42,10 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
                 }
             }
         }
-        val issuer = SdJwtIssuer.nimbus(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        val issuer = NimbusSdJwtOps.issuer(
+            signer = RSASSASigner(issuerKeyPair),
+            signAlgorithm = JWSAlgorithm.RS256,
+        )
         issuer.issue(sdJwtSpec).getOrThrow()
     }
 

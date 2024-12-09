@@ -384,7 +384,8 @@ fun SdJwtIssuer.Companion.nimbus(
     sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
-    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = fun NimbusJWSHeader.Builder.() {
+    },
 ): SdJwtIssuer<NimbusSignedJWT> =
     NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
 
@@ -399,7 +400,6 @@ fun SdJwtIssuer.Companion.nimbus(
  *
  * @return signed SD-JWT
  *
- * @see SdJwtIssuer.Companion.nimbus which in addition allows customization of JWS Header
  */
 @Deprecated(message = "Use NimbusSdJwtOps instead")
 suspend inline fun signedSdJwt(

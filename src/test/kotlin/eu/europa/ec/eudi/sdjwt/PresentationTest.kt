@@ -104,7 +104,10 @@ class PresentationTest : NimbusSdJwtOps {
         cnf(holderKey.toPublicJWK())
     }
 
-    private val issuer = SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256) {
+    private val issuer = NimbusSdJwtOps.issuer(
+        signer = ECDSASigner(issuerKey),
+        signAlgorithm = JWSAlgorithm.ES256,
+    ) {
         type(JOSEObjectType("example+sd-jwt"))
         keyID(issuerKey.keyID)
     }

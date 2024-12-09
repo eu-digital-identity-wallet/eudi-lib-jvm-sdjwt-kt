@@ -56,7 +56,10 @@ private object SampleIssuer {
     )
 
     private fun sdJwtVcIssuer(kid: String?) =
-        SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
+        NimbusSdJwtOps.issuer(
+            signer = ECDSASigner(key),
+            signAlgorithm = alg,
+        ) {
             type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
             kid?.let { keyID(it) }
         }
@@ -172,7 +175,10 @@ class SdJwtVcVerifierTest {
                 val spec = sdJwt {
                     iss(didJwk)
                 }
-                val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
+                val signer = NimbusSdJwtOps.issuer(
+                    signer = Ed25519Signer(key),
+                    signAlgorithm = JWSAlgorithm.EdDSA,
+                ) {
                     type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 }
                 signer.issue(spec).getOrThrow()

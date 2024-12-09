@@ -73,36 +73,37 @@ suspend fun main() {
     val issuerKeyPair = genRSAKeyPair()
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: String =
-        with(NimbusSdJwtOps) {
-            signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
-                plain {
-                    put("iss", "https://example.com")
-                    put("jti", "http://example.com/credentials/3732")
-                    put("nbf", 1541493724)
-                    put("iat", 1541493724)
-                    put("type", "IdentityCredential")
-                }
-                structured("credentialSubject") {
-                    sd {
-                        put("given_name", "John")
-                        put("family_name", "Doe")
-                        put("email", "johndoe@example.com")
-                        put("phone_number", "+1-202-555-0101")
-                        putJsonObject("address") {
-                            put("street_address", "123 Main St")
-                            put("locality", "Anytown")
-                            put("region", "Anystate")
-                            put("country", "US")
-                        }
-                        put("birthdate", "1940-01-01")
-                        put("is_over_18", true)
-                        put("is_over_21", true)
-                        put("is_over_65", true)
+    val sdJwt: String = with(NimbusSdJwtOps) {
+        val spec = sdJwt {
+            plain {
+                put("iss", "https://example.com")
+                put("jti", "http://example.com/credentials/3732")
+                put("nbf", 1541493724)
+                put("iat", 1541493724)
+                put("type", "IdentityCredential")
+            }
+            structured("credentialSubject") {
+                sd {
+                    put("given_name", "John")
+                    put("family_name", "Doe")
+                    put("email", "johndoe@example.com")
+                    put("phone_number", "+1-202-555-0101")
+                    putJsonObject("address") {
+                        put("street_address", "123 Main St")
+                        put("locality", "Anytown")
+                        put("region", "Anystate")
+                        put("country", "US")
                     }
+                    put("birthdate", "1940-01-01")
+                    put("is_over_18", true)
+                    put("is_over_21", true)
+                    put("is_over_65", true)
                 }
-            }.serialize()
+            }
         }
+        val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        issuer.issue(spec).map { it.serialize() }.getOrThrow()
+    }
 
     val verification = verifyIssuance(sdJwt, issuerPubKey)
 

@@ -104,10 +104,10 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
         .generate()
 
     private val issuer: SdJwtIssuer<SignedJWT> =
-        SdJwtIssuer.nimbus(
+        NimbusSdJwtOps.issuer(
+            sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = globalMinDigests?.let(::MinimumDigests)),
             signer = ECDSASigner(key),
             signAlgorithm = alg,
-            sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = globalMinDigests?.let(::MinimumDigests)),
         )
 
     suspend fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =

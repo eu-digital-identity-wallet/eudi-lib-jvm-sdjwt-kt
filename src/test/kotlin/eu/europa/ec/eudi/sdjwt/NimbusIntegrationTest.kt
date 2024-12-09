@@ -36,7 +36,7 @@ import kotlin.test.fail
 /**
  * Test cases for Nimbus integration.
  */
-internal class NimbusIntegrationTest {
+internal class NimbusIntegrationTest : NimbusSdJwtOps {
 
     /**
      * Verifies SD-JWTs can be signed using both asymmetric and symmetric signing algorithms
@@ -112,7 +112,7 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
                 .asJwtVerifier()
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = signer, signAlgorithm = algorithm),
+                NimbusSdJwtOps.issuer(signer = signer, signAlgorithm = algorithm),
                 verifier,
             )
         }
@@ -124,7 +124,10 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
                 .generate()
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = RSASSASigner(jwk), signAlgorithm = algorithm),
+                NimbusSdJwtOps.issuer(
+                    signer = RSASSASigner(jwk),
+                    signAlgorithm = algorithm,
+                ),
                 RSASSAVerifier(jwk.toPublicJWK()).asJwtVerifier(),
             )
         }
@@ -148,7 +151,7 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
             }
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = signer, signAlgorithm = algorithm),
+                NimbusSdJwtOps.issuer(signer = signer, signAlgorithm = algorithm),
                 verifier,
             )
         }
@@ -160,7 +163,7 @@ private fun createContext(algorithm: JWSAlgorithm): Context = run {
                 .generate()
             Context(
                 jwk,
-                SdJwtIssuer.nimbus(signer = MACSigner(jwk), signAlgorithm = algorithm),
+                NimbusSdJwtOps.issuer(signer = MACSigner(jwk), signAlgorithm = algorithm),
                 MACVerifier(jwk).asJwtVerifier(),
             )
         }

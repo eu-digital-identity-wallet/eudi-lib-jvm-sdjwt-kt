@@ -211,12 +211,10 @@ class IssuerActor(val issuerKey: ECKey) {
      * Also, demonstrates the customization of the [JWSHeader] by adding
      * [jwtType] (as "typ" claim) and "kid" claim
      */
-    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> = SdJwtIssuer.nimbus(
-        signer = ECDSASigner(issuerKey),
-        signAlgorithm = signAlgorithm,
-    ) {
-        type(jwtType)
-    }
+    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> =
+        NimbusSdJwtOps.issuer(signer = ECDSASigner(issuerKey), signAlgorithm = signAlgorithm) {
+            type(jwtType)
+        }
 
     /**
      * This is the main function of the issuer, which issues the SD-JWT
