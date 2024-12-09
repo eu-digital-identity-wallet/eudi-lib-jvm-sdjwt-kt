@@ -15,21 +15,19 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.UnexpectedKeyBindingJwt
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
-import eu.europa.ec.eudi.sdjwt.SdJwt.Presentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError
 import kotlinx.serialization.json.*
 
 fun interface KbJwtBuilder {
-    suspend fun kbJwt(hashAlgorithm: HashAlgorithm, sdJwt: String, cs: JsonObject): Result<Jwt> =
+    suspend fun kbJwt(hashAlgorithm: HashAlgorithm, sdJwt: String, kbJwtClaims: JsonObject): Result<Jwt> =
         runCatching {
             val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, sdJwt).getOrThrow()
-            kbJwt(sdJwtDigest, cs).getOrThrow()
+            kbJwt(sdJwtDigest, kbJwtClaims).getOrThrow()
         }
 
-    suspend fun kbJwt(sdJwtDigest: SdJwtDigest, cs: JsonObject): Result<Jwt>
+    suspend fun kbJwt(sdJwtDigest: SdJwtDigest, kbJwtClaims: JsonObject): Result<Jwt>
 }
 
 /**
@@ -90,11 +88,11 @@ interface SdJwtSerializationOps<JWT> {
         option: JwsSerializationOption = JwsSerializationOption.Flattened,
         hashAlgorithm: HashAlgorithm,
         kbJwtBuilder: KbJwtBuilder,
-        cs: JsonObject,
+        kbJwtClaims: JsonObject,
     ): Result<JsonObject> = runCatching {
         // Serialize the presentation SD-JWT with no Key binding
         val presentationSdJwt = serialize()
-        val kbJwt = kbJwtBuilder.kbJwt(hashAlgorithm, presentationSdJwt, cs).getOrThrow()
+        val kbJwt = kbJwtBuilder.kbJwt(hashAlgorithm, presentationSdJwt, kbJwtClaims).getOrThrow()
         asJwsJsonObject(option, kbJwt)
     }
 
@@ -116,7 +114,7 @@ interface SdJwtSerializationOps<JWT> {
                 kbJwt: Jwt?,
             ): JsonObject {
                 if (kbJwt != null) {
-                    require(this is Presentation<JWT>) {
+                    require(this is SdJwt.Presentation<JWT>) {
                         "Key binding JWT requires a presentation"
                     }
                 }
@@ -133,7 +131,6 @@ interface SdJwtSerializationOps<JWT> {
                 }
             }
         }
-
     }
 }
 
@@ -176,15 +173,16 @@ enum class JwsSerializationOption {
  */
 @Deprecated(
     message = "Deprecated and will be removed in a future release",
-    replaceWith = ReplaceWith("with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(\".\")})) { asJwsJsonObject(option, kbJwt) }"),
+    replaceWith = ReplaceWith(
+        "with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(\".\")})) { asJwsJsonObject(option, kbJwt) }",
+    ),
 )
 fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
     kbJwt: Jwt?,
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject =
-    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".")})) { asJwsJsonObject(option, kbJwt) }
-
+    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) { asJwsJsonObject(option, kbJwt) }
 
 internal object StandardSerialization {
 
@@ -231,7 +229,7 @@ internal object StandardSerialization {
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
         joinToString(
             prefix = "${SdJwtSpec.DISCLOSURE_SEPARATOR}",
-            separator = ""
+            separator = "",
         ) { "${get(it)}${SdJwtSpec.DISCLOSURE_SEPARATOR}" }
 }
 

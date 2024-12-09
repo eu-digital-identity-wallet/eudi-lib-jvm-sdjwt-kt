@@ -317,11 +317,13 @@ class HolderActor(
         }
         checkNotNull(presentationSdJwt)
 
-        return presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, keyBindingSigner) {
-            audience(verifierQuery.challenge.aud)
-            claim("nonce", verifierQuery.challenge.nonce)
-            issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
-        }
+        return with(NimbusSdJwtSerializationOps) {
+            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, keyBindingSigner) {
+                audience(verifierQuery.challenge.aud)
+                claim("nonce", verifierQuery.challenge.nonce)
+                issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+            }
+        }.getOrThrow()
     }
 
     private fun holderDebug(s: String) {

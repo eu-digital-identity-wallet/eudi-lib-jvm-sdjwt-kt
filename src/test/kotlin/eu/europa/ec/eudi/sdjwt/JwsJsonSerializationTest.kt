@@ -97,15 +97,17 @@ class TrObj private constructor(
     }
 }
 
-class JwsJsonSerialization {
+class JwsJsonSerializationTest {
 
     @Test
     fun ex1() {
         val trObj = TrObj.parse(ex1)
         val sdJwt: SdJwt.Issuance<SignedJWT> = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
         val actual =
-            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened)
-                .also { println(json.encodeToString(it)) }
+            with(NimbusSdJwtSerializationOps) {
+                sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened, kbJwt = null)
+                    .also { println(json.encodeToString(it)) }
+            }
         assertEquals(json.parseToJsonElement(ex1), actual)
     }
 
@@ -124,8 +126,8 @@ class JwsJsonSerialization {
 
         val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }
 
-        assertDoesNotThrow {
-            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened)
+        with(NimbusSdJwtSerializationOps) {
+            sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened, kbJwt = null)
                 .also { println(json.encodeToString(it)) }
         }
     }
