@@ -251,7 +251,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
         println(json.encodeToString(JsonObject(kbJwtClaims)))
 
         val jwsJson =
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened, kbJwt)
+            sdJwt.asJwsJsonObjectWithKeyBinding(JwsSerializationOption.Flattened, kbJwt)
 
         println(json.encodeToString(jwsJson))
     }

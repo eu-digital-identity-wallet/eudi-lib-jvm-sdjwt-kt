@@ -226,31 +226,6 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  */
 fun SdObjectBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
 
-/**
- * A variation of [sdJwt] which produces signed SD-JWT
- * @param sdJwtFactory factory for creating the unsigned SD-JWT
- * @param signer the signer that will sign the SD-JWT
- * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
- * @param digestNumberHint This is an optional hint; that expresses the number of digests on the immediate level
- * of this SD-JWT, that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
- * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
- *
- * @return signed SD-JWT
- *
- * @see SdJwtIssuer.Companion.nimbus which in addition allows customization of JWS Header
- */
-suspend inline fun signedSdJwt(
-    signer: NimbusJWSSigner,
-    signAlgorithm: NimbusJWSAlgorithm,
-    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
-    digestNumberHint: Int? = null,
-    builderAction: SdObjectBuilder.() -> Unit,
-): SdJwt.Issuance<NimbusSignedJWT> {
-    val issuer = SdJwtIssuer.nimbus(sdJwtFactory, signer, signAlgorithm)
-    val sdJwtElements = sdJwt(digestNumberHint, builderAction)
-    return issuer.issue(sdJwtElements).getOrThrow()
-}
-
 private object NimbusSdJwtIssuerFactory {
 
     /**
@@ -284,51 +259,22 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
-    override fun SdJwt.Issuance<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject {
-        require(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
-            "It seems that the jwt is not signed"
-        }
-        return with(defaultOps) { asJwsJsonObject(option) }
-    }
-    override fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption, kbJwt: Jwt?): JsonObject {
-        require(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
-            "It seems that the jwt is not signed"
-        }
-        return with(defaultOps) { asJwsJsonObject(option, kbJwt) }
-    }
+    override fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
+        with(defaultOps) { asJwsJsonObject(option) }
 
-    /**
-     * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
-     *
-     * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
-     * in the generated Key Binding JWT
-     * @param keyBindingSigner function used to sign the generated Key Binding JWT
-     * @param claimSetBuilderAction a function that can be used to further customize the claims
-     * of the generated Key Binding JWT.
-     * @receiver the SD-JWT to be serialized
-     * @return the serialized SD-JWT including the generated Key Binding JWT
-     */
-    suspend fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
-        hashAlgorithm: HashAlgorithm,
-        keyBindingSigner: KeyBindingSigner,
-        claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-    ): Result<String> {
-        val kbJwtBuilder = KbJwtBuilder(keyBindingSigner, claimSetBuilderAction)
-        return serializeWithKeyBinding(hashAlgorithm, kbJwtBuilder, JsonObject(emptyMap()))
-    }
-
-    suspend fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
+    override fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
-        hashAlgorithm: HashAlgorithm,
-        keyBindingSigner: KeyBindingSigner,
-        claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-    ): Result<JsonObject> {
-        val kbJwtBuilder = KbJwtBuilder(keyBindingSigner, claimSetBuilderAction)
-        return asJwsJsonObjectWithKeyBinding(option, hashAlgorithm, kbJwtBuilder, JsonObject(emptyMap()))
-    }
+        kbJwt: Jwt,
+    ): JsonObject = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
 
     companion object : NimbusSdJwtOps {
-        private val defaultOps = SdJwtSerializationOps<NimbusSignedJWT>({ jwt -> jwt.serialize() })
+
+        private val defaultOps = SdJwtSerializationOps<NimbusSignedJWT>({ jwt ->
+            check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
+                "It seems that the jwt is not signed"
+            }
+            jwt.serialize()
+        })
 
         /**
          * Factory method for creating a [SdJwtIssuer] that uses Nimbus
@@ -349,49 +295,32 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
             jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
         ): SdJwtIssuer<NimbusSignedJWT> =
             NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
-    }
-}
 
-/**
- * Representation of a function used to sign the Keybinding JWT of a Presentation SD-JWT.
- */
-interface KeyBindingSigner : NimbusJWSSigner {
-    val signAlgorithm: NimbusJWSAlgorithm
-    val publicKey: NimbusAsymmetricJWK
-    override fun supportedJWSAlgorithms(): MutableSet<NimbusJWSAlgorithm> = mutableSetOf(signAlgorithm)
-}
+        fun kbJwtIssuer(
+            signAlgorithm: NimbusJWSAlgorithm,
+            signer: NimbusJWSSigner,
+            publicKey: NimbusAsymmetricJWK,
+            claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit = {},
+        ): BuildKbJwt = BuildKbJwt { sdJwtDigest ->
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val header = NimbusJWSHeader.Builder(signAlgorithm).apply {
+                        type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
+                        val pk = publicKey
+                        if (pk is NimbusJWK) {
+                            keyID(pk.keyID)
+                        }
+                    }.build()
+                    val claimSet = NimbusJWTClaimsSet.Builder().apply {
+                        claimSetBuilderAction()
+                        claim(SdJwtSpec.CLAIM_SD_HASH, sdJwtDigest.value)
+                    }.build()
 
-internal fun KbJwtBuilder(
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-): KbJwtBuilder = KbJwtBuilder { sdJwtDigest, _ ->
-    withContext(Dispatchers.IO) {
-        runCatching {
-            kbJwt(keyBindingSigner, claimSetBuilderAction, sdJwtDigest).serialize()
+                    NimbusSignedJWT(header, claimSet).apply { sign(signer) }.serialize()
+                }
+            }
         }
     }
-}
-
-internal fun kbJwt(
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-    sdJwtDigest: SdJwtDigest,
-): NimbusJWT {
-    val header = with(NimbusJWSHeader.Builder(keyBindingSigner.signAlgorithm)) {
-        type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
-        val pk = keyBindingSigner.publicKey
-        if (pk is NimbusJWK) {
-            keyID(pk.keyID)
-        }
-        build()
-    }
-    val claimSet = with(NimbusJWTClaimsSet.Builder()) {
-        claimSetBuilderAction()
-        claim(SdJwtSpec.CLAIM_SD_HASH, sdJwtDigest.value)
-        build()
-    }
-
-    return NimbusSignedJWT(header, claimSet).apply { sign(keyBindingSigner) }
 }
 
 /**

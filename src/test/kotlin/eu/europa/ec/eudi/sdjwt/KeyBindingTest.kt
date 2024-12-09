@@ -19,13 +19,11 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
@@ -270,21 +268,12 @@ class IssuerActor(val issuerKey: ECKey) {
  * and responding to [VerifierActor] query
  */
 class HolderActor(
-    holderKey: ECKey,
+    private val holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
-    private val keyBindingSigner: KeyBindingSigner by lazy {
-        val actualSigner = ECDSASigner(holderKey)
-        object : KeyBindingSigner {
-            override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
-            override val publicKey: AsymmetricJWK = holderKey.toPublicJWK()
-            override fun getJCAContext(): JCAContext = actualSigner.jcaContext
-            override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = actualSigner.sign(p0, p1)
-        }
-    }
 
-    fun pubKey(): AsymmetricJWK = keyBindingSigner.publicKey
+    fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
     /**
      * Keeps the issued credential
@@ -318,11 +307,16 @@ class HolderActor(
         checkNotNull(presentationSdJwt)
 
         return with(NimbusSdJwtOps) {
-            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, keyBindingSigner) {
+            val buildKbJwt = kbJwtIssuer(
+                JWSAlgorithm.ES256,
+                ECDSASigner(holderKey),
+                holderKey.toPublicJWK(),
+            ) {
                 audience(verifierQuery.challenge.aud)
                 claim("nonce", verifierQuery.challenge.nonce)
                 issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
             }
+            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, buildKbJwt)
         }.getOrThrow()
     }
 
