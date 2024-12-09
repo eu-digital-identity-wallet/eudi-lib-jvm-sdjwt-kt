@@ -182,7 +182,7 @@ fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVe
 }
 
 /**
- * A method for obtaining an [SdJwt.Issuance] given an [unverifiedSdJwt], without checking the signature
+ * A method for obtaining an [SdJwt.Issuance] given an unverified SdJwt, without checking the signature
  * of the issuer.
  *
  * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
@@ -284,7 +284,13 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
-    override fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption, kbJwt: Jwt?): JsonObject {
+    override fun SdJwt.Issuance<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject {
+        require(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
+            "It seems that the jwt is not signed"
+        }
+        return with(defaultOps) { asJwsJsonObject(option) }
+    }
+    override fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption, kbJwt: Jwt?): JsonObject {
         require(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
             "It seems that the jwt is not signed"
         }

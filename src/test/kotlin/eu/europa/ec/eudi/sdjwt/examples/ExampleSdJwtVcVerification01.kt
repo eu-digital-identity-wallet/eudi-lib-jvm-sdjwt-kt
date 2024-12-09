@@ -81,5 +81,5 @@ val sdJwtVcVerification = runBlocking {
         sdJwt.serialize()
     }
 
-    verifier.verifyIssuance(serialized).getOrThrow()
+    verifier.verifyIssuance(serialized)
 }

@@ -207,7 +207,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
 
         val sdJwt = sdJwtVcVerifier.verifyIssuance(unverified).getOrThrow()
         val jwsJson = with(DefaultSdJwtOps) {
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened, null)
+            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
         }
         println(json.encodeToString(jwsJson))
     }
@@ -262,7 +262,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
 
     private fun SdJwt.Issuance<SignedJWT>.printInJwsJson(option: JwsSerializationOption) {
         with(NimbusSdJwtOps) {
-            val jwsJson = asJwsJsonObject(option, null)
+            val jwsJson = asJwsJsonObject(option)
             println(json.encodeToString(jwsJson))
         }
     }

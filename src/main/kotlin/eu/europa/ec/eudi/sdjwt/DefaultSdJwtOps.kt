@@ -21,7 +21,11 @@ interface DefaultSdJwtOps : SdJwtVerifier, SdJwtSerializationOps<JwtAndClaims> {
 
     override fun SdJwt<JwtAndClaims>.serialize(): String =
         with(defaultSdJwtSerializationOps) { serialize() }
-    override fun SdJwt<JwtAndClaims>.asJwsJsonObject(option: JwsSerializationOption, kbJwt: Jwt?): JsonObject =
+
+    override fun SdJwt.Issuance<JwtAndClaims>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
+        with(defaultSdJwtSerializationOps) { asJwsJsonObject(option) }
+
+    override fun SdJwt.Presentation<JwtAndClaims>.asJwsJsonObject(option: JwsSerializationOption, kbJwt: Jwt?): JsonObject =
         with(defaultSdJwtSerializationOps) { asJwsJsonObject(option, kbJwt) }
 
     companion object : DefaultSdJwtOps

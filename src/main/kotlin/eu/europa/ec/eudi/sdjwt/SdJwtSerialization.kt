@@ -44,25 +44,6 @@ interface SdJwtSerializationOps<JWT> {
     fun SdJwt<JWT>.serialize(): String
 
     /**
-     * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
-     * In addition to the General & Flattened representations defined in the RFC7515,
-     *  the result JSON contains an unprotected header which includes
-     *  an array with the disclosures of the [SdJwt] and optionally the key binding JWT
-     *
-     * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
-     *   representation as defined in RFC7515
-     * @param kbJwt the key binding JWT for the SD-JWT.
-     * @receiver the [SdJwt] to serialize
-     *
-     * @return a JSON object either general or flattened according to RFC7515 having an additional
-     * disclosures array and possibly the KB-JWT in an unprotected header as per SD-JWT extension
-     */
-    fun SdJwt<JWT>.asJwsJsonObject(
-        option: JwsSerializationOption = JwsSerializationOption.Flattened,
-        kbJwt: Jwt?,
-    ): JsonObject
-
-    /**
      * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
      *
      * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
@@ -83,6 +64,43 @@ interface SdJwtSerializationOps<JWT> {
         // concatenate the two parts together
         "$presentationSdJwt$kbJwt"
     }
+
+    /**
+     * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+     * In addition to the General & Flattened representations defined in the RFC7515,
+     * the result JSON contains an unprotected header which includes
+     * an array with the disclosures of the [SdJwt] and optionally the key binding JWT
+     *
+     * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+     *   representation as defined in RFC7515
+     * @param kbJwt the key binding JWT for the SD-JWT.
+     * @receiver the [SdJwt] to serialize
+     *
+     * @return a JSON object either general or flattened according to RFC7515 having an additional
+     * disclosures array
+     */
+    fun SdJwt.Issuance<JWT>.asJwsJsonObject(
+        option: JwsSerializationOption = JwsSerializationOption.Flattened,
+    ): JsonObject
+
+    /**
+     * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+     * In addition to the General & Flattened representations defined in the RFC7515,
+     * the result JSON contains an unprotected header which includes
+     * an array with the disclosures of the [SdJwt] and optionally the key binding JWT
+     *
+     * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+     *   representation as defined in RFC7515
+     * @param kbJwt the key binding JWT for the SD-JWT.
+     * @receiver the [SdJwt] to serialize
+     *
+     * @return a JSON object either general or flattened according to RFC7515 having an additional
+     * disclosures array and possibly the KB-JWT in an unprotected header as per SD-JWT extension
+     */
+    fun SdJwt.Presentation<JWT>.asJwsJsonObject(
+        option: JwsSerializationOption = JwsSerializationOption.Flattened,
+        kbJwt: Jwt?,
+    ): JsonObject
 
     suspend fun SdJwt.Presentation<JWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption = JwsSerializationOption.Flattened,
@@ -109,24 +127,31 @@ interface SdJwtSerializationOps<JWT> {
                 return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
             }
 
-            override fun SdJwt<JWT>.asJwsJsonObject(
+            override fun SdJwt.Presentation<JWT>.asJwsJsonObject(
+                option: JwsSerializationOption,
+                kbJwt: Jwt?,
+            ): JsonObject = toJwsJsonObject(option, kbJwt)
+
+            override fun SdJwt.Issuance<JWT>.asJwsJsonObject(
+                option: JwsSerializationOption,
+            ): JsonObject = toJwsJsonObject(option, kbJwt = null)
+
+            private fun SdJwt<JWT>.toJwsJsonObject(
                 option: JwsSerializationOption,
                 kbJwt: Jwt?,
             ): JsonObject {
                 if (kbJwt != null) {
-                    require(this is SdJwt.Presentation<JWT>) {
-                        "Key binding JWT requires a presentation"
-                    }
+                    require(this is SdJwt.Presentation<JWT>) { "Key binding JWT requires a presentation" }
                 }
 
                 val (protected, payload, signature) = run {
-                    val serializedSdJWt = serializeJwt(jwt)
+                    val serializedSdJWt = serializeJwt(this@toJwsJsonObject.jwt)
                     val parts = serializedSdJWt.split(".")
                     check(parts.size == 3)
                     parts
                 }
                 return with(JwsJsonSupport) {
-                    val ds = disclosures.map<Disclosure, String> { it.value }.toSet<String>()
+                    val ds = this@toJwsJsonObject.disclosures.map<Disclosure, String> { it.value }.toSet<String>()
                     option.buildJwsJson(protected, payload, signature, ds, kbJwt)
                 }
             }

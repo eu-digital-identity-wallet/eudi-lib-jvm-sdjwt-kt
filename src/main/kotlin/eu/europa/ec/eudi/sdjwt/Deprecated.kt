@@ -322,7 +322,13 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
 fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
 ): JsonObject =
-    with(NimbusSdJwtOps) { asJwsJsonObject(option = option, kbJwt = null) }
+    with(NimbusSdJwtOps) {
+        when(this@serializeAsJwsJson) {
+            is SdJwt.Issuance<NimbusSignedJWT> -> asJwsJsonObject(option)
+            is SdJwt.Presentation<NimbusSignedJWT> -> asJwsJsonObject(option, kbJwt = null)
+        }
+
+    }
 
 /**
  * Serializes a [SdJwt] without a key binding part.
@@ -411,7 +417,12 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     kbJwt: Jwt?,
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject =
-    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) { asJwsJsonObject(option, kbJwt) }
+    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) {
+        when(this@asJwsJsonObject) {
+            is SdJwt.Issuance<JWT> -> asJwsJsonObject(option)
+            is SdJwt.Presentation<JWT> ->asJwsJsonObject(option, kbJwt)
+        }
+    }
 
 /**
  * Factory method for creating a [SdJwtIssuer] that uses Nimbus
