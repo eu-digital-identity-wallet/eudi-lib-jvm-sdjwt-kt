@@ -302,12 +302,15 @@ private object NimbusSdJwtIssuerFactory {
 /**
  * Serializes a [SdJwt] without a key binding part.
  *
- * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to be serialized
  * @return the serialized SD-JWT
  */
-fun <JWT : NimbusJWT> SdJwt<JWT>.serialize(): String =
-    serialize(NimbusJWT::serialize)
+@Deprecated(
+    message="Deprecated and will be removed",
+    replaceWith = ReplaceWith(" with(NimbusSdJwtSerializationOps){serialize()}")
+)
+fun SdJwt<NimbusSignedJWT>.serialize(): String =
+    with(NimbusSdJwtSerializationOps){serialize()}
 
 /**
  * Representation of a function used to sign the Keybinding JWT of a Presentation SD-JWT.
@@ -326,16 +329,15 @@ interface KeyBindingSigner : NimbusJWSSigner {
  * @param keyBindingSigner function used to sign the generated Key Binding JWT
  * @param claimSetBuilderAction a function that can be used to further customize the claims
  * of the generated Key Binding JWT.
- * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to be serialized
  * @return the serialized SD-JWT including the generated Key Binding JWT
  */
-fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
+suspend fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
 ): String =
-    serializeWithKeyBinding(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+    with(NimbusSdJwtSerializationOps){serializeWithKeyBinding(hashAlgorithm, keyBindingSigner, claimSetBuilderAction)}.getOrThrow()
 
 /**
  * Serializes a [SdJwt.Presentation] with a Key Binding JWT  in JWS JSON
@@ -345,16 +347,15 @@ fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
  * @param keyBindingSigner function used to sign the generated Key Binding JWT
  * @param claimSetBuilderAction a function that can be used to further customize the claims
  * of the generated Key Binding JWT.
- * @param JWT the type representing the JWT part of the SD-JWT
  * @receiver the SD-JWT to be serialized
  * @return the serialized SD-JWT including the generated Key Binding JWT
  */
-fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
+fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
 ): JsonObject =
-    serializeWithKeyBindingAsJwsJson(NimbusJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
+    serializeWithKeyBindingAsJwsJson(NimbusSignedJWT::serialize, hashAlgorithm, keyBindingSigner, claimSetBuilderAction)
 
 /**
  * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
@@ -369,7 +370,7 @@ fun <JWT : NimbusJWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
  * @receiver the SD-JWT to be serialized
  * @return the serialized SD-JWT including the generated Key Binding JWT
  */
-fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
+suspend fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     jwtSerializer: (JWT) -> String,
     hashAlgorithm: HashAlgorithm,
     keyBindingSigner: KeyBindingSigner,

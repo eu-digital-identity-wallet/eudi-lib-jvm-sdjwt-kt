@@ -305,17 +305,19 @@ class HolderActor(
         )
     }
 
-    fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
+    suspend fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
 
         val presentationSdJwt = run {
             val issuanceSdJwt = checkNotNull(credentialSdJwt)
             val whatToDisclose = verifierQuery.whatToDisclose
-            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }
+            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }?.let { tmp ->
+                SdJwt.Presentation(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
+            }
         }
         checkNotNull(presentationSdJwt)
 
-        return presentationSdJwt.serializeWithKeyBinding({ (jwt, _) -> jwt }, hashAlgorithm, keyBindingSigner) {
+        return presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, keyBindingSigner) {
             audience(verifierQuery.challenge.aud)
             claim("nonce", verifierQuery.challenge.nonce)
             issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
