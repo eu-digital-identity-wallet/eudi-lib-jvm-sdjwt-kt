@@ -19,6 +19,9 @@ import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
+import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
+import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
 import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
@@ -409,3 +412,27 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject =
     with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) { asJwsJsonObject(option, kbJwt) }
+
+/**
+ * Factory method for creating a [SdJwtIssuer] that uses Nimbus
+ *
+ * @param sdJwtFactory factory for creating the unsigned SD-JWT
+ * @param signer the signer that will sign the SD-JWT
+ * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+ * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+ *
+ * @return [SdJwtIssuer] that uses Nimbus
+ *
+ * @see SdJwtFactory.Default
+ */
+@Deprecated(
+    message = "Deprecated. Use NimbusSdJwtOps",
+    replaceWith = ReplaceWith(" NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)"),
+)
+fun SdJwtIssuer.Companion.nimbus(
+    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+    signer: NimbusJWSSigner,
+    signAlgorithm: NimbusJWSAlgorithm,
+    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+): SdJwtIssuer<NimbusSignedJWT> =
+    NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)

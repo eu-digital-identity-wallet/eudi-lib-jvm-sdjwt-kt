@@ -251,26 +251,6 @@ suspend inline fun signedSdJwt(
     return issuer.issue(sdJwtElements).getOrThrow()
 }
 
-/**
- * Factory method for creating a [SdJwtIssuer] that uses Nimbus
- *
- * @param sdJwtFactory factory for creating the unsigned SD-JWT
- * @param signer the signer that will sign the SD-JWT
- * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
- * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
- *
- * @return [SdJwtIssuer] that uses Nimbus
- *
- * @see SdJwtFactory.Default
- */
-fun SdJwtIssuer.Companion.nimbus(
-    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
-    signer: NimbusJWSSigner,
-    signAlgorithm: NimbusJWSAlgorithm,
-    jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-): SdJwtIssuer<NimbusSignedJWT> =
-    NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
-
 private object NimbusSdJwtIssuerFactory {
 
     /**
@@ -343,6 +323,26 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
 
     companion object : NimbusSdJwtOps {
         private val defaultOps = SdJwtSerializationOps<NimbusSignedJWT>({ jwt -> jwt.serialize() })
+
+        /**
+         * Factory method for creating a [SdJwtIssuer] that uses Nimbus
+         *
+         * @param sdJwtFactory factory for creating the unsigned SD-JWT
+         * @param signer the signer that will sign the SD-JWT
+         * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
+         * @param jwsHeaderCustomization optional customization of JWS header using [NimbusJWSHeader.Builder]
+         *
+         * @return [SdJwtIssuer] that uses Nimbus
+         *
+         * @see SdJwtFactory.Default
+         */
+        fun issuer(
+            sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
+            signer: NimbusJWSSigner,
+            signAlgorithm: NimbusJWSAlgorithm,
+            jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
+        ): SdJwtIssuer<NimbusSignedJWT> =
+            NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
     }
 }
 
