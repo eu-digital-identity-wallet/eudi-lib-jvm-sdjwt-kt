@@ -158,34 +158,33 @@ import kotlinx.serialization.json.put
 
 ```kotlin
 val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
-    val issuedSdJwt = run {
-        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-        val sdJwtSpec = sdJwt {
-            plain {
-                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                iss("https://example.com/issuer")
-                iat(1516239022)
-                exp(1735689661)
-            }
-            recursive("address") {
-                sd {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
+    with(NimbusSdJwtOps) {
+        val issuedSdJwt = run {
+            val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+            val sdJwtSpec = sdJwt {
+                plain {
+                    sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                    iss("https://example.com/issuer")
+                    iat(1516239022)
+                    exp(1735689661)
+                }
+                recursive("address") {
+                    sd {
+                        put("street_address", "Schulstr. 12")
+                        put("locality", "Schulpforta")
+                        put("region", "Sachsen-Anhalt")
+                        put("country", "DE")
+                    }
                 }
             }
+            val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+            issuer.issue(sdJwtSpec).getOrThrow()
         }
-        val issuer = NimbusSdJwtOps.issuer(
-            signer = RSASSASigner(issuerKeyPair),
-            signAlgorithm = JWSAlgorithm.RS256,
-        )
-        issuer.issue(sdJwtSpec).getOrThrow()
-    }
 
-    val addressPath = ClaimPath.claim("address")
-    val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
-    issuedSdJwt.present(claimsToInclude)!!
+        val addressPath = ClaimPath.claim("address")
+        val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
+        issuedSdJwt.present(claimsToInclude)!!
+    }
 }
 ```
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwt01.kt).

@@ -15,23 +15,35 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.JsonObject
 
-interface DefaultSdJwtOps : SdJwtVerifier, SdJwtSerializationOps<JwtAndClaims> {
+interface DefaultSdJwtOps :
+    SdJwtVerifier,
+    SdJwtSerializationOps<JwtAndClaims>,
+    SdJwtPresentationOps<JwtAndClaims> {
 
     override fun SdJwt<JwtAndClaims>.serialize(): String =
-        with(defaultSdJwtSerializationOps) { serialize() }
+        with(serializationOps) { serialize() }
 
     override fun SdJwt<JwtAndClaims>.asJwsJsonObject(
         option: JwsSerializationOption,
-    ): JsonObject = with(defaultSdJwtSerializationOps) { asJwsJsonObject(option) }
+    ): JsonObject = with(serializationOps) { asJwsJsonObject(option) }
 
     override fun SdJwt.Presentation<JwtAndClaims>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         kbJwt: Jwt,
-    ): JsonObject = with(defaultSdJwtSerializationOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
+    ): JsonObject = with(serializationOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
+
+    override fun SdJwt<JwtAndClaims>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> =
+        with(presentationOps) { recreateClaimsAndDisclosuresPerClaim() }
+
+    override fun SdJwt.Issuance<JwtAndClaims>.present(
+        query: Set<ClaimPath>,
+    ): SdJwt.Presentation<JwtAndClaims>? = with(presentationOps) { present(query) }
 
     companion object : DefaultSdJwtOps
 }
 
-private val defaultSdJwtSerializationOps = SdJwtSerializationOps<JwtAndClaims>({ (jwt, _) -> jwt })
+private val serializationOps = SdJwtSerializationOps<JwtAndClaims>({ (jwt, _) -> jwt })
+private val presentationOps = SdJwtPresentationOps<JwtAndClaims>({ (_, claims) -> claims })

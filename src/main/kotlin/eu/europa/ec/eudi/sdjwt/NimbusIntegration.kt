@@ -257,7 +257,7 @@ private object NimbusSdJwtIssuerFactory {
 //
 // Serialization
 //
-interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
+interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresentationOps<NimbusSignedJWT> {
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
@@ -269,14 +269,24 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT> {
         kbJwt: Jwt,
     ): JsonObject = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
 
+    override fun SdJwt<NimbusSignedJWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> =
+        with(presentationOps) { recreateClaimsAndDisclosuresPerClaim() }
+
+    override fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
+        with(presentationOps) { present(query) }
+
     companion object : NimbusSdJwtOps {
 
-        private val defaultOps = SdJwtSerializationOps<NimbusSignedJWT>({ jwt ->
-            check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
-                "It seems that the jwt is not signed"
-            }
-            jwt.serialize()
-        })
+        private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
+            SdJwtSerializationOps({ jwt ->
+                check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
+                    "It seems that the jwt is not signed"
+                }
+                jwt.serialize()
+            })
+
+        private val presentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
+            SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
 
         /**
          * Factory method for creating a [SdJwtIssuer] that uses Nimbus
@@ -352,17 +362,6 @@ private fun sign(
 //
 // Presentation
 //
-
-/**
- *  Tries to create a presentation that discloses the claims that satisfy
- *  [query]
- * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
- * are relative to the unprotected JSON (not the JWT payload)
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @return the presentation if possible to satisfy the [query]
- */
-fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
-    present(query) { it.jwtClaimsSet.jsonObject() }
 
 //
 // JWT Processor, works on JWKSource

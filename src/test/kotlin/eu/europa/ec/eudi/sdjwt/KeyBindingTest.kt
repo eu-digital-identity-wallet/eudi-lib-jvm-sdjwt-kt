@@ -295,27 +295,24 @@ class HolderActor(
     suspend fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
 
-        val presentationSdJwt = run {
-            val issuanceSdJwt = checkNotNull(credentialSdJwt)
-            val whatToDisclose = verifierQuery.whatToDisclose
-            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }?.let { tmp ->
-                SdJwt.Presentation(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
+        val presentationSdJwt =
+            with(DefaultSdJwtOps) {
+                val issuanceSdJwt = checkNotNull(credentialSdJwt)
+                val whatToDisclose = verifierQuery.whatToDisclose
+                issuanceSdJwt.present(whatToDisclose)?.let { tmp ->
+                    SdJwt.Presentation(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
+                }
             }
-        }
         checkNotNull(presentationSdJwt)
 
         return with(NimbusSdJwtOps) {
-            val buildKbJwt = kbJwtIssuer(
-                JWSAlgorithm.ES256,
-                ECDSASigner(holderKey),
-                holderKey.toPublicJWK(),
-            ) {
+            val buildKbJwt = kbJwtIssuer(JWSAlgorithm.ES256, ECDSASigner(holderKey), holderKey.toPublicJWK()) {
                 audience(verifierQuery.challenge.aud)
                 claim("nonce", verifierQuery.challenge.nonce)
                 issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
             }
-            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, buildKbJwt)
-        }.getOrThrow()
+            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, buildKbJwt).getOrThrow()
+        }
     }
 
     private fun holderDebug(s: String) {
@@ -328,7 +325,7 @@ class VerifierActor(
     private val whatToDisclose: Set<ClaimPath>,
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument,
-) {
+) : DefaultSdJwtOps {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
@@ -345,7 +342,7 @@ class VerifierActor(
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }.second.keys
+        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim().second.keys
         whatToDisclose.forEach { requested ->
             assertTrue("Requested $requested was not disclosed") {
                 disclosedPaths.any { disclosed -> disclosed in requested }

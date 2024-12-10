@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.AsymmetricJWK
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
@@ -413,3 +414,51 @@ suspend inline fun signedSdJwt(
     val sdJwtElements = sdJwt(digestNumberHint, builderAction)
     return issuer.issue(sdJwtElements).getOrThrow()
 }
+
+/**
+ *  Tries to create a presentation that discloses the claims that satisfy
+ *  [query]
+ * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+ * are relative to the unprotected JSON (not the JWT payload)
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @return the presentation if possible to satisfy the [query]
+ */
+@Deprecated(
+    message = "Use NimbusSdJwtOps",
+    replaceWith = ReplaceWith(" with(NimbusSdJwtOps){present(query)}"),
+)
+fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
+    with(NimbusSdJwtOps) { present(query) }
+
+/**
+ * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
+ *
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ *
+ * @see SdJwt.recreateClaims
+ */
+@Deprecated(
+    message = "This method will be removed in a future version",
+    replaceWith = ReplaceWith("with(SdJwtPresentationOps(claimsOf)) { recreateClaimsAndDisclosuresPerClaim() }"),
+)
+fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> JsonObject): Pair<JsonObject, DisclosuresPerClaimPath> =
+    with(SdJwtPresentationOps(claimsOf)) { recreateClaimsAndDisclosuresPerClaim() }
+
+/**
+ * Tries to create a presentation that discloses the [requested claims][query].
+ * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+ * are relative to the unprotected JSON (not the JWT payload)
+ * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
+ * @receiver The issuance SD-JWT upon which the presentation will be based
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @return the presentation if possible to satisfy the [query]
+ */
+@Deprecated(
+    message = "This method will be removed in a future version",
+    replaceWith = ReplaceWith("with(SdJwtPresentationOps(claimsOf)) { present(query) }"),
+)
+fun <JWT> SdJwt.Issuance<JWT>.present(
+    query: Set<ClaimPath>,
+    claimsOf: (JWT) -> JsonObject,
+): SdJwt.Presentation<JWT>? = with(SdJwtPresentationOps(claimsOf)) { present(query) }

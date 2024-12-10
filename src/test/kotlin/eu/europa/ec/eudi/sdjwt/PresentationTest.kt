@@ -116,7 +116,7 @@ class PresentationTest : NimbusSdJwtOps {
         val sdJwt = issuer.issue(pidSpec).getOrThrow()
         println("Issued: ${sdJwt.serialize()}")
         sdJwt.prettyPrint { it.jwtClaimsSet.jsonObject() }
-        sdJwt.recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.jsonObject() }.also { (json, map) ->
+        sdJwt.recreateClaimsAndDisclosuresPerClaim().also { (json, map) ->
             println(json.pretty())
             map.prettyPrint()
         }
@@ -353,17 +353,17 @@ class PresentationTest : NimbusSdJwtOps {
         )
         assertNotNull(p)
     }
-}
 
-private fun SdJwt<SignedJWT>.prettyPrintAll() {
-    val (claims, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim { it.jwtClaimsSet.jsonObject() }
-    prettyPrint { it.jwtClaimsSet.jsonObject() }
-    println(claims.pretty())
-    disclosuresPerClaim.forEach { (p, ds) ->
-        println("$p - ${if (ds.isEmpty()) "plain" else "$ds"}")
+    private fun SdJwt<SignedJWT>.prettyPrintAll() {
+        val (claims, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
+        prettyPrint { it.jwtClaimsSet.jsonObject() }
+        println(claims.pretty())
+        disclosuresPerClaim.forEach { (p, ds) ->
+            println("$p - ${if (ds.isEmpty()) "plain" else "$ds"}")
+        }
     }
-}
 
-private fun JsonObject.pretty(): String = jsonSupport.encodeToString(JsonObject(this))
-private val jsonSupport: Json = Json { prettyPrint = true }
-private fun genKey(kid: String): ECKey = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
+    private fun JsonObject.pretty(): String = jsonSupport.encodeToString(JsonObject(this))
+    private val jsonSupport: Json = Json { prettyPrint = true }
+    private fun genKey(kid: String): ECKey = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
+}
