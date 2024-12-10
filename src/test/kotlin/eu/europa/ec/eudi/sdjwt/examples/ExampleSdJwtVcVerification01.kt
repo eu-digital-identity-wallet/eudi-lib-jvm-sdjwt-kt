@@ -22,7 +22,9 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
-import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
+import eu.europa.ec.eudi.sdjwt.iss
+import eu.europa.ec.eudi.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.DERSequence
@@ -67,16 +69,15 @@ val sdJwtVcVerification = runBlocking {
         val spec = sdJwt {
             iss(issuer.toExternalForm())
         }
-        val signer = SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {
-            type(JOSEObjectType("vc+sd-jwt"))
-            x509CertChain(listOf(Base64.encode(certificate.encoded)))
+        with(NimbusSdJwtOps) {
+            val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {
+                type(JOSEObjectType("vc+sd-jwt"))
+                x509CertChain(listOf(Base64.encode(certificate.encoded)))
+            }
+            signer.issue(spec).getOrThrow().serialize()
         }
-        signer.issue(spec).getOrThrow()
     }
 
-    val verifier = SdJwtVcVerifier.usingX5c { chain ->
-        chain.isNotEmpty() && chain.first() == certificate
-    }
-
-    verifier.verifyIssuance(sdJwt.serialize())
+    val verifier = SdJwtVcVerifier.usingX5c { chain -> chain.firstOrNull() == certificate }
+    verifier.verifyIssuance(sdJwt)
 }

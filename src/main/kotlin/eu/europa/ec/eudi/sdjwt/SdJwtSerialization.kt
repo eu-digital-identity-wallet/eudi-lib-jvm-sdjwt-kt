@@ -20,52 +20,164 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError
 import kotlinx.serialization.json.*
 
+fun interface BuildKbJwt {
+
+    suspend operator fun invoke(sdJwtDigest: SdJwtDigest): Result<Jwt>
+}
+
 /**
- * Serializes an [SdJwt] in combined format without key binding
- *
- * @param serializeJwt a function to serialize the [JWT]
  * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT to serialize
- * @return the serialized format of the SD-JWT
  */
-fun <JWT> SdJwt<JWT>.serialize(
+interface SdJwtSerializationOps<JWT> {
+
+    /**
+     * Serializes a [SdJwt] without a key binding JWT.
+     *
+     * @receiver the SD-JWT to be serialized
+     * @return the serialized SD-JWT
+     */
+    fun SdJwt<JWT>.serialize(): String
+
+    /**
+     * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
+     *
+     * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+     * in the generated Key Binding JWT
+     * @receiver the SD-JWT to be serialized
+     * @return the serialized SD-JWT including the generated Key Binding JWT
+     */
+    fun SdJwt.Presentation<JWT>.serializeWithKeyBinding(kbJwt: Jwt): String {
+        val presentationSdJwt = serialize()
+        return "$presentationSdJwt$kbJwt}"
+    }
+
+    /**
+     * Serializes a [SdJwt.Presentation] with a Key Binding JWT.
+     *
+     * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+     * in the generated Key Binding JWT
+     * @param buildKbJwt a way to construct the Key binding JWT
+     * @receiver the SD-JWT to be serialized
+     * @return the serialized SD-JWT including the generated Key Binding JWT
+     */
+    suspend fun SdJwt.Presentation<JWT>.serializeWithKeyBinding(
+        hashAlgorithm: HashAlgorithm,
+        buildKbJwt: BuildKbJwt,
+    ): Result<String> = runCatching {
+        val presentationSdJwt = serialize()
+        val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
+        "$presentationSdJwt$kbJwt"
+    }
+
+    /**
+     * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+     * In addition to the General & Flattened representations defined in the RFC7515,
+     * the result JSON contains an unprotected header which includes
+     * an array with the disclosures
+     *
+     * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+     *   representation as defined in RFC7515
+     * @receiver the [SdJwt] to serialize
+     *
+     * @return a JSON object either general or flattened according to RFC7515 having an additional
+     * disclosures array
+     */
+    fun SdJwt<JWT>.asJwsJsonObject(
+        option: JwsSerializationOption = JwsSerializationOption.Flattened,
+    ): JsonObject
+
+    fun SdJwt.Presentation<JWT>.asJwsJsonObjectWithKeyBinding(
+        option: JwsSerializationOption = JwsSerializationOption.Flattened,
+        kbJwt: Jwt,
+    ): JsonObject
+
+    /**
+     * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
+     * In addition to the General & Flattened representations defined in the RFC7515,
+     * the result JSON contains an unprotected header which includes
+     * an array with the disclosures of the [SdJwt] and the key binding JWT
+     *
+     * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
+     *   representation as defined in RFC7515
+     * @param hashAlgorithm [HashAlgorithm] to be used for generating the [SdJwtDigest] that will be included
+     * in the generated Key Binding JWT
+     * @param buildKbJwt a way to construct the Key binding JWT
+     * @receiver the [SdJwt] to serialize
+     *
+     * @return a JSON object either general or flattened according to RFC7515 having an additional
+     * disclosures array the key binding JWT
+     */
+    suspend fun SdJwt.Presentation<JWT>.asJwsJsonObjectWithKeyBinding(
+        option: JwsSerializationOption = JwsSerializationOption.Flattened,
+        hashAlgorithm: HashAlgorithm,
+        buildKbJwt: BuildKbJwt,
+    ): Result<JsonObject> = runCatching {
+        val presentationSdJwt = serialize()
+        val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
+        asJwsJsonObjectWithKeyBinding(option, kbJwt)
+    }
+
+    companion object {
+        /**
+         * Factory method
+         *
+         * @param serializeJwt a function to serialize the [JWT]
+         */
+        operator fun <JWT> invoke(serializeJwt: (JWT) -> String): SdJwtSerializationOps<JWT> =
+            defaultSdJwtSerializationOps(serializeJwt)
+    }
+}
+
+private fun <JWT> defaultSdJwtSerializationOps(
     serializeJwt: (JWT) -> String,
-): String {
-    val serializedJwt = serializeJwt(jwt)
-    return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
+): SdJwtSerializationOps<JWT> = object : SdJwtSerializationOps<JWT> {
+
+    override fun SdJwt<JWT>.serialize(): String {
+        val serializedJwt = serializeJwt(jwt)
+        return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
+    }
+
+    override fun SdJwt<JWT>.asJwsJsonObject(
+        option: JwsSerializationOption,
+    ): JsonObject = toJwsJsonObject(option, kbJwt = null)
+
+    override fun SdJwt.Presentation<JWT>.asJwsJsonObjectWithKeyBinding(
+        option: JwsSerializationOption,
+        kbJwt: Jwt,
+    ): JsonObject = toJwsJsonObject(option, kbJwt)
+
+    private fun SdJwt<JWT>.toJwsJsonObject(
+        option: JwsSerializationOption,
+        kbJwt: Jwt?,
+    ): JsonObject {
+        if (kbJwt != null) {
+            require(this is SdJwt.Presentation<JWT>) { "Key binding JWT requires a presentation" }
+        }
+
+        val (protected, payload, signature) = run {
+            val serializedSdJWt = serializeJwt(this@toJwsJsonObject.jwt)
+            val parts = serializedSdJWt.split(".")
+            check(parts.size == 3)
+            parts
+        }
+        return with(JwsJsonSupport) {
+            val ds = this@toJwsJsonObject.disclosures.map<Disclosure, String> { it.value }.toSet<String>()
+            option.buildJwsJson(protected, payload, signature, ds, kbJwt)
+        }
+    }
+}
+
+private suspend fun kbJwt(
+    presentationSdJwt: String,
+    hashAlgorithm: HashAlgorithm,
+    buildKbJwt: BuildKbJwt,
+): Result<Jwt> = runCatching {
+    val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+    buildKbJwt(sdJwtDigest).getOrThrow()
 }
 
 enum class JwsSerializationOption {
     General, Flattened
-}
-
-/**
- * Creates a representation of an [SdJwt] as a JWS JSON according to RFC7515.
- * In addition to the General & Flattened representations defined in the RFC7515,
- *  the result JSON contains an unprotected header which includes
- *  an array with the disclosures of the [SdJwt] and optionally the key binding JWT
- *
- * @param option to produce a [JwsSerializationOption.General] or [JwsSerializationOption.Flattened]
- *   representation as defined in RFC7515
- * @param kbJwt the key binding JWT for the SD-JWT.
- * @param getParts a function to extract out of the [jwt][SdJwt.jwt]  of the SD-JWT
- * the three JWS parts: protected header, payload and signature.
- * Each part is base64 encoded
- * @receiver the [SdJwt] to serialize
- *
- * @return a JSON object either general or flattened according to RFC7515 having an additional
- * disclosures array and possibly the KB-JWT in an unprotected header as per SD-JWT extension
- */
-fun <JWT> SdJwt<JWT>.asJwsJsonObject(
-    option: JwsSerializationOption = JwsSerializationOption.Flattened,
-    kbJwt: Jwt?,
-    getParts: (JWT) -> Triple<String, String, String>,
-): JsonObject {
-    val (protected, payload, signature) = getParts(jwt)
-
-    return with(JwsJsonSupport) {
-        option.buildJwsJson(protected, payload, signature, disclosures.map { it.value }.toSet(), kbJwt)
-    }
 }
 
 internal object StandardSerialization {
@@ -111,7 +223,10 @@ internal object StandardSerialization {
     }
 
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
-        joinToString(prefix = "${SdJwtSpec.DISCLOSURE_SEPARATOR}", separator = "") { "${get(it)}${SdJwtSpec.DISCLOSURE_SEPARATOR}" }
+        joinToString(
+            prefix = "${SdJwtSpec.DISCLOSURE_SEPARATOR}",
+            separator = "",
+        ) { "${get(it)}${SdJwtSpec.DISCLOSURE_SEPARATOR}" }
 }
 
 internal object JwsJsonSupport {

@@ -18,9 +18,10 @@ package eu.europa.ec.eudi.sdjwt.examples
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 
-val issuedSdJwt: String = run {
+val issuedSdJwt: String = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
         plain {
@@ -38,6 +39,8 @@ val issuedSdJwt: String = run {
             }
         }
     }
-    val issuer = SdJwtIssuer.nimbus(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-    issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    with(NimbusSdJwtOps) {
+        val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        issuer.issue(sdJwtSpec).getOrThrow().serialize()
+    }
 }

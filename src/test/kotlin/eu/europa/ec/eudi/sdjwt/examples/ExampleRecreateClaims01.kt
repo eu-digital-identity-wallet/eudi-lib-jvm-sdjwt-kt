@@ -15,18 +15,19 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.jsonObject
-import kotlinx.serialization.json.*
-import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.put
 
-val claims: JsonObject = run {
+val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
-    val sdJwt: SdJwt.Issuance<NimbusSignedJWT> =
-        signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+    val sdJwt: SdJwt.Issuance<SignedJWT> = run {
+        val spec = sdJwt {
             plain {
                 sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 iss("https://example.com/issuer")
@@ -42,5 +43,8 @@ val claims: JsonObject = run {
                 }
             }
         }
+        val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        issuer.issue(spec).getOrThrow()
+    }
     sdJwt.recreateClaims { jwt -> jwt.jwtClaimsSet.jsonObject() }
 }

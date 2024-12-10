@@ -56,19 +56,24 @@ private object SampleIssuer {
     )
 
     private fun sdJwtVcIssuer(kid: String?) =
-        SdJwtIssuer.nimbus(signer = ECDSASigner(key), signAlgorithm = alg) {
+        NimbusSdJwtOps.issuer(
+            signer = ECDSASigner(key),
+            signAlgorithm = alg,
+        ) {
             type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
             kid?.let { keyID(it) }
         }
 
-    fun issueUsingKid(kid: String?): String {
+    suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
             iss(issuerMeta.issuer.toASCIIString())
             iat(Instant.now().toEpochMilli())
             sd("foo", "bar")
         }
-        return issuer.issue(sdJwtSpec).getOrThrow().serialize()
+        return with(NimbusSdJwtOps) {
+            issuer.issue(sdJwtSpec).getOrThrow().serialize()
+        }
     }
 }
 
@@ -170,7 +175,10 @@ class SdJwtVcVerifierTest {
                 val spec = sdJwt {
                     iss(didJwk)
                 }
-                val signer = SdJwtIssuer.nimbus(signer = Ed25519Signer(key), signAlgorithm = JWSAlgorithm.EdDSA) {
+                val signer = NimbusSdJwtOps.issuer(
+                    signer = Ed25519Signer(key),
+                    signAlgorithm = JWSAlgorithm.EdDSA,
+                ) {
                     type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 }
                 signer.issue(spec).getOrThrow()
@@ -183,6 +191,8 @@ class SdJwtVcVerifierTest {
                 listOf(key.toPublicJWK())
             }
 
-            verifier.verifyIssuance(sdJwt.serialize()).getOrThrow()
+            val serialized =
+                with(NimbusSdJwtOps) { sdJwt.serialize() }
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 }

@@ -18,8 +18,6 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.MustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
-import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyIssuance
-import eu.europa.ec.eudi.sdjwt.SdJwtVerifier.verifyPresentation
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
 
@@ -262,7 +260,7 @@ typealias JwtAndClaims = Pair<Jwt, JsonObject>
  * A single point for verifying SD-JWTs in both [Combined Issuance Format][verifyIssuance]
  * and [Combined Presentation Format][verifyPresentation]
  */
-object SdJwtVerifier {
+interface SdJwtVerifier {
 
     /**
      * Verifies an SD-JWT (in simple format)
@@ -405,6 +403,8 @@ object SdJwtVerifier {
         val unverifiedSdJwtAsString = JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt)
         verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
     }
+
+    companion object : SdJwtVerifier
 }
 
 internal fun verifyIssuance(
