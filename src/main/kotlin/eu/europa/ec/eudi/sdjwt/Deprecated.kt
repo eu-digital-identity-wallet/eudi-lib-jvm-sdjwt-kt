@@ -275,7 +275,12 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
         with(NimbusSdJwtOps) {
             asJwsJsonObjectWithKeyBinding(
                 option = JwsSerializationOption.Flattened,
-                kbJwtIssuer(keyBindingSigner.signAlgorithm, keyBindingSigner, keyBindingSigner.publicKey, claimSetBuilderAction),
+                kbJwtIssuer(
+                    keyBindingSigner.signAlgorithm,
+                    keyBindingSigner,
+                    keyBindingSigner.publicKey,
+                    claimSetBuilderAction,
+                ),
             )
         }.getOrThrow()
     }
@@ -283,6 +288,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
 @Deprecated(
     message = "Deprecated",
     replaceWith = ReplaceWith("with(NimbusSdJwtOps) { asJwsJsonObject(option) }"),
+    level = DeprecationLevel.WARNING,
 )
 fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
@@ -292,6 +298,7 @@ fun SdJwt<NimbusSignedJWT>.serializeAsJwsJson(
 @Deprecated(
     message = "Deprecated and will be removed",
     replaceWith = ReplaceWith(" with(NimbusSdJwtOps) { serialize() }"),
+    level = DeprecationLevel.WARNING,
 )
 fun SdJwt<NimbusSignedJWT>.serialize(): String =
     with(NimbusSdJwtOps) { serialize() }
@@ -301,6 +308,7 @@ fun SdJwt<NimbusSignedJWT>.serialize(): String =
  */
 @Deprecated(
     message = "It will be removed from a future release",
+    level = DeprecationLevel.WARNING,
 )
 interface KeyBindingSigner : NimbusJWSSigner {
     val signAlgorithm: NimbusJWSAlgorithm
@@ -320,7 +328,12 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
     runBlocking {
         with(NimbusSdJwtOps) {
             serializeWithKeyBinding(
-                kbJwtIssuer(keyBindingSigner.signAlgorithm, keyBindingSigner, keyBindingSigner.publicKey, claimSetBuilderAction),
+                kbJwtIssuer(
+                    keyBindingSigner.signAlgorithm,
+                    keyBindingSigner,
+                    keyBindingSigner.publicKey,
+                    claimSetBuilderAction,
+                ),
             )
         }.getOrThrow()
     }
@@ -335,7 +348,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
  */
 @Deprecated(
     message = "Deprecated and will be removed in a future release",
-    replaceWith = ReplaceWith("with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }"),
+    replaceWith = ReplaceWith("with(SdJwtSerializationOps<JWT>(serializeJwt, { error(\"Not Used\") })) { serialize() }"),
     level = DeprecationLevel.WARNING,
 )
 fun <JWT> SdJwt<JWT>.serialize(
@@ -344,21 +357,18 @@ fun <JWT> SdJwt<JWT>.serialize(
 
 @Deprecated(
     message = "Use suspendable methods of SdJwtSerializationOps ",
-    level = DeprecationLevel.ERROR,
+    level = DeprecationLevel.WARNING,
 )
 fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
     kbJwt: Jwt?,
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject =
-    runBlocking {
-        with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") }, { _ -> error("Not used") })) {
-            if (kbJwt == null) asJwsJsonObject(option)
-            else {
-                require(this@asJwsJsonObject is SdJwt.Presentation<JWT>)
-                val buildKbJwt = BuildKbJwt { _ -> Result.success(kbJwt) }
-                this@asJwsJsonObject.asJwsJsonObjectWithKeyBinding(option, buildKbJwt).getOrThrow()
-            }
+    with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") }, { _ -> error("Not used") })) {
+        if (kbJwt == null) asJwsJsonObject(option)
+        else {
+            require(this@asJwsJsonObject is SdJwt.Presentation<JWT>)
+            this@asJwsJsonObject.asJwsJsonObjectWithKeyBinding(option, kbJwt)
         }
     }
 
