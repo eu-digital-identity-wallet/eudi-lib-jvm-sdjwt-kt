@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import eu.europa.ec.eudi.sdjwt.JsonPointer
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -177,30 +177,6 @@ inline fun <T> ClaimPathElement.fold(
         is ClaimPathElement.ArrayElement -> ifArrayElement(index)
         is ClaimPathElement.Claim -> ifClaim(name)
     }
-}
-
-/**
- * Converts this ClaimPath to a JsonPointer, given the path doesn't contain any wildcards.
- *
- * @receiver the path to convert. Must not include ["null"][ClaimPathElement.AllArrayElements]
- * @return the resulting JSON pointer. We fail if the path contains ["null"][ClaimPathElement.AllArrayElements]
- */
-internal fun ClaimPath.toJsonPointer(): Result<JsonPointer> = runCatching {
-    tailrec fun build(parent: JsonPointer, remainder: ClaimPath?): JsonPointer =
-        when (remainder) {
-            is ClaimPath -> {
-                val (head, tail) = remainder
-                val newParent = head.fold(
-                    ifClaim = { name -> parent.child(name) },
-                    ifArrayElement = { index -> parent.child(index) },
-                    ifAllArrayElements = { throw IllegalArgumentException("${this@toJsonPointer} cannot be converted to a JsonPointer") },
-                )
-                build(newParent, tail)
-            }
-
-            else -> parent
-        }
-    build(JsonPointer.Root, this)
 }
 
 /**

@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
-import eu.europa.ec.eudi.sdjwt.vc.toJsonPointer
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -78,7 +77,7 @@ fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
 fun DisclosuresPerClaimPath.prettyPrint() {
     println("SD-JWT disclosures per claim")
     forEach { (claim, disclosures) ->
-        println("$claim <=> ${claim.toJsonPointer().getOrThrow()} ->")
+        println("$claim ->")
         disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {
