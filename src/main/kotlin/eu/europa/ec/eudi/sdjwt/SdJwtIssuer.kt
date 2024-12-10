@@ -20,7 +20,7 @@ package eu.europa.ec.eudi.sdjwt
  *
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  **/
-typealias SignSdJwt<SIGNED_JWT> = (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
+typealias SignSdJwt<SIGNED_JWT> = suspend (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
 
 /**
  * Representation of a function capable of producing an [issuance SD-JWT][SdJwt.Issuance]
@@ -35,7 +35,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>>
+    suspend fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>>
 
     companion object {
         /**

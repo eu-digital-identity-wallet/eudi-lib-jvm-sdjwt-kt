@@ -73,9 +73,8 @@ suspend fun main() {
     val issuerKeyPair = genRSAKeyPair()
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: String =
-
-        signedSdJwt(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256) {
+    val sdJwt: String = with(NimbusSdJwtOps) {
+        val spec = sdJwt {
             plain {
                 put("iss", "https://example.com")
                 put("jti", "http://example.com/credentials/3732")
@@ -101,7 +100,10 @@ suspend fun main() {
                     put("is_over_65", true)
                 }
             }
-        }.serialize()
+        }
+        val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        issuer.issue(spec).map { it.serialize() }.getOrThrow()
+    }
 
     val verification = verifyIssuance(sdJwt, issuerPubKey)
 

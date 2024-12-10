@@ -16,40 +16,34 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jca.JCAContext
-import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.util.Base64URL
-import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class StandardSerializationTest {
+class StandardSerializationTest : NimbusSdJwtOps {
 
     private val issuer by lazy {
         val issuerKey = ECKeyGenerator(Curve.P_256).generate()
-        SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
+        NimbusSdJwtOps.issuer(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
     }
 
-    private val keyBindingSigner: KeyBindingSigner by lazy {
-        object : KeyBindingSigner {
-            val holderKey = ECKeyGenerator(Curve.P_256).generate()
-            private val signer = ECDSASigner(holderKey)
-            override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
-            override val publicKey: AsymmetricJWK = holderKey.toPublicJWK()
-            override fun getJCAContext(): JCAContext = signer.jcaContext
-            override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = signer.sign(p0, p1)
-        }
+    private val keyBindingSigner: BuildKbJwt by lazy {
+        val holderKey = ECKeyGenerator(Curve.P_256).generate()
+        NimbusSdJwtOps.kbJwtIssuer(
+            signAlgorithm = JWSAlgorithm.ES256,
+            signer = ECDSASigner(holderKey),
+            publicKey = holderKey.toPublicJWK(),
+        )
     }
 
     @Test
-    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() {
+    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
             plain {
                 put("foo", "bar")
@@ -66,7 +60,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() {
+    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
             sd {
                 put("foo", "bar")
@@ -87,7 +81,7 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() {
+    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
             plain {
                 put("foo", "bar")
@@ -97,25 +91,15 @@ class StandardSerializationTest {
         val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
-        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(
-            { it.serialize() },
-            HashAlgorithm.SHA_256,
-            keyBindingSigner,
-        ) {}
-        val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner) {}
-        assertTrue { actual.startsWith(pSdJwt) }
+        val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
         assertTrue { actual.count { it == '~' } == 1 }
-        val (pSdJwt1, disclosures, kbJwt1) = StandardSerialization.parse(actual)
+        val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
         assertTrue { disclosures.isEmpty() }
-
-        // Cannot use string equality due to differences in signatures
-        assertEquals(SignedJWT.parse(pSdJwt).jwtClaimsSet, SignedJWT.parse(pSdJwt1).jwtClaimsSet)
         assertNotNull(kbJwt1)
-        assertEquals(SignedJWT.parse(kbJwt).jwtClaimsSet, SignedJWT.parse(kbJwt1).jwtClaimsSet)
     }
 
     @Test
-    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() {
+    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
             sd {
                 put("foo", "bar")
@@ -125,20 +109,10 @@ class StandardSerializationTest {
         val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
-        val (pSdJwt, kbJwt) = sdJwt.serializedAndKeyBinding(
-            { it.serialize() },
-            HashAlgorithm.SHA_256,
-            keyBindingSigner,
-        ) {}
-        val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner) {}
-        assertTrue { actual.startsWith(pSdJwt) }
+        val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
         assertTrue { actual.count { it == '~' } == 2 }
-        val (pSdJwt1, disclosures, kbJwt1) = StandardSerialization.parse(actual)
+        val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
         assertEquals(1, disclosures.size)
-
-        // Cannot use string equality due to differences in signatures
-        assertEquals(SignedJWT.parse(pSdJwt).jwtClaimsSet, SignedJWT.parse(pSdJwt1).jwtClaimsSet)
         assertNotNull(kbJwt1)
-        assertEquals(SignedJWT.parse(kbJwt).jwtClaimsSet, SignedJWT.parse(kbJwt1).jwtClaimsSet)
     }
 }

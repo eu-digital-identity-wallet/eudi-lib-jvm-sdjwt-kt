@@ -26,55 +26,63 @@ import kotlinx.serialization.json.JsonObject
  */
 typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
 
-/**
- * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
- *
- * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
- * @param JWT the type representing the JWT part of the SD-JWT
- *
- * @see SdJwt.recreateClaims
- */
-fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> JsonObject): Pair<JsonObject, DisclosuresPerClaimPath> {
-    val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
-    val visitor = ClaimVisitor { path, disclosure ->
-        if (disclosure != null) {
-            require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
-        }
-        val claimDisclosures = run {
-            val containerPath = path.parent()
-            val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
-            disclosure
-                ?.let { containerDisclosures + it }
-                ?: containerDisclosures
-        }
-        disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
-    }
-    val claims = recreateClaims(visitor, claimsOf)
-    return claims to disclosuresPerClaim
-}
+interface SdJwtPresentationOps<JWT> {
+    /**
+     * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
+     *
+     * @param JWT the type representing the JWT part of the SD-JWT
+     *
+     * @see SdJwt.recreateClaims
+     */
+    fun SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath>
 
-/**
- * Tries to create a presentation that discloses the [requested claims][query].
- * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
- * are relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @param JWT the type representing the JWT part of the SD-JWT
- * @return the presentation if possible to satisfy the [query]
- */
-fun <JWT> SdJwt.Issuance<JWT>.present(
-    query: Set<ClaimPath>,
-    claimsOf: (JWT) -> JsonObject,
-): SdJwt.Presentation<JWT>? {
-    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim(claimsOf)
-    infix fun ClaimPath.matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
-    val keys = disclosuresPerClaim.keys.filter { claimFound ->
-        query.any { requested -> claimFound matches requested }
-    }
-    return if (keys.isEmpty()) null
-    else {
-        val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
-        SdJwt.Presentation(jwt, ds.toList())
+    /**
+     * Tries to create a presentation that discloses the [requested claims][query].
+     * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
+     * are relative to the unprotected JSON (not the JWT payload)
+     * @receiver The issuance SD-JWT upon which the presentation will be based
+     * @param JWT the type representing the JWT part of the SD-JWT
+     * @return the presentation if possible to satisfy the [query]
+     */
+    fun SdJwt.Issuance<JWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<JWT>?
+
+    companion object {
+        operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtPresentationOps<JWT> =
+            object : SdJwtPresentationOps<JWT> {
+                override fun SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> {
+                    val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
+                    val visitor = ClaimVisitor { path, disclosure ->
+                        if (disclosure != null) {
+                            require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
+                        }
+                        val claimDisclosures = run {
+                            val containerPath = path.parent()
+                            val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
+                            disclosure
+                                ?.let { containerDisclosures + it }
+                                ?: containerDisclosures
+                        }
+                        disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
+                    }
+                    val claims = recreateClaims(visitor, claimsOf)
+                    return claims to disclosuresPerClaim
+                }
+
+                override fun SdJwt.Issuance<JWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<JWT>? {
+                    val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
+                    infix fun ClaimPath.matches(other: ClaimPath): Boolean =
+                        (value.size == other.value.size) && (this in other)
+
+                    val keys = disclosuresPerClaim.keys.filter { claimFound ->
+                        query.any { requested -> claimFound matches requested }
+                    }
+                    return if (keys.isEmpty()) null
+                    else {
+                        val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
+                        SdJwt.Presentation(jwt, ds.toList())
+                    }
+                }
+            }
     }
 }
 

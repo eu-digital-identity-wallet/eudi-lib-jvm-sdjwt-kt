@@ -97,23 +97,25 @@ class TrObj private constructor(
     }
 }
 
-class JwsJsonSerialization {
+class JwsJsonSerializationTest {
 
     @Test
     fun ex1() {
         val trObj = TrObj.parse(ex1)
         val sdJwt: SdJwt.Issuance<SignedJWT> = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
         val actual =
-            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened)
-                .also { println(json.encodeToString(it)) }
+            with(NimbusSdJwtOps) {
+                sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened)
+                    .also { println(json.encodeToString(it)) }
+            }
         assertEquals(json.parseToJsonElement(ex1), actual)
     }
 
     @Test
-    fun `get a JwsJSON for an Issued SDJWT`() {
+    fun `get a JwsJSON for an Issued SDJWT`() = runTest {
         val issuer = run {
             val issuerKey = ECKeyGenerator(Curve.P_256).generate()
-            SdJwtIssuer.nimbus(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
+            NimbusSdJwtOps.issuer(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
         }
 
         val sdJwtSpec = sdJwt {
@@ -124,8 +126,8 @@ class JwsJsonSerialization {
 
         val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }
 
-        assertDoesNotThrow {
-            sdJwt.serializeAsJwsJson(option = JwsSerializationOption.Flattened)
+        with(NimbusSdJwtOps) {
+            sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened)
                 .also { println(json.encodeToString(it)) }
         }
     }

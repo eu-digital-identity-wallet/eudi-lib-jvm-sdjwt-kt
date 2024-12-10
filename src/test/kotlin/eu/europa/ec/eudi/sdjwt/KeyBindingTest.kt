@@ -19,13 +19,11 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefaultHttpClientFactory
@@ -75,13 +73,17 @@ class KeyBindingTest {
         )
 
         val holderPubKey = holder.pubKey()
-        val issuedSdJwt = issuer.issue(holderPubKey, emailCredential).also {
-            println("Issued: ${it.serialize()}")
+        val issuedSdJwtStr = issuer.issue(holderPubKey, emailCredential).also {
+            println("Issued: $it")
         }
+
+        val issuedSdJwt = SdJwt.unverifiedIssuanceFrom(issuedSdJwtStr).getOrThrow()
         // Assert Disclosed claims
         val selectivelyDisclosedClaims =
-            issuedSdJwt.recreateClaims { it.jwtClaimsSet.jsonObject() }["credentialSubject"]?.jsonObject
-                ?: JsonObject(emptyMap())
+            with(DefaultSdJwtOps) {
+                val (claims, _) = issuedSdJwt.recreateClaimsAndDisclosuresPerClaim()
+                claims["credentialSubject"]?.jsonObject ?: JsonObject(emptyMap())
+            }
 
         assertEquals(5, selectivelyDisclosedClaims.size)
         assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
@@ -89,7 +91,7 @@ class KeyBindingTest {
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
         // Assert issuer verifier is able to verify JWT
-        val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwt.serialize()).getOrNull())
+        val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwtStr).getOrNull())
 
         // Extract and verify holder public key
         assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
@@ -109,10 +111,7 @@ class KeyBindingTest {
 
             // Issuer should know holder's public key
 
-            val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
-                val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
-                hashAlg to serialize()
-            }
+            val issuedSdJwt = issuer.issue(holder.pubKey(), emailCredential)
 
             // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
             // Holder expects to find algorithm inside SD-JWT, header
@@ -121,7 +120,7 @@ class KeyBindingTest {
             // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
             // Also Holder should know what verifier wants to be presented
             val verifierQuery = verifier.query()
-            val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
+            val presentedSdJwt: String = holder.present(verifierQuery)
 
             // Verifier should know/trust the issuer.
             // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
@@ -198,7 +197,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 /**
  * Sample issuer
  */
-class IssuerActor(val issuerKey: ECKey) {
+class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
 
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
@@ -213,12 +212,10 @@ class IssuerActor(val issuerKey: ECKey) {
      * Also, demonstrates the customization of the [JWSHeader] by adding
      * [jwtType] (as "typ" claim) and "kid" claim
      */
-    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> = SdJwtIssuer.nimbus(
-        signer = ECDSASigner(issuerKey),
-        signAlgorithm = signAlgorithm,
-    ) {
-        type(jwtType)
-    }
+    private val sdJwtIssuer: SdJwtIssuer<SignedJWT> =
+        NimbusSdJwtOps.issuer(signer = ECDSASigner(issuerKey), signAlgorithm = signAlgorithm) {
+            type(jwtType)
+        }
 
     /**
      * This is the main function of the issuer, which issues the SD-JWT
@@ -226,7 +223,7 @@ class IssuerActor(val issuerKey: ECKey) {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
+    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Instant.now()
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
@@ -251,7 +248,7 @@ class IssuerActor(val issuerKey: ECKey) {
         return sdJwtIssuer.issue(sdElements = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
-                issued
+                issued.serialize()
             },
             onFailure = { exception ->
                 issuerDebug("Failed to issue SD-JWT")
@@ -270,21 +267,12 @@ class IssuerActor(val issuerKey: ECKey) {
  * and responding to [VerifierActor] query
  */
 class HolderActor(
-    holderKey: ECKey,
+    private val holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
-    private val keyBindingSigner: KeyBindingSigner by lazy {
-        val actualSigner = ECDSASigner(holderKey)
-        object : KeyBindingSigner {
-            override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
-            override val publicKey: AsymmetricJWK = holderKey.toPublicJWK()
-            override fun getJCAContext(): JCAContext = actualSigner.jcaContext
-            override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL = actualSigner.sign(p0, p1)
-        }
-    }
 
-    fun pubKey(): AsymmetricJWK = keyBindingSigner.publicKey
+    fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
     /**
      * Keeps the issued credential
@@ -305,20 +293,26 @@ class HolderActor(
         )
     }
 
-    fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
+    suspend fun present(verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
 
-        val presentationSdJwt = run {
-            val issuanceSdJwt = checkNotNull(credentialSdJwt)
-            val whatToDisclose = verifierQuery.whatToDisclose
-            issuanceSdJwt.present(whatToDisclose) { (_, claims) -> claims }
-        }
+        val presentationSdJwt =
+            with(DefaultSdJwtOps) {
+                val issuanceSdJwt = checkNotNull(credentialSdJwt)
+                val whatToDisclose = verifierQuery.whatToDisclose
+                issuanceSdJwt.present(whatToDisclose)?.let { tmp ->
+                    SdJwt.Presentation(SignedJWT.parse(tmp.jwt.first), tmp.disclosures)
+                }
+            }
         checkNotNull(presentationSdJwt)
 
-        return presentationSdJwt.serializeWithKeyBinding({ (jwt, _) -> jwt }, hashAlgorithm, keyBindingSigner) {
-            audience(verifierQuery.challenge.aud)
-            claim("nonce", verifierQuery.challenge.nonce)
-            issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+        return with(NimbusSdJwtOps) {
+            val buildKbJwt = kbJwtIssuer(JWSAlgorithm.ES256, ECDSASigner(holderKey), holderKey.toPublicJWK()) {
+                audience(verifierQuery.challenge.aud)
+                claim("nonce", verifierQuery.challenge.nonce)
+                issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+            }
+            presentationSdJwt.serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
     }
 
@@ -332,7 +326,7 @@ class VerifierActor(
     private val whatToDisclose: Set<ClaimPath>,
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument,
-) {
+) : DefaultSdJwtOps {
     private val verifier = SdJwtVcVerifier(httpClientFactory = DefaultHttpClientFactory, lookup = lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
@@ -349,7 +343,7 @@ class VerifierActor(
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim { (_, claims) -> claims }.second.keys
+        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim().second.keys
         whatToDisclose.forEach { requested ->
             assertTrue("Requested $requested was not disclosed") {
                 disclosedPaths.any { disclosed -> disclosed in requested }
