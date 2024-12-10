@@ -49,7 +49,7 @@ import kotlin.test.assertTrue
  * It demonstrates the issuance, holder verification, holder presentation and presentation verification
  * use cases, including key binding.
  */
-class KeyBindingTest : NimbusSdJwtOps {
+class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
@@ -73,13 +73,17 @@ class KeyBindingTest : NimbusSdJwtOps {
         )
 
         val holderPubKey = holder.pubKey()
-        val issuedSdJwt = issuer.issue(holderPubKey, emailCredential).also {
-            println("Issued: ${it.serialize()}")
+        val issuedSdJwtStr = issuer.issue(holderPubKey, emailCredential).also {
+            println("Issued: $it")
         }
+
+        val issuedSdJwt = SdJwt.unverifiedIssuanceFrom(issuedSdJwtStr).getOrThrow()
         // Assert Disclosed claims
         val selectivelyDisclosedClaims =
-            issuedSdJwt.recreateClaims { it.jwtClaimsSet.jsonObject() }["credentialSubject"]?.jsonObject
-                ?: JsonObject(emptyMap())
+            with(DefaultSdJwtOps) {
+                val (claims, _) = issuedSdJwt.recreateClaimsAndDisclosuresPerClaim()
+                claims["credentialSubject"]?.jsonObject ?: JsonObject(emptyMap())
+            }
 
         assertEquals(5, selectivelyDisclosedClaims.size)
         assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
@@ -87,7 +91,7 @@ class KeyBindingTest : NimbusSdJwtOps {
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
         // Assert issuer verifier is able to verify JWT
-        val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwt.serialize()).getOrNull())
+        val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwtStr).getOrNull())
 
         // Extract and verify holder public key
         assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
@@ -107,10 +111,7 @@ class KeyBindingTest : NimbusSdJwtOps {
 
             // Issuer should know holder's public key
 
-            val (hashAlg, issuedSdJwt) = issuer.issue(holder.pubKey(), emailCredential).run {
-                val hashAlg = (jwt.jwtClaimsSet.getClaim("_sd_alg") as String).let { HashAlgorithm.fromString(it) }!!
-                hashAlg to serialize()
-            }
+            val issuedSdJwt = issuer.issue(holder.pubKey(), emailCredential)
 
             // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
             // Holder expects to find algorithm inside SD-JWT, header
@@ -119,7 +120,7 @@ class KeyBindingTest : NimbusSdJwtOps {
             // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
             // Also Holder should know what verifier wants to be presented
             val verifierQuery = verifier.query()
-            val presentedSdJwt: String = holder.present(hashAlg, verifierQuery)
+            val presentedSdJwt: String = holder.present(verifierQuery)
 
             // Verifier should know/trust the issuer.
             // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
@@ -196,7 +197,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 /**
  * Sample issuer
  */
-class IssuerActor(val issuerKey: ECKey) {
+class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
 
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
@@ -222,7 +223,7 @@ class IssuerActor(val issuerKey: ECKey) {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): SdJwt.Issuance<SignedJWT> {
+    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Instant.now()
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
@@ -247,7 +248,7 @@ class IssuerActor(val issuerKey: ECKey) {
         return sdJwtIssuer.issue(sdElements = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
-                issued
+                issued.serialize()
             },
             onFailure = { exception ->
                 issuerDebug("Failed to issue SD-JWT")
@@ -292,7 +293,7 @@ class HolderActor(
         )
     }
 
-    suspend fun present(hashAlgorithm: HashAlgorithm, verifierQuery: VerifierQuery): String {
+    suspend fun present(verifierQuery: VerifierQuery): String {
         holderDebug("Presenting credentials ...")
 
         val presentationSdJwt =
@@ -311,7 +312,7 @@ class HolderActor(
                 claim("nonce", verifierQuery.challenge.nonce)
                 issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
             }
-            presentationSdJwt.serializeWithKeyBinding(hashAlgorithm, buildKbJwt).getOrThrow()
+            presentationSdJwt.serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
     }
 

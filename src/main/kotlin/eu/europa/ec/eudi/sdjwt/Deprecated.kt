@@ -228,14 +228,14 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
     keyBindingSigner: KeyBindingSigner,
     claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
 ): String = runBlocking {
-    with(SdJwtSerializationOps(jwtSerializer)) {
+    with(SdJwtSerializationOps(jwtSerializer, { _ -> hashAlgorithm })) {
         val kbJwtBuilder = NimbusSdJwtOps.kbJwtIssuer(
             keyBindingSigner.signAlgorithm,
             keyBindingSigner,
             keyBindingSigner.publicKey,
             claimSetBuilderAction,
         )
-        serializeWithKeyBinding(hashAlgorithm, kbJwtBuilder)
+        serializeWithKeyBinding(kbJwtBuilder)
     }.getOrThrow()
 }
 
@@ -251,14 +251,14 @@ fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
     option: JwsSerializationOption = JwsSerializationOption.Flattened,
 ): JsonObject =
     runBlocking {
-        with(SdJwtSerializationOps<JWT>(jwtSerializer)) {
+        with(SdJwtSerializationOps<JWT>(jwtSerializer, { _ -> hashAlgorithm })) {
             val kbJwtBuilder = NimbusSdJwtOps.kbJwtIssuer(
                 keyBindingSigner.signAlgorithm,
                 keyBindingSigner,
                 keyBindingSigner.publicKey,
                 claimSetBuilderAction,
             )
-            asJwsJsonObjectWithKeyBinding(option, hashAlgorithm, kbJwtBuilder)
+            asJwsJsonObjectWithKeyBinding(option, kbJwtBuilder)
         }.getOrThrow()
     }
 
@@ -275,7 +275,6 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
         with(NimbusSdJwtOps) {
             asJwsJsonObjectWithKeyBinding(
                 option = JwsSerializationOption.Flattened,
-                hashAlgorithm,
                 kbJwtIssuer(keyBindingSigner.signAlgorithm, keyBindingSigner, keyBindingSigner.publicKey, claimSetBuilderAction),
             )
         }.getOrThrow()
@@ -321,7 +320,6 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
     runBlocking {
         with(NimbusSdJwtOps) {
             serializeWithKeyBinding(
-                hashAlgorithm,
                 kbJwtIssuer(keyBindingSigner.signAlgorithm, keyBindingSigner, keyBindingSigner.publicKey, claimSetBuilderAction),
             )
         }.getOrThrow()
@@ -342,7 +340,7 @@ fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
 )
 fun <JWT> SdJwt<JWT>.serialize(
     serializeJwt: (JWT) -> String,
-): String = with(SdJwtSerializationOps<JWT>(serializeJwt)) { serialize() }
+): String = with(SdJwtSerializationOps<JWT>(serializeJwt, { error("Not Used") })) { serialize() }
 
 @Deprecated(
     message = "Use suspendable methods of SdJwtSerializationOps ",
@@ -354,13 +352,12 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     getParts: (JWT) -> Triple<String, String, String>,
 ): JsonObject =
     runBlocking {
-        with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") })) {
+        with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") }, { _ -> error("Not used") })) {
             if (kbJwt == null) asJwsJsonObject(option)
             else {
                 require(this@asJwsJsonObject is SdJwt.Presentation<JWT>)
                 val buildKbJwt = BuildKbJwt { _ -> Result.success(kbJwt) }
-                val hashAlgorithm = HashAlgorithm.SHA_256 // it will be ignored
-                this@asJwsJsonObject.asJwsJsonObjectWithKeyBinding(option, hashAlgorithm, buildKbJwt).getOrThrow()
+                this@asJwsJsonObject.asJwsJsonObjectWithKeyBinding(option, buildKbJwt).getOrThrow()
             }
         }
     }

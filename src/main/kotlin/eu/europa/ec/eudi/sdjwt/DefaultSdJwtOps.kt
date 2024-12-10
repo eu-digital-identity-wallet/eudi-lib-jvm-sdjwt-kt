@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 interface DefaultSdJwtOps :
     SdJwtVerifier,
@@ -25,6 +27,10 @@ interface DefaultSdJwtOps :
 
     override fun SdJwt<JwtAndClaims>.serialize(): String =
         with(serializationOps) { serialize() }
+
+    override suspend fun SdJwt.Presentation<JwtAndClaims>.serializeWithKeyBinding(
+        buildKbJwt: BuildKbJwt,
+    ): Result<String> = with(serializationOps) { serializeWithKeyBinding(buildKbJwt) }
 
     override fun SdJwt<JwtAndClaims>.asJwsJsonObject(
         option: JwsSerializationOption,
@@ -42,8 +48,20 @@ interface DefaultSdJwtOps :
         query: Set<ClaimPath>,
     ): SdJwt.Presentation<JwtAndClaims>? = with(presentationOps) { present(query) }
 
+    override suspend fun SdJwt.Presentation<JwtAndClaims>.asJwsJsonObjectWithKeyBinding(
+        option: JwsSerializationOption,
+        buildKbJwt: BuildKbJwt,
+    ): Result<JsonObject> = with(serializationOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
+
     companion object : DefaultSdJwtOps
 }
 
-private val serializationOps = SdJwtSerializationOps<JwtAndClaims>({ (jwt, _) -> jwt })
+private val serializationOps = SdJwtSerializationOps<JwtAndClaims>(
+    serializeJwt = { (jwt, _) -> jwt },
+    hashAlgorithm = { (_, claims) ->
+        claims[SdJwtSpec.CLAIM_SD_ALG]?.jsonPrimitive?.contentOrNull
+            ?.let { checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" } }
+    },
+)
+
 private val presentationOps = SdJwtPresentationOps<JwtAndClaims>({ (_, claims) -> claims })

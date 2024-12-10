@@ -261,6 +261,10 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresenta
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
+    override suspend fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
+        buildKbJwt: BuildKbJwt,
+    ): Result<String> = with(defaultOps) { serializeWithKeyBinding(buildKbJwt) }
+
     override fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
         with(defaultOps) { asJwsJsonObject(option) }
 
@@ -275,15 +279,27 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresenta
     override fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
         with(presentationOps) { present(query) }
 
+    override suspend fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
+        option: JwsSerializationOption,
+        buildKbJwt: BuildKbJwt,
+    ): Result<JsonObject> = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
+
     companion object : NimbusSdJwtOps {
 
         private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
-            SdJwtSerializationOps({ jwt ->
-                check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
-                    "It seems that the jwt is not signed"
-                }
-                jwt.serialize()
-            })
+            SdJwtSerializationOps(
+                serializeJwt = { jwt ->
+                    check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
+                        "It seems that the jwt is not signed"
+                    }
+                    jwt.serialize()
+                },
+                hashAlgorithm = { jwt ->
+                    jwt.jwtClaimsSet.getStringClaim(SdJwtSpec.CLAIM_SD_ALG)?.let {
+                        checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" }
+                    }
+                },
+            )
 
         private val presentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
             SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })

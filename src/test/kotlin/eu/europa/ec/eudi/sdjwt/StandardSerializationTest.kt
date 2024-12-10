@@ -91,7 +91,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
         val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
-        val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner).getOrThrow()
+        val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
         assertTrue { actual.count { it == '~' } == 1 }
         val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
         assertTrue { disclosures.isEmpty() }
@@ -109,7 +109,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
         val sdJwt = issuedSdJwt.present()
         assertNotNull(sdJwt)
 
-        val actual = sdJwt.serializeWithKeyBinding(HashAlgorithm.SHA_256, keyBindingSigner).getOrThrow()
+        val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
         assertTrue { actual.count { it == '~' } == 2 }
         val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
         assertEquals(1, disclosures.size)
