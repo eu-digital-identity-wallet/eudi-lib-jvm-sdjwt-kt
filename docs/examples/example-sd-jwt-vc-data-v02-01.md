@@ -36,7 +36,7 @@ val sdJwtVcDataV2 =
             }
         }
 
-        structured("credentialSubject") {
+        sd("credentialSubject") {
             plain {
                 put("type", "VaccinationEvent")
             }
@@ -49,7 +49,7 @@ val sdJwtVcDataV2 =
                 put("batchNumber", "1626382736")
                 put("healthProfessional", "883110000015376")
             }
-            structured("vaccine") {
+            sd("vaccine") {
                 plain {
                     put("type", "Vaccine")
                 }
@@ -59,7 +59,7 @@ val sdJwtVcDataV2 =
                     put("marketingAuthorizationHolder", "Moderna Biotech")
                 }
             }
-            structured("recipient") {
+            sd("recipient") {
                 plain {
                     put("type", "VaccineRecipient")
                 }

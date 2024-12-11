@@ -82,7 +82,7 @@ class RecreateClaimsTest {
 
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            structured("structured") {
+            sd("structured") {
                 plain(structuredPlainSubClaims)
                 sd(structuredSubClaims)
             }

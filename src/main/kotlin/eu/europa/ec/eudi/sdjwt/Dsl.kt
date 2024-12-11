@@ -31,7 +31,7 @@ import kotlinx.serialization.json.*
 class SdObject(
     private val content: Map<String, SdObjectElement>,
     val minimumDigests: MinimumDigests?,
-) : Map<String, SdObjectElement> by content
+) : Map<String, SdObjectElement> by content, SdObjectElement
 
 /**
  * Adds to then current [SdObject] another [SdObject] producing
@@ -136,11 +136,6 @@ sealed interface SdObjectElement {
     data class RecursiveSdArray(val content: SdArray) : SdObjectElement
 
     /**
-     * Selectively disclosable claims that will be encoded with the structured option
-     */
-    data class StructuredSdObject(val content: SdObject) : SdObjectElement
-
-    /**
      * Selectively disclosable claims that will be encoded with the recursive option
      */
     data class RecursiveSdObject(val content: SdObject) : SdObjectElement
@@ -148,8 +143,6 @@ sealed interface SdObjectElement {
     companion object {
         fun plain(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Plain(content))
         fun sd(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Sd(content))
-        fun sdRec(obj: SdObject): RecursiveSdObject = RecursiveSdObject(obj)
-        fun sdStruct(obj: SdObject): StructuredSdObject = StructuredSdObject(obj)
         fun sd(es: List<SdArrayElement>, minimumDigests: Int?): SdArray = SdArray(es, minimumDigests.atLeastDigests())
         fun sdRec(es: List<SdArrayElement>, minimumDigests: Int?): RecursiveSdArray = RecursiveSdArray(sd(es, minimumDigests))
     }
@@ -377,6 +370,7 @@ fun SdObjectBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(build
 fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
+fun SdObjectBuilder.plain(name: String, value: SdObject) = sd(name, value)
 fun SdObjectBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
 
 /**
@@ -432,9 +426,17 @@ fun SdObjectBuilder.sdArray(name: String, minimumDigests: Int? = null, action: S
     sd(name, buildSdArray(minimumDigests, action))
 }
 
-fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+fun SdObjectBuilder.sd(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
     val obj = buildSdObject(minimumDigests, action)
-    sd(name, StructuredSdObject(obj))
+    plain(name, obj)
+}
+
+@Deprecated(
+    message = "Just use sd",
+    replaceWith = ReplaceWith("sd(name, minimumDigests, action)"),
+)
+fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    sd(name, minimumDigests, action)
 }
 
 fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {

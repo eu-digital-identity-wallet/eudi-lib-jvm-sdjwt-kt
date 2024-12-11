@@ -137,8 +137,8 @@ class SdJwtFactory(
             return arrayClaim to disclosures
         }
 
-        fun encodeStructuredSdObject(structuredSdObject: StructuredSdObject): EncodedSdElement {
-            val (encodedSubClaims, disclosures) = encodeObj(structuredSdObject.content)
+        fun encodeStructuredSdObject(structuredSdObject: SdObject): EncodedSdElement {
+            val (encodedSubClaims, disclosures) = encodeObj(structuredSdObject)
             val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
             return structuredSdClaim to disclosures
         }
@@ -166,7 +166,7 @@ class SdJwtFactory(
             }
 
             is SdArray -> encodeSdArray(claimValue)
-            is StructuredSdObject -> encodeStructuredSdObject(claimValue)
+            is SdObject -> encodeStructuredSdObject(claimValue)
             is RecursiveSdArray -> encodeRecursiveSdArray(claimValue)
             is RecursiveSdObject -> encodeRecursiveSdObject(claimValue)
         }
