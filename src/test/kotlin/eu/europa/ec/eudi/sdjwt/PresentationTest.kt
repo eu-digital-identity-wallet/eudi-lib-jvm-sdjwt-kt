@@ -66,7 +66,7 @@ class PresentationTest : NimbusSdJwtOps {
         // Selectively disclosable claim using recursive options
         // All sub-claims are selectively disclosable
         // Each sub-claim can be individually disclosed
-        recursive("address") {
+        sd("address") {
             sd {
                 put("postal_code", "51147")
                 put("street_address", "Heidestraße 17")
@@ -82,7 +82,7 @@ class PresentationTest : NimbusSdJwtOps {
         //  This means that `place_of_birth` can be selectively disclosed or not.
         //  If it is selected, `country` will be also disclosed (no option to hide it)
         //  and `locality` is selectively disclosable
-        recursive("place_of_birth") {
+        sd("place_of_birth") {
             plain("country", "DE")
             sd("locality", "Berlin")
         }
@@ -234,7 +234,7 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
         val spec = sdJwt {
-            recursive("credentialSubject") {
+            sd("credentialSubject") {
                 plain {
                     put("type", "VaccinationEvent")
                 }

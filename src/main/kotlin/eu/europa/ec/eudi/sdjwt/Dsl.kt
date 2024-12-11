@@ -430,22 +430,30 @@ fun SdObjectBuilder.plain(name: String, minimumDigests: Int? = null, action: (Sd
     put(name, obj)
 }
 
+fun SdObjectBuilder.sd(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    val obj = buildSdObject(minimumDigests, action)
+    sd(name, RecursiveSdObject(obj))
+}
+
 @Deprecated(
-    message = "Just use sd",
+    message = "Just use plain",
     replaceWith = ReplaceWith("plain(name, minimumDigests, action)"),
 )
 fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
     plain(name, minimumDigests, action)
 }
 
+@Deprecated(
+    message = "Just use sd",
+    replaceWith = ReplaceWith("sd(name, minimumDigests, action)"),
+)
+fun SdObjectBuilder.recursive(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+    sd(name, minimumDigests, action)
+}
+
 fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {
     val arr = buildSdArray(minimumDigests, action)
     sd(name, RecursiveSdArray(arr))
-}
-
-fun SdObjectBuilder.recursive(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(minimumDigests, action)
-    sd(name, RecursiveSdObject(obj))
 }
 
 //
