@@ -168,7 +168,7 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
                     iat(1516239022)
                     exp(1735689661)
                 }
-                recursive("address") {
+                sd("address") {
                     sd {
                         put("street_address", "Schulstr. 12")
                         put("locality", "Schulpforta")
@@ -346,7 +346,7 @@ val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
         // have at list 10 digests.
     }
 
-    recursive("address1", minimumDigests = 8) {
+    sd("address1", minimumDigests = 8) {
         // This will affect the digests array that will be found
         // in the disclosure of this recursively disclosable item
         // the whole object will be embedded in its parent

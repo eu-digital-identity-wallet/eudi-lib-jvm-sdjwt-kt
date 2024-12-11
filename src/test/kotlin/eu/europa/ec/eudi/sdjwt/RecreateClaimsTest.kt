@@ -125,7 +125,7 @@ class RecreateClaimsTest {
         }
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            recursive("rec") {
+            sd("rec") {
                 sd(subClaims)
             }
         }
