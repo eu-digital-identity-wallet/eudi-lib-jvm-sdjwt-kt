@@ -41,7 +41,7 @@ val sdJwtVc =
             put("also_known_as", "Schwester")
         }
 
-        sd("address") {
+        recursive("address") {
             sd {
                 put("street_address", "Heidestraße 17")
                 put("locality", "Köln")
@@ -50,7 +50,7 @@ val sdJwtVc =
             }
         }
 
-        sd("place_of_birth") {
+        recursive("place_of_birth") {
             plain {
                 put("country", "DE")
             }
@@ -59,7 +59,7 @@ val sdJwtVc =
             }
         }
 
-        plain("age_equal_or_over") {
+        sd("age_equal_or_over") {
             sd {
                 put("12", true)
                 put("14", true)

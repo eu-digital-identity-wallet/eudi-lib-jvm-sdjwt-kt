@@ -137,24 +137,24 @@ class SdJwtFactory(
             return arrayClaim to disclosures
         }
 
-        fun encodeStructuredSdObject(sdObject: SdObject): EncodedSdElement {
-            val (encodedSubClaims, disclosures) = encodeObj(sdObject)
+        fun encodeStructuredSdObject(structuredSdObject: SdObject): EncodedSdElement {
+            val (encodedSubClaims, disclosures) = encodeObj(structuredSdObject)
             val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
             return structuredSdClaim to disclosures
-        }
-
-        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): EncodedSdElement {
-            val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject.content)
-            val wrapper = DisclosableJsonElement.Sd(contentClaims)
-            val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
-            val disclosures = contentDisclosures + wrapperDisclosures
-            return wrapperClaim to disclosures
         }
 
         fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray.content)
             val wrapper = DisclosableJsonElement.Sd(checkNotNull(contentClaims[claimName]))
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
+            val disclosures = contentDisclosures + wrapperDisclosures
+            return wrapperClaim to disclosures
+        }
+
+        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): EncodedSdElement {
+            val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject.content)
+            val wrapper = DisclosableJsonElement.Sd(contentClaims)
+            val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
         }

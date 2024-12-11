@@ -17,8 +17,8 @@ val complexStructuredSdJwt =
         iat(1683000000)
         exp(1883000000)
 
-        plain("verified_claims") {
-            plain("verification") {
+        sd("verified_claims") {
+            sd("verification") {
                 sd {
                     put("time", "2012-04-23T18:25Z")
                     put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
@@ -46,7 +46,7 @@ val complexStructuredSdJwt =
                     }
                 }
             }
-            plain("claims") {
+            sd("claims") {
                 sd {
                     put("given_name", "Max")
                     put("family_name", "Müller")

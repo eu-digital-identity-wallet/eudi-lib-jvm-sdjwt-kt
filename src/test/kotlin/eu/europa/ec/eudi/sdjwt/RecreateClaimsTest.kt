@@ -84,7 +84,7 @@ class RecreateClaimsTest {
 
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            plain("structured") {
+            sd("structured") {
                 plain(structuredPlainSubClaims)
                 sd(structuredSubClaims)
             }
@@ -125,7 +125,7 @@ class RecreateClaimsTest {
         }
         val sdJwtElements = sdJwt {
             plain(plainClaims)
-            sd("rec") {
+            recursive("rec") {
                 sd(subClaims)
             }
         }
