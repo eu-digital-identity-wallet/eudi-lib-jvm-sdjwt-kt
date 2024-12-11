@@ -59,7 +59,7 @@ val sdJwtVc =
             }
         }
 
-        sd("age_equal_or_over") {
+        plain("age_equal_or_over") {
             sd {
                 put("12", true)
                 put("14", true)

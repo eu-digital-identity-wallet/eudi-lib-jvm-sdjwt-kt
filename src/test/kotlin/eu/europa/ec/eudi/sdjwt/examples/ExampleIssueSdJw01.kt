@@ -30,7 +30,7 @@ val issuedSdJwt: String = runBlocking {
             iat(1516239022)
             exp(1735689661)
         }
-        sd("address") {
+        plain("address") {
             sd {
                 put("street_address", "Schulstr. 12")
                 put("locality", "Schulpforta")

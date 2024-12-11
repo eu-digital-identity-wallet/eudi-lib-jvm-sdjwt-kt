@@ -25,7 +25,7 @@ val structuredSdJwt =
         exp(1883000000)
         sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-        sd("address") {
+        plain("address") {
             sd {
                 put("street_address", "Schulstr. 12")
                 put("locality", "Schulpforta")

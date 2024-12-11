@@ -233,7 +233,7 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                 iat(iat.epochSecond)
                 exp(exp.epochSecond)
                 cnf(holderPubKey as JWK)
-                sd("credentialSubject") {
+                plain("credentialSubject") {
                     sd(credential)
                     recursiveArray("addresses") {
                         buildSdObject {

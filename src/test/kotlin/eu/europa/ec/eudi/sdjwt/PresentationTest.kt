@@ -91,7 +91,7 @@ class PresentationTest : NimbusSdJwtOps {
         // Selectively disclosable claim using structured option
         // All sub-claims are selectively disclosable
         // This means that each sub-claim can be disclosed (or not)
-        sd("age_equal_or_over") {
+        plain("age_equal_or_over") {
             sd {
                 put("65", false)
                 put("12", true)
@@ -219,7 +219,7 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
         val spec = sdJwt {
-            sd("credentialSubject") {
+            plain("credentialSubject") {
                 plain {
                     put("type", "VaccinationEvent")
                 }

@@ -82,7 +82,7 @@ suspend fun main() {
                 put("iat", 1541493724)
                 put("type", "IdentityCredential")
             }
-            sd("credentialSubject") {
+            plain("credentialSubject") {
                 sd {
                     put("given_name", "John")
                     put("family_name", "Doe")
