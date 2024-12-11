@@ -370,7 +370,6 @@ fun SdObjectBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(build
 fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
 fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
-fun SdObjectBuilder.plain(name: String, value: SdObject) = sd(name, value)
 fun SdObjectBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
 
 /**
@@ -426,17 +425,17 @@ fun SdObjectBuilder.sdArray(name: String, minimumDigests: Int? = null, action: S
     sd(name, buildSdArray(minimumDigests, action))
 }
 
-fun SdObjectBuilder.sd(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+fun SdObjectBuilder.plain(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
     val obj = buildSdObject(minimumDigests, action)
-    plain(name, obj)
+    put(name, obj)
 }
 
 @Deprecated(
     message = "Just use sd",
-    replaceWith = ReplaceWith("sd(name, minimumDigests, action)"),
+    replaceWith = ReplaceWith("plain(name, minimumDigests, action)"),
 )
 fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    sd(name, minimumDigests, action)
+    plain(name, minimumDigests, action)
 }
 
 fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {

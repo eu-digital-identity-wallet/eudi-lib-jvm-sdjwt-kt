@@ -28,7 +28,7 @@ val handlingStructuredClaims =
             put("birthdate", "1940-01-01")
         }
 
-        sd("address") {
+        plain("address") {
             sd {
                 put("street_address", "東京都港区芝公園４丁目２−８")
                 put("locality", "東京都")

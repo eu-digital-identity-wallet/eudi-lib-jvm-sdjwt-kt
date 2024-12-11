@@ -20,7 +20,7 @@ import eu.europa.ec.eudi.sdjwt.*
 val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
     // This 5 guarantees that at least 5 digests will be found
     // to the digest array, regardless of the content of the SD-JWT
-    sd("address", minimumDigests = 10) {
+    plain("address", minimumDigests = 10) {
         // This affects the nested array of the digests that will
         // have at list 10 digests.
     }
