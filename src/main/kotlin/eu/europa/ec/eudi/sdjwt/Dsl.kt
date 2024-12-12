@@ -245,6 +245,16 @@ fun DisclosableArraySpecBuilder.sd(value: JsonElement) = add(DisclosableJson(Dis
  */
 fun DisclosableArraySpecBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
 
+fun DisclosableArraySpecBuilder.plainObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
+    add(DisclosableObject(Disclosable.Plain(eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action))))
+fun DisclosableArraySpecBuilder.sdObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
+    add(DisclosableObject(Disclosable.Sd(eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action))))
+
+fun DisclosableArraySpecBuilder.plainArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
+    add(DisclosableArray(Disclosable.Plain(buildArraySpec(minimumDigests, action))))
+fun DisclosableArraySpecBuilder.sdArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
+    add(DisclosableArray(Disclosable.Sd(buildArraySpec(minimumDigests, action))))
+
 // TODO review name
 fun DisclosableArraySpecBuilder.buildObjectSpec(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) {
     val spec = eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action)
