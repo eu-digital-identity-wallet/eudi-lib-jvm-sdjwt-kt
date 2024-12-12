@@ -318,7 +318,12 @@ fun DisclosableObjectSpecBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> s
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
+@Deprecated(
+    message = "Not properly defined method body. Use DisclosableObjectSpecBuilder.sd(JsonObject) instead.",
+    level = DeprecationLevel.ERROR,
+)
 inline fun <reified E> DisclosableObjectSpecBuilder.sd(claims: E) {
+    // TODO: Why is this expected to be a JsonObject? This could be a JsonPrimitive, or JsonArray. E doesn't have any bounds.
     sd(Json.encodeToJsonElement(claims).jsonObject)
 }
 
@@ -372,7 +377,12 @@ fun DisclosableObjectSpecBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
+@Deprecated(
+    message = "Not properly defined method body. Use DisclosableObjectSpecBuilder.plain(JsonObject) instead.",
+    level = DeprecationLevel.ERROR,
+)
 inline fun <reified E> DisclosableObjectSpecBuilder.plain(claims: E) {
+    // TODO: Why is this expected to be a JsonObject? This could be a JsonPrimitive, or JsonArray. E doesn't have any bounds.
     plain(Json.encodeToJsonElement(claims).jsonObject)
 }
 
