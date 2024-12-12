@@ -23,8 +23,6 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.util.*
 
 val jwtVcPayload = """{
@@ -75,30 +73,26 @@ suspend fun main() {
 
     val sdJwt: String = with(NimbusSdJwtOps) {
         val spec = sdJwt {
-            plain {
-                put("iss", "https://example.com")
-                put("jti", "http://example.com/credentials/3732")
-                put("nbf", 1541493724)
-                put("iat", 1541493724)
-                put("type", "IdentityCredential")
-            }
+            plain("iss", "https://example.com")
+            plain("jti", "http://example.com/credentials/3732")
+            plain("nbf", 1541493724)
+            plain("iat", 1541493724)
+            plain("type", "IdentityCredential")
             plain("credentialSubject") {
-                sd {
-                    put("given_name", "John")
-                    put("family_name", "Doe")
-                    put("email", "johndoe@example.com")
-                    put("phone_number", "+1-202-555-0101")
-                    putJsonObject("address") {
-                        put("street_address", "123 Main St")
-                        put("locality", "Anytown")
-                        put("region", "Anystate")
-                        put("country", "US")
-                    }
-                    put("birthdate", "1940-01-01")
-                    put("is_over_18", true)
-                    put("is_over_21", true)
-                    put("is_over_65", true)
+                sd("given_name", "John")
+                sd("family_name", "Doe")
+                sd("email", "johndoe@example.com")
+                sd("phone_number", "+1-202-555-0101")
+                sd("address") {
+                    plain("street_address", "123 Main St")
+                    plain("locality", "Anytown")
+                    plain("region", "Anystate")
+                    plain("country", "US")
                 }
+                sd("birthdate", "1940-01-01")
+                sd("is_over_18", true)
+                sd("is_over_21", true)
+                sd("is_over_65", true)
             }
         }
         val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)

@@ -20,7 +20,6 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -45,9 +44,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            plain {
-                put("foo", "bar")
-            }
+            plain("foo", "bar")
         }
         val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val expected =
@@ -62,9 +59,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            sd {
-                put("foo", "bar")
-            }
+            sd("foo", "bar")
         }
         val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val expected =
@@ -83,9 +78,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT without disclosures with KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            plain {
-                put("foo", "bar")
-            }
+            plain("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val sdJwt = issuedSdJwt.present()
@@ -101,9 +94,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT with disclosures and KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            sd {
-                put("foo", "bar")
-            }
+            sd("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val sdJwt = issuedSdJwt.present()

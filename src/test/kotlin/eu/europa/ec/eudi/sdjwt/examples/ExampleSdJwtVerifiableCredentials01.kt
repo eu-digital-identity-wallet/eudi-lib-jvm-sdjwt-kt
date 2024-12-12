@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.examples
 
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 
 val sdJwtVc =
     sdJwt {
@@ -24,57 +23,45 @@ val sdJwtVc =
         iat(1683000000)
         exp(1883000000)
 
-        plain {
-            put("vct", "https://bmi.bund.example/credential/pid/1.0")
-            putJsonObject("cnf") {
-                putJsonObject("jwk") {
-                    put("kty", "EC")
-                    put("crv", "P-256")
-                    put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                    put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-                }
+        plain("vct", "https://bmi.bund.example/credential/pid/1.0")
+        plain("cnf") {
+            plain("jwk") {
+                plain("kty", "EC")
+                plain("crv", "P-256")
+                plain("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                plain("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
             }
         }
 
-        sd {
-            put("given_name", "Erika")
-            put("family_name", "Mustermann")
-            put("birthdate", "1963-08-12")
-            put("source_document_type", "id_card")
-            putJsonArray("nationalities") {
-                add("DE")
-            }
-            put("gender", "female")
-            put("birth_family_name", "Gabler")
-            put("also_known_as", "Schwester")
+        sd("given_name", "Erika")
+        sd("family_name", "Mustermann")
+        sd("birthdate", "1963-08-12")
+        sd("source_document_type", "id_card")
+        sd_Array("nationalities") {
+            plain("DE")
         }
+        sd("gender", "female")
+        sd("birth_family_name", "Gabler")
+        sd("also_known_as", "Schwester")
 
         sd("address") {
-            sd {
-                put("street_address", "Heidestraße 17")
-                put("locality", "Köln")
-                put("postal_code", "51147")
-                put("country", "DE")
-            }
+            sd("street_address", "Heidestraße 17")
+            sd("locality", "Köln")
+            sd("postal_code", "51147")
+            sd("country", "DE")
         }
 
         sd("place_of_birth") {
-            plain {
-                put("country", "DE")
-            }
-            sd {
-                put("locality", "Berlin")
-            }
+            plain("country", "DE")
+            sd("locality", "Berlin")
         }
 
         plain("age_equal_or_over") {
-            sd {
-                put("12", true)
-                put("14", true)
-                put("16", true)
-                put("18", true)
-                put("21", true)
-                put("65", false)
-            }
+            sd("12", true)
+            sd("14", true)
+            sd("16", true)
+            sd("18", true)
+            sd("21", true)
+            sd("65", false)
         }
     }

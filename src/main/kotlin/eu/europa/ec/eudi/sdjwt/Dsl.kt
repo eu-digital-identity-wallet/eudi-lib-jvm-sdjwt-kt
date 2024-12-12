@@ -94,14 +94,14 @@ sealed interface Disclosable<out T> {
     value class Selectively<out T>(val value: T) : Disclosable<T>
 }
 
-internal fun <T: Any> T.alwaysDisclosable(): Disclosable.Always<T> = Disclosable.Always(this)
-internal fun <T: Any> T.selectivelyDisclosable(): Disclosable.Selectively<T> = Disclosable.Selectively(this)
-internal fun JsonElement.alwaysDisclosableJson() : DisclosableJson = DisclosableJson(this.alwaysDisclosable())
-internal fun JsonElement.selectivelyDisclosableJson() : DisclosableJson = DisclosableJson(this.selectivelyDisclosable())
-internal fun DisclosableObjectSpec.alwaysDisclosableObj() : DisclosableObject = DisclosableObject(this.alwaysDisclosable())
-internal fun DisclosableObjectSpec.selectivelyDisclosableObj() : DisclosableObject = DisclosableObject(this.selectivelyDisclosable())
-internal fun DisclosableArraySpec.alwaysDisclosableArray() : DisclosableArray = DisclosableArray(this.alwaysDisclosable())
-internal fun DisclosableArraySpec.selectivelyDisclosableArray() : DisclosableArray = DisclosableArray(this.selectivelyDisclosable())
+internal fun <T : Any> T.alwaysDisclosable(): Disclosable.Always<T> = Disclosable.Always(this)
+internal fun <T : Any> T.selectivelyDisclosable(): Disclosable.Selectively<T> = Disclosable.Selectively(this)
+internal fun JsonElement.alwaysDisclosableJson(): DisclosableJson = DisclosableJson(this.alwaysDisclosable())
+internal fun JsonElement.selectivelyDisclosableJson(): DisclosableJson = DisclosableJson(this.selectivelyDisclosable())
+internal fun DisclosableObjectSpec.alwaysDisclosableObj(): DisclosableObject = DisclosableObject(this.alwaysDisclosable())
+internal fun DisclosableObjectSpec.selectivelyDisclosableObj(): DisclosableObject = DisclosableObject(this.selectivelyDisclosable())
+internal fun DisclosableArraySpec.alwaysDisclosableArray(): DisclosableArray = DisclosableArray(this.alwaysDisclosable())
+internal fun DisclosableArraySpec.selectivelyDisclosableArray(): DisclosableArray = DisclosableArray(this.selectivelyDisclosable())
 
 /**
  * The elements within a [disclosable object][DisclosableObjectSpec]
@@ -123,7 +123,6 @@ sealed interface DisclosableElement {
                 DisclosableArraySpec(es, minimumDigests.atLeastDigests()),
             ),
         )
-
     }
 }
 
@@ -187,7 +186,6 @@ fun DisclosableArraySpecBuilder.sd(value: Number) = add(JsonPrimitive(value).sel
 fun DisclosableArraySpecBuilder.sd(value: Boolean) = add(JsonPrimitive(value).selectivelyDisclosableJson())
 fun DisclosableArraySpecBuilder.sd(value: JsonElement) = add(value.selectivelyDisclosableJson())
 
-
 fun DisclosableArraySpecBuilder.plainObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
     add(buildObjectSpec(minimumDigests, action).alwaysDisclosableObj())
 fun DisclosableArraySpecBuilder.sdObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
@@ -197,7 +195,6 @@ fun DisclosableArraySpecBuilder.plainArray(minimumDigests: Int? = null, action: 
     add(buildArraySpec(minimumDigests, action).alwaysDisclosableArray())
 fun DisclosableArraySpecBuilder.sdArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
     add(buildArraySpec(minimumDigests, action).selectivelyDisclosableArray())
-
 
 //
 // Methods for building sd arrays
@@ -238,7 +235,9 @@ fun DisclosableObjectSpecBuilder.sd(name: String, value: String) = put(name, Jso
 fun DisclosableObjectSpecBuilder.sd(name: String, value: Number) = put(name, JsonPrimitive(value).selectivelyDisclosableJson())
 fun DisclosableObjectSpecBuilder.sd(name: String, value: Boolean) = put(name, JsonPrimitive(value).selectivelyDisclosableJson())
 
-
+//
+// JsonObject
+//
 fun DisclosableObjectSpecBuilder.plain(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
     put(name, buildObjectSpec(minimumDigests, action).alwaysDisclosableObj())
 }
@@ -246,15 +245,18 @@ fun DisclosableObjectSpecBuilder.sd(name: String, minimumDigests: Int? = null, a
     put(name, buildObjectSpec(minimumDigests, action).selectivelyDisclosableObj())
 }
 
+//
+// JsonArray
+//
 fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     put(name, buildArraySpec(minimumDigests, action).alwaysDisclosableArray())
 }
 fun DisclosableObjectSpecBuilder.sd_Array(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     put(name, buildArraySpec(minimumDigests, action).selectivelyDisclosableArray())
 }
+
 // TODO CHeck this
 fun DisclosableObjectSpecBuilder.sd(name: String, element: DisclosableElement) = put(name, element)
-
 
 @Deprecated(
     message = "Deprecated in favor of this function",
@@ -263,6 +265,7 @@ fun DisclosableObjectSpecBuilder.sd(name: String, element: DisclosableElement) =
 fun DisclosableObjectSpecBuilder.sdArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     plainArray(name, minimumDigests, action)
 }
+
 @Deprecated(
     message = "Deprecated in favor of this function",
     replaceWith = ReplaceWith("sd_Array(name, minimumDigests, action)"),
@@ -270,6 +273,7 @@ fun DisclosableObjectSpecBuilder.sdArray(name: String, minimumDigests: Int? = nu
 fun DisclosableObjectSpecBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     sd_Array(name, minimumDigests, action)
 }
+
 @Deprecated(
     message = "Just use plain",
     replaceWith = ReplaceWith("plain(name, minimumDigests, action)"),
@@ -310,7 +314,6 @@ private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (a
     1 -> action(RFC7519.AUDIENCE, JsonPrimitive(aud[0]))
     else -> action(RFC7519.AUDIENCE, JsonArray(aud.map { JsonPrimitive(it) }))
 }
-
 
 /**
  * Adds the JWT publicly registered subclaim (Subject), in plain

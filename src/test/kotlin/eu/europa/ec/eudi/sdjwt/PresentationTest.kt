@@ -39,40 +39,34 @@ class PresentationTest : NimbusSdJwtOps {
         //
         // Claims that are always disclosable (no selectively disclosed)
         //
-        plain {
-            iss("https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
-            exp(1883000000)
-            iat(1683000000)
-            put("vct", "https://bmi.bund.example/credential/pid/1.0")
-        }
+        iss("https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
+        exp(1883000000)
+        iat(1683000000)
+        plain("vct", "https://bmi.bund.example/credential/pid/1.0")
 
         //
         // Selectively disclosable claims
         // Each claim can be selectively disclosed (or not)
-        sd {
-            put("given_name", "Erika")
-            put("also_known_as", "Schwester Agnes")
-            put("family_name", "Mustermann")
-            put("gender", "female")
-            put("birthdate", "1963-8-12")
-            putJsonArray("nationalities") {
-                add("DE")
-            }
-            put("birth_family_name", "Gabler")
-            put("source_document_type", "id_card")
+        sd("given_name", "Erika")
+        sd("also_known_as", "Schwester Agnes")
+        sd("family_name", "Mustermann")
+        sd("gender", "female")
+        sd("birthdate", "1963-8-12")
+        sd_Array("nationalities") {
+            plain("DE")
         }
+        sd("birth_family_name", "Gabler")
+        sd("source_document_type", "id_card")
 
         //
         // Selectively disclosable claim using recursive options
         // All sub-claims are selectively disclosable
         // Each sub-claim can be individually disclosed
         sd("address") {
-            sd {
-                put("postal_code", "51147")
-                put("street_address", "Heidestraße 17")
-                put("locality", "Köln")
-                put("country", "DE")
-            }
+            sd("postal_code", "51147")
+            sd("street_address", "Heidestraße 17")
+            sd("locality", "Köln")
+            sd("country", "DE")
         }
 
         //
@@ -92,15 +86,14 @@ class PresentationTest : NimbusSdJwtOps {
         // All sub-claims are selectively disclosable
         // This means that each sub-claim can be disclosed (or not)
         plain("age_equal_or_over") {
-            sd {
-                put("65", false)
-                put("12", true)
-                put("21", true)
-                put("14", true)
-                put("16", true)
-                put("18", true)
-            }
+            sd("65", false)
+            sd("12", true)
+            sd("21", true)
+            sd("14", true)
+            sd("16", true)
+            sd("18", true)
         }
+
         cnf(holderKey.toPublicJWK())
     }
 
@@ -220,9 +213,7 @@ class PresentationTest : NimbusSdJwtOps {
     fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
         val spec = sdJwt {
             plain("credentialSubject") {
-                plain {
-                    put("type", "VaccinationEvent")
-                }
+                plain("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -235,9 +226,7 @@ class PresentationTest : NimbusSdJwtOps {
     fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
         val spec = sdJwt {
             sd("credentialSubject") {
-                plain {
-                    put("type", "VaccinationEvent")
-                }
+                plain("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -252,13 +241,11 @@ class PresentationTest : NimbusSdJwtOps {
     fun `query for sd array`() = runTest {
         val spec = sdJwt {
             plainArray("evidence") {
-                buildObjectSpec {
-                    sd {
-                        put("type", "document")
-                    }
+                sdObject {
+                    sd("type", "document")
                 }
-                plain {
-                    put("foo", "bar")
+                plainObject {
+                    plain("foo", "bar")
                 }
             }
         }
@@ -290,13 +277,11 @@ class PresentationTest : NimbusSdJwtOps {
     fun `querying for a recursive SD array`() = runTest {
         val spec = sdJwt {
             sd_Array("evidence") {
-                buildObjectSpec {
-                    sd {
-                        put("type", "document")
-                    }
+                sdObject {
+                    sd("type", "document")
                 }
-                plain {
-                    put("foo", "bar")
+                plainObject {
+                    plain("foo", "bar")
                 }
             }
         }

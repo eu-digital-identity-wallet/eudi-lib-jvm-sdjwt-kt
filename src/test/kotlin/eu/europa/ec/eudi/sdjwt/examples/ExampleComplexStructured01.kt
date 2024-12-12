@@ -28,7 +28,7 @@ val complexStructuredSdJwt =
                 sd("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
                 plain("trust_framework", "de_aml")
                 plainArray("evidence") {
-                    plainObject {
+                    sdObject {
                         sd("type", "document")
                         sd("method", "pipp")
                         sd("time", "2012-04-22T11:30Z")
@@ -62,7 +62,6 @@ val complexStructuredSdJwt =
                     plain("country", "DE")
                     plain("street_address", "Weidenstraße 22")
                 }
-
             }
             sd("birth_middle_name", "Timotheus")
             sd("salutation", "Dr.")

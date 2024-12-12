@@ -27,7 +27,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
 import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -119,9 +118,7 @@ class JwsJsonSerializationTest {
         }
 
         val sdJwtSpec = sdJwt {
-            sd {
-                put("age_over_18", true)
-            }
+            sd("age_over_18", true)
         }
 
         val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }

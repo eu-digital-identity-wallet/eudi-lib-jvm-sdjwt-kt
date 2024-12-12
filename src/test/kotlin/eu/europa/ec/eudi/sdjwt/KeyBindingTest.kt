@@ -234,12 +234,12 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                 exp(exp.epochSecond)
                 cnf(holderPubKey as JWK)
                 plain("credentialSubject") {
-                    sd(Json.encodeToJsonElement(credential).jsonObject)
+                    Json.encodeToJsonElement(credential).jsonObject.forEach { sd(it.key, it.value) }
                     sd_Array("addresses") {
-                        buildObjectSpec {
+                        sdObject {
                             sd("street", "street1")
                         }
-                        buildObjectSpec {
+                        sdObject {
                             sd("street", "street2")
                         }
                     }

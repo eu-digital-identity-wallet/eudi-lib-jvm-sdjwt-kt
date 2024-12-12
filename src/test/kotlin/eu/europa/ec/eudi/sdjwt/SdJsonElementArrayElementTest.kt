@@ -17,8 +17,6 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 
 class SdJsonElementArrayElementTest {
@@ -29,21 +27,19 @@ class SdJsonElementArrayElementTest {
             iss("https://example.com/issuer")
             iat(1683000000)
             exp(1883000000)
-            sd {
-                put("given_name", "John")
-                put("family_name", "Doe")
-                put("email", "johndoe@example.com")
-                put("phone_number", "+1-202-555-0101")
-                put("phone_number_verified", true)
-                putJsonObject("address") {
-                    put("street_address", "123 Main St")
-                    put("locality", "Anytown")
-                    put("region", "Anystate")
-                    put("country", "US")
-                }
-                put("birthdate", "1940-01-01")
-                put("updated_at", 1570000000)
+            sd("given_name", "John")
+            sd("family_name", "Doe")
+            sd("email", "johndoe@example.com")
+            sd("phone_number", "+1-202-555-0101")
+            sd("phone_number_verified", true)
+            sd("address") {
+                plain("street_address", "123 Main St")
+                plain("locality", "Anytown")
+                plain("region", "Anystate")
+                plain("country", "US")
             }
+            sd("birthdate", "1940-01-01")
+            sd("updated_at", 1570000000)
             plainArray("nationalities") {
                 plain("US")
                 sd("DE")

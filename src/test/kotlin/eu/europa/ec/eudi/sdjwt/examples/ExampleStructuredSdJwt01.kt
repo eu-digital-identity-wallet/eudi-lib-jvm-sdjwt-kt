@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.examples
 
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 
 val structuredSdJwt =
     sdJwt {
@@ -26,11 +25,9 @@ val structuredSdJwt =
         sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
         plain("address") {
-            sd {
-                put("street_address", "Schulstr. 12")
-                put("locality", "Schulpforta")
-                put("region", "Sachsen-Anhalt")
-                put("country", "DE")
-            }
+            sd("street_address", "Schulstr. 12")
+            sd("locality", "Schulpforta")
+            sd("region", "Sachsen-Anhalt")
+            sd("country", "DE")
         }
     }

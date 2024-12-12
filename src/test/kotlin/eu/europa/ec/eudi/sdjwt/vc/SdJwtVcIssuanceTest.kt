@@ -70,22 +70,20 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             //
             // Always Selectively disclosable claims
             //
-            sd {
-                put("given_name", givenName)
-                put("family_name", familyName)
-                put("email", email)
-                put("phone_number", phoneNumber)
-                putJsonObject("address") {
-                    put("street_address", address.streetAddress)
-                    put("locality", address.locality)
-                    put("region", address.region)
-                    put("country", address.country)
-                }
-                put("birth_date", birthDate.toString())
-                put("is_over_18", isOver18)
-                put("is_over_21", isOver21)
-                put("is_over_65", isOver65)
+            sd("given_name", givenName)
+            sd("family_name", familyName)
+            sd("email", email)
+            sd("phone_number", phoneNumber)
+            sd("address") {
+                plain("street_address", address.streetAddress)
+                plain("locality", address.locality)
+                plain("region", address.region)
+                plain("country", address.country)
             }
+            sd("birth_date", birthDate.toString())
+            sd("is_over_18", isOver18)
+            sd("is_over_21", isOver21)
+            sd("is_over_65", isOver65)
         }
 
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {

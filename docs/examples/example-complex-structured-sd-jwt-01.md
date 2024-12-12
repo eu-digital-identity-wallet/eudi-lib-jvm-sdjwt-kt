@@ -7,7 +7,6 @@ the [specification Appendix 2 - Example 3: Complex Structured SD-JWT](https://ww
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 -->
 
 ```kotlin
@@ -16,62 +15,50 @@ val complexStructuredSdJwt =
         iss("https://issuer.example.com")
         iat(1683000000)
         exp(1883000000)
-
         plain("verified_claims") {
             plain("verification") {
-                sd {
-                    put("time", "2012-04-23T18:25Z")
-                    put("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                }
-                plain {
-                    put("trust_framework", "de_aml")
-                }
+                sd("time", "2012-04-23T18:25Z")
+                sd("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
+                plain("trust_framework", "de_aml")
                 plainArray("evidence") {
-                    buildObjectSpec {
-                        sd {
-                            put("type", "document")
-                            put("method", "pipp")
-                            put("time", "2012-04-22T11:30Z")
-                            putJsonObject("document") {
-                                put("type", "idcard")
-                                putJsonObject("issuer") {
-                                    put("name", "Stadt Augsburg")
-                                    put("country", "DE")
-                                }
-                                put("number", "53554554")
-                                put("date_of_issuance", "2010-03-23")
-                                put("date_of_expiry", "2020-03-22")
+                    sdObject {
+                        sd("type", "document")
+                        sd("method", "pipp")
+                        sd("time", "2012-04-22T11:30Z")
+                        sd("document") {
+                            plain("type", "idcard")
+                            plain("issuer") {
+                                plain("name", "Stadt Augsburg")
+                                plain("country", "DE")
                             }
+                            plain("number", "53554554")
+                            plain("date_of_issuance", "2010-03-23")
+                            plain("date_of_expiry", "2020-03-22")
                         }
                     }
                 }
             }
             plain("claims") {
-                sd {
-                    put("given_name", "Max")
-                    put("family_name", "Müller")
-                    putJsonArray("nationalities") {
-                        add("DE")
-                    }
-                    put("birthdate", "1956-01-28")
-                    putJsonObject("place_of_birth") {
-                        put("country", "IS")
-                        put("locality", "Þykkvabæjarklaustur")
-                    }
-                    putJsonObject("address") {
-                        put("locality", "Maxstadt")
-                        put("postal_code", "12344")
-                        put("country", "DE")
-                        put("street_address", "Weidenstraße 22")
-                    }
+                sd("given_name", "Max")
+                sd("family_name", "Müller")
+                sd_Array("nationalities") {
+                    plain("DE")
+                }
+                sd("birthdate", "1956-01-28")
+                sd("place_of_birth") {
+                    plain("country", "IS")
+                    plain("locality", "Þykkvabæjarklaustur")
+                }
+                sd("address") {
+                    plain("locality", "Maxstadt")
+                    plain("postal_code", "12344")
+                    plain("country", "DE")
+                    plain("street_address", "Weidenstraße 22")
                 }
             }
-
-            sd {
-                put("birth_middle_name", "Timotheus")
-                put("salutation", "Dr.")
-                put("msisdn", "49123456789")
-            }
+            sd("birth_middle_name", "Timotheus")
+            sd("salutation", "Dr.")
+            sd("msisdn", "49123456789")
         }
     }
 ```

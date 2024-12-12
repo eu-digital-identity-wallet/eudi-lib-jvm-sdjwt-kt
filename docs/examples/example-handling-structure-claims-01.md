@@ -9,7 +9,6 @@ disclose individual members of the claim.
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 -->
 
 ```kotlin
@@ -19,22 +18,18 @@ val handlingStructuredClaims =
         iat(1683000000)
         exp(1883000000)
 
-        sd {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("given_name", "太郎")
-            put("family_name", "山田")
-            put("email", "\"unusual email address\"@example.jp")
-            put("phone_number", "+81-80-1234-5678")
-            put("birthdate", "1940-01-01")
-        }
+        sd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        sd("given_name", "太郎")
+        sd("family_name", "山田")
+        sd("email", "\"unusual email address\"@example.jp")
+        sd("phone_number", "+81-80-1234-5678")
+        sd("birthdate", "1940-01-01")
 
         plain("address") {
-            sd {
-                put("street_address", "東京都港区芝公園４丁目２−８")
-                put("locality", "東京都")
-                put("region", "港区")
-                put("country", "JP")
-            }
+            sd("street_address", "東京都港区芝公園４丁目２−８")
+            sd("locality", "東京都")
+            sd("region", "港区")
+            sd("country", "JP")
         }
     }
 ```
