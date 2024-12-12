@@ -47,16 +47,12 @@ class DisclosableArraySpec(
  *
  * ```
  *   val sdObj1 = buildSdObject(minimumDigests=2) {
- *      sd{
- *          put("a", "foo")
- *          put("b", "bar")
- *      }
+ *      sd("a", "foo")
+ *      sd("b", "bar")
  *   }
  *
  *   val sdObj2 = buildSdObject(minimumDigests=2) {
- *      plain {
- *          put("a", "ddd")
- *      }
+ *      plain("a", "ddd")
  *   }
  *
  *   sdObj1 + sdObj2 // will contain "a" to Plain("ddd") and "b" to Sd("bar")
@@ -78,17 +74,17 @@ operator fun DisclosableObjectSpec.plus(that: DisclosableObjectSpec): Disclosabl
 }
 
 /**
- * A [JsonElement] that is either always or selectively disclosable
+ * An element that is either always or selectively disclosable
  */
 sealed interface Disclosable<out T> {
     /**
-     * A [JsonElement] that is always disclosable
+     * An element that is always disclosable
      */
     @JvmInline
     value class Always<out T>(val value: T) : Disclosable<T>
 
     /**
-     * A [JsonElement] that is selectively disclosable (as a whole)
+     * An element that is selectively disclosable (as a whole)
      */
     @JvmInline
     value class Selectively<out T>(val value: T) : Disclosable<T>
@@ -316,7 +312,7 @@ private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (a
 }
 
 /**
- * Adds the JWT publicly registered subclaim (Subject), in plain
+ * Adds the JWT publicly registered SUB claim (Subject), in plain
  */
 fun DisclosableObjectSpecBuilder.sub(value: String) = sub(value, this::plain)
 
@@ -346,7 +342,7 @@ fun DisclosableObjectSpecBuilder.jti(value: String) = jti(value, this::plain)
 fun DisclosableObjectSpecBuilder.nbf(value: Long) = nbf(value, this::plain)
 
 /**
- * Adds the JWT publicly registered AUD claim (single Audience), in plain
+ * Adds the JWT publicly registered AUD claim (Audience), in plain
  */
 fun DisclosableObjectSpecBuilder.aud(vararg value: String) = aud(value.asList(), this::plain)
 
@@ -358,5 +354,4 @@ fun DisclosableObjectSpecBuilder.aud(vararg value: String) = aud(value.asList(),
  *
  * @param jwk the key to put in confirmation claim.
  */
-fun DisclosableObjectSpecBuilder.cnf(jwk: JsonObject) =
-    plain("cnf", buildJsonObject { put("jwk", jwk) })
+fun DisclosableObjectSpecBuilder.cnf(jwk: JsonObject) = plain("cnf", buildJsonObject { put("jwk", jwk) })
