@@ -220,7 +220,7 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementsDisclosure(sdArray: DisclosableArraySpec): Pair<List<Disclosure>, List<PlainOrDigest>> {
+    private fun arrayElementsDisclosure(arraySpec: DisclosableArraySpec): Pair<List<Disclosure>, List<PlainOrDigest>> {
         fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
             val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
@@ -230,24 +230,36 @@ class SdJwtFactory(
         val disclosures = mutableListOf<Disclosure>()
         val plainOrDigestElements = mutableListOf<PlainOrDigest>()
 
-        for (element in sdArray) {
+        for (element in arraySpec) {
             when (element) {
-                is SdArrayElement.DisclosableJson -> {
-                    when (val v = element.disclosable) {
-                        is Disclosable.Plain -> plainOrDigestElements += PlainOrDigest.Plain(v.value)
+                is DisclosableJson -> {
+                    when (val disclosable = element.disclosable) {
+                        is Disclosable.Plain -> plainOrDigestElements += PlainOrDigest.Plain(disclosable.value)
                         is Disclosable.Sd -> {
-                            val (disclosure, digest) = disclosureOf(v.value)
+                            val (disclosure, digest) = disclosureOf(disclosable.value)
                             disclosures += disclosure
                             plainOrDigestElements += PlainOrDigest.Dig(digest)
                         }
                     }
                 }
 
-                is SdArrayElement.DisclosableObj -> {
-                    val (json, ds) = encodeObj(element.sdObject)
-                    val (ds2, dig) = disclosureOf(json)
-                    disclosures += (ds + ds2)
-                    plainOrDigestElements += PlainOrDigest.Dig(dig)
+                is DisclosableObject -> {
+                    when (val disclosable = element.disclosable) {
+                        is Disclosable.Plain -> TODO()
+                        is Disclosable.Sd -> {
+                            val (json, ds) = encodeObj(disclosable.value)
+                            val (ds2, dig) = disclosureOf(json)
+                            disclosures += (ds + ds2)
+                            plainOrDigestElements += PlainOrDigest.Dig(dig)
+                        }
+                    }
+                }
+
+                is DisclosableArray -> {
+                    when (val disclosable = element.disclosable) {
+                        is Disclosable.Plain -> TODO()
+                        is Disclosable.Sd -> TODO()
+                    }
                 }
             }
         }
