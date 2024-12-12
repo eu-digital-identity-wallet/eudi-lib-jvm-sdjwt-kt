@@ -105,34 +105,21 @@ sealed interface Disclosure {
          *
          * @param saltProvider the [SaltProvider] to be used. Defaults to [SaltProvider.Default]
          * @param claim the claim to be disclosed
-         * @param allowNestedDigests whether to allow the presence of nested hash claim (_sd)
          */
         internal fun objectProperty(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
-            allowNestedDigests: Boolean = false,
         ): Result<ObjectProperty> {
-            // Make sure that claim name is not _sd
-            fun isValidAttributeName(attribute: String): Boolean = attribute != SdJwtSpec.CLAIM_SD
-
-            // Make sure that claim value doesn't contain an attribute named _sd
-            // is not Json null
-            fun isValidJsonElement(json: JsonElement): Boolean =
-                when (json) {
-                    is JsonPrimitive -> json !is JsonNull
-                    is JsonArray -> json.all { isValidJsonElement(it) }
-                    is JsonObject -> json.entries.all {
-                        (isValidAttributeName(it.key) || allowNestedDigests) && isValidJsonElement(it.value)
-                    }
+            fun Claim.ensureValidAttributeName() {
+                val reserved = setOf(SdJwtSpec.CLAIM_SD_ALG, SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST)
+                require(name() !in reserved) {
+                    "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or")}"
                 }
+            }
+
             return runCatching {
-                require(isValidAttributeName(claim.name())) {
-                    "Given claim should not contain an attribute named ${SdJwtSpec.CLAIM_SD}"
-                }
-
-                require(isValidJsonElement(claim.value())) {
-                    "Claim should not contain a null value or an JSON object with attribute named ${SdJwtSpec.CLAIM_SD}"
-                }
+                // Make sure that claim name is valid
+                claim.ensureValidAttributeName()
 
                 // Create a Json Array [salt, claimName, claimValue]
                 val jsonArray = buildJsonArray {

@@ -113,9 +113,9 @@ class SdJwtFactory(
             return plainClaim to emptyList()
         }
 
-        fun encodeSd(sd: JsonElement, allowNestedDigests: Boolean = false): EncodedSdElement {
+        fun encodeSd(sd: JsonElement): EncodedSdElement {
             val claim = claimName to sd
-            val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
+            val (disclosure, digest) = objectPropertyDisclosure(claim)
             val digestAndDecoys = setOf(digest)
             val sdClaim = digestAndDecoys.sdClaim()
             return sdClaim to listOf(disclosure)
@@ -146,7 +146,7 @@ class SdJwtFactory(
         fun encodeRecursiveSdObject(recursiveSdObject: DisclosableObjectSpec): EncodedSdElement {
             val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject)
             val wrapper = contentClaims
-            val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
+            val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
         }
@@ -211,11 +211,8 @@ class SdJwtFactory(
         return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
     }
 
-    private fun objectPropertyDisclosure(
-        claim: Claim,
-        allowNestedDigests: Boolean,
-    ): Pair<Disclosure, DisclosureDigest> {
-        val disclosure = Disclosure.objectProperty(saltProvider, claim, allowNestedDigests).getOrThrow()
+    private fun objectPropertyDisclosure(claim: Claim): Pair<Disclosure, DisclosureDigest> {
+        val disclosure = Disclosure.objectProperty(saltProvider, claim).getOrThrow()
         val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
         return disclosure to digest
     }
