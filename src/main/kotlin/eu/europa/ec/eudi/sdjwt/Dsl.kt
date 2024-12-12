@@ -112,14 +112,6 @@ sealed interface DisclosableElement {
 
     @JvmInline
     value class DisclosableArray(val disclosable: Disclosable<DisclosableArraySpec>) : DisclosableElement
-
-    companion object {
-        fun sd(es: List<DisclosableElement>, minimumDigests: Int?): DisclosableArray = DisclosableArray(
-            Disclosable.Always(
-                DisclosableArraySpec(es, minimumDigests.atLeastDigests()),
-            ),
-        )
-    }
 }
 
 @DslMarker
@@ -144,7 +136,6 @@ typealias DisclosableArraySpecBuilder = (@DisclosableElementDsl MutableList<Disc
  * @see buildObjectSpec
  */
 typealias DisclosableObjectSpecBuilder = (@DisclosableElementDsl MutableMap<String, DisclosableElement>)
-typealias SdOrPlainJsonObjectBuilder = (@DisclosableElementDsl JsonObjectBuilder)
 
 //
 // Methods for building sd arrays
@@ -250,9 +241,6 @@ fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? =
 fun DisclosableObjectSpecBuilder.sd_Array(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     put(name, buildArraySpec(minimumDigests, action).selectivelyDisclosableArray())
 }
-
-// TODO CHeck this
-fun DisclosableObjectSpecBuilder.sd(name: String, element: DisclosableElement) = put(name, element)
 
 @Deprecated(
     message = "Deprecated in favor of this function",
