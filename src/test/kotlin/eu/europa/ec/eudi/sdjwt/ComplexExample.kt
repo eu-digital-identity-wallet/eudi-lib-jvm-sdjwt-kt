@@ -1,0 +1,152 @@
+/*
+ * Copyright (c) 2023 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package eu.europa.ec.eudi.sdjwt
+
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+internal suspend fun main() {
+    val key = ECKeyGenerator(Curve.P_521).generate()
+    val issuer = NimbusSdJwtOps.issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512)
+
+    val spec = buildObjectSpec {
+        // plain claim in object
+        plain("plainClaim", "value")
+
+        // sd claim in object
+        sd("sdClaim", "value")
+
+        // plain array in object
+        plainArray("plainArray") {
+            // plain value in plain array
+            plain("plain")
+
+            // sd value in plain array
+            sd("sd")
+
+            // plain object in plain array, can also contain other arrays or objects
+            plainObject {
+                plain("plainClaim", "value")
+                sd("sdClaim", "value")
+            }
+
+            // sd object in plain array, can also contain other arrays or objects
+            sdObject {
+                plain("plainClaim", "value")
+                sd("sdClaim", "value")
+            }
+
+            // plain array in plain array, can also contain other arrays or objects
+            plainArray {
+                plain("plain")
+                sd("sd")
+            }
+
+            // sd array in plain array, can also contain other arrays or objects
+            sdArray {
+                plain("plain")
+                sd("sd")
+            }
+        }
+
+        // sd array in object
+        sd_Array("sdArray") {
+            // plain value in sd array
+            plain("plain")
+
+            // sd value in sd array
+            sd("sd")
+
+            // plain object in sd array, can also contain other arrays or objects
+            plainObject {
+                plain("plainClaim", "value")
+                sd("sdClaim", "value")
+            }
+
+            // sd object in sd array, can also contain other arrays or objects
+            sdObject {
+                plain("plainClaim", "value")
+                sd("sdClaim", "value")
+            }
+
+            // plain array in sd array, can also contain other arrays or objects
+            plainArray {
+                plain("plain")
+                sd("sd")
+            }
+
+            // sd array in sd array, can also contain other arrays or objects
+            sdArray {
+                plain("plain")
+                sd("sd")
+            }
+        }
+
+        // plain object in object
+        plain("plainObject") {
+            // plain value in plain object
+            plain("plainClaim", "value")
+
+            // sd value in plain object
+            sd("sdClaim", "value")
+
+            // plain array in plain object, can also contain other arrays or objects
+            plainArray("plainArray") {
+                plain("plain")
+                sd("sd")
+            }
+
+            // sd value in plain object, can also contain other arrays or objects
+            sd_Array("plainArray") {
+                plain("plain")
+                sd("sd")
+            }
+        }
+
+        // sd object in object
+        sd("sdObject") {
+            // plain value in sd object
+            plain("plainClaim", "value")
+
+            // sd value in sd object
+            sd("sdClaim", "value")
+
+            // plain array in sd object, can also contain other arrays or objects
+            plainArray("plainArray") {
+                plain("plain")
+                sd("sd")
+            }
+
+            // sd array in sd object, can also contain other arrays or objects
+            sd_Array("sdArray") {
+                plain("plain")
+                sd("sd")
+            }
+        }
+    }
+
+    val sdJwt = issuer.issue(spec).getOrThrow()
+    sdJwt.prettyPrint { it.jwtClaimsSet.jsonObject() }
+    val (recreated, disclosuresByClaimPath) = with(NimbusSdJwtOps) {
+        sdJwt.recreateClaimsAndDisclosuresPerClaim()
+    }
+    println(Json.encodeToString(recreated))
+    disclosuresByClaimPath.prettyPrint()
+}
