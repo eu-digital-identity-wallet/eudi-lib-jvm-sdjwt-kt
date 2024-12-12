@@ -245,7 +245,11 @@ class SdJwtFactory(
 
                 is DisclosableObject -> {
                     when (val disclosable = element.disclosable) {
-                        is Disclosable.Plain -> TODO()
+                        is Disclosable.Plain -> {
+                            val (json, ds) = encodeObj(disclosable.value)
+                            disclosures += ds
+                            plainOrDigestElements += PlainOrDigest.Plain(json)
+                        }
                         is Disclosable.Sd -> {
                             val (json, ds) = encodeObj(disclosable.value)
                             val (ds2, dig) = disclosureOf(json)
@@ -256,9 +260,26 @@ class SdJwtFactory(
                 }
 
                 is DisclosableArray -> {
+                    fun PlainOrDigest.toJsonElement(): JsonElement =
+                        when (this) {
+                            is PlainOrDigest.Plain -> value
+                            is PlainOrDigest.Dig -> value.asDigestClaim()
+                        }
+
                     when (val disclosable = element.disclosable) {
-                        is Disclosable.Plain -> TODO()
-                        is Disclosable.Sd -> TODO()
+                        is Disclosable.Plain -> {
+                            val (ds, elems) = arrayElementsDisclosure(disclosable.value)
+                            val json = JsonArray(elems.map { it.toJsonElement() })
+                            disclosures += ds
+                            plainOrDigestElements += PlainOrDigest.Plain(json)
+                        }
+                        is Disclosable.Sd -> {
+                            val (ds, elems) = arrayElementsDisclosure(disclosable.value)
+                            val json = JsonArray(elems.map { it.toJsonElement() })
+                            val (ds2, dig) = disclosureOf(json)
+                            disclosures += (ds + ds2)
+                            plainOrDigestElements += PlainOrDigest.Dig(dig)
+                        }
                     }
                 }
             }
