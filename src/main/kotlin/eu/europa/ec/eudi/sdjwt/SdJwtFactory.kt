@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
+import eu.europa.ec.eudi.sdjwt.DisclosableElement.*
 import kotlinx.serialization.json.*
 
 private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
@@ -37,8 +37,8 @@ fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
  * @param fallbackMinimumDigests This is an optional hint, that expresses the number of digests on the immediate level
- * of every [SdObject]. It will be taken into account if there is not an explicit [hint][SdObject.minimumDigests] for
- * this [SdObject]. If not provided, decoys will be added only if there is a hint at [SdObject] level.
+ * of every [DisclosableObjectSpec]. It will be taken into account if there is not an explicit [hint][DisclosableObjectSpec.minimumDigests] for
+ * this [DisclosableObjectSpec]. If not provided, decoys will be added only if there is a hint at [DisclosableObjectSpec] level.
  */
 class SdJwtFactory(
     private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
@@ -53,7 +53,7 @@ class SdJwtFactory(
      * @param sdJwtElements the contents of the SD-JWT
      * @return the [UnsignedSdJwt] for the given [SD-JWT element][sdJwtElements]
      */
-    fun createSdJwt(sdJwtElements: SdObject): Result<UnsignedSdJwt> = runCatching {
+    fun createSdJwt(sdJwtElements: DisclosableObjectSpec): Result<UnsignedSdJwt> = runCatching {
         val (jwtClaimSet, disclosures) = encodeObj(sdJwtElements).addHashAlgClaim(hashAlgorithm)
         UnsignedSdJwt(jwtClaimSet, disclosures)
     }
@@ -63,7 +63,7 @@ class SdJwtFactory(
      * @param sdObject the set of elements to disclose
      * @return the [UnsignedSdJwt]
      */
-    private fun encodeObj(sdObject: SdObject): EncodedSdElement {
+    private fun encodeObj(sdObject: DisclosableObjectSpec): EncodedSdElement {
         val disclosures = mutableListOf<Disclosure>()
         val encodedClaims = mutableMapOf<String, JsonElement>()
 
@@ -107,21 +107,21 @@ class SdJwtFactory(
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    private fun encodeClaim(claimName: String, claimValue: SdObjectElement): EncodedSdElement {
-        fun encodePlain(plain: DisclosableJsonElement.Plain): EncodedSdElement {
-            val plainClaim = JsonObject(mapOf(claimName to plain.value))
+    private fun encodeClaim(claimName: String, claimValue: DisclosableElement): EncodedSdElement {
+        fun encodePlain(plain: JsonElement): EncodedSdElement {
+            val plainClaim = JsonObject(mapOf(claimName to plain))
             return plainClaim to emptyList()
         }
 
-        fun encodeSd(sd: DisclosableJsonElement.Sd, allowNestedDigests: Boolean = false): EncodedSdElement {
-            val claim = claimName to sd.value
+        fun encodeSd(sd: JsonElement, allowNestedDigests: Boolean = false): EncodedSdElement {
+            val claim = claimName to sd
             val (disclosure, digest) = objectPropertyDisclosure(claim, allowNestedDigests)
             val digestAndDecoys = setOf(digest)
             val sdClaim = digestAndDecoys.sdClaim()
             return sdClaim to listOf(disclosure)
         }
 
-        fun encodeSdArray(sdArray: SdArray): EncodedSdElement {
+        fun encodeSdArray(sdArray: DisclosableArraySpec): EncodedSdElement {
             val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(sdArray)
             val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
             val decoys = genDecoys(actualDisclosureDigests, sdArray.minimumDigests).map { PlainOrDigest.Dig(it) }
@@ -137,38 +137,41 @@ class SdJwtFactory(
             return arrayClaim to disclosures
         }
 
-        fun encodeStructuredSdObject(sdObject: SdObject): EncodedSdElement {
+        fun encodeStructuredSdObject(sdObject: DisclosableObjectSpec): EncodedSdElement {
             val (encodedSubClaims, disclosures) = encodeObj(sdObject)
             val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
             return structuredSdClaim to disclosures
         }
 
-        fun encodeRecursiveSdObject(recursiveSdObject: RecursiveSdObject): EncodedSdElement {
-            val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject.content)
-            val wrapper = DisclosableJsonElement.Sd(contentClaims)
+        fun encodeRecursiveSdObject(recursiveSdObject: DisclosableObjectSpec): EncodedSdElement {
+            val (contentClaims, contentDisclosures) = encodeObj(recursiveSdObject)
+            val wrapper = contentClaims
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper, allowNestedDigests = true)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
         }
 
-        fun encodeRecursiveSdArray(recursiveSdArray: RecursiveSdArray): EncodedSdElement {
-            val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray.content)
-            val wrapper = DisclosableJsonElement.Sd(checkNotNull(contentClaims[claimName]))
+        fun encodeRecursiveSdArray(recursiveSdArray: DisclosableArraySpec): EncodedSdElement {
+            val (contentClaims, contentDisclosures) = encodeSdArray(recursiveSdArray)
+            val wrapper = checkNotNull(contentClaims[claimName])
             val (wrapperClaim, wrapperDisclosures) = encodeSd(wrapper)
             val disclosures = contentDisclosures + wrapperDisclosures
             return wrapperClaim to disclosures
         }
 
         return when (claimValue) {
-            is Disclosable -> when (val disclosable = claimValue.disclosable) {
-                is DisclosableJsonElement.Plain -> encodePlain(disclosable)
-                is DisclosableJsonElement.Sd -> encodeSd(disclosable)
+            is DisclosableJson -> when (val disclosable = claimValue.disclosable) {
+                is Disclosable.Plain -> encodePlain(disclosable.value)
+                is Disclosable.Sd -> encodeSd(disclosable.value)
             }
-
-            is SdArray -> encodeSdArray(claimValue)
-            is SdObject -> encodeStructuredSdObject(claimValue)
-            is RecursiveSdArray -> encodeRecursiveSdArray(claimValue)
-            is RecursiveSdObject -> encodeRecursiveSdObject(claimValue)
+            is DisclosableArray -> when (val disclosable = claimValue.disclosable) {
+                is Disclosable.Plain -> encodeSdArray(disclosable.value)
+                is Disclosable.Sd -> encodeRecursiveSdArray(disclosable.value)
+            }
+            is DisclosableObject -> when (val disclosable = claimValue.disclosable) {
+                is Disclosable.Plain -> encodeStructuredSdObject(disclosable.value)
+                is Disclosable.Sd -> encodeRecursiveSdObject(disclosable.value)
+            }
         }
     }
 
@@ -201,7 +204,8 @@ class SdJwtFactory(
         if (isEmpty()) JsonObject(emptyMap())
         else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
 
-    private fun Map<String, JsonElement>.sdClaim(): List<JsonElement> = this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
+    private fun Map<String, JsonElement>.sdClaim(): List<JsonElement> =
+        this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
 
     private fun DisclosureDigest.asDigestClaim(): JsonObject {
         return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
@@ -216,7 +220,7 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementsDisclosure(sdArray: SdArray): Pair<List<Disclosure>, List<PlainOrDigest>> {
+    private fun arrayElementsDisclosure(sdArray: DisclosableArraySpec): Pair<List<Disclosure>, List<PlainOrDigest>> {
         fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
             val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
             val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
@@ -228,10 +232,10 @@ class SdJwtFactory(
 
         for (element in sdArray) {
             when (element) {
-                is SdArrayElement.Disclosable -> {
+                is SdArrayElement.DisclosableJson -> {
                     when (val v = element.disclosable) {
-                        is DisclosableJsonElement.Plain -> plainOrDigestElements += PlainOrDigest.Plain(v.value)
-                        is DisclosableJsonElement.Sd -> {
+                        is Disclosable.Plain -> plainOrDigestElements += PlainOrDigest.Plain(v.value)
+                        is Disclosable.Sd -> {
                             val (disclosure, digest) = disclosureOf(v.value)
                             disclosures += disclosure
                             plainOrDigestElements += PlainOrDigest.Dig(digest)

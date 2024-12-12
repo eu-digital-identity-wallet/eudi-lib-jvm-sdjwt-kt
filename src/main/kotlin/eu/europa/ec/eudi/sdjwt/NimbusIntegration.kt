@@ -224,7 +224,7 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  *
  * @param jwk the key to put in confirmation claim
  */
-fun SdObjectBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
+fun DisclosableObjectSpecBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
 
 private object NimbusSdJwtIssuerFactory {
 

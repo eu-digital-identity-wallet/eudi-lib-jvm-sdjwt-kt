@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.SdObjectElement.*
+import eu.europa.ec.eudi.sdjwt.DisclosableElement.*
 import kotlinx.serialization.json.*
 
 /**
@@ -25,19 +25,24 @@ import kotlinx.serialization.json.*
  *
  * @param content the content of the object. Each of its claims could be always or selectively disclosable
  * @param minimumDigests This is an optional hint, that expresses the minimum number of digests at the immediate level
- * of this [SdObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * of this [DisclosableObjectSpec], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
  * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  */
-class SdObject(
-    private val content: Map<String, SdObjectElement>,
+class DisclosableObjectSpec(
+    private val content: Map<String, DisclosableElement>,
     val minimumDigests: MinimumDigests?,
-) : Map<String, SdObjectElement> by content, SdObjectElement
+) : Map<String, DisclosableElement> by content
+
+class DisclosableArraySpec(
+    val content: List<SdArrayElement>,
+    val minimumDigests: MinimumDigests?,
+) : List<SdArrayElement> by content
 
 /**
- * Adds to then current [SdObject] another [SdObject] producing
- * a new [SdObject] containing the merged claims.
+ * Adds to then current [DisclosableObjectSpec] another [DisclosableObjectSpec] producing
+ * a new [DisclosableObjectSpec] containing the merged claims.
  *
- * If the two [SdObject] contain claims with common names, then the resulting [SdObject]
+ * If the two [DisclosableObjectSpec] contain claims with common names, then the resulting [DisclosableObjectSpec]
  * will preserve the claims of [that]
  *
  * ```
@@ -57,17 +62,17 @@ class SdObject(
  *   sdObj1 + sdObj2 // will contain "a" to Plain("ddd") and "b" to Sd("bar")
  *
  * ```
- * @param that the other [SdObject]
- * @receiver the current [SdObject]
- * @return a new [SdObject] as described above
+ * @param that the other [DisclosableObjectSpec]
+ * @receiver the current [DisclosableObjectSpec]
+ * @return a new [DisclosableObjectSpec] as described above
  */
-operator fun SdObject.plus(that: SdObject): SdObject {
+operator fun DisclosableObjectSpec.plus(that: DisclosableObjectSpec): DisclosableObjectSpec {
     fun MinimumDigests?.valueOrZero() = this?.value ?: 0
     val newMinimumDigests =
         if (this.minimumDigests == null && that.minimumDigests == null) null
         else MinimumDigests(this.minimumDigests.valueOrZero() + that.minimumDigests.valueOrZero())
-    return SdObject(
-        (this as Map<String, SdObjectElement>) + (that as Map<String, SdObjectElement>),
+    return DisclosableObjectSpec(
+        (this as Map<String, DisclosableElement>) + (that as Map<String, DisclosableElement>),
         newMinimumDigests,
     )
 }
@@ -75,22 +80,18 @@ operator fun SdObject.plus(that: SdObject): SdObject {
 /**
  * A [JsonElement] that is either always or selectively disclosable
  */
-sealed interface DisclosableJsonElement {
+sealed interface Disclosable<out T> {
     /**
      * A [JsonElement] that is always disclosable
      */
     @JvmInline
-    value class Plain(val value: JsonElement) : DisclosableJsonElement
+    value class Plain<out T>(val value: T) : Disclosable<T>
 
     /**
      * A [JsonElement] that is selectively disclosable (as a whole)
      */
     @JvmInline
-    value class Sd(val value: JsonElement) : DisclosableJsonElement {
-        init {
-            require(value != JsonNull) { "Null cannot be selectively disclosable" }
-        }
-    }
+    value class Sd<out T>(val value: T) : Disclosable<T>
 }
 
 /**
@@ -101,50 +102,47 @@ sealed interface SdArrayElement {
      * An element which contains any [JsonElement] that is either always or selectively (as a whole) disclosable
      */
     @JvmInline
-    value class Disclosable(val disclosable: DisclosableJsonElement) : SdArrayElement
+    value class DisclosableJson(val disclosable: Disclosable<JsonElement>) : SdArrayElement
 
     /**
      * An element that is a selectively disclosable object
      */
     @JvmInline
-    value class DisclosableObj(val sdObject: SdObject) : SdArrayElement
+    value class DisclosableObj(val sdObject: DisclosableObjectSpec) : SdArrayElement
 
     companion object {
-        fun plain(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Plain(content))
-        fun sd(content: JsonElement): SdArrayElement = Disclosable(DisclosableJsonElement.Sd(content))
-        fun sd(obj: SdObject): SdArrayElement = DisclosableObj(obj)
+        fun plain(content: JsonElement): SdArrayElement = DisclosableJson(Disclosable.Plain(content))
+        fun sd(content: JsonElement): SdArrayElement = DisclosableJson(Disclosable.Sd(content))
+        fun sd(obj: DisclosableObjectSpec): SdArrayElement = DisclosableObj(obj)
     }
 }
 
 /**
- * The elements within a [disclosable object][SdObject]
+ * The elements within a [disclosable object][DisclosableObjectSpec]
  */
-sealed interface SdObjectElement {
+sealed interface DisclosableElement {
 
-    data class Disclosable(val disclosable: DisclosableJsonElement) : SdObjectElement
+    @JvmInline
+    value class DisclosableJson(val disclosable: Disclosable<JsonElement>) : DisclosableElement
 
-    /**
-     * A selectively disclosable array
-     * Each of its elements could be always or selectively disclosable
-     */
-    class SdArray(private val content: List<SdArrayElement>, val minimumDigests: MinimumDigests?) :
-        SdObjectElement, List<SdArrayElement> by content
+    @JvmInline
+    value class DisclosableObject(val disclosable: Disclosable<DisclosableObjectSpec>) : DisclosableElement
 
-    /**
-     * Selectively disclosable array that will be encoded with the recursive option
-     */
-    data class RecursiveSdArray(val content: SdArray) : SdObjectElement
-
-    /**
-     * Selectively disclosable claims that will be encoded with the recursive option
-     */
-    data class RecursiveSdObject(val content: SdObject) : SdObjectElement
+    @JvmInline
+    value class DisclosableArray(val disclosable: Disclosable<DisclosableArraySpec>) : DisclosableElement
 
     companion object {
-        fun plain(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Plain(content))
-        fun sd(content: JsonElement): Disclosable = Disclosable(DisclosableJsonElement.Sd(content))
-        fun sd(es: List<SdArrayElement>, minimumDigests: Int?): SdArray = SdArray(es, minimumDigests.atLeastDigests())
-        fun sdRec(es: List<SdArrayElement>, minimumDigests: Int?): RecursiveSdArray = RecursiveSdArray(sd(es, minimumDigests))
+        fun plain(content: JsonElement): DisclosableJson = DisclosableJson(Disclosable.Plain(content))
+        fun sd(content: JsonElement): DisclosableJson = DisclosableJson(Disclosable.Sd(content))
+        fun sd(es: List<SdArrayElement>, minimumDigests: Int?): DisclosableArray = DisclosableArray(
+            Disclosable.Plain(
+                DisclosableArraySpec(es, minimumDigests.atLeastDigests()),
+            ),
+        )
+        fun sdRec(es: List<SdArrayElement>, minimumDigests: Int?): DisclosableArray =
+            DisclosableArray(
+                Disclosable.Sd(DisclosableArraySpec(es, minimumDigests.atLeastDigests())),
+            )
     }
 }
 
@@ -153,23 +151,23 @@ sealed interface SdObjectElement {
 internal annotation class SdElementDsl
 
 /**
- * [SdArray] is actually a [List] of [elements][SdArrayElement]
+ * [DisclosableArraySpec] is actually a [List] of [elements][SdArrayElement]
  *
  * So we can use as builder a [MutableList]
  *
- * @see buildSdArray
+ * @see buildArraySpec
  */
-typealias SdArrayBuilder = (@SdElementDsl MutableList<SdArrayElement>)
+typealias DisclosableArraySpecBuilder = (@SdElementDsl MutableList<SdArrayElement>)
 
 /**
- * [SdObject] is actually a [Map] of [elements][SdObjectElement]
+ * [DisclosableObjectSpec] is actually a [Map] of [elements][DisclosableElement]
  *
  * So we can use as a builder [MutableMap]
  *
  * @see sdJwt
- * @see buildSdObject
+ * @see buildObjectSpec
  */
-typealias SdObjectBuilder = (@SdElementDsl MutableMap<String, SdObjectElement>)
+typealias DisclosableObjectSpecBuilder = (@SdElementDsl MutableMap<String, DisclosableElement>)
 typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
 
 //
@@ -191,19 +189,19 @@ typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
  * }
  * ```
  *
- * @return the [SdArray] described by the [builderAction]
+ * @return the [DisclosableArraySpec] described by the [builderAction]
  */
-inline fun buildSdArray(
+inline fun buildArraySpec(
     minimumDigests: Int?,
-    builderAction: SdArrayBuilder.() -> Unit,
-): SdArray = SdArray(buildList(builderAction), minimumDigests.atLeastDigests())
-fun SdArrayBuilder.plain(value: String) = plain(JsonPrimitive(value))
-fun SdArrayBuilder.plain(value: Number) = plain(JsonPrimitive(value))
-fun SdArrayBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
-fun SdArrayBuilder.plain(value: JsonElement) = add(SdArrayElement.plain(value))
+    builderAction: DisclosableArraySpecBuilder.() -> Unit,
+): DisclosableArraySpec = DisclosableArraySpec(buildList(builderAction), minimumDigests.atLeastDigests())
+fun DisclosableArraySpecBuilder.plain(value: String) = plain(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.plain(value: Number) = plain(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.plain(value: JsonElement) = add(SdArrayElement.plain(value))
 
 /**
- * Adds a plain claim to a [SdArray] using KotlinX Serialization DSL
+ * Adds a plain claim to a [DisclosableArraySpec] using KotlinX Serialization DSL
  *
  * ```
  * sdJwt {
@@ -226,7 +224,7 @@ fun SdArrayBuilder.plain(value: JsonElement) = add(SdArrayElement.plain(value))
  * }
  * ```
  */
-fun SdArrayBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
+fun DisclosableArraySpecBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
 
 /**
  * Adds into an [SdArray] an element [claims] that will be translated into a
@@ -235,14 +233,14 @@ fun SdArrayBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
-inline fun <reified E> SdArrayBuilder.plain(claims: E) {
+inline fun <reified E> DisclosableArraySpecBuilder.plain(claims: E) {
     plain(Json.encodeToJsonElement(claims))
 }
 
-fun SdArrayBuilder.sd(value: String) = sd(JsonPrimitive(value))
-fun SdArrayBuilder.sd(value: Number) = sd(JsonPrimitive(value))
-fun SdArrayBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
-fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
+fun DisclosableArraySpecBuilder.sd(value: String) = sd(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.sd(value: Number) = sd(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
+fun DisclosableArraySpecBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
 
 /**
  * Adds a selectively disclosable claim to a [SdArray] using KotlinX Serialization DSL
@@ -268,19 +266,19 @@ fun SdArrayBuilder.sd(value: JsonElement) = add(SdArrayElement.sd(value))
  * }
  * ```
  */
-fun SdArrayBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun SdArrayBuilder.buildSdObject(minimumDigests: Int? = null, action: SdObjectBuilder.() -> Unit) {
-    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildSdObject(minimumDigests, action)))
+fun DisclosableArraySpecBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
+fun DisclosableArraySpecBuilder.buildObjectSpec(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) {
+    add(SdArrayElement.sd(eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action)))
 }
 
 /**
- * Adds into an [SdArray] an element [claims] that will be translated into a
+ * Adds into an [DisclosableArraySpecBuilder] an element [claims] that will be translated into a
  * set of claims, all of them individually selectively disclosable, using KotlinX Serialization
  *
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
-inline fun <reified E> SdArrayBuilder.sd(claims: E) {
+inline fun <reified E> DisclosableArraySpecBuilder.sd(claims: E) {
     sd(Json.encodeToJsonElement(claims))
 }
 
@@ -289,37 +287,37 @@ inline fun <reified E> SdArrayBuilder.sd(claims: E) {
 //
 
 /**
- * Factory method for creating a [SdObject] using the [SdObjectBuilder]
- * @param minimumDigests check [SdObject.minimumDigests]
- * @param builderAction some usage/action of the [SdObjectBuilder]
- * @return the [SdObject]
+ * Factory method for creating a [DisclosableObjectSpec] using the [DisclosableObjectSpecBuilder]
+ * @param minimumDigests check [DisclosableObjectSpec.minimumDigests]
+ * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
+ * @return the [DisclosableObjectSpec]
  */
 inline fun sdJwt(
     minimumDigests: Int? = null,
-    builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = buildSdObject(minimumDigests, builderAction)
+    builderAction: DisclosableObjectSpecBuilder.() -> Unit,
+): DisclosableObjectSpec = buildObjectSpec(minimumDigests, builderAction)
 
 /**
- * Factory method for creating a [SdObject] using the [SdObjectBuilder]
- * @param minimumDigests check [SdObject.minimumDigests]
- * @param builderAction some usage/action of the [SdObjectBuilder]
- * @return the [SdObject]
+ * Factory method for creating a [DisclosableObjectSpec] using the [DisclosableObjectSpecBuilder]
+ * @param minimumDigests check [DisclosableObjectSpec.minimumDigests]
+ * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
+ * @return the [DisclosableObjectSpec]
  */
-inline fun buildSdObject(
+inline fun buildObjectSpec(
     minimumDigests: Int? = null,
-    builderAction: SdObjectBuilder.() -> Unit,
-): SdObject = SdObject(buildMap(builderAction), minimumDigests.atLeastDigests())
+    builderAction: DisclosableObjectSpecBuilder.() -> Unit,
+): DisclosableObjectSpec = DisclosableObjectSpec(buildMap(builderAction), minimumDigests.atLeastDigests())
 
-fun SdObjectBuilder.plain(name: String, element: JsonElement) = put(name, SdObjectElement.plain(element))
-fun SdObjectBuilder.sd(name: String, element: JsonElement) = put(name, SdObjectElement.sd(element))
-fun SdObjectBuilder.sd(name: String, element: SdObjectElement) = put(name, element)
-fun SdObjectBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(value))
-fun SdObjectBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
-fun SdObjectBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
-fun SdObjectBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> sd(k, v) }
+fun DisclosableObjectSpecBuilder.plain(name: String, element: JsonElement) = put(name, DisclosableElement.plain(element))
+fun DisclosableObjectSpecBuilder.sd(name: String, element: JsonElement) = put(name, DisclosableElement.sd(element))
+fun DisclosableObjectSpecBuilder.sd(name: String, element: DisclosableElement) = put(name, element)
+fun DisclosableObjectSpecBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> sd(k, v) }
 
 /**
- * Adds into an [SdObject] an element [claims] that will be translated into a
+ * Adds into an [DisclosableObjectSpec] an element [claims] that will be translated into a
  * set of claims, each of them selectively disclosable individually, using KotlinX Serialization
  *
  * ```
@@ -340,7 +338,7 @@ fun SdObjectBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> sd(k, v) }
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
-inline fun <reified E> SdObjectBuilder.sd(claims: E) {
+inline fun <reified E> DisclosableObjectSpecBuilder.sd(claims: E) {
     sd(Json.encodeToJsonElement(claims).jsonObject)
 }
 
@@ -366,14 +364,14 @@ inline fun <reified E> SdObjectBuilder.sd(claims: E) {
  * }
  * ```
  */
-fun SdObjectBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun SdObjectBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
-fun SdObjectBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
-fun SdObjectBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
-fun SdObjectBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
+fun DisclosableObjectSpecBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
+fun DisclosableObjectSpecBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
+fun DisclosableObjectSpecBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
 
 /**
- * Adds into an [SdObject] an element [claims] that will be translated into a
+ * Adds into an [DisclosableObjectSpec] an element [claims] that will be translated into a
  * set of claims, in plain, using KotlinX Serialization
  *
  * ```
@@ -394,7 +392,7 @@ fun SdObjectBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v)
  * @param claims an instance of a kotlin class serializable via KotlinX Serialization
  * @receiver the builder to which the [claims] will be added
  */
-inline fun <reified E> SdObjectBuilder.plain(claims: E) {
+inline fun <reified E> DisclosableObjectSpecBuilder.plain(claims: E) {
     plain(Json.encodeToJsonElement(claims).jsonObject)
 }
 
@@ -420,26 +418,48 @@ inline fun <reified E> SdObjectBuilder.plain(claims: E) {
  * }
  * ```
  */
-fun SdObjectBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
-fun SdObjectBuilder.sdArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {
-    sd(name, buildSdArray(minimumDigests, action))
+fun DisclosableObjectSpecBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
+
+@Deprecated(
+    message = "Deprecated in favor of this function",
+    replaceWith = ReplaceWith("plainArray(name, minimumDigests, action)"),
+)
+fun DisclosableObjectSpecBuilder.sdArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    plainArray(name, minimumDigests, action)
 }
 
-fun SdObjectBuilder.plain(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(minimumDigests, action)
-    put(name, obj)
+fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    val spec = buildArraySpec(minimumDigests, action)
+    put(name, DisclosableArray(Disclosable.Plain(spec)))
 }
 
-fun SdObjectBuilder.sd(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
-    val obj = buildSdObject(minimumDigests, action)
-    sd(name, RecursiveSdObject(obj))
+@Deprecated(
+    message = "Deprecated in favor of this function",
+    replaceWith = ReplaceWith("sd_Array(name, minimumDigests, action)"),
+)
+fun DisclosableObjectSpecBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    sd_Array(name, minimumDigests, action)
+}
+fun DisclosableObjectSpecBuilder.sd_Array(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    val spec = buildArraySpec(minimumDigests, action)
+    put(name, DisclosableArray(Disclosable.Sd(spec)))
+}
+
+fun DisclosableObjectSpecBuilder.plain(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+    val obj = buildObjectSpec(minimumDigests, action)
+    put(name, DisclosableElement.DisclosableObject(Disclosable.Plain(obj)))
+}
+
+fun DisclosableObjectSpecBuilder.sd(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+    val obj = buildObjectSpec(minimumDigests, action)
+    put(name, DisclosableElement.DisclosableObject(Disclosable.Sd(obj)))
 }
 
 @Deprecated(
     message = "Just use plain",
     replaceWith = ReplaceWith("plain(name, minimumDigests, action)"),
 )
-fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+fun DisclosableObjectSpecBuilder.structured(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
     plain(name, minimumDigests, action)
 }
 
@@ -447,13 +467,8 @@ fun SdObjectBuilder.structured(name: String, minimumDigests: Int? = null, action
     message = "Just use sd",
     replaceWith = ReplaceWith("sd(name, minimumDigests, action)"),
 )
-fun SdObjectBuilder.recursive(name: String, minimumDigests: Int? = null, action: (SdObjectBuilder).() -> Unit) {
+fun DisclosableObjectSpecBuilder.recursive(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
     sd(name, minimumDigests, action)
-}
-
-fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: SdArrayBuilder.() -> Unit) {
-    val arr = buildSdArray(minimumDigests, action)
-    sd(name, RecursiveSdArray(arr))
 }
 
 //
@@ -462,10 +477,10 @@ fun SdObjectBuilder.recursiveArray(name: String, minimumDigests: Int? = null, ac
 
 /**
  * Represents a build action that puts a claim into a container
- * such as a [JsonObject] or [SdObject].
+ * such as a [JsonObject] or [DisclosableObjectSpec].
  *
  * Thus, this alias represent an action of [JsonObjectBuilder] or/and
- * [SdObjectBuilder] respectively
+ * [DisclosableObjectSpecBuilder] respectively
  */
 private typealias BuilderAction<V> = (String, V) -> Unit
 
@@ -519,37 +534,37 @@ fun JsonObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::put)
 /**
  * Adds the JWT publicly registered subclaim (Subject), in plain
  */
-fun SdObjectBuilder.sub(value: String) = sub(value, this::plain)
+fun DisclosableObjectSpecBuilder.sub(value: String) = sub(value, this::plain)
 
 /**
  * Adds the JWT publicly registered ISS claim (Issuer), in plain
  */
-fun SdObjectBuilder.iss(value: String) = iss(value, this::plain)
+fun DisclosableObjectSpecBuilder.iss(value: String) = iss(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered IAT claim (Issued At), in plain
  */
-fun SdObjectBuilder.iat(value: Long) = iat(value, this::plain)
+fun DisclosableObjectSpecBuilder.iat(value: Long) = iat(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered EXP claim (Expires), in plain
  */
-fun SdObjectBuilder.exp(value: Long) = exp(value, this::plain)
+fun DisclosableObjectSpecBuilder.exp(value: Long) = exp(value, this::plain)
 
 /**
  * Adds the JWT publicly registered JTI claim, in plain
  */
-fun SdObjectBuilder.jti(value: String) = jti(value, this::plain)
+fun DisclosableObjectSpecBuilder.jti(value: String) = jti(value, this::plain)
 
 /**
  *  Adds the JWT publicly registered NBE claim (Not before), in plain
  */
-fun SdObjectBuilder.nbf(value: Long) = nbf(value, this::plain)
+fun DisclosableObjectSpecBuilder.nbf(value: Long) = nbf(value, this::plain)
 
 /**
  * Adds the JWT publicly registered AUD claim (single Audience), in plain
  */
-fun SdObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::plain)
+fun DisclosableObjectSpecBuilder.aud(vararg value: String) = aud(value.asList(), this::plain)
 
 /**
  * Adds the confirmation claim (cnf) as a plain (always disclosable) which
@@ -559,5 +574,5 @@ fun SdObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::plain)
  *
  * @param jwk the key to put in confirmation claim.
  */
-fun SdObjectBuilder.cnf(jwk: JsonObject) =
+fun DisclosableObjectSpecBuilder.cnf(jwk: JsonObject) =
     plain("cnf", buildJsonObject { put("jwk", jwk) })

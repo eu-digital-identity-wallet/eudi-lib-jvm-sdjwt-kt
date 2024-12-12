@@ -56,7 +56,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
         holderPubKey: JWK,
         iat: Instant,
         exp: Instant? = null,
-    ): SdObject =
+    ): DisclosableObjectSpec =
         sdJwt {
             //
             // Never Selectively Disclosable claims

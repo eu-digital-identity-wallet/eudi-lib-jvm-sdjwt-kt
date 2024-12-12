@@ -35,7 +35,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
      * @param sdElements the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    suspend fun issue(sdElements: SdObject): Result<SdJwt.Issuance<SIGNED_JWT>>
+    suspend fun issue(sdElements: DisclosableObjectSpec): Result<SdJwt.Issuance<SIGNED_JWT>>
 
     companion object {
         /**

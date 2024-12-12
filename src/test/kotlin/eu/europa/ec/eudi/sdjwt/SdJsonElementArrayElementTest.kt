@@ -44,7 +44,7 @@ class SdJsonElementArrayElementTest {
                 put("birthdate", "1940-01-01")
                 put("updated_at", 1570000000)
             }
-            sdArray("nationalities") {
+            plainArray("nationalities") {
                 plain("US")
                 sd("DE")
             }

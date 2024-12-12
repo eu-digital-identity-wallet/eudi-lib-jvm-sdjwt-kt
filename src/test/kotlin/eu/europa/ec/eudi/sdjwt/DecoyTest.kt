@@ -110,6 +110,6 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             signAlgorithm = alg,
         )
 
-    suspend fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =
+    suspend fun issue(sdElements: DisclosableObjectSpec): SdJwt.Issuance<SignedJWT> =
         issuer.issue(sdElements).getOrThrow()
 }

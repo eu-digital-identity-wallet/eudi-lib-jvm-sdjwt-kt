@@ -236,10 +236,10 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                 plain("credentialSubject") {
                     sd(credential)
                     recursiveArray("addresses") {
-                        buildSdObject {
+                        buildObjectSpec {
                             sd("street", "street1")
                         }
-                        buildSdObject {
+                        buildObjectSpec {
                             sd("street", "street2")
                         }
                     }

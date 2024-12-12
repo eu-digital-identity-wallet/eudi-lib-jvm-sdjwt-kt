@@ -32,7 +32,7 @@ val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
         // as a single digest
     }
 
-    sdArray("evidence", minimumDigests = 2) {
+    plainArray("evidence", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
     }
