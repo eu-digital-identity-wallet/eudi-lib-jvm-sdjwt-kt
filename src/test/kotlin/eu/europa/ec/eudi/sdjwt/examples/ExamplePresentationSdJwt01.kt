@@ -31,7 +31,7 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
                 iss("https://example.com/issuer")
                 iat(1516239022)
                 exp(1735689661)
-                sd("address") {
+                sdObject("address") {
                     sd("street_address", "Schulstr. 12")
                     sd("locality", "Schulpforta")
                     sd("region", "Sachsen-Anhalt")

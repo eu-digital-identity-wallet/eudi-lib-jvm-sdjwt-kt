@@ -23,13 +23,13 @@ val sdJwtVc =
         iat(1683000000)
         exp(1883000000)
 
-        plain("vct", "https://bmi.bund.example/credential/pid/1.0")
-        plain("cnf") {
-            plain("jwk") {
-                plain("kty", "EC")
-                plain("crv", "P-256")
-                plain("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                plain("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+        notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
+        notSdObject("cnf") {
+            notSdObject("jwk") {
+                notSd("kty", "EC")
+                notSd("crv", "P-256")
+                notSd("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                notSd("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
             }
         }
 
@@ -37,26 +37,26 @@ val sdJwtVc =
         sd("family_name", "Mustermann")
         sd("birthdate", "1963-08-12")
         sd("source_document_type", "id_card")
-        sd_Array("nationalities") {
-            plain("DE")
+        sdArray("nationalities") {
+            notSd("DE")
         }
         sd("gender", "female")
         sd("birth_family_name", "Gabler")
         sd("also_known_as", "Schwester")
 
-        sd("address") {
+        sdObject("address") {
             sd("street_address", "Heidestraße 17")
             sd("locality", "Köln")
             sd("postal_code", "51147")
             sd("country", "DE")
         }
 
-        sd("place_of_birth") {
-            plain("country", "DE")
+        sdObject("place_of_birth") {
+            notSd("country", "DE")
             sd("locality", "Berlin")
         }
 
-        plain("age_equal_or_over") {
+        notSdObject("age_equal_or_over") {
             sd("12", true)
             sd("14", true)
             sd("16", true)

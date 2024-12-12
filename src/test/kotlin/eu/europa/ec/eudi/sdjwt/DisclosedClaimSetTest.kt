@@ -106,7 +106,7 @@ class DisclosedClaimSetTest {
         ): UnsignedSdJwt {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plainClaims.forEach { plain(it.key, it.value) }
+                plainClaims.forEach { notSd(it.key, it.value) }
                 claimsToBeDisclosed.forEach { sd(it.key, it.value) }
             }
 
@@ -196,8 +196,8 @@ class DisclosedClaimSetTest {
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plainClaims.forEach { plain(it.key, it.value) }
-                claimsToBeDisclosed.forEach { plain(it.key) { sd(it.key, it.value) } }
+                plainClaims.forEach { notSd(it.key, it.value) }
+                claimsToBeDisclosed.forEach { notSdObject(it.key) { sd(it.key, it.value) } }
             }
             val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,

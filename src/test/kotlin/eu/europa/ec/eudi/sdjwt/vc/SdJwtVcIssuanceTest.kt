@@ -62,7 +62,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             // Never Selectively Disclosable claims
             //
             iss(config.issuer.toASCIIString())
-            plain(SdJwtVcSpec.VCT, config.vct.toASCIIString())
+            notSd(SdJwtVcSpec.VCT, config.vct.toASCIIString())
             iat(iat.epochSecond)
             exp?.let { exp(it.epochSecond) }
             cnf(holderPubKey)
@@ -74,11 +74,11 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             sd("family_name", familyName)
             sd("email", email)
             sd("phone_number", phoneNumber)
-            sd("address") {
-                plain("street_address", address.streetAddress)
-                plain("locality", address.locality)
-                plain("region", address.region)
-                plain("country", address.country)
+            sdObject("address") {
+                notSd("street_address", address.streetAddress)
+                notSd("locality", address.locality)
+                notSd("region", address.region)
+                notSd("country", address.country)
             }
             sd("birth_date", birthDate.toString())
             sd("is_over_18", isOver18)

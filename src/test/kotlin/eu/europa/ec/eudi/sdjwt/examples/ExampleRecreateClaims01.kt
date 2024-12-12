@@ -31,7 +31,7 @@ val claims: JsonObject = runBlocking {
             iss("https://example.com/issuer")
             iat(1516239022)
             exp(1735689661)
-            plain("address") {
+            notSdObject("address") {
                 sd("street_address", "Schulstr. 12")
                 sd("locality", "Schulpforta")
                 sd("region", "Sachsen-Anhalt")

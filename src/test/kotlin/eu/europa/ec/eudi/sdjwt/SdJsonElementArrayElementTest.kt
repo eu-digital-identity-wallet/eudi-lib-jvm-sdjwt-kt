@@ -32,16 +32,16 @@ class SdJsonElementArrayElementTest {
             sd("email", "johndoe@example.com")
             sd("phone_number", "+1-202-555-0101")
             sd("phone_number_verified", true)
-            sd("address") {
-                plain("street_address", "123 Main St")
-                plain("locality", "Anytown")
-                plain("region", "Anystate")
-                plain("country", "US")
+            sdObject("address") {
+                notSd("street_address", "123 Main St")
+                notSd("locality", "Anytown")
+                notSd("region", "Anystate")
+                notSd("country", "US")
             }
             sd("birthdate", "1940-01-01")
             sd("updated_at", 1570000000)
-            plainArray("nationalities") {
-                plain("US")
+            notSdArray("nationalities") {
+                notSd("US")
                 sd("DE")
             }
         }

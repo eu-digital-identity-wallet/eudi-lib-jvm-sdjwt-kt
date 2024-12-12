@@ -42,7 +42,7 @@ class PresentationTest : NimbusSdJwtOps {
         iss("https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
         exp(1883000000)
         iat(1683000000)
-        plain("vct", "https://bmi.bund.example/credential/pid/1.0")
+        notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
 
         //
         // Selectively disclosable claims
@@ -52,8 +52,8 @@ class PresentationTest : NimbusSdJwtOps {
         sd("family_name", "Mustermann")
         sd("gender", "female")
         sd("birthdate", "1963-8-12")
-        sd_Array("nationalities") {
-            plain("DE")
+        sdArray("nationalities") {
+            notSd("DE")
         }
         sd("birth_family_name", "Gabler")
         sd("source_document_type", "id_card")
@@ -62,7 +62,7 @@ class PresentationTest : NimbusSdJwtOps {
         // Selectively disclosable claim using recursive options
         // All sub-claims are selectively disclosable
         // Each sub-claim can be individually disclosed
-        sd("address") {
+        sdObject("address") {
             sd("postal_code", "51147")
             sd("street_address", "Heidestraße 17")
             sd("locality", "Köln")
@@ -76,8 +76,8 @@ class PresentationTest : NimbusSdJwtOps {
         //  This means that `place_of_birth` can be selectively disclosed or not.
         //  If it is selected, `country` will be also disclosed (no option to hide it)
         //  and `locality` is selectively disclosable
-        sd("place_of_birth") {
-            plain("country", "DE")
+        sdObject("place_of_birth") {
+            notSd("country", "DE")
             sd("locality", "Berlin")
         }
 
@@ -85,7 +85,7 @@ class PresentationTest : NimbusSdJwtOps {
         // Selectively disclosable claim using structured option
         // All sub-claims are selectively disclosable
         // This means that each sub-claim can be disclosed (or not)
-        plain("age_equal_or_over") {
+        notSdObject("age_equal_or_over") {
             sd("65", false)
             sd("12", true)
             sd("21", true)
@@ -212,8 +212,8 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
         val spec = sdJwt {
-            plain("credentialSubject") {
-                plain("type", "VaccinationEvent")
+            notSdObject("credentialSubject") {
+                notSd("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -225,8 +225,8 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
         val spec = sdJwt {
-            sd("credentialSubject") {
-                plain("type", "VaccinationEvent")
+            sdObject("credentialSubject") {
+                notSd("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -240,12 +240,12 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for sd array`() = runTest {
         val spec = sdJwt {
-            plainArray("evidence") {
+            notSdArray("evidence") {
                 sdObject {
                     sd("type", "document")
                 }
-                plainObject {
-                    plain("foo", "bar")
+                notSdObject {
+                    notSd("foo", "bar")
                 }
             }
         }
@@ -276,12 +276,12 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `querying for a recursive SD array`() = runTest {
         val spec = sdJwt {
-            sd_Array("evidence") {
+            sdArray("evidence") {
                 sdObject {
                     sd("type", "document")
                 }
-                plainObject {
-                    plain("foo", "bar")
+                notSdObject {
+                    notSd("foo", "bar")
                 }
             }
         }

@@ -73,21 +73,21 @@ suspend fun main() {
 
     val sdJwt: String = with(NimbusSdJwtOps) {
         val spec = sdJwt {
-            plain("iss", "https://example.com")
-            plain("jti", "http://example.com/credentials/3732")
-            plain("nbf", 1541493724)
-            plain("iat", 1541493724)
-            plain("type", "IdentityCredential")
-            plain("credentialSubject") {
+            notSd("iss", "https://example.com")
+            notSd("jti", "http://example.com/credentials/3732")
+            notSd("nbf", 1541493724)
+            notSd("iat", 1541493724)
+            notSd("type", "IdentityCredential")
+            notSdObject("credentialSubject") {
                 sd("given_name", "John")
                 sd("family_name", "Doe")
                 sd("email", "johndoe@example.com")
                 sd("phone_number", "+1-202-555-0101")
-                sd("address") {
-                    plain("street_address", "123 Main St")
-                    plain("locality", "Anytown")
-                    plain("region", "Anystate")
-                    plain("country", "US")
+                sdObject("address") {
+                    notSd("street_address", "123 Main St")
+                    notSd("locality", "Anytown")
+                    notSd("region", "Anystate")
+                    notSd("country", "US")
                 }
                 sd("birthdate", "1940-01-01")
                 sd("is_over_18", true)

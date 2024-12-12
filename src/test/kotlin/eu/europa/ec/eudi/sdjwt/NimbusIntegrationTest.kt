@@ -60,13 +60,13 @@ private val sdObject = sdJwt {
     iat(1683000000)
     exp(1883000000)
 
-    plain("vct", "https://bmi.bund.example/credential/pid/1.0")
-    plain("cnf") {
-        plain("jwk") {
-            plain("kty", "EC")
-            plain("crv", "P-256")
-            plain("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-            plain("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+    notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
+    notSdObject("cnf") {
+        notSdObject("jwk") {
+            notSd("kty", "EC")
+            notSd("crv", "P-256")
+            notSd("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+            notSd("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
         }
     }
 

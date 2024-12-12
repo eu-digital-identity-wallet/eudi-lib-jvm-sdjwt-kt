@@ -26,117 +26,117 @@ internal suspend fun main() {
     val key = ECKeyGenerator(Curve.P_521).generate()
     val issuer = NimbusSdJwtOps.issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512)
 
-    val spec = buildObjectSpec {
+    val spec = sdJwt {
         // plain claim in object
-        plain("plainClaim", "value")
+        notSd("plainClaim", "value")
 
         // sd claim in object
         sd("sdClaim", "value")
 
         // plain array in object
-        plainArray("plainArray") {
+        notSdArray("plainArray") {
             // plain value in plain array
-            plain("plain")
+            notSd("plain")
 
             // sd value in plain array
             sd("sd")
 
             // plain object in plain array, can also contain other arrays or objects
-            plainObject {
-                plain("plainClaim", "value")
+            notSdObject {
+                notSd("plainClaim", "value")
                 sd("sdClaim", "value")
             }
 
             // sd object in plain array, can also contain other arrays or objects
             sdObject {
-                plain("plainClaim", "value")
+                notSd("plainClaim", "value")
                 sd("sdClaim", "value")
             }
 
             // plain array in plain array, can also contain other arrays or objects
-            plainArray {
-                plain("plain")
+            notSdArray {
+                notSd("plain")
                 sd("sd")
             }
 
             // sd array in plain array, can also contain other arrays or objects
             sdArray {
-                plain("plain")
+                notSd("plain")
                 sd("sd")
             }
         }
 
         // sd array in object
-        sd_Array("sdArray") {
+        sdArray("sdArray") {
             // plain value in sd array
-            plain("plain")
+            notSd("plain")
 
             // sd value in sd array
             sd("sd")
 
             // plain object in sd array, can also contain other arrays or objects
-            plainObject {
-                plain("plainClaim", "value")
+            notSdObject {
+                notSd("plainClaim", "value")
                 sd("sdClaim", "value")
             }
 
             // sd object in sd array, can also contain other arrays or objects
             sdObject {
-                plain("plainClaim", "value")
+                notSd("plainClaim", "value")
                 sd("sdClaim", "value")
             }
 
             // plain array in sd array, can also contain other arrays or objects
-            plainArray {
-                plain("plain")
+            notSdArray {
+                notSd("plain")
                 sd("sd")
             }
 
             // sd array in sd array, can also contain other arrays or objects
             sdArray {
-                plain("plain")
+                notSd("plain")
                 sd("sd")
             }
         }
 
         // plain object in object
-        plain("plainObject") {
+        notSdObject("plainObject") {
             // plain value in plain object
-            plain("plainClaim", "value")
+            notSd("plainClaim", "value")
 
             // sd value in plain object
             sd("sdClaim", "value")
 
             // plain array in plain object, can also contain other arrays or objects
-            plainArray("plainArray") {
-                plain("plain")
+            notSdArray("plainArray") {
+                notSd("plain")
                 sd("sd")
             }
 
             // sd value in plain object, can also contain other arrays or objects
-            sd_Array("plainArray") {
-                plain("plain")
+            sdArray("plainArray") {
+                notSd("plain")
                 sd("sd")
             }
         }
 
         // sd object in object
-        sd("sdObject") {
+        sdObject("sdObject") {
             // plain value in sd object
-            plain("plainClaim", "value")
+            notSd("plainClaim", "value")
 
             // sd value in sd object
             sd("sdClaim", "value")
 
             // plain array in sd object, can also contain other arrays or objects
-            plainArray("plainArray") {
-                plain("plain")
+            notSdArray("plainArray") {
+                notSd("plain")
                 sd("sd")
             }
 
             // sd array in sd object, can also contain other arrays or objects
-            sd_Array("sdArray") {
-                plain("plain")
+            sdArray("sdArray") {
+                notSd("plain")
                 sd("sd")
             }
         }

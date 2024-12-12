@@ -107,7 +107,7 @@ class SdJwtFactory(
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    private fun encodeClaim(claimName: String, claimValue: DisclosableElement): EncodedSdElement {
+    private fun encodeClaim(claimName: String, claimValue: DisclosableElement<*>): EncodedSdElement {
         fun encodePlain(plain: JsonElement): EncodedSdElement {
             val plainClaim = JsonObject(mapOf(claimName to plain))
             return plainClaim to emptyList()
