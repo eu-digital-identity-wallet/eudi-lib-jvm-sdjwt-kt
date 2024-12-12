@@ -83,7 +83,7 @@ val issuedSdJwt: String = runBlocking {
             iat(1516239022)
             exp(1735689661)
         }
-        structured("address") {
+        plain("address") {
             sd {
                 put("street_address", "Schulstr. 12")
                 put("locality", "Schulpforta")
@@ -168,7 +168,7 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
                     iat(1516239022)
                     exp(1735689661)
                 }
-                recursive("address") {
+                sd("address") {
                     sd {
                         put("street_address", "Schulstr. 12")
                         put("locality", "Schulpforta")
@@ -277,7 +277,7 @@ val claims: JsonObject = runBlocking {
                 iat(1516239022)
                 exp(1735689661)
             }
-            structured("address") {
+            plain("address") {
                 sd {
                     put("street_address", "Schulstr. 12")
                     put("locality", "Schulpforta")
@@ -319,7 +319,7 @@ By default, the library doesn't add decoy digests to the issued SD-JWT.
 If an issuer wants to use digests, it can do so using the DSL.
 
 DSL functions that mark a container composed of potentially selectively disclosable   
-elements, such as `sdJwt{}`, `structured{}` e.t,c, accept
+elements, such as `sdJwt{}`, `plain{}` e.t,c, accept
 an optional parameter named `minimumDigests: Int? = null`.
 
 The issuer can use this parameter to set the minimum number of digests
@@ -338,12 +338,12 @@ import eu.europa.ec.eudi.sdjwt.*
 val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
     // This 5 guarantees that at least 5 digests will be found
     // to the digest array, regardless of the content of the SD-JWT
-    structured("address", minimumDigests = 10) {
+    plain("address", minimumDigests = 10) {
         // This affects the nested array of the digests that will
         // have at list 10 digests.
     }
 
-    recursive("address1", minimumDigests = 8) {
+    sd("address1", minimumDigests = 8) {
         // This will affect the digests array that will be found
         // in the disclosure of this recursively disclosable item
         // the whole object will be embedded in its parent
