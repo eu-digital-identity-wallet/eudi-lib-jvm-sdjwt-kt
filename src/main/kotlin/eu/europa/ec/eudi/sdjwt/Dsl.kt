@@ -85,14 +85,23 @@ sealed interface Disclosable<out T> {
      * A [JsonElement] that is always disclosable
      */
     @JvmInline
-    value class Plain<out T>(val value: T) : Disclosable<T>
+    value class Always<out T>(val value: T) : Disclosable<T>
 
     /**
      * A [JsonElement] that is selectively disclosable (as a whole)
      */
     @JvmInline
-    value class Sd<out T>(val value: T) : Disclosable<T>
+    value class Selectively<out T>(val value: T) : Disclosable<T>
 }
+
+internal fun <T: Any> T.alwaysDisclosable(): Disclosable.Always<T> = Disclosable.Always(this)
+internal fun <T: Any> T.selectivelyDisclosable(): Disclosable.Selectively<T> = Disclosable.Selectively(this)
+internal fun JsonElement.alwaysDisclosableJson() : DisclosableJson = DisclosableJson(this.alwaysDisclosable())
+internal fun JsonElement.selectivelyDisclosableJson() : DisclosableJson = DisclosableJson(this.selectivelyDisclosable())
+internal fun DisclosableObjectSpec.alwaysDisclosableObj() : DisclosableObject = DisclosableObject(this.alwaysDisclosable())
+internal fun DisclosableObjectSpec.selectivelyDisclosableObj() : DisclosableObject = DisclosableObject(this.selectivelyDisclosable())
+internal fun DisclosableArraySpec.alwaysDisclosableArray() : DisclosableArray = DisclosableArray(this.alwaysDisclosable())
+internal fun DisclosableArraySpec.selectivelyDisclosableArray() : DisclosableArray = DisclosableArray(this.selectivelyDisclosable())
 
 /**
  * The elements within a [disclosable object][DisclosableObjectSpec]
@@ -109,23 +118,18 @@ sealed interface DisclosableElement {
     value class DisclosableArray(val disclosable: Disclosable<DisclosableArraySpec>) : DisclosableElement
 
     companion object {
-        fun plain(content: JsonElement): DisclosableJson = DisclosableJson(Disclosable.Plain(content))
-        fun sd(content: JsonElement): DisclosableJson = DisclosableJson(Disclosable.Sd(content))
         fun sd(es: List<DisclosableElement>, minimumDigests: Int?): DisclosableArray = DisclosableArray(
-            Disclosable.Plain(
+            Disclosable.Always(
                 DisclosableArraySpec(es, minimumDigests.atLeastDigests()),
             ),
         )
-        fun sdRec(es: List<DisclosableElement>, minimumDigests: Int?): DisclosableArray =
-            DisclosableArray(
-                Disclosable.Sd(DisclosableArraySpec(es, minimumDigests.atLeastDigests())),
-            )
+
     }
 }
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
-internal annotation class SdElementDsl
+internal annotation class DisclosableElementDsl
 
 /**
  * [DisclosableArraySpec] is actually a [List] of [elements][SdArrayElement]
@@ -134,7 +138,7 @@ internal annotation class SdElementDsl
  *
  * @see buildArraySpec
  */
-typealias DisclosableArraySpecBuilder = (@SdElementDsl MutableList<DisclosableElement>)
+typealias DisclosableArraySpecBuilder = (@DisclosableElementDsl MutableList<DisclosableElement>)
 
 /**
  * [DisclosableObjectSpec] is actually a [Map] of [elements][DisclosableElement]
@@ -144,16 +148,16 @@ typealias DisclosableArraySpecBuilder = (@SdElementDsl MutableList<DisclosableEl
  * @see sdJwt
  * @see buildObjectSpec
  */
-typealias DisclosableObjectSpecBuilder = (@SdElementDsl MutableMap<String, DisclosableElement>)
-typealias SdOrPlainJsonObjectBuilder = (@SdElementDsl JsonObjectBuilder)
+typealias DisclosableObjectSpecBuilder = (@DisclosableElementDsl MutableMap<String, DisclosableElement>)
+typealias SdOrPlainJsonObjectBuilder = (@DisclosableElementDsl JsonObjectBuilder)
 
 //
 // Methods for building sd arrays
 //
 /**
- * A convenient method for building a [SdArray] given a [builderAction]
+ * A convenient method for building a [DisclosableArraySpec] given a [builderAction]
  * ```
- * val arr = buildSdArray{
+ * val arr = buildArraySpec{
  *    // adds non-selectively disclosable primitive
  *    plain("DE")
  *    // adds selectively disclosable primitive
@@ -172,105 +176,28 @@ inline fun buildArraySpec(
     minimumDigests: Int?,
     builderAction: DisclosableArraySpecBuilder.() -> Unit,
 ): DisclosableArraySpec = DisclosableArraySpec(buildList(builderAction), minimumDigests.atLeastDigests())
-fun DisclosableArraySpecBuilder.plain(value: String) = plain(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.plain(value: Number) = plain(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.plain(value: Boolean) = plain(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.plain(value: JsonElement) = add(DisclosableJson(Disclosable.Plain(value)))
 
-/**
- * Adds a plain claim to a [DisclosableArraySpec] using KotlinX Serialization DSL
- *
- * ```
- * sdJwt {
- *   // GR is plain, DE is selectively disclosable
- *   sdArray("nationalities) {
- *      plain("GR")
- *      sd("DE")
- *   }
- *   // work phone is plain, home phone is selectively disclosable
- *   sdArray("phone_numbers") {
- *      plain {
- *          put("number", "+30 12345667")
- *          put("type", "work")
- *      }
- *      sd {
- *          put("number", "+30 55555555")
- *          put("type", "home")
- *      }
- *   }
- * }
- * ```
- */
-fun DisclosableArraySpecBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
+fun DisclosableArraySpecBuilder.plain(value: String) = add(JsonPrimitive(value).alwaysDisclosableJson())
+fun DisclosableArraySpecBuilder.plain(value: Number) = add(JsonPrimitive(value).alwaysDisclosableJson())
+fun DisclosableArraySpecBuilder.plain(value: Boolean) = add(JsonPrimitive(value).alwaysDisclosableJson())
+fun DisclosableArraySpecBuilder.plain(value: JsonElement) = add(value.alwaysDisclosableJson())
 
-/**
- * Adds into an [SdArray] an element [claims] that will be translated into a
- * set of claims, in plain, using KotlinX Serialization
- *
- * @param claims an instance of a kotlin class serializable via KotlinX Serialization
- * @receiver the builder to which the [claims] will be added
- */
-inline fun <reified E> DisclosableArraySpecBuilder.plain(claims: E) {
-    plain(Json.encodeToJsonElement(claims))
-}
+fun DisclosableArraySpecBuilder.sd(value: String) = add(JsonPrimitive(value).selectivelyDisclosableJson())
+fun DisclosableArraySpecBuilder.sd(value: Number) = add(JsonPrimitive(value).selectivelyDisclosableJson())
+fun DisclosableArraySpecBuilder.sd(value: Boolean) = add(JsonPrimitive(value).selectivelyDisclosableJson())
+fun DisclosableArraySpecBuilder.sd(value: JsonElement) = add(value.selectivelyDisclosableJson())
 
-fun DisclosableArraySpecBuilder.sd(value: String) = sd(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.sd(value: Number) = sd(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.sd(value: Boolean) = sd(JsonPrimitive(value))
-fun DisclosableArraySpecBuilder.sd(value: JsonElement) = add(DisclosableJson(Disclosable.Sd(value)))
-
-/**
- * Adds a selectively disclosable claim to a [SdArray] using KotlinX Serialization DSL
- *
- * ```
- * sdJwt {
- *   // GR is plain, DE is selectively disclosable
- *   sdArray("nationalities) {
- *      plain("GR")
- *      sd("DE")
- *   }
- *   // work phone is plain, home phone is selectively disclosable
- *   sdArray("phone_numbers") {
- *      plain {
- *          put("number", "+30 12345667")
- *          put("type", "work")
- *      }
- *      sd {
- *          put("number", "+30 55555555")
- *          put("type", "home")
- *      }
- *   }
- * }
- * ```
- */
-fun DisclosableArraySpecBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
 
 fun DisclosableArraySpecBuilder.plainObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
-    add(DisclosableObject(Disclosable.Plain(eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action))))
+    add(buildObjectSpec(minimumDigests, action).alwaysDisclosableObj())
 fun DisclosableArraySpecBuilder.sdObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
-    add(DisclosableObject(Disclosable.Sd(eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action))))
+    add(buildObjectSpec(minimumDigests, action).selectivelyDisclosableObj())
 
 fun DisclosableArraySpecBuilder.plainArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
-    add(DisclosableArray(Disclosable.Plain(buildArraySpec(minimumDigests, action))))
+    add(buildArraySpec(minimumDigests, action).alwaysDisclosableArray())
 fun DisclosableArraySpecBuilder.sdArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
-    add(DisclosableArray(Disclosable.Sd(buildArraySpec(minimumDigests, action))))
+    add(buildArraySpec(minimumDigests, action).selectivelyDisclosableArray())
 
-// TODO review name
-fun DisclosableArraySpecBuilder.buildObjectSpec(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) {
-    val spec = eu.europa.ec.eudi.sdjwt.buildObjectSpec(minimumDigests, action)
-    add(DisclosableObject(Disclosable.Sd(spec)))
-}
-
-/**
- * Adds into an [DisclosableArraySpecBuilder] an element [claims] that will be translated into a
- * set of claims, all of them individually selectively disclosable, using KotlinX Serialization
- *
- * @param claims an instance of a kotlin class serializable via KotlinX Serialization
- * @receiver the builder to which the [claims] will be added
- */
-inline fun <reified E> DisclosableArraySpecBuilder.sd(claims: E) {
-    sd(Json.encodeToJsonElement(claims))
-}
 
 //
 // Methods for building sd arrays
@@ -298,127 +225,36 @@ inline fun buildObjectSpec(
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): DisclosableObjectSpec = DisclosableObjectSpec(buildMap(builderAction), minimumDigests.atLeastDigests())
 
-fun DisclosableObjectSpecBuilder.plain(name: String, element: JsonElement) = put(name, DisclosableElement.plain(element))
-fun DisclosableObjectSpecBuilder.sd(name: String, element: JsonElement) = put(name, DisclosableElement.sd(element))
+//
+// JsonElement
+//
+fun DisclosableObjectSpecBuilder.plain(name: String, element: JsonElement) = put(name, element.alwaysDisclosableJson())
+fun DisclosableObjectSpecBuilder.plain(name: String, value: String) = put(name, JsonPrimitive(value).alwaysDisclosableJson())
+fun DisclosableObjectSpecBuilder.plain(name: String, value: Number) = put(name, JsonPrimitive(value).alwaysDisclosableJson())
+fun DisclosableObjectSpecBuilder.plain(name: String, value: Boolean) = put(name, JsonPrimitive(value).alwaysDisclosableJson())
+
+fun DisclosableObjectSpecBuilder.sd(name: String, element: JsonElement) = put(name, element.selectivelyDisclosableJson())
+fun DisclosableObjectSpecBuilder.sd(name: String, value: String) = put(name, JsonPrimitive(value).selectivelyDisclosableJson())
+fun DisclosableObjectSpecBuilder.sd(name: String, value: Number) = put(name, JsonPrimitive(value).selectivelyDisclosableJson())
+fun DisclosableObjectSpecBuilder.sd(name: String, value: Boolean) = put(name, JsonPrimitive(value).selectivelyDisclosableJson())
+
+
+fun DisclosableObjectSpecBuilder.plain(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+    put(name, buildObjectSpec(minimumDigests, action).alwaysDisclosableObj())
+}
+fun DisclosableObjectSpecBuilder.sd(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+    put(name, buildObjectSpec(minimumDigests, action).selectivelyDisclosableObj())
+}
+
+fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    put(name, buildArraySpec(minimumDigests, action).alwaysDisclosableArray())
+}
+fun DisclosableObjectSpecBuilder.sd_Array(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+    put(name, buildArraySpec(minimumDigests, action).selectivelyDisclosableArray())
+}
+// TODO CHeck this
 fun DisclosableObjectSpecBuilder.sd(name: String, element: DisclosableElement) = put(name, element)
-fun DisclosableObjectSpecBuilder.sd(name: String, value: String) = sd(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.sd(name: String, value: Number) = sd(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.sd(name: String, value: Boolean) = sd(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.sd(obj: JsonObject) = obj.forEach { (k, v) -> sd(k, v) }
 
-/**
- * Adds into an [DisclosableObjectSpec] an element [claims] that will be translated into a
- * set of claims, each of them selectively disclosable individually, using KotlinX Serialization
- *
- * ```
- * @Serializable
- * data class Address(@SerialName("street_address") val streetAddress: String, @SerialName("postal_code") val postalCode: String)
- * val myAddress = Address("street", "15235")
- *
- * sdJwt {
- *    sd(myAddress)
- *    // is equivalent to
- *    sd {
- *       put("street_address", "street")
- *       put("postal_code", "15235")
- *    }
- * }
- * ```
- *
- * @param claims an instance of a kotlin class serializable via KotlinX Serialization
- * @receiver the builder to which the [claims] will be added
- */
-@Deprecated(
-    message = "Not properly defined method body. Use DisclosableObjectSpecBuilder.sd(JsonObject) instead.",
-    level = DeprecationLevel.ERROR,
-)
-inline fun <reified E> DisclosableObjectSpecBuilder.sd(claims: E) {
-    // TODO: Why is this expected to be a JsonObject? This could be a JsonPrimitive, or JsonArray. E doesn't have any bounds.
-    sd(Json.encodeToJsonElement(claims).jsonObject)
-}
-
-/**
- * Marks a set of claims expressed using KotlinX Serialization builder
- * as selectively disclosable
- *
- * ```
- * sdJwt {
- *   sd {
- *       put("given_name", "John")
- *       put("family_name", "Doe")
- *       put("email", "johndoe@example.com")
- *       put("phone_number", "+1-202-555-0101")
- *       put("phone_number_verified", true)
- *       putJsonObject("address") {
- *           put("street_address", "123 Main St")
- *           put("locality", "Any town")
- *           put("region", "Any state")
- *           put("country", "US")
- *       }
- *   }
- * }
- * ```
- */
-fun DisclosableObjectSpecBuilder.sd(action: SdOrPlainJsonObjectBuilder.() -> Unit) = sd(buildJsonObject(action))
-fun DisclosableObjectSpecBuilder.plain(name: String, value: String) = plain(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.plain(name: String, value: Number) = plain(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.plain(name: String, value: Boolean) = plain(name, JsonPrimitive(value))
-fun DisclosableObjectSpecBuilder.plain(obj: JsonObject) = obj.forEach { (k, v) -> plain(k, v) }
-
-/**
- * Adds into an [DisclosableObjectSpec] an element [claims] that will be translated into a
- * set of claims, in plain, using KotlinX Serialization
- *
- * ```
- * @Serializable
- * data class Address(@SerialName("street_address") val streetAddress: String, @SerialName("postal_code") val postalCode: String)
- * val myAddress = Address("street", "15235")
- *
- * sdJwt {
- *    plain(myAddress)
- *    // is equivalent to
- *    plain {
- *       put("street_address", "street")
- *       put("postal_code", "15235")
- *    }
- * }
- * ```
- *
- * @param claims an instance of a kotlin class serializable via KotlinX Serialization
- * @receiver the builder to which the [claims] will be added
- */
-@Deprecated(
-    message = "Not properly defined method body. Use DisclosableObjectSpecBuilder.plain(JsonObject) instead.",
-    level = DeprecationLevel.ERROR,
-)
-inline fun <reified E> DisclosableObjectSpecBuilder.plain(claims: E) {
-    // TODO: Why is this expected to be a JsonObject? This could be a JsonPrimitive, or JsonArray. E doesn't have any bounds.
-    plain(Json.encodeToJsonElement(claims).jsonObject)
-}
-
-/**
- * Marks a set of claims expressed using KotlinX Serialization builder
- * as disclosable (non-selectively)
- *
- * ```
- * sdJwt {
- *   plain {
- *       put("given_name", "John")
- *       put("family_name", "Doe")
- *       put("email", "johndoe@example.com")
- *       put("phone_number", "+1-202-555-0101")
- *       put("phone_number_verified", true)
- *       putJsonObject("address") {
- *           put("street_address", "123 Main St")
- *           put("locality", "Any town")
- *           put("region", "Any state")
- *           put("country", "US")
- *       }
- *   }
- * }
- * ```
- */
-fun DisclosableObjectSpecBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> Unit) = plain(buildJsonObject(action))
 
 @Deprecated(
     message = "Deprecated in favor of this function",
@@ -427,12 +263,6 @@ fun DisclosableObjectSpecBuilder.plain(action: SdOrPlainJsonObjectBuilder.() -> 
 fun DisclosableObjectSpecBuilder.sdArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     plainArray(name, minimumDigests, action)
 }
-
-fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-    val spec = buildArraySpec(minimumDigests, action)
-    put(name, DisclosableArray(Disclosable.Plain(spec)))
-}
-
 @Deprecated(
     message = "Deprecated in favor of this function",
     replaceWith = ReplaceWith("sd_Array(name, minimumDigests, action)"),
@@ -440,21 +270,6 @@ fun DisclosableObjectSpecBuilder.plainArray(name: String, minimumDigests: Int? =
 fun DisclosableObjectSpecBuilder.recursiveArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
     sd_Array(name, minimumDigests, action)
 }
-fun DisclosableObjectSpecBuilder.sd_Array(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-    val spec = buildArraySpec(minimumDigests, action)
-    put(name, DisclosableArray(Disclosable.Sd(spec)))
-}
-
-fun DisclosableObjectSpecBuilder.plain(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-    val obj = buildObjectSpec(minimumDigests, action)
-    put(name, DisclosableElement.DisclosableObject(Disclosable.Plain(obj)))
-}
-
-fun DisclosableObjectSpecBuilder.sd(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-    val obj = buildObjectSpec(minimumDigests, action)
-    put(name, DisclosableElement.DisclosableObject(Disclosable.Sd(obj)))
-}
-
 @Deprecated(
     message = "Just use plain",
     replaceWith = ReplaceWith("plain(name, minimumDigests, action)"),
@@ -496,40 +311,6 @@ private fun aud(aud: List<String>, action: BuilderAction<JsonElement>) = when (a
     else -> action(RFC7519.AUDIENCE, JsonArray(aud.map { JsonPrimitive(it) }))
 }
 
-/**
- * Adds the JWT publicly registered subclaim (Subject)
- */
-fun JsonObjectBuilder.sub(value: String) = sub(value, this::put)
-
-/**
- * Adds the JWT publicly registered ISS claim (Issuer)
- */
-fun JsonObjectBuilder.iss(value: String) = iss(value, this::put)
-
-/**
- *  Adds the JWT publicly registered IAT claim (Issued At)
- */
-fun JsonObjectBuilder.iat(value: Long) = iat(value, this::put)
-
-/**
- *  Adds the JWT publicly registered EXP claim (Expires)
- */
-fun JsonObjectBuilder.exp(value: Long) = exp(value, this::put)
-
-/**
- * Adds the JWT publicly registered JTI claim
- */
-fun JsonObjectBuilder.jti(value: String) = jti(value, this::put)
-
-/**
- *  Adds the JWT publicly registered NBF claim (Not before)
- */
-fun JsonObjectBuilder.nbf(value: Long) = nbf(value, this::put)
-
-/**
- * Adds the JWT publicly registered AUD claim (single Audience)
- */
-fun JsonObjectBuilder.aud(vararg value: String) = aud(value.asList(), this::put)
 
 /**
  * Adds the JWT publicly registered subclaim (Subject), in plain

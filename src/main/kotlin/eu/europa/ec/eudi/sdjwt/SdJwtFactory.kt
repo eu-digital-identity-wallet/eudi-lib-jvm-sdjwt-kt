@@ -161,16 +161,16 @@ class SdJwtFactory(
 
         return when (claimValue) {
             is DisclosableJson -> when (val disclosable = claimValue.disclosable) {
-                is Disclosable.Plain -> encodePlain(disclosable.value)
-                is Disclosable.Sd -> encodeSd(disclosable.value)
+                is Disclosable.Always -> encodePlain(disclosable.value)
+                is Disclosable.Selectively -> encodeSd(disclosable.value)
             }
             is DisclosableArray -> when (val disclosable = claimValue.disclosable) {
-                is Disclosable.Plain -> encodeSdArray(disclosable.value)
-                is Disclosable.Sd -> encodeRecursiveSdArray(disclosable.value)
+                is Disclosable.Always -> encodeSdArray(disclosable.value)
+                is Disclosable.Selectively -> encodeRecursiveSdArray(disclosable.value)
             }
             is DisclosableObject -> when (val disclosable = claimValue.disclosable) {
-                is Disclosable.Plain -> encodeStructuredSdObject(disclosable.value)
-                is Disclosable.Sd -> encodeRecursiveSdObject(disclosable.value)
+                is Disclosable.Always -> encodeStructuredSdObject(disclosable.value)
+                is Disclosable.Selectively -> encodeRecursiveSdObject(disclosable.value)
             }
         }
     }
@@ -231,8 +231,8 @@ class SdJwtFactory(
             when (element) {
                 is DisclosableJson -> {
                     when (val disclosable = element.disclosable) {
-                        is Disclosable.Plain -> plainOrDigestElements += PlainOrDigest.Plain(disclosable.value)
-                        is Disclosable.Sd -> {
+                        is Disclosable.Always -> plainOrDigestElements += PlainOrDigest.Plain(disclosable.value)
+                        is Disclosable.Selectively -> {
                             val (disclosure, digest) = disclosureOf(disclosable.value)
                             disclosures += disclosure
                             plainOrDigestElements += PlainOrDigest.Dig(digest)
@@ -242,12 +242,12 @@ class SdJwtFactory(
 
                 is DisclosableObject -> {
                     when (val disclosable = element.disclosable) {
-                        is Disclosable.Plain -> {
+                        is Disclosable.Always -> {
                             val (json, ds) = encodeObj(disclosable.value)
                             disclosures += ds
                             plainOrDigestElements += PlainOrDigest.Plain(json)
                         }
-                        is Disclosable.Sd -> {
+                        is Disclosable.Selectively -> {
                             val (json, ds) = encodeObj(disclosable.value)
                             val (ds2, dig) = disclosureOf(json)
                             disclosures += (ds + ds2)
@@ -264,13 +264,13 @@ class SdJwtFactory(
                         }
 
                     when (val disclosable = element.disclosable) {
-                        is Disclosable.Plain -> {
+                        is Disclosable.Always -> {
                             val (ds, elems) = arrayElementsDisclosure(disclosable.value)
                             val json = JsonArray(elems.map { it.toJsonElement() })
                             disclosures += ds
                             plainOrDigestElements += PlainOrDigest.Plain(json)
                         }
-                        is Disclosable.Sd -> {
+                        is Disclosable.Selectively -> {
                             val (ds, elems) = arrayElementsDisclosure(disclosable.value)
                             val json = JsonArray(elems.map { it.toJsonElement() })
                             val (ds2, dig) = disclosureOf(json)

@@ -34,7 +34,7 @@ class DisclosedClaimSetTest {
         fun `no sd-jwt with illegal attribute names`() {
             val invalidClaims = listOf(
                 sdJwt {
-                    sd { put("_sd", "foo") }
+                    sd("_sd", "foo")
                 },
             )
 
