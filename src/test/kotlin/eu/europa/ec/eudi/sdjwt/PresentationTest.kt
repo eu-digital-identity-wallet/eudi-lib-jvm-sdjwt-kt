@@ -289,7 +289,7 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `querying for a recursive SD array`() = runTest {
         val spec = sdJwt {
-            recursiveArray("evidence") {
+            sd_Array("evidence") {
                 buildObjectSpec {
                     sd {
                         put("type", "document")

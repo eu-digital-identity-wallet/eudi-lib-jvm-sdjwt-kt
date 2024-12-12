@@ -235,7 +235,7 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                 cnf(holderPubKey as JWK)
                 plain("credentialSubject") {
                     sd(credential)
-                    recursiveArray("addresses") {
+                    sd_Array("addresses") {
                         buildObjectSpec {
                             sd("street", "street1")
                         }

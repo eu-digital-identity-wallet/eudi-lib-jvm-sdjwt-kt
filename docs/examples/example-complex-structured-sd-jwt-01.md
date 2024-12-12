@@ -26,8 +26,8 @@ val complexStructuredSdJwt =
                 plain {
                     put("trust_framework", "de_aml")
                 }
-                sdArray("evidence") {
-                    buildSdObject {
+                plainArray("evidence") {
+                    buildObjectSpec {
                         sd {
                             put("type", "document")
                             put("method", "pipp")

@@ -353,12 +353,12 @@ val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
         // as a single digest
     }
 
-    sdArray("evidence", minimumDigests = 2) {
+    plainArray("evidence", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
     }
 
-    recursiveArray("evidence1", minimumDigests = 2) {
+    sd_Array("evidence1", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
         // the whole array will be embedded in its parent
