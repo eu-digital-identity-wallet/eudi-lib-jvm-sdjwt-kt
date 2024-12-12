@@ -101,12 +101,12 @@ class SdJwtFactory(
      * for the given claim
      *
      * @param claimName the name of the claim
-     * @param element the value of the claim
+     * @param disclosableElement the value of the claim
      *
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    private fun encodeClaim(claimName: String, element: DisclosableElement<*>): EncodedSdElement {
+    private fun encodeClaim(claimName: String, disclosableElement: DisclosableElement): EncodedSdElement {
         fun encodeAlwaysDisclosable(disclosable: JsonElement): EncodedSdElement {
             val plainClaim = JsonObject(mapOf(claimName to disclosable))
             return plainClaim to emptyList()
@@ -158,20 +158,21 @@ class SdJwtFactory(
             return wrapperClaim to disclosures
         }
 
+        val (disclosable, element) = disclosableElement
         return when (element) {
-            is DisclosableElement.Json -> when (val disclosable = element.element) {
-                is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+            is DisclosableValue.Json -> when (disclosable) {
+                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
             }
 
-            is DisclosableElement.Arr -> when (val disclosable = element.element) {
-                is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+            is DisclosableValue.Arr -> when (disclosable) {
+                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
             }
 
-            is DisclosableElement.Obj -> when (val disclosable = element.element) {
-                is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+            is DisclosableValue.Obj -> when (disclosable) {
+                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
             }
         }
     }
@@ -271,21 +272,22 @@ class SdJwtFactory(
             plainOrDigestElements += PlainOrDigest.Dig(dig)
         }
 
-        fun DisclosableElement<*>.encode() {
-            when (this) {
-                is DisclosableElement.Json -> when (val disclosable = element) {
-                    is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                    is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+        fun DisclosableElement.encode() {
+            val (disclosable, element) = this
+            when (element) {
+                is DisclosableValue.Json -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
                 }
 
-                is DisclosableElement.Obj -> when (val disclosable = element) {
-                    is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                    is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+                is DisclosableValue.Obj -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
                 }
 
-                is DisclosableElement.Arr -> when (val disclosable = element) {
-                    is Disclosable.Always -> encodeAlwaysDisclosable(disclosable.value)
-                    is Disclosable.Selectively -> encodeSelectivelyDisclosable(disclosable.value)
+                is DisclosableValue.Arr -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
                 }
             }
         }

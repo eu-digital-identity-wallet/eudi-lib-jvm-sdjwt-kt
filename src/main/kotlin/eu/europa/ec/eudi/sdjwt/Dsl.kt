@@ -15,7 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * @param content the content of the object. Each of its claims could be always or selectively disclosable
@@ -24,68 +25,48 @@ import kotlinx.serialization.json.*
  * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  */
 class DisclosableObject(
-    private val content: Map<String, DisclosableElement<*>>,
+    content: Map<String, DisclosableElement>,
     val minimumDigests: MinimumDigests?,
-) : Map<String, DisclosableElement<*>> by content
+) : Map<String, DisclosableElement> by content
 
 class DisclosableArray(
-    val content: List<DisclosableElement<*>>,
+    content: List<DisclosableElement>,
     val minimumDigests: MinimumDigests?,
-) : List<DisclosableElement<*>> by content
+) : List<DisclosableElement> by content
 
-/**
- * An element that is either always or selectively disclosable
- */
-sealed interface Disclosable<out T : Any> {
-    /**
-     * An element that is always disclosable
-     */
-    @JvmInline
-    value class Always<out T : Any>(val value: T) : Disclosable<T>
+enum class Disclosable {
+    Always, Selectively;
 
-    /**
-     * An element that is selectively disclosable (as a whole)
-     */
+    operator fun not(): Disclosable = when (this) {
+        Always -> Selectively
+        Selectively -> Always
+    }
+}
+
+sealed interface DisclosableValue {
     @JvmInline
-    value class Selectively<out T : Any>(val value: T) : Disclosable<T>
+    value class Json(val value: JsonElement) : DisclosableValue
+
+    @JvmInline
+    value class Obj(val value: DisclosableObject) : DisclosableValue
+
+    @JvmInline
+    value class Arr(val value: DisclosableArray) : DisclosableValue
 }
 
 /**
- * The elements within a [disclosable object][Obj]
+ * The elements within a disclosable object
  */
-sealed interface DisclosableElement<out T : Any> {
-
-    val element: Disclosable<T>
-
-    @JvmInline
-    value class Json(override val element: Disclosable<JsonElement>) : DisclosableElement<JsonElement>
-
-    @JvmInline
-    value class Obj(override val element: Disclosable<DisclosableObject>) : DisclosableElement<DisclosableObject>
-
-    @JvmInline
-    value class Arr(override val element: Disclosable<DisclosableArray>) : DisclosableElement<DisclosableArray>
+data class DisclosableElement(val disclosable: Disclosable, val element: DisclosableValue) {
+    operator fun not(): DisclosableElement = copy(!disclosable)
 }
 
-internal operator fun <T : Any> Disclosable<T>.not(): Disclosable<T> = when (this) {
-    is Disclosable.Always<T> -> Disclosable.Selectively(value)
-    is Disclosable.Selectively<T> -> Disclosable.Always(value)
-}
-
-@Suppress("unchecked_cast")
-internal inline operator fun <reified T : Any> DisclosableElement<T>.not(): DisclosableElement<T> = when (this) {
-    is DisclosableElement.Json -> DisclosableElement.Json(!element)
-    is DisclosableElement.Obj -> DisclosableElement.Obj(!element)
-    is DisclosableElement.Arr -> DisclosableElement.Arr(!element)
-} as DisclosableElement<T>
-
-@Suppress("unchecked_cast")
-internal inline fun <reified T : Any> T.sdElement(): DisclosableElement<T> = when (this) {
-    is JsonElement -> DisclosableElement.Json(Disclosable.Selectively(this))
-    is DisclosableObject -> DisclosableElement.Obj(Disclosable.Selectively(this))
-    is DisclosableArray -> DisclosableElement.Arr(Disclosable.Selectively(this))
+private fun <T : Any> selectivelyDisclosable(t: T): DisclosableElement = when (t) {
+    is JsonElement -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Json(t))
+    is DisclosableObject -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Obj(t))
+    is DisclosableArray -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Arr(t))
     else -> error("Not supported")
-} as DisclosableElement<T>
+}
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
@@ -94,16 +75,15 @@ internal annotation class DisclosableElementDsl
 /**
  * A convenient method for building a [DisclosableArray] given a [builderAction]
  * ```
- * val arr = buildArraySpec{
+ * val arr = buildDisclosableArray{
  *    // adds non-selectively disclosable primitive
- *    plain("DE")
+ *    notSd("DE")
  *    // adds selectively disclosable primitive
  *    sd("GR")
  *    // add selectively disclosable object
- *    sd {
- *     put("over_18", true)
- *     put("over_25", false)
- *    }
+ *    sd("over_18", true)
+ *    sd("over_25", false)
+ *
  * }
  * ```
  *
@@ -126,38 +106,30 @@ inline fun buildDisclosableArray(
  */
 @DisclosableElementDsl
 class DisclosableArraySpecBuilder(
-    internal val elements: MutableList<DisclosableElement<*>>,
-) : MutableList<DisclosableElement<*>> by elements {
+    internal val elements: MutableList<DisclosableElement>,
+) : MutableList<DisclosableElement> by elements {
 
-    fun notSd(value: String) = add(!JsonPrimitive(value).sdElement())
-    fun notSd(value: Number) = add(!JsonPrimitive(value).sdElement())
-    fun notSd(value: Boolean) = add(!JsonPrimitive(value).sdElement())
-    fun notSd(value: JsonElement) = add(!value.sdElement())
+    fun notSd(value: String) = add(!selectivelyDisclosable(JsonPrimitive(value)))
+    fun notSd(value: Number) = add(!selectivelyDisclosable(JsonPrimitive(value)))
+    fun notSd(value: Boolean) = add(!selectivelyDisclosable(JsonPrimitive(value)))
+    fun notSd(value: JsonElement) = add(!selectivelyDisclosable(value))
 
-    fun sd(value: String) = add(JsonPrimitive(value).sdElement())
-    fun sd(value: Number) = add(JsonPrimitive(value).sdElement())
-    fun sd(value: Boolean) = add(JsonPrimitive(value).sdElement())
-    fun sd(value: JsonElement) = add(value.sdElement())
+    fun sd(value: String) = add(selectivelyDisclosable(JsonPrimitive(value)))
+    fun sd(value: Number) = add(selectivelyDisclosable(JsonPrimitive(value)))
+    fun sd(value: Boolean) = add(selectivelyDisclosable(JsonPrimitive(value)))
+    fun sd(value: JsonElement) = add(selectivelyDisclosable(value))
 
-    fun notSdObject(
-        minimumDigests: Int? = null,
-        action: DisclosableObjectSpecBuilder.() -> Unit,
-    ) = add(!buildObjectSpec(minimumDigests, action).sdElement())
+    fun notSdObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
+        add(!selectivelyDisclosable(buildObjectSpec(minimumDigests, action)))
 
-    fun sdObject(
-        minimumDigests: Int? = null,
-        action: DisclosableObjectSpecBuilder.() -> Unit,
-    ) = add(buildObjectSpec(minimumDigests, action).sdElement())
+    fun sdObject(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
+        add(selectivelyDisclosable(buildObjectSpec(minimumDigests, action)))
 
-    fun notSdArray(
-        minimumDigests: Int? = null,
-        action: DisclosableArraySpecBuilder.() -> Unit,
-    ) = add(!buildDisclosableArray(minimumDigests, action).sdElement())
+    fun notSdArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
+        add(!selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
 
-    fun sdArray(
-        minimumDigests: Int? = null,
-        action: DisclosableArraySpecBuilder.() -> Unit,
-    ) = add(buildDisclosableArray(minimumDigests, action).sdElement())
+    fun sdArray(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
+        add(selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
 }
 
 /**
@@ -169,32 +141,32 @@ class DisclosableArraySpecBuilder(
  * @see buildObjectSpec
  */
 @DisclosableElementDsl
-class DisclosableObjectSpecBuilder(val elements: MutableMap<String, DisclosableElement<*>>) :
-    MutableMap<String, DisclosableElement<*>> by elements {
+class DisclosableObjectSpecBuilder(val elements: MutableMap<String, DisclosableElement>) :
+    MutableMap<String, DisclosableElement> by elements {
 
-        fun notSd(name: String, element: JsonElement) = put(name, !element.sdElement())
-        fun notSd(name: String, value: String) = put(name, !JsonPrimitive(value).sdElement())
-        fun notSd(name: String, value: Number) = put(name, !JsonPrimitive(value).sdElement())
-        fun notSd(name: String, value: Boolean) = put(name, !JsonPrimitive(value).sdElement())
-        fun sd(name: String, element: JsonElement) = put(name, element.sdElement())
-        fun sd(name: String, value: String) = put(name, JsonPrimitive(value).sdElement())
-        fun sd(name: String, value: Number) = put(name, JsonPrimitive(value).sdElement())
-        fun sd(name: String, value: Boolean) = put(name, JsonPrimitive(value).sdElement())
+        fun notSd(name: String, element: JsonElement) = put(name, !selectivelyDisclosable(element))
+        fun notSd(name: String, value: String) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+        fun notSd(name: String, value: Number) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+        fun notSd(name: String, value: Boolean) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+        fun sd(name: String, element: JsonElement) = put(name, selectivelyDisclosable(element))
+        fun sd(name: String, value: String) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
+        fun sd(name: String, value: Number) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
+        fun sd(name: String, value: Boolean) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
 
         fun notSdObject(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-            put(name, !buildObjectSpec(minimumDigests, action).sdElement())
+            put(name, !selectivelyDisclosable(buildObjectSpec(minimumDigests, action)))
         }
 
         fun sdObject(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-            put(name, buildObjectSpec(minimumDigests, action).sdElement())
+            put(name, selectivelyDisclosable(buildObjectSpec(minimumDigests, action)))
         }
 
         fun notSdArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-            put(name, !buildDisclosableArray(minimumDigests, action).sdElement())
+            put(name, !selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
         }
 
         fun sdArray(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-            put(name, buildDisclosableArray(minimumDigests, action).sdElement())
+            put(name, selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
         }
     }
 
