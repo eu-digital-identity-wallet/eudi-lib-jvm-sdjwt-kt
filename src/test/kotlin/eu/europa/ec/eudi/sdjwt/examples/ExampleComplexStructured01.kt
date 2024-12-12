@@ -19,9 +19,9 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val complexStructuredSdJwt =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
+        notSd("iss", "https://issuer.example.com")
+        notSd("iat", 1683000000)
+        notSd("exp", 1883000000)
         notSdObject("verified_claims") {
             notSdObject("verification") {
                 sd("time", "2012-04-23T18:25Z")

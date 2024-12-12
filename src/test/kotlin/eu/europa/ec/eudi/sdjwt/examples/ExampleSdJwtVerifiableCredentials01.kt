@@ -19,11 +19,12 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val sdJwtVc =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
+        notSd("iss", "https://issuer.example.com")
+        notSd("iat", 1683000000)
+        notSd("exp", 1883000000)
 
         notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
+
         notSdObject("cnf") {
             notSdObject("jwk") {
                 notSd("kty", "EC")
@@ -37,9 +38,7 @@ val sdJwtVc =
         sd("family_name", "Mustermann")
         sd("birthdate", "1963-08-12")
         sd("source_document_type", "id_card")
-        sdArray("nationalities") {
-            notSd("DE")
-        }
+        sdArray("nationalities") { notSd("DE") }
         sd("gender", "female")
         sd("birth_family_name", "Gabler")
         sd("also_known_as", "Schwester")

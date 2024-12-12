@@ -19,9 +19,9 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val handlingStructuredClaims =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
+        notSd("iss", "https://issuer.example.com")
+        notSd("iat", 1683000000)
+        notSd("exp", 1883000000)
 
         sd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
         sd("given_name", "太郎")

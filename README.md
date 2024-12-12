@@ -76,11 +76,11 @@ import kotlinx.coroutines.runBlocking
 val issuedSdJwt: String = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
-        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        iss("https://example.com/issuer")
-        iat(1516239022)
-        exp(1735689661)
-        plain("address") {
+        notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        notSd("iss", "https://example.com/issuer")
+        notSd("iat", 1516239022)
+        notSd("exp", 1735689661)
+        notSdObject("address") {
             sd("street_address", "Schulstr. 12")
             sd("locality", "Schulpforta")
             sd("region", "Sachsen-Anhalt")
@@ -156,11 +156,11 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
         val issuedSdJwt = run {
             val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
             val sdJwtSpec = sdJwt {
-                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                iss("https://example.com/issuer")
-                iat(1516239022)
-                exp(1735689661)
-                sd("address") {
+                notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                notSd("iss", "https://example.com/issuer")
+                notSd("iat", 1516239022)
+                notSd("exp", 1735689661)
+                sdObject("address") {
                     sd("street_address", "Schulstr. 12")
                     sd("locality", "Schulpforta")
                     sd("region", "Sachsen-Anhalt")
@@ -260,11 +260,11 @@ val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt.Issuance<SignedJWT> = run {
         val spec = sdJwt {
-            sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            iss("https://example.com/issuer")
-            iat(1516239022)
-            exp(1735689661)
-            plain("address") {
+            notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            notSd("iss", "https://example.com/issuer")
+            notSd("iat", 1516239022)
+            notSd("exp", 1735689661)
+            notSdObject("address") {
                 sd("street_address", "Schulstr. 12")
                 sd("locality", "Schulpforta")
                 sd("region", "Sachsen-Anhalt")
@@ -326,24 +326,24 @@ import eu.europa.ec.eudi.sdjwt.*
 val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
     // This 5 guarantees that at least 5 digests will be found
     // to the digest array, regardless of the content of the SD-JWT
-    plain("address", minimumDigests = 10) {
+    notSdObject("address", minimumDigests = 10) {
         // This affects the nested array of the digests that will
         // have at list 10 digests.
     }
 
-    sd("address1", minimumDigests = 8) {
+    sdObject("address1", minimumDigests = 8) {
         // This will affect the digests array that will be found
         // in the disclosure of this recursively disclosable item
         // the whole object will be embedded in its parent
         // as a single digest
     }
 
-    plainArray("evidence", minimumDigests = 2) {
+    notSdArray("evidence", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
     }
 
-    sd_Array("evidence1", minimumDigests = 2) {
+    sdArray("evidence1", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
         // the whole array will be embedded in its parent
@@ -405,7 +405,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
-import eu.europa.ec.eudi.sdjwt.iss
 import eu.europa.ec.eudi.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
@@ -451,7 +450,7 @@ val sdJwtVcVerification = runBlocking {
 
     val sdJwt = run {
         val spec = sdJwt {
-            iss(issuer.toExternalForm())
+            notSd("iss", issuer.toExternalForm())
         }
         with(NimbusSdJwtOps) {
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {

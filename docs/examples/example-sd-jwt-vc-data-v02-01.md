@@ -11,30 +11,30 @@ import eu.europa.ec.eudi.sdjwt.*
 ```kotlin
 val sdJwtVcDataV2 =
     sdJwt {
-        plainArray("@context") {
-            plain("https://www.w3.org/2018/credentials/v1")
-            plain("https://w3id.org/vaccination/v1")
+        notSdArray("@context") {
+            notSd("https://www.w3.org/2018/credentials/v1")
+            notSd("https://w3id.org/vaccination/v1")
         }
-        plainArray("type") {
-            plain("VerifiableCredential")
-            plain("VaccinationCertificate")
+        notSdArray("type") {
+            notSd("VerifiableCredential")
+            notSd("VaccinationCertificate")
         }
-        plain("issuer", "https://example.com/issuer")
-        plain("issuanceDate", "2023-02-09T11:01:59Z")
-        plain("expirationDate", "2028-02-08T11:01:59Z")
-        plain("name", "COVID-19 Vaccination Certificate")
-        plain("description", "COVID-19 Vaccination Certificate")
-        plain("cnf") {
-            plain("jwk") {
-                plain("kty", "EC")
-                plain("crv", "P-256")
-                plain("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                plain("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+        notSd("issuer", "https://example.com/issuer")
+        notSd("issuanceDate", "2023-02-09T11:01:59Z")
+        notSd("expirationDate", "2028-02-08T11:01:59Z")
+        notSd("name", "COVID-19 Vaccination Certificate")
+        notSd("description", "COVID-19 Vaccination Certificate")
+        notSdObject("cnf") {
+            notSdObject("jwk") {
+                notSd("kty", "EC")
+                notSd("crv", "P-256")
+                notSd("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                notSd("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
             }
         }
 
-        plain("credentialSubject") {
-            plain("type", "VaccinationEvent")
+        notSdObject("credentialSubject") {
+            notSd("type", "VaccinationEvent")
             sd("nextVaccinationDate", "2021-08-16T13:40:12Z")
             sd("countryOfVaccination", "GE")
             sd("dateOfVaccination", "2021-06-23T13:40:12Z")
@@ -42,14 +42,14 @@ val sdJwtVcDataV2 =
             sd("administeringCentre", "Praxis Sommergarten")
             sd("batchNumber", "1626382736")
             sd("healthProfessional", "883110000015376")
-            plain("vaccine") {
-                plain("type", "Vaccine")
+            notSdObject("vaccine") {
+                notSd("type", "Vaccine")
                 sd("atcCode", "J07BX03")
                 sd("medicinalProductName", "COVID-19 Vaccine Moderna")
                 sd("marketingAuthorizationHolder", "Moderna Biotech")
             }
-            plain("recipient") {
-                plain("type", "VaccineRecipient")
+            notSdObject("recipient") {
+                notSd("type", "VaccineRecipient")
                 sd("gender", "Female")
                 sd("birthDate", "1961-08-17")
                 sd("givenName", "Marion")

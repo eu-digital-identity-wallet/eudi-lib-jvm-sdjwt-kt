@@ -23,10 +23,10 @@ class SdJsonElementArrayElementTest {
     @Test
     fun simple() {
         val sdJwtElements = sdJwt {
-            sub("user_42")
-            iss("https://example.com/issuer")
-            iat(1683000000)
-            exp(1883000000)
+            notSd("sub", "user_42")
+            notSd("iss", "https://example.com/issuer")
+            notSd("iat", 1683000000)
+            notSd("exp", 1883000000)
             sd("given_name", "John")
             sd("family_name", "Doe")
             sd("email", "johndoe@example.com")

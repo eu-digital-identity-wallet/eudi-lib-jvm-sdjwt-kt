@@ -56,9 +56,9 @@ internal class NimbusIntegrationTest : NimbusSdJwtOps {
 }
 
 private val sdObject = sdJwt {
-    iss("https://issuer.example.com")
-    iat(1683000000)
-    exp(1883000000)
+    notSd("iss", "https://issuer.example.com")
+    notSd("iat", 1683000000)
+    notSd("exp", 1883000000)
 
     notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
     notSdObject("cnf") {

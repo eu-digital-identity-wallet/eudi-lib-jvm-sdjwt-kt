@@ -39,9 +39,9 @@ class PresentationTest : NimbusSdJwtOps {
         //
         // Claims that are always disclosable (no selectively disclosed)
         //
-        iss("https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
-        exp(1883000000)
-        iat(1683000000)
+        notSd("iss", "https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
+        notSd("exp", 1883000000)
+        notSd("iat", 1683000000)
         notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
 
         //
@@ -120,8 +120,8 @@ class PresentationTest : NimbusSdJwtOps {
     fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() = runTest {
         val sdJwt = run {
             val spec = sdJwt {
-                iss("foo")
-                iat(Instant.now().epochSecond)
+                notSd("iss", "foo")
+                notSd("iat", Instant.now().epochSecond)
             }
             issuer.issue(spec).getOrThrow().also {
                 assertTrue { it.disclosures.isEmpty() }

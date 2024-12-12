@@ -12,48 +12,48 @@ import eu.europa.ec.eudi.sdjwt.*
 ```kotlin
 val complexStructuredSdJwt =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
-        plain("verified_claims") {
-            plain("verification") {
+        notSd("iss", "https://issuer.example.com")
+        notSd("iat", 1683000000)
+        notSd("exp", 1883000000)
+        notSdObject("verified_claims") {
+            notSdObject("verification") {
                 sd("time", "2012-04-23T18:25Z")
                 sd("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                plain("trust_framework", "de_aml")
-                plainArray("evidence") {
+                notSd("trust_framework", "de_aml")
+                notSdArray("evidence") {
                     sdObject {
                         sd("type", "document")
                         sd("method", "pipp")
                         sd("time", "2012-04-22T11:30Z")
-                        sd("document") {
-                            plain("type", "idcard")
-                            plain("issuer") {
-                                plain("name", "Stadt Augsburg")
-                                plain("country", "DE")
+                        sdObject("document") {
+                            notSd("type", "idcard")
+                            notSdObject("issuer") {
+                                notSd("name", "Stadt Augsburg")
+                                notSd("country", "DE")
                             }
-                            plain("number", "53554554")
-                            plain("date_of_issuance", "2010-03-23")
-                            plain("date_of_expiry", "2020-03-22")
+                            notSd("number", "53554554")
+                            notSd("date_of_issuance", "2010-03-23")
+                            notSd("date_of_expiry", "2020-03-22")
                         }
                     }
                 }
             }
-            plain("claims") {
+            notSdObject("claims") {
                 sd("given_name", "Max")
                 sd("family_name", "Müller")
-                sd_Array("nationalities") {
-                    plain("DE")
+                sdArray("nationalities") {
+                    notSd("DE")
                 }
                 sd("birthdate", "1956-01-28")
-                sd("place_of_birth") {
-                    plain("country", "IS")
-                    plain("locality", "Þykkvabæjarklaustur")
+                sdObject("place_of_birth") {
+                    notSd("country", "IS")
+                    notSd("locality", "Þykkvabæjarklaustur")
                 }
-                sd("address") {
-                    plain("locality", "Maxstadt")
-                    plain("postal_code", "12344")
-                    plain("country", "DE")
-                    plain("street_address", "Weidenstraße 22")
+                sdObject("address") {
+                    notSd("locality", "Maxstadt")
+                    notSd("postal_code", "12344")
+                    notSd("country", "DE")
+                    notSd("street_address", "Weidenstraße 22")
                 }
             }
             sd("birth_middle_name", "Timotheus")

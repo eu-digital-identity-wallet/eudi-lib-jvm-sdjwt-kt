@@ -27,10 +27,10 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
         val issuedSdJwt = run {
             val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
             val sdJwtSpec = sdJwt {
-                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                iss("https://example.com/issuer")
-                iat(1516239022)
-                exp(1735689661)
+                notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                notSd("iss", "https://example.com/issuer")
+                notSd("iat", 1516239022)
+                notSd("exp", 1735689661)
                 sdObject("address") {
                     sd("street_address", "Schulstr. 12")
                     sd("locality", "Schulpforta")

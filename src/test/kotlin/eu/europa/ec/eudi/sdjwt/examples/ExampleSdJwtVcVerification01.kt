@@ -23,7 +23,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
-import eu.europa.ec.eudi.sdjwt.iss
 import eu.europa.ec.eudi.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
@@ -67,7 +66,7 @@ val sdJwtVcVerification = runBlocking {
 
     val sdJwt = run {
         val spec = sdJwt {
-            iss(issuer.toExternalForm())
+            notSd("iss", issuer.toExternalForm())
         }
         with(NimbusSdJwtOps) {
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {

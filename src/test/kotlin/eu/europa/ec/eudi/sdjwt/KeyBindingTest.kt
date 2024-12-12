@@ -229,9 +229,9 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
         val sdJwtElements =
             sdJwt {
-                iss(iss)
-                iat(iat.epochSecond)
-                exp(exp.epochSecond)
+                notSd("iss", iss)
+                notSd("iat", iat.epochSecond)
+                notSd("exp", exp.epochSecond)
                 cnf(holderPubKey as JWK)
                 notSdObject("credentialSubject") {
                     Json.encodeToJsonElement(credential).jsonObject.forEach { sd(it.key, it.value) }
@@ -245,7 +245,7 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                     }
                 }
             }
-        return sdJwtIssuer.issue(sdElements = sdJwtElements).fold(
+        return sdJwtIssuer.issue(sdJwtSpec = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
                 issued.serialize()

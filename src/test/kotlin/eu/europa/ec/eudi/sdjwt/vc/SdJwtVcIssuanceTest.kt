@@ -56,15 +56,15 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
         holderPubKey: JWK,
         iat: Instant,
         exp: Instant? = null,
-    ): DisclosableObjectSpec =
+    ): DisclosableObject =
         sdJwt {
             //
             // Never Selectively Disclosable claims
             //
-            iss(config.issuer.toASCIIString())
+            notSd("iss", config.issuer.toASCIIString())
             notSd(SdJwtVcSpec.VCT, config.vct.toASCIIString())
-            iat(iat.epochSecond)
-            exp?.let { exp(it.epochSecond) }
+            notSd("iat", iat.epochSecond)
+            exp?.let { notSd("exp", it.epochSecond) }
             cnf(holderPubKey)
 
             //

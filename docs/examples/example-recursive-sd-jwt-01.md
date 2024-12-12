@@ -14,12 +14,12 @@ import eu.europa.ec.eudi.sdjwt.*
 ```kotlin
 val recursiveSdJwt =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
-        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        notSd("iss", "https://issuer.example.com")
+        notSd("iat", 1683000000)
+        notSd("exp", 1883000000)
+        notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-        sd("address") {
+        sdObject("address") {
             sd("street_address", "Schulstr. 12")
             sd("locality", "Schulpforta")
             sd("region", "Sachsen-Anhalt")

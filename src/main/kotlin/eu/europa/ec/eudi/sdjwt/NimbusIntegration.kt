@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
@@ -224,7 +225,7 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  *
  * @param jwk the key to put in confirmation claim
  */
-fun DisclosableObjectSpecBuilder.cnf(jwk: NimbusJWK) = cnf(jwk.asJsonObject())
+fun DisclosableObjectSpecBuilder.cnf(jwk: NimbusJWK) = notSd("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
 
 private object NimbusSdJwtIssuerFactory {
 
