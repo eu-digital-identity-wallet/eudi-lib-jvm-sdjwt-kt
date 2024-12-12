@@ -28,7 +28,7 @@ typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
 
 interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
     /**
-     * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
+     * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaimPath]
      *
      * @param JWT the type representing the JWT part of the SD-JWT
      *
