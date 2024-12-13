@@ -144,6 +144,8 @@ class SpecExamples {
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.printRecreated() {
-        println(json.encodeToString(this.recreateClaims { c -> c.second }))
+        with(DefaultSdJwtOps) {
+            println(json.encodeToString(recreateClaims(visitor = null)))
+        }
     }
 }
