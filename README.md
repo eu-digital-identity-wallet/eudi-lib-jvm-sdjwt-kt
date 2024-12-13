@@ -289,7 +289,10 @@ val claims: JsonObject = runBlocking {
         val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
         issuer.issue(spec).getOrThrow()
     }
-    sdJwt.recreateClaims { jwt -> jwt.jwtClaimsSet.jsonObject() }
+
+    with(NimbusSdJwtOps) {
+        sdJwt.recreateClaims(visitor = null)
+    }
 }
 ```
 

@@ -38,8 +38,10 @@ class RecreateClaimsTest {
 
     private fun discloseAndRecreate(sdElements: SdObject): JsonObject {
         val sdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
-        return sdJwt.recreateClaims({ it }).also {
-            println(json.encodeToString(it))
+        return with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
+            sdJwt.recreateClaims(visitor = null).also {
+                println(json.encodeToString(it))
+            }
         }
     }
 

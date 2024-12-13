@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
@@ -53,8 +54,8 @@ class SdJsonElementArrayElementTest {
             println(json.encodeToString(it.jwt))
         }
 
-        sdJwt.recreateClaims { it }.also {
-            println(json.encodeToString(it))
+        with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
+            sdJwt.recreateClaims(visitor = null)
         }
     }
 }
