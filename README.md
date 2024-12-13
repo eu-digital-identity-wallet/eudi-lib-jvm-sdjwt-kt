@@ -10,6 +10,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 ## Table of contents
 
 * [Overview](#overview)
+* [Installation](#installation)
 * [Use cases supported](#use-cases-supported)
     * [Issuance](#issuance)
     * [Holder Verification](#holder-verification)
@@ -137,9 +138,8 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
 
 In this case, a `Holder` of an SD-JWT issued by an `Issuer`, wants to create a presentation for a `Verifier`.
 The `Holder` should know which of the selectively disclosed claims to include in the presentation.
-The selectively disclosed claims to include in the presentation are expressed using either Claim Paths as per 
-[SD-JWT VC draft 6](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-06.html#name-claim-path), or 
-JSON Pointers as per [RFC6901](https://datatracker.ietf.org/doc/html/rfc6901).
+The selectively disclosed claims to include in the presentation are expressed using Claim Paths as per 
+[SD-JWT VC draft 6](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-06.html#name-claim-path).
 
 <!--- INCLUDE
 import com.nimbusds.jose.JWSAlgorithm
@@ -191,10 +191,6 @@ The resulting presentation will contain 3 disclosures:
 
 This is because to disclose either the claim `region` or the claim `country`, the claim `address` must be 
 disclosed as well.
-
-> [!NOTE]
-> The `present` function shown above expects either a set of Claim Paths, or a JSON Pointer predicate. Support for 
-> JSON Pointers though has been marked as deprecated, and is scheduled to be removed in a future release.
 
 ## Presentation Verification
 
