@@ -31,7 +31,7 @@ class RecreateClaimsTest {
         }
 
         val sdJwtElements = sdJwt {
-            plainClaims.forEach { notSd(it.key, it.value) }
+            plainClaims.forEach { claim(it.key, it.value) }
         }
         val actual = discloseAndRecreate(sdJwtElements)
 
@@ -60,8 +60,8 @@ class RecreateClaimsTest {
         }
 
         val sdJwtElements = sdJwt {
-            plainClaims.forEach { notSd(it.key, it.value) }
-            flatClaims.forEach { sd(it.key, it.value) }
+            plainClaims.forEach { claim(it.key, it.value) }
+            flatClaims.forEach { sdClaim(it.key, it.value) }
         }
         val expected = JsonObject(plainClaims + flatClaims)
         val actual = discloseAndRecreate(sdJwtElements)
@@ -85,10 +85,10 @@ class RecreateClaimsTest {
         }
 
         val sdJwtElements = sdJwt {
-            plainClaims.forEach { notSd(it.key, it.value) }
-            notSdObject("structured") {
-                structuredPlainSubClaims.forEach { notSd(it.key, it.value) }
-                structuredSubClaims.forEach { sd(it.key, it.value) }
+            plainClaims.forEach { claim(it.key, it.value) }
+            objClaim("structured") {
+                structuredPlainSubClaims.forEach { claim(it.key, it.value) }
+                structuredSubClaims.forEach { sdClaim(it.key, it.value) }
             }
         }
 
@@ -126,9 +126,9 @@ class RecreateClaimsTest {
             }
         }
         val sdJwtElements = sdJwt {
-            plainClaims.forEach { notSd(it.key, it.value) }
-            sdObject("rec") {
-                subClaims.forEach { sd(it.key, it.value) }
+            plainClaims.forEach { claim(it.key, it.value) }
+            sdObjClaim("rec") {
+                subClaims.forEach { sdClaim(it.key, it.value) }
             }
         }
 

@@ -20,24 +20,24 @@ import eu.europa.ec.eudi.sdjwt.*
 val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
     // This 5 guarantees that at least 5 digests will be found
     // to the digest array, regardless of the content of the SD-JWT
-    notSdObject("address", minimumDigests = 10) {
+    objClaim("address", minimumDigests = 10) {
         // This affects the nested array of the digests that will
         // have at list 10 digests.
     }
 
-    sdObject("address1", minimumDigests = 8) {
+    sdObjClaim("address1", minimumDigests = 8) {
         // This will affect the digests array that will be found
         // in the disclosure of this recursively disclosable item
         // the whole object will be embedded in its parent
         // as a single digest
     }
 
-    notSdArray("evidence", minimumDigests = 2) {
+    arrClaim("evidence", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
     }
 
-    sdArray("evidence1", minimumDigests = 2) {
+    sdArrClaim("evidence1", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
         // the whole array will be embedded in its parent

@@ -229,18 +229,18 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
         val sdJwtElements =
             sdJwt {
-                notSd("iss", iss)
-                notSd("iat", iat.epochSecond)
-                notSd("exp", exp.epochSecond)
+                claim("iss", iss)
+                claim("iat", iat.epochSecond)
+                claim("exp", exp.epochSecond)
                 cnf(holderPubKey as JWK)
-                notSdObject("credentialSubject") {
-                    Json.encodeToJsonElement(credential).jsonObject.forEach { sd(it.key, it.value) }
-                    sdArray("addresses") {
-                        sdObject {
-                            sd("street", "street1")
+                objClaim("credentialSubject") {
+                    Json.encodeToJsonElement(credential).jsonObject.forEach { sdClaim(it.key, it.value) }
+                    sdArrClaim("addresses") {
+                        sdObjClaim {
+                            sdClaim("street", "street1")
                         }
-                        sdObject {
-                            sd("street", "street2")
+                        sdObjClaim {
+                            sdClaim("street", "street2")
                         }
                     }
                 }

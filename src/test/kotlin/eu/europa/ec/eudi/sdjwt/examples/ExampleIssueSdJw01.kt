@@ -23,15 +23,15 @@ import kotlinx.coroutines.runBlocking
 val issuedSdJwt: String = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
-        notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        notSd("iss", "https://example.com/issuer")
-        notSd("iat", 1516239022)
-        notSd("exp", 1735689661)
-        notSdObject("address") {
-            sd("street_address", "Schulstr. 12")
-            sd("locality", "Schulpforta")
-            sd("region", "Sachsen-Anhalt")
-            sd("country", "DE")
+        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        claim("iss", "https://example.com/issuer")
+        claim("iat", 1516239022)
+        claim("exp", 1735689661)
+        objClaim("address") {
+            sdClaim("street_address", "Schulstr. 12")
+            sdClaim("locality", "Schulpforta")
+            sdClaim("region", "Sachsen-Anhalt")
+            sdClaim("country", "DE")
         }
     }
     with(NimbusSdJwtOps) {

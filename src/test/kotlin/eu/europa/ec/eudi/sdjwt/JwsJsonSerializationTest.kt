@@ -118,7 +118,7 @@ class JwsJsonSerializationTest {
         }
 
         val sdJwtSpec = sdJwt {
-            sd("age_over_18", true)
+            sdClaim("age_over_18", true)
         }
 
         val sdJwt = assertDoesNotThrow { issuer.issue(sdJwtSpec).getOrThrow() }

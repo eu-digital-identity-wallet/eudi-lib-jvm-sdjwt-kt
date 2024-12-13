@@ -34,7 +34,7 @@ class DisclosedClaimSetTest {
         fun `no sd-jwt with illegal attribute names`() {
             val invalidClaims = listOf(
                 sdJwt {
-                    sd("_sd", "foo")
+                    sdClaim("_sd", "foo")
                 },
             )
 
@@ -106,8 +106,8 @@ class DisclosedClaimSetTest {
         ): UnsignedSdJwt {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plainClaims.forEach { notSd(it.key, it.value) }
-                claimsToBeDisclosed.forEach { sd(it.key, it.value) }
+                plainClaims.forEach { claim(it.key, it.value) }
+                claimsToBeDisclosed.forEach { sdClaim(it.key, it.value) }
             }
 
             val disclosedJsonObject = SdJwtFactory(
@@ -196,8 +196,8 @@ class DisclosedClaimSetTest {
         ) {
             val hashAlgorithm = HashAlgorithm.SHA_256
             val sdJwtElements = sdJwt {
-                plainClaims.forEach { notSd(it.key, it.value) }
-                claimsToBeDisclosed.forEach { notSdObject(it.key) { sd(it.key, it.value) } }
+                plainClaims.forEach { claim(it.key, it.value) }
+                claimsToBeDisclosed.forEach { objClaim(it.key) { sdClaim(it.key, it.value) } }
             }
             val disclosedJsonObject = SdJwtFactory(
                 hashAlgorithm,

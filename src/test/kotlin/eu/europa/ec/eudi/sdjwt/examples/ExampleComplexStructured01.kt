@@ -19,52 +19,52 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val complexStructuredSdJwt =
     sdJwt {
-        notSd("iss", "https://issuer.example.com")
-        notSd("iat", 1683000000)
-        notSd("exp", 1883000000)
-        notSdObject("verified_claims") {
-            notSdObject("verification") {
-                sd("time", "2012-04-23T18:25Z")
-                sd("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
-                notSd("trust_framework", "de_aml")
-                notSdArray("evidence") {
-                    sdObject {
-                        sd("type", "document")
-                        sd("method", "pipp")
-                        sd("time", "2012-04-22T11:30Z")
-                        sdObject("document") {
-                            notSd("type", "idcard")
-                            notSdObject("issuer") {
-                                notSd("name", "Stadt Augsburg")
-                                notSd("country", "DE")
+        claim("iss", "https://issuer.example.com")
+        claim("iat", 1683000000)
+        claim("exp", 1883000000)
+        objClaim("verified_claims") {
+            objClaim("verification") {
+                sdClaim("time", "2012-04-23T18:25Z")
+                sdClaim("verification_process", "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7")
+                claim("trust_framework", "de_aml")
+                arrClaim("evidence") {
+                    sdObjClaim {
+                        sdClaim("type", "document")
+                        sdClaim("method", "pipp")
+                        sdClaim("time", "2012-04-22T11:30Z")
+                        sdObjClaim("document") {
+                            claim("type", "idcard")
+                            objClaim("issuer") {
+                                claim("name", "Stadt Augsburg")
+                                claim("country", "DE")
                             }
-                            notSd("number", "53554554")
-                            notSd("date_of_issuance", "2010-03-23")
-                            notSd("date_of_expiry", "2020-03-22")
+                            claim("number", "53554554")
+                            claim("date_of_issuance", "2010-03-23")
+                            claim("date_of_expiry", "2020-03-22")
                         }
                     }
                 }
             }
-            notSdObject("claims") {
-                sd("given_name", "Max")
-                sd("family_name", "Müller")
-                sdArray("nationalities") {
-                    notSd("DE")
+            objClaim("claims") {
+                sdClaim("given_name", "Max")
+                sdClaim("family_name", "Müller")
+                sdArrClaim("nationalities") {
+                    claim("DE")
                 }
-                sd("birthdate", "1956-01-28")
-                sdObject("place_of_birth") {
-                    notSd("country", "IS")
-                    notSd("locality", "Þykkvabæjarklaustur")
+                sdClaim("birthdate", "1956-01-28")
+                sdObjClaim("place_of_birth") {
+                    claim("country", "IS")
+                    claim("locality", "Þykkvabæjarklaustur")
                 }
-                sdObject("address") {
-                    notSd("locality", "Maxstadt")
-                    notSd("postal_code", "12344")
-                    notSd("country", "DE")
-                    notSd("street_address", "Weidenstraße 22")
+                sdObjClaim("address") {
+                    claim("locality", "Maxstadt")
+                    claim("postal_code", "12344")
+                    claim("country", "DE")
+                    claim("street_address", "Weidenstraße 22")
                 }
             }
-            sd("birth_middle_name", "Timotheus")
-            sd("salutation", "Dr.")
-            sd("msisdn", "49123456789")
+            sdClaim("birth_middle_name", "Timotheus")
+            sdClaim("salutation", "Dr.")
+            sdClaim("msisdn", "49123456789")
         }
     }

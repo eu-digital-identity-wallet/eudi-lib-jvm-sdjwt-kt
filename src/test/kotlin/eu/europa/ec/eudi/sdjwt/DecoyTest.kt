@@ -87,9 +87,9 @@ internal class DecoyTest {
 
     private fun Membership.sdJwtSpec(minimumDigests: Int?) =
         sdJwt(minimumDigests) {
-            sd("name", name)
+            sdClaim("name", name)
             if (this@sdJwtSpec is Membership.Premium) {
-                sd("premiumMembershipNumber", premiumMembershipNumber)
+                sdClaim("premiumMembershipNumber", premiumMembershipNumber)
             }
         }
 }

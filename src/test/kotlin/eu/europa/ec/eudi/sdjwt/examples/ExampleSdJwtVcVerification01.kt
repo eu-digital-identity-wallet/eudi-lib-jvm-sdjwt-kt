@@ -66,7 +66,7 @@ val sdJwtVcVerification = runBlocking {
 
     val sdJwt = run {
         val spec = sdJwt {
-            notSd("iss", issuer.toExternalForm())
+            claim("iss", issuer.toExternalForm())
         }
         with(NimbusSdJwtOps) {
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {

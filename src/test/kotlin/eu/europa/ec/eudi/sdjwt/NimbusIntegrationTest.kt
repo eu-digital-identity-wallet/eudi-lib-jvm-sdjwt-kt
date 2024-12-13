@@ -56,23 +56,23 @@ internal class NimbusIntegrationTest : NimbusSdJwtOps {
 }
 
 private val sdObject = sdJwt {
-    notSd("iss", "https://issuer.example.com")
-    notSd("iat", 1683000000)
-    notSd("exp", 1883000000)
+    claim("iss", "https://issuer.example.com")
+    claim("iat", 1683000000)
+    claim("exp", 1883000000)
 
-    notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
-    notSdObject("cnf") {
-        notSdObject("jwk") {
-            notSd("kty", "EC")
-            notSd("crv", "P-256")
-            notSd("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-            notSd("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+    claim("vct", "https://bmi.bund.example/credential/pid/1.0")
+    objClaim("cnf") {
+        objClaim("jwk") {
+            claim("kty", "EC")
+            claim("crv", "P-256")
+            claim("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+            claim("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
         }
     }
 
-    sd("given_name", "Erika")
-    sd("family_name", "Mustermann")
-    sd("birthdate", "1963-08-12")
+    sdClaim("given_name", "Erika")
+    sdClaim("family_name", "Mustermann")
+    sdClaim("birthdate", "1963-08-12")
 }
 
 private data class Context(

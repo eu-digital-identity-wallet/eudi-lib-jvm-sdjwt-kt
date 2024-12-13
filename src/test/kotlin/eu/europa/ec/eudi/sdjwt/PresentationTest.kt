@@ -39,34 +39,34 @@ class PresentationTest : NimbusSdJwtOps {
         //
         // Claims that are always disclosable (no selectively disclosed)
         //
-        notSd("iss", "https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
-        notSd("exp", 1883000000)
-        notSd("iat", 1683000000)
-        notSd("vct", "https://bmi.bund.example/credential/pid/1.0")
+        claim("iss", "https://example.com/issuer") // shortcut for put("iss", "https://example.com/issuer")
+        claim("exp", 1883000000)
+        claim("iat", 1683000000)
+        claim("vct", "https://bmi.bund.example/credential/pid/1.0")
 
         //
         // Selectively disclosable claims
         // Each claim can be selectively disclosed (or not)
-        sd("given_name", "Erika")
-        sd("also_known_as", "Schwester Agnes")
-        sd("family_name", "Mustermann")
-        sd("gender", "female")
-        sd("birthdate", "1963-8-12")
-        sdArray("nationalities") {
-            notSd("DE")
+        sdClaim("given_name", "Erika")
+        sdClaim("also_known_as", "Schwester Agnes")
+        sdClaim("family_name", "Mustermann")
+        sdClaim("gender", "female")
+        sdClaim("birthdate", "1963-8-12")
+        sdArrClaim("nationalities") {
+            claim("DE")
         }
-        sd("birth_family_name", "Gabler")
-        sd("source_document_type", "id_card")
+        sdClaim("birth_family_name", "Gabler")
+        sdClaim("source_document_type", "id_card")
 
         //
         // Selectively disclosable claim using recursive options
         // All sub-claims are selectively disclosable
         // Each sub-claim can be individually disclosed
-        sdObject("address") {
-            sd("postal_code", "51147")
-            sd("street_address", "Heidestraße 17")
-            sd("locality", "Köln")
-            sd("country", "DE")
+        sdObjClaim("address") {
+            sdClaim("postal_code", "51147")
+            sdClaim("street_address", "Heidestraße 17")
+            sdClaim("locality", "Köln")
+            sdClaim("country", "DE")
         }
 
         //
@@ -76,22 +76,22 @@ class PresentationTest : NimbusSdJwtOps {
         //  This means that `place_of_birth` can be selectively disclosed or not.
         //  If it is selected, `country` will be also disclosed (no option to hide it)
         //  and `locality` is selectively disclosable
-        sdObject("place_of_birth") {
-            notSd("country", "DE")
-            sd("locality", "Berlin")
+        sdObjClaim("place_of_birth") {
+            claim("country", "DE")
+            sdClaim("locality", "Berlin")
         }
 
         //
         // Selectively disclosable claim using structured option
         // All sub-claims are selectively disclosable
         // This means that each sub-claim can be disclosed (or not)
-        notSdObject("age_equal_or_over") {
-            sd("65", false)
-            sd("12", true)
-            sd("21", true)
-            sd("14", true)
-            sd("16", true)
-            sd("18", true)
+        objClaim("age_equal_or_over") {
+            sdClaim("65", false)
+            sdClaim("12", true)
+            sdClaim("21", true)
+            sdClaim("14", true)
+            sdClaim("16", true)
+            sdClaim("18", true)
         }
 
         cnf(holderKey.toPublicJWK())
@@ -120,8 +120,8 @@ class PresentationTest : NimbusSdJwtOps {
     fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() = runTest {
         val sdJwt = run {
             val spec = sdJwt {
-                notSd("iss", "foo")
-                notSd("iat", Instant.now().epochSecond)
+                claim("iss", "foo")
+                claim("iat", Instant.now().epochSecond)
             }
             issuer.issue(spec).getOrThrow().also {
                 assertTrue { it.disclosures.isEmpty() }
@@ -212,8 +212,8 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
         val spec = sdJwt {
-            notSdObject("credentialSubject") {
-                notSd("type", "VaccinationEvent")
+            objClaim("credentialSubject") {
+                claim("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -225,8 +225,8 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
         val spec = sdJwt {
-            sdObject("credentialSubject") {
-                notSd("type", "VaccinationEvent")
+            sdObjClaim("credentialSubject") {
+                claim("type", "VaccinationEvent")
             }
         }
         val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
@@ -240,12 +240,12 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for sd array`() = runTest {
         val spec = sdJwt {
-            notSdArray("evidence") {
-                sdObject {
-                    sd("type", "document")
+            arrClaim("evidence") {
+                sdObjClaim {
+                    sdClaim("type", "document")
                 }
-                notSdObject {
-                    notSd("foo", "bar")
+                objClaim {
+                    claim("foo", "bar")
                 }
             }
         }
@@ -276,12 +276,12 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `querying for a recursive SD array`() = runTest {
         val spec = sdJwt {
-            sdArray("evidence") {
-                sdObject {
-                    sd("type", "document")
+            sdArrClaim("evidence") {
+                sdObjClaim {
+                    sdClaim("type", "document")
                 }
-                notSdObject {
-                    notSd("foo", "bar")
+                objClaim {
+                    claim("foo", "bar")
                 }
             }
         }

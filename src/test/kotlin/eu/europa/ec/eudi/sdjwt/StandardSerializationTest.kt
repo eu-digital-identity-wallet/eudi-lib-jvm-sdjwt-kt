@@ -44,7 +44,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            notSd("foo", "bar")
+            claim("foo", "bar")
         }
         val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val expected =
@@ -59,7 +59,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            sd("foo", "bar")
+            sdClaim("foo", "bar")
         }
         val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val expected =
@@ -78,7 +78,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT without disclosures with KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            notSd("foo", "bar")
+            claim("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val sdJwt = issuedSdJwt.present()
@@ -94,7 +94,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
     @Test
     fun `An SD-JWT with disclosures and KBJWT should not end in ~`() = runTest {
         val sdJwtSpec = sdJwt {
-            sd("foo", "bar")
+            sdClaim("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
         val sdJwt = issuedSdJwt.present()

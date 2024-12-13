@@ -61,29 +61,29 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             //
             // Never Selectively Disclosable claims
             //
-            notSd("iss", config.issuer.toASCIIString())
-            notSd(SdJwtVcSpec.VCT, config.vct.toASCIIString())
-            notSd("iat", iat.epochSecond)
-            exp?.let { notSd("exp", it.epochSecond) }
+            claim("iss", config.issuer.toASCIIString())
+            claim(SdJwtVcSpec.VCT, config.vct.toASCIIString())
+            claim("iat", iat.epochSecond)
+            exp?.let { claim("exp", it.epochSecond) }
             cnf(holderPubKey)
 
             //
             // Always Selectively disclosable claims
             //
-            sd("given_name", givenName)
-            sd("family_name", familyName)
-            sd("email", email)
-            sd("phone_number", phoneNumber)
-            sdObject("address") {
-                notSd("street_address", address.streetAddress)
-                notSd("locality", address.locality)
-                notSd("region", address.region)
-                notSd("country", address.country)
+            sdClaim("given_name", givenName)
+            sdClaim("family_name", familyName)
+            sdClaim("email", email)
+            sdClaim("phone_number", phoneNumber)
+            sdObjClaim("address") {
+                claim("street_address", address.streetAddress)
+                claim("locality", address.locality)
+                claim("region", address.region)
+                claim("country", address.country)
             }
-            sd("birth_date", birthDate.toString())
-            sd("is_over_18", isOver18)
-            sd("is_over_21", isOver21)
-            sd("is_over_65", isOver65)
+            sdClaim("birth_date", birthDate.toString())
+            sdClaim("is_over_18", isOver18)
+            sdClaim("is_over_21", isOver21)
+            sdClaim("is_over_65", isOver65)
         }
 
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {

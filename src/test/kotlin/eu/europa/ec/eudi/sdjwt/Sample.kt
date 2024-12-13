@@ -73,26 +73,26 @@ suspend fun main() {
 
     val sdJwt: String = with(NimbusSdJwtOps) {
         val spec = sdJwt {
-            notSd("iss", "https://example.com")
-            notSd("jti", "http://example.com/credentials/3732")
-            notSd("nbf", 1541493724)
-            notSd("iat", 1541493724)
-            notSd("type", "IdentityCredential")
-            notSdObject("credentialSubject") {
-                sd("given_name", "John")
-                sd("family_name", "Doe")
-                sd("email", "johndoe@example.com")
-                sd("phone_number", "+1-202-555-0101")
-                sdObject("address") {
-                    notSd("street_address", "123 Main St")
-                    notSd("locality", "Anytown")
-                    notSd("region", "Anystate")
-                    notSd("country", "US")
+            claim("iss", "https://example.com")
+            claim("jti", "http://example.com/credentials/3732")
+            claim("nbf", 1541493724)
+            claim("iat", 1541493724)
+            claim("type", "IdentityCredential")
+            objClaim("credentialSubject") {
+                sdClaim("given_name", "John")
+                sdClaim("family_name", "Doe")
+                sdClaim("email", "johndoe@example.com")
+                sdClaim("phone_number", "+1-202-555-0101")
+                sdObjClaim("address") {
+                    claim("street_address", "123 Main St")
+                    claim("locality", "Anytown")
+                    claim("region", "Anystate")
+                    claim("country", "US")
                 }
-                sd("birthdate", "1940-01-01")
-                sd("is_over_18", true)
-                sd("is_over_21", true)
-                sd("is_over_65", true)
+                sdClaim("birthdate", "1940-01-01")
+                sdClaim("is_over_18", true)
+                sdClaim("is_over_21", true)
+                sdClaim("is_over_65", true)
             }
         }
         val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)

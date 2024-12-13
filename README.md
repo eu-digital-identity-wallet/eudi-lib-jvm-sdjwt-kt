@@ -76,15 +76,15 @@ import kotlinx.coroutines.runBlocking
 val issuedSdJwt: String = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
-        notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        notSd("iss", "https://example.com/issuer")
-        notSd("iat", 1516239022)
-        notSd("exp", 1735689661)
-        notSdObject("address") {
-            sd("street_address", "Schulstr. 12")
-            sd("locality", "Schulpforta")
-            sd("region", "Sachsen-Anhalt")
-            sd("country", "DE")
+        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        claim("iss", "https://example.com/issuer")
+        claim("iat", 1516239022)
+        claim("exp", 1735689661)
+        objClaim("address") {
+            sdClaim("street_address", "Schulstr. 12")
+            sdClaim("locality", "Schulpforta")
+            sdClaim("region", "Sachsen-Anhalt")
+            sdClaim("country", "DE")
         }
     }
     with(NimbusSdJwtOps) {
@@ -156,15 +156,15 @@ val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
         val issuedSdJwt = run {
             val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
             val sdJwtSpec = sdJwt {
-                notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                notSd("iss", "https://example.com/issuer")
-                notSd("iat", 1516239022)
-                notSd("exp", 1735689661)
-                sdObject("address") {
-                    sd("street_address", "Schulstr. 12")
-                    sd("locality", "Schulpforta")
-                    sd("region", "Sachsen-Anhalt")
-                    sd("country", "DE")
+                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                claim("iss", "https://example.com/issuer")
+                claim("iat", 1516239022)
+                claim("exp", 1735689661)
+                sdObjClaim("address") {
+                    sdClaim("street_address", "Schulstr. 12")
+                    sdClaim("locality", "Schulpforta")
+                    sdClaim("region", "Sachsen-Anhalt")
+                    sdClaim("country", "DE")
                 }
             }
             val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
@@ -260,15 +260,15 @@ val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt.Issuance<SignedJWT> = run {
         val spec = sdJwt {
-            notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            notSd("iss", "https://example.com/issuer")
-            notSd("iat", 1516239022)
-            notSd("exp", 1735689661)
-            notSdObject("address") {
-                sd("street_address", "Schulstr. 12")
-                sd("locality", "Schulpforta")
-                sd("region", "Sachsen-Anhalt")
-                sd("country", "DE")
+            claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            claim("iss", "https://example.com/issuer")
+            claim("iat", 1516239022)
+            claim("exp", 1735689661)
+            objClaim("address") {
+                sdClaim("street_address", "Schulstr. 12")
+                sdClaim("locality", "Schulpforta")
+                sdClaim("region", "Sachsen-Anhalt")
+                sdClaim("country", "DE")
             }
         }
         val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
@@ -326,24 +326,24 @@ import eu.europa.ec.eudi.sdjwt.*
 val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
     // This 5 guarantees that at least 5 digests will be found
     // to the digest array, regardless of the content of the SD-JWT
-    notSdObject("address", minimumDigests = 10) {
+    objClaim("address", minimumDigests = 10) {
         // This affects the nested array of the digests that will
         // have at list 10 digests.
     }
 
-    sdObject("address1", minimumDigests = 8) {
+    sdObjClaim("address1", minimumDigests = 8) {
         // This will affect the digests array that will be found
         // in the disclosure of this recursively disclosable item
         // the whole object will be embedded in its parent
         // as a single digest
     }
 
-    notSdArray("evidence", minimumDigests = 2) {
+    arrClaim("evidence", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
     }
 
-    sdArray("evidence1", minimumDigests = 2) {
+    sdArrClaim("evidence1", minimumDigests = 2) {
         // Array will have at least 2 digests
         // regardless of its elements
         // the whole array will be embedded in its parent
@@ -450,7 +450,7 @@ val sdJwtVcVerification = runBlocking {
 
     val sdJwt = run {
         val spec = sdJwt {
-            notSd("iss", issuer.toExternalForm())
+            claim("iss", issuer.toExternalForm())
         }
         with(NimbusSdJwtOps) {
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {

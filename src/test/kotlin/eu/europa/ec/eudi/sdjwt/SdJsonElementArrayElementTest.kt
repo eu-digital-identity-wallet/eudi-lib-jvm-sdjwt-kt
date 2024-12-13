@@ -23,26 +23,26 @@ class SdJsonElementArrayElementTest {
     @Test
     fun simple() {
         val sdJwtElements = sdJwt {
-            notSd("sub", "user_42")
-            notSd("iss", "https://example.com/issuer")
-            notSd("iat", 1683000000)
-            notSd("exp", 1883000000)
-            sd("given_name", "John")
-            sd("family_name", "Doe")
-            sd("email", "johndoe@example.com")
-            sd("phone_number", "+1-202-555-0101")
-            sd("phone_number_verified", true)
-            sdObject("address") {
-                notSd("street_address", "123 Main St")
-                notSd("locality", "Anytown")
-                notSd("region", "Anystate")
-                notSd("country", "US")
+            claim("sub", "user_42")
+            claim("iss", "https://example.com/issuer")
+            claim("iat", 1683000000)
+            claim("exp", 1883000000)
+            sdClaim("given_name", "John")
+            sdClaim("family_name", "Doe")
+            sdClaim("email", "johndoe@example.com")
+            sdClaim("phone_number", "+1-202-555-0101")
+            sdClaim("phone_number_verified", true)
+            sdObjClaim("address") {
+                claim("street_address", "123 Main St")
+                claim("locality", "Anytown")
+                claim("region", "Anystate")
+                claim("country", "US")
             }
-            sd("birthdate", "1940-01-01")
-            sd("updated_at", 1570000000)
-            notSdArray("nationalities") {
-                notSd("US")
-                sd("DE")
+            sdClaim("birthdate", "1940-01-01")
+            sdClaim("updated_at", 1570000000)
+            arrClaim("nationalities") {
+                claim("US")
+                sdClaim("DE")
             }
         }
 

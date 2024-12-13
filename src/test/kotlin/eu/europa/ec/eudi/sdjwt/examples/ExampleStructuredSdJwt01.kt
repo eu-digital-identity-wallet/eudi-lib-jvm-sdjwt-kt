@@ -19,15 +19,15 @@ import eu.europa.ec.eudi.sdjwt.*
 
 val structuredSdJwt =
     sdJwt {
-        notSd("iss", "https://issuer.example.com")
-        notSd("iat", 1683000000)
-        notSd("exp", 1883000000)
-        notSd("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        claim("iss", "https://issuer.example.com")
+        claim("iat", 1683000000)
+        claim("exp", 1883000000)
+        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-        notSdObject("address") {
-            sd("street_address", "Schulstr. 12")
-            sd("locality", "Schulpforta")
-            sd("region", "Sachsen-Anhalt")
-            sd("country", "DE")
+        objClaim("address") {
+            sdClaim("street_address", "Schulstr. 12")
+            sdClaim("locality", "Schulpforta")
+            sdClaim("region", "Sachsen-Anhalt")
+            sdClaim("country", "DE")
         }
     }

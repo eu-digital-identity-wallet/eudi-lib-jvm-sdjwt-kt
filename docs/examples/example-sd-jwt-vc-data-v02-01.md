@@ -11,49 +11,49 @@ import eu.europa.ec.eudi.sdjwt.*
 ```kotlin
 val sdJwtVcDataV2 =
     sdJwt {
-        notSdArray("@context") {
-            notSd("https://www.w3.org/2018/credentials/v1")
-            notSd("https://w3id.org/vaccination/v1")
+        arrClaim("@context") {
+            claim("https://www.w3.org/2018/credentials/v1")
+            claim("https://w3id.org/vaccination/v1")
         }
-        notSdArray("type") {
-            notSd("VerifiableCredential")
-            notSd("VaccinationCertificate")
+        arrClaim("type") {
+            claim("VerifiableCredential")
+            claim("VaccinationCertificate")
         }
-        notSd("issuer", "https://example.com/issuer")
-        notSd("issuanceDate", "2023-02-09T11:01:59Z")
-        notSd("expirationDate", "2028-02-08T11:01:59Z")
-        notSd("name", "COVID-19 Vaccination Certificate")
-        notSd("description", "COVID-19 Vaccination Certificate")
-        notSdObject("cnf") {
-            notSdObject("jwk") {
-                notSd("kty", "EC")
-                notSd("crv", "P-256")
-                notSd("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                notSd("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
+        claim("issuer", "https://example.com/issuer")
+        claim("issuanceDate", "2023-02-09T11:01:59Z")
+        claim("expirationDate", "2028-02-08T11:01:59Z")
+        claim("name", "COVID-19 Vaccination Certificate")
+        claim("description", "COVID-19 Vaccination Certificate")
+        objClaim("cnf") {
+            objClaim("jwk") {
+                claim("kty", "EC")
+                claim("crv", "P-256")
+                claim("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                claim("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
             }
         }
 
-        notSdObject("credentialSubject") {
-            notSd("type", "VaccinationEvent")
-            sd("nextVaccinationDate", "2021-08-16T13:40:12Z")
-            sd("countryOfVaccination", "GE")
-            sd("dateOfVaccination", "2021-06-23T13:40:12Z")
-            sd("order", "3/3")
-            sd("administeringCentre", "Praxis Sommergarten")
-            sd("batchNumber", "1626382736")
-            sd("healthProfessional", "883110000015376")
-            notSdObject("vaccine") {
-                notSd("type", "Vaccine")
-                sd("atcCode", "J07BX03")
-                sd("medicinalProductName", "COVID-19 Vaccine Moderna")
-                sd("marketingAuthorizationHolder", "Moderna Biotech")
+        objClaim("credentialSubject") {
+            claim("type", "VaccinationEvent")
+            sdClaim("nextVaccinationDate", "2021-08-16T13:40:12Z")
+            sdClaim("countryOfVaccination", "GE")
+            sdClaim("dateOfVaccination", "2021-06-23T13:40:12Z")
+            sdClaim("order", "3/3")
+            sdClaim("administeringCentre", "Praxis Sommergarten")
+            sdClaim("batchNumber", "1626382736")
+            sdClaim("healthProfessional", "883110000015376")
+            objClaim("vaccine") {
+                claim("type", "Vaccine")
+                sdClaim("atcCode", "J07BX03")
+                sdClaim("medicinalProductName", "COVID-19 Vaccine Moderna")
+                sdClaim("marketingAuthorizationHolder", "Moderna Biotech")
             }
-            notSdObject("recipient") {
-                notSd("type", "VaccineRecipient")
-                sd("gender", "Female")
-                sd("birthDate", "1961-08-17")
-                sd("givenName", "Marion")
-                sd("familyName", "Mustermann")
+            objClaim("recipient") {
+                claim("type", "VaccineRecipient")
+                sdClaim("gender", "Female")
+                sdClaim("birthDate", "1961-08-17")
+                sdClaim("givenName", "Marion")
+                sdClaim("familyName", "Mustermann")
             }
         }
     }

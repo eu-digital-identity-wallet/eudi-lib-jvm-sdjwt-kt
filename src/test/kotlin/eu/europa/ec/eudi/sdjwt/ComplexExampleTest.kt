@@ -33,116 +33,116 @@ internal class ComplexExampleTest {
     internal fun `verify disclosures using the new dsl`() = runTest {
         val spec = sdJwt {
             // plain claim in object
-            notSd("plainClaim", "value")
+            claim("plainClaim", "value")
 
             // sd claim in object
-            sd("sdClaim", "value")
+            sdClaim("sdClaim", "value")
 
             // plain array in object
-            notSdArray("plainArray") {
+            arrClaim("plainArray") {
                 // plain value in plain array
-                notSd("plain")
+                claim("plain")
 
                 // sd value in plain array
-                sd("sd")
+                sdClaim("sd")
 
                 // plain object in plain array, can also contain other arrays or objects
-                notSdObject {
-                    notSd("plainClaim", "value")
-                    sd("sdClaim", "value")
+                objClaim {
+                    claim("plainClaim", "value")
+                    sdClaim("sdClaim", "value")
                 }
 
                 // sd object in plain array, can also contain other arrays or objects
-                sdObject {
-                    notSd("plainClaim", "value")
-                    sd("sdClaim", "value")
+                sdObjClaim {
+                    claim("plainClaim", "value")
+                    sdClaim("sdClaim", "value")
                 }
 
                 // plain array in plain array, can also contain other arrays or objects
-                notSdArray {
-                    notSd("plain")
-                    sd("sd")
+                arrClaim {
+                    claim("plain")
+                    sdClaim("sd")
                 }
 
                 // sd array in plain array, can also contain other arrays or objects
-                sdArray {
-                    notSd("plain")
-                    sd("sd")
+                sdArrClaim {
+                    claim("plain")
+                    sdClaim("sd")
                 }
             }
 
             // sd array in object
-            sdArray("sdArray") {
+            sdArrClaim("sdArray") {
                 // plain value in sd array
-                notSd("plain")
+                claim("plain")
 
                 // sd value in sd array
-                sd("sd")
+                sdClaim("sd")
 
                 // plain object in sd array, can also contain other arrays or objects
-                notSdObject {
-                    notSd("plainClaim", "value")
-                    sd("sdClaim", "value")
+                objClaim {
+                    claim("plainClaim", "value")
+                    sdClaim("sdClaim", "value")
                 }
 
                 // sd object in sd array, can also contain other arrays or objects
-                sdObject {
-                    notSd("plainClaim", "value")
-                    sd("sdClaim", "value")
+                sdObjClaim {
+                    claim("plainClaim", "value")
+                    sdClaim("sdClaim", "value")
                 }
 
                 // plain array in sd array, can also contain other arrays or objects
-                notSdArray {
-                    notSd("plain")
-                    sd("sd")
+                arrClaim {
+                    claim("plain")
+                    sdClaim("sd")
                 }
 
                 // sd array in sd array, can also contain other arrays or objects
-                sdArray {
-                    notSd("plain")
-                    sd("sd")
+                sdArrClaim {
+                    claim("plain")
+                    sdClaim("sd")
                 }
             }
 
             // plain object in object
-            notSdObject("plainObject") {
+            objClaim("plainObject") {
                 // plain value in plain object
-                notSd("plainClaim", "value")
+                claim("plainClaim", "value")
 
                 // sd value in plain object
-                sd("sdClaim", "value")
+                sdClaim("sdClaim", "value")
 
                 // plain array in plain object, can also contain other arrays or objects
-                notSdArray("plainArray") {
-                    notSd("plain")
-                    sd("sd")
+                arrClaim("plainArray") {
+                    claim("plain")
+                    sdClaim("sd")
                 }
 
                 // sd value in plain object, can also contain other arrays or objects
-                sdArray("sdArray") {
-                    notSd("plain")
-                    sd("sd")
+                sdArrClaim("sdArray") {
+                    claim("plain")
+                    sdClaim("sd")
                 }
             }
 
             // sd object in object
-            sdObject("sdObject") {
+            sdObjClaim("sdObject") {
                 // plain value in sd object
-                notSd("plainClaim", "value")
+                claim("plainClaim", "value")
 
                 // sd value in sd object
-                sd("sdClaim", "value")
+                sdClaim("sdClaim", "value")
 
                 // plain array in sd object, can also contain other arrays or objects
-                notSdArray("plainArray") {
-                    notSd("plain")
-                    sd("sd")
+                arrClaim("plainArray") {
+                    claim("plain")
+                    sdClaim("sd")
                 }
 
                 // sd array in sd object, can also contain other arrays or objects
-                sdArray("sdArray") {
-                    notSd("plain")
-                    sd("sd")
+                sdArrClaim("sdArray") {
+                    claim("plain")
+                    sdClaim("sd")
                 }
             }
         }
