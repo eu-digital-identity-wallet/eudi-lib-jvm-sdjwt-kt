@@ -67,9 +67,9 @@ private object SampleIssuer {
     suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
-            iss(issuerMeta.issuer.toASCIIString())
-            iat(Instant.now().toEpochMilli())
-            sd("foo", "bar")
+            claim("iss", issuerMeta.issuer.toASCIIString())
+            claim("iat", Instant.now().toEpochMilli())
+            sdClaim("foo", "bar")
         }
         return with(NimbusSdJwtOps) {
             issuer.issue(sdJwtSpec).getOrThrow().serialize()
@@ -173,7 +173,7 @@ class SdJwtVcVerifierTest {
 
             val sdJwt = run {
                 val spec = sdJwt {
-                    iss(didJwk)
+                    claim("iss", didJwk)
                 }
                 val signer = NimbusSdJwtOps.issuer(
                     signer = Ed25519Signer(key),

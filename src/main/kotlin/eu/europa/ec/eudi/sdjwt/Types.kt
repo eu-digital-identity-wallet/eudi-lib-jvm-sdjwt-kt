@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * A claim is an attribute of an entity.
@@ -123,4 +125,18 @@ fun interface UnverifiedIssuanceFrom {
      *
      */
     fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>>
+}
+
+fun <JWT, JWT1> SdJwt.Issuance<JWT>.map(f: (JWT) -> JWT1): SdJwt.Issuance<JWT1> {
+    contract {
+        callsInPlace(f, InvocationKind.AT_MOST_ONCE)
+    }
+    return SdJwt.Issuance<JWT1>(f(jwt), disclosures)
+}
+
+fun <JWT, JWT1> SdJwt.Presentation<JWT>.map(f: (JWT) -> JWT1): SdJwt.Presentation<JWT1> {
+    contract {
+        callsInPlace(f, InvocationKind.AT_MOST_ONCE)
+    }
+    return SdJwt.Presentation<JWT1>(f(jwt), disclosures)
 }

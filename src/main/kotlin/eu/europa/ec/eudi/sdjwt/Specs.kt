@@ -57,6 +57,7 @@ object SdJwtSpec {
     // Other
     //
     const val DISCLOSURE_SEPARATOR: Char = '~'
+    const val DEFAULT_SD_ALG = "sha-256"
 
     //
     // Media types

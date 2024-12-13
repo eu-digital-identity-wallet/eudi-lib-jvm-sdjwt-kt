@@ -87,9 +87,9 @@ internal class DecoyTest {
 
     private fun Membership.sdJwtSpec(minimumDigests: Int?) =
         sdJwt(minimumDigests) {
-            sd("name", name)
+            sdClaim("name", name)
             if (this@sdJwtSpec is Membership.Premium) {
-                sd("premiumMembershipNumber", premiumMembershipNumber)
+                sdClaim("premiumMembershipNumber", premiumMembershipNumber)
             }
         }
 }
@@ -110,6 +110,6 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             signAlgorithm = alg,
         )
 
-    suspend fun issue(sdElements: SdObject): SdJwt.Issuance<SignedJWT> =
+    suspend fun issue(sdElements: DisclosableObject): SdJwt.Issuance<SignedJWT> =
         issuer.issue(sdElements).getOrThrow()
 }

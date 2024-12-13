@@ -244,7 +244,7 @@ suspend inline fun signedSdJwt(
     signAlgorithm: NimbusJWSAlgorithm,
     sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
     digestNumberHint: Int? = null,
-    builderAction: SdObjectBuilder.() -> Unit,
+    builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): SdJwt.Issuance<NimbusSignedJWT> {
     val issuer = NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm)
     val sdJwtElements = sdJwt(digestNumberHint, builderAction)

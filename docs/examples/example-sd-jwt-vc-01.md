@@ -6,68 +6,54 @@ Description of the example in the [specification Appendix 3 - Example 4a: SD-JWT
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 -->
 
 ```kotlin
 val sdJwtVc =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
+        claim("iss", "https://issuer.example.com")
+        claim("iat", 1683000000)
+        claim("exp", 1883000000)
 
-        plain {
-            put("vct", "https://bmi.bund.example/credential/pid/1.0")
-            putJsonObject("cnf") {
-                putJsonObject("jwk") {
-                    put("kty", "EC")
-                    put("crv", "P-256")
-                    put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                    put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-                }
+        claim("vct", "https://bmi.bund.example/credential/pid/1.0")
+
+        objClaim("cnf") {
+            objClaim("jwk") {
+                claim("kty", "EC")
+                claim("crv", "P-256")
+                claim("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+                claim("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
             }
         }
 
-        sd {
-            put("given_name", "Erika")
-            put("family_name", "Mustermann")
-            put("birthdate", "1963-08-12")
-            put("source_document_type", "id_card")
-            putJsonArray("nationalities") {
-                add("DE")
-            }
-            put("gender", "female")
-            put("birth_family_name", "Gabler")
-            put("also_known_as", "Schwester")
+        sdClaim("given_name", "Erika")
+        sdClaim("family_name", "Mustermann")
+        sdClaim("birthdate", "1963-08-12")
+        sdClaim("source_document_type", "id_card")
+        sdArrClaim("nationalities") { claim("DE") }
+        sdClaim("gender", "female")
+        sdClaim("birth_family_name", "Gabler")
+        sdClaim("also_known_as", "Schwester")
+
+        sdObjClaim("address") {
+            sdClaim("street_address", "Heidestraße 17")
+            sdClaim("locality", "Köln")
+            sdClaim("postal_code", "51147")
+            sdClaim("country", "DE")
         }
 
-        sd("address") {
-            sd {
-                put("street_address", "Heidestraße 17")
-                put("locality", "Köln")
-                put("postal_code", "51147")
-                put("country", "DE")
-            }
+        sdObjClaim("place_of_birth") {
+            claim("country", "DE")
+            sdClaim("locality", "Berlin")
         }
 
-        sd("place_of_birth") {
-            plain {
-                put("country", "DE")
-            }
-            sd {
-                put("locality", "Berlin")
-            }
-        }
-
-        plain("age_equal_or_over") {
-            sd {
-                put("12", true)
-                put("14", true)
-                put("16", true)
-                put("18", true)
-                put("21", true)
-                put("65", false)
-            }
+        objClaim("age_equal_or_over") {
+            sdClaim("12", true)
+            sdClaim("14", true)
+            sdClaim("16", true)
+            sdClaim("18", true)
+            sdClaim("21", true)
+            sdClaim("65", false)
         }
     }
 ```

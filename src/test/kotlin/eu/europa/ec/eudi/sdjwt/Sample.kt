@@ -23,8 +23,6 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.util.*
 
 val jwtVcPayload = """{
@@ -75,30 +73,26 @@ suspend fun main() {
 
     val sdJwt: String = with(NimbusSdJwtOps) {
         val spec = sdJwt {
-            plain {
-                put("iss", "https://example.com")
-                put("jti", "http://example.com/credentials/3732")
-                put("nbf", 1541493724)
-                put("iat", 1541493724)
-                put("type", "IdentityCredential")
-            }
-            plain("credentialSubject") {
-                sd {
-                    put("given_name", "John")
-                    put("family_name", "Doe")
-                    put("email", "johndoe@example.com")
-                    put("phone_number", "+1-202-555-0101")
-                    putJsonObject("address") {
-                        put("street_address", "123 Main St")
-                        put("locality", "Anytown")
-                        put("region", "Anystate")
-                        put("country", "US")
-                    }
-                    put("birthdate", "1940-01-01")
-                    put("is_over_18", true)
-                    put("is_over_21", true)
-                    put("is_over_65", true)
+            claim("iss", "https://example.com")
+            claim("jti", "http://example.com/credentials/3732")
+            claim("nbf", 1541493724)
+            claim("iat", 1541493724)
+            claim("type", "IdentityCredential")
+            objClaim("credentialSubject") {
+                sdClaim("given_name", "John")
+                sdClaim("family_name", "Doe")
+                sdClaim("email", "johndoe@example.com")
+                sdClaim("phone_number", "+1-202-555-0101")
+                sdObjClaim("address") {
+                    claim("street_address", "123 Main St")
+                    claim("locality", "Anytown")
+                    claim("region", "Anystate")
+                    claim("country", "US")
                 }
+                sdClaim("birthdate", "1940-01-01")
+                sdClaim("is_over_18", true)
+                sdClaim("is_over_21", true)
+                sdClaim("is_over_65", true)
             }
         }
         val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)

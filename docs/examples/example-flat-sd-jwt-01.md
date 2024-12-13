@@ -12,24 +12,21 @@ The Issuer in this case made the following decisions:
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 -->
 
 ```kotlin
 val flatSdJwt =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
-        sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        claim("iss", "https://issuer.example.com")
+        claim("iat", 1683000000)
+        claim("exp", 1883000000)
+        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
 
-        sd {
-            putJsonObject("address") {
-                put("street_address", "Schulstr. 12")
-                put("locality", "Schulpforta")
-                put("region", "Sachsen-Anhalt")
-                put("country", "DE")
-            }
+        sdObjClaim("address") {
+            claim("street_address", "Schulstr. 12")
+            claim("locality", "Schulpforta")
+            claim("region", "Sachsen-Anhalt")
+            claim("country", "DE")
         }
     }
 ```

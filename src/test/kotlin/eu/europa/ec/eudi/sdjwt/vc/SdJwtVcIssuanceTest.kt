@@ -56,36 +56,34 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
         holderPubKey: JWK,
         iat: Instant,
         exp: Instant? = null,
-    ): SdObject =
+    ): DisclosableObject =
         sdJwt {
             //
             // Never Selectively Disclosable claims
             //
-            iss(config.issuer.toASCIIString())
-            plain(SdJwtVcSpec.VCT, config.vct.toASCIIString())
-            iat(iat.epochSecond)
-            exp?.let { exp(it.epochSecond) }
+            claim("iss", config.issuer.toASCIIString())
+            claim(SdJwtVcSpec.VCT, config.vct.toASCIIString())
+            claim("iat", iat.epochSecond)
+            exp?.let { claim("exp", it.epochSecond) }
             cnf(holderPubKey)
 
             //
             // Always Selectively disclosable claims
             //
-            sd {
-                put("given_name", givenName)
-                put("family_name", familyName)
-                put("email", email)
-                put("phone_number", phoneNumber)
-                putJsonObject("address") {
-                    put("street_address", address.streetAddress)
-                    put("locality", address.locality)
-                    put("region", address.region)
-                    put("country", address.country)
-                }
-                put("birth_date", birthDate.toString())
-                put("is_over_18", isOver18)
-                put("is_over_21", isOver21)
-                put("is_over_65", isOver65)
+            sdClaim("given_name", givenName)
+            sdClaim("family_name", familyName)
+            sdClaim("email", email)
+            sdClaim("phone_number", phoneNumber)
+            sdObjClaim("address") {
+                claim("street_address", address.streetAddress)
+                claim("locality", address.locality)
+                claim("region", address.region)
+                claim("country", address.country)
             }
+            sdClaim("birth_date", birthDate.toString())
+            sdClaim("is_over_18", isOver18)
+            sdClaim("is_over_21", isOver21)
+            sdClaim("is_over_65", isOver65)
         }
 
     private val issuer: SdJwtIssuer<SignedJWT> by lazy {

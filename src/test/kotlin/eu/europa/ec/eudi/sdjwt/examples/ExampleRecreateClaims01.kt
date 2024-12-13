@@ -22,25 +22,20 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.put
 
 val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt.Issuance<SignedJWT> = run {
         val spec = sdJwt {
-            plain {
-                sub("6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                iss("https://example.com/issuer")
-                iat(1516239022)
-                exp(1735689661)
-            }
-            plain("address") {
-                sd {
-                    put("street_address", "Schulstr. 12")
-                    put("locality", "Schulpforta")
-                    put("region", "Sachsen-Anhalt")
-                    put("country", "DE")
-                }
+            claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            claim("iss", "https://example.com/issuer")
+            claim("iat", 1516239022)
+            claim("exp", 1735689661)
+            objClaim("address") {
+                sdClaim("street_address", "Schulstr. 12")
+                sdClaim("locality", "Schulpforta")
+                sdClaim("region", "Sachsen-Anhalt")
+                sdClaim("country", "DE")
             }
         }
         val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)

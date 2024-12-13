@@ -91,7 +91,7 @@ fun DisclosuresPerClaimPath.prettyPrint() {
 
 fun String.removeNewLine(): String = replace("\n", "")
 
-internal fun SdObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
+internal fun DisclosableObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
     val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }

@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor

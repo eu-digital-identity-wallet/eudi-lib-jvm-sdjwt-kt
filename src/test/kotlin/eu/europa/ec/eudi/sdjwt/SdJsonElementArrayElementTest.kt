@@ -17,36 +17,32 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.junit.jupiter.api.Test
 
 class SdJsonElementArrayElementTest {
     @Test
     fun simple() {
         val sdJwtElements = sdJwt {
-            sub("user_42")
-            iss("https://example.com/issuer")
-            iat(1683000000)
-            exp(1883000000)
-            sd {
-                put("given_name", "John")
-                put("family_name", "Doe")
-                put("email", "johndoe@example.com")
-                put("phone_number", "+1-202-555-0101")
-                put("phone_number_verified", true)
-                putJsonObject("address") {
-                    put("street_address", "123 Main St")
-                    put("locality", "Anytown")
-                    put("region", "Anystate")
-                    put("country", "US")
-                }
-                put("birthdate", "1940-01-01")
-                put("updated_at", 1570000000)
+            claim("sub", "user_42")
+            claim("iss", "https://example.com/issuer")
+            claim("iat", 1683000000)
+            claim("exp", 1883000000)
+            sdClaim("given_name", "John")
+            sdClaim("family_name", "Doe")
+            sdClaim("email", "johndoe@example.com")
+            sdClaim("phone_number", "+1-202-555-0101")
+            sdClaim("phone_number_verified", true)
+            sdObjClaim("address") {
+                claim("street_address", "123 Main St")
+                claim("locality", "Anytown")
+                claim("region", "Anystate")
+                claim("country", "US")
             }
-            sdArray("nationalities") {
-                plain("US")
-                sd("DE")
+            sdClaim("birthdate", "1940-01-01")
+            sdClaim("updated_at", 1570000000)
+            arrClaim("nationalities") {
+                claim("US")
+                sdClaim("DE")
             }
         }
 

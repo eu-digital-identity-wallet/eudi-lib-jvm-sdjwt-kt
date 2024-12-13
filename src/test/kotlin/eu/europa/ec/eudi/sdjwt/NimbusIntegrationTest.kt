@@ -25,8 +25,6 @@ import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Clock
 import java.util.*
@@ -58,27 +56,23 @@ internal class NimbusIntegrationTest : NimbusSdJwtOps {
 }
 
 private val sdObject = sdJwt {
-    iss("https://issuer.example.com")
-    iat(1683000000)
-    exp(1883000000)
+    claim("iss", "https://issuer.example.com")
+    claim("iat", 1683000000)
+    claim("exp", 1883000000)
 
-    plain {
-        put("vct", "https://bmi.bund.example/credential/pid/1.0")
-        putJsonObject("cnf") {
-            putJsonObject("jwk") {
-                put("kty", "EC")
-                put("crv", "P-256")
-                put("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
-                put("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
-            }
+    claim("vct", "https://bmi.bund.example/credential/pid/1.0")
+    objClaim("cnf") {
+        objClaim("jwk") {
+            claim("kty", "EC")
+            claim("crv", "P-256")
+            claim("x", "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc")
+            claim("y", "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ")
         }
     }
 
-    sd {
-        put("given_name", "Erika")
-        put("family_name", "Mustermann")
-        put("birthdate", "1963-08-12")
-    }
+    sdClaim("given_name", "Erika")
+    sdClaim("family_name", "Mustermann")
+    sdClaim("birthdate", "1963-08-12")
 }
 
 private data class Context(

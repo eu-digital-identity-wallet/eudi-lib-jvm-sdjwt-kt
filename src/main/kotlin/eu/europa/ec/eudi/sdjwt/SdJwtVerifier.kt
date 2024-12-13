@@ -476,7 +476,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
  * representing a supported [HashAlgorithm]. Otherwise raises [MissingOrUnknownHashingAlgorithm]
  */
 private fun hashingAlgorithmClaim(jwtClaims: JsonObject): HashAlgorithm {
-    val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive("sha-256")
+    val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive(SdJwtSpec.DEFAULT_SD_ALG)
     val alg =
         if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
         else null

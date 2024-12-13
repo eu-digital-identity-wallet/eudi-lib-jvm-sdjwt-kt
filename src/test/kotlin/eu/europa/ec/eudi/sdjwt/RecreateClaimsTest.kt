@@ -30,13 +30,15 @@ class RecreateClaimsTest {
             put("sub", "sub")
         }
 
-        val sdJwtElements = sdJwt { plain(plainClaims) }
+        val sdJwtElements = sdJwt {
+            plainClaims.forEach { claim(it.key, it.value) }
+        }
         val actual = discloseAndRecreate(sdJwtElements)
 
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdElements: SdObject): JsonObject {
+    private fun discloseAndRecreate(sdElements: DisclosableObject): JsonObject {
         val sdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
         return with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
             sdJwt.recreateClaims(visitor = null).also {
@@ -58,8 +60,8 @@ class RecreateClaimsTest {
         }
 
         val sdJwtElements = sdJwt {
-            plain(plainClaims)
-            sd(flatClaims)
+            plainClaims.forEach { claim(it.key, it.value) }
+            flatClaims.forEach { sdClaim(it.key, it.value) }
         }
         val expected = JsonObject(plainClaims + flatClaims)
         val actual = discloseAndRecreate(sdJwtElements)
@@ -83,10 +85,10 @@ class RecreateClaimsTest {
         }
 
         val sdJwtElements = sdJwt {
-            plain(plainClaims)
-            plain("structured") {
-                plain(structuredPlainSubClaims)
-                sd(structuredSubClaims)
+            plainClaims.forEach { claim(it.key, it.value) }
+            objClaim("structured") {
+                structuredPlainSubClaims.forEach { claim(it.key, it.value) }
+                structuredSubClaims.forEach { sdClaim(it.key, it.value) }
             }
         }
 
@@ -124,9 +126,9 @@ class RecreateClaimsTest {
             }
         }
         val sdJwtElements = sdJwt {
-            plain(plainClaims)
-            sd("rec") {
-                sd(subClaims)
+            plainClaims.forEach { claim(it.key, it.value) }
+            sdObjClaim("rec") {
+                subClaims.forEach { sdClaim(it.key, it.value) }
             }
         }
 

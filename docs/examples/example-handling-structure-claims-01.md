@@ -9,32 +9,27 @@ disclose individual members of the claim.
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.serialization.json.*
 -->
 
 ```kotlin
 val handlingStructuredClaims =
     sdJwt {
-        iss("https://issuer.example.com")
-        iat(1683000000)
-        exp(1883000000)
+        claim("iss", "https://issuer.example.com")
+        claim("iat", 1683000000)
+        claim("exp", 1883000000)
 
-        sd {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("given_name", "太郎")
-            put("family_name", "山田")
-            put("email", "\"unusual email address\"@example.jp")
-            put("phone_number", "+81-80-1234-5678")
-            put("birthdate", "1940-01-01")
-        }
+        sdClaim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+        sdClaim("given_name", "太郎")
+        sdClaim("family_name", "山田")
+        sdClaim("email", "\"unusual email address\"@example.jp")
+        sdClaim("phone_number", "+81-80-1234-5678")
+        sdClaim("birthdate", "1940-01-01")
 
-        plain("address") {
-            sd {
-                put("street_address", "東京都港区芝公園４丁目２−８")
-                put("locality", "東京都")
-                put("region", "港区")
-                put("country", "JP")
-            }
+        objClaim("address") {
+            sdClaim("street_address", "東京都港区芝公園４丁目２−８")
+            sdClaim("locality", "東京都")
+            sdClaim("region", "港区")
+            sdClaim("country", "JP")
         }
     }
 ```
