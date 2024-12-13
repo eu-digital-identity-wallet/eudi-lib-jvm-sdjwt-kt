@@ -81,18 +81,16 @@ internal annotation class DisclosableElementDsl
  */
 @DisclosableElementDsl
 class DisclosableArraySpecBuilder(
-    internal val elements: MutableList<DisclosableElement>,
+    val elements: MutableList<DisclosableElement>,
 ) : MutableList<DisclosableElement> by elements {
 
     fun claim(value: String) = add(!selectivelyDisclosable(JsonPrimitive(value)))
     fun claim(value: Number) = add(!selectivelyDisclosable(JsonPrimitive(value)))
     fun claim(value: Boolean) = add(!selectivelyDisclosable(JsonPrimitive(value)))
-    fun claim(value: JsonElement) = add(!selectivelyDisclosable(value))
 
     fun sdClaim(value: String) = add(selectivelyDisclosable(JsonPrimitive(value)))
     fun sdClaim(value: Number) = add(selectivelyDisclosable(JsonPrimitive(value)))
     fun sdClaim(value: Boolean) = add(selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(value: JsonElement) = add(selectivelyDisclosable(value))
 
     fun objClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
         add(!selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
@@ -106,6 +104,9 @@ class DisclosableArraySpecBuilder(
     fun sdArrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
         add(selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
 }
+
+internal fun DisclosableArraySpecBuilder.claim(value: JsonElement) = add(!selectivelyDisclosable(value))
+internal fun DisclosableArraySpecBuilder.sdClaim(value: JsonElement) = add(selectivelyDisclosable(value))
 
 /**
  * A convenient method for building a [DisclosableArray] given a [builderAction]
@@ -141,34 +142,36 @@ inline fun buildDisclosableArray(
  * @see buildDisclosableObject
  */
 @DisclosableElementDsl
-class DisclosableObjectSpecBuilder(val elements: MutableMap<String, DisclosableElement>) :
-    MutableMap<String, DisclosableElement> by elements {
+class DisclosableObjectSpecBuilder(
+    val elements: MutableMap<String, DisclosableElement>,
+) : MutableMap<String, DisclosableElement> by elements {
 
-        fun claim(name: String, element: JsonElement) = put(name, !selectivelyDisclosable(element))
-        fun claim(name: String, value: String) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-        fun claim(name: String, value: Number) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-        fun claim(name: String, value: Boolean) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-        fun sdClaim(name: String, element: JsonElement) = put(name, selectivelyDisclosable(element))
-        fun sdClaim(name: String, value: String) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
-        fun sdClaim(name: String, value: Number) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
-        fun sdClaim(name: String, value: Boolean) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
+    fun claim(name: String, value: String) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+    fun claim(name: String, value: Number) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+    fun claim(name: String, value: Boolean) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
+    fun sdClaim(name: String, value: String) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
+    fun sdClaim(name: String, value: Number) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
+    fun sdClaim(name: String, value: Boolean) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
 
-        fun objClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-            put(name, !selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
-        }
-
-        fun sdObjClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-            put(name, selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
-        }
-
-        fun arrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-            put(name, !selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
-        }
-
-        fun sdArrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-            put(name, selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
-        }
+    fun objClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+        put(name, !selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
     }
+
+    fun sdObjClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
+        put(name, selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
+    }
+
+    fun arrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+        put(name, !selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
+    }
+
+    fun sdArrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
+        put(name, selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
+    }
+}
+
+internal fun DisclosableObjectSpecBuilder.claim(name: String, element: JsonElement) = put(name, !selectivelyDisclosable(element))
+internal fun DisclosableObjectSpecBuilder.sdClaim(name: String, element: JsonElement) = put(name, selectivelyDisclosable(element))
 
 /**
  * Factory method for creating a [DisclosableObject] using the [DisclosableObjectSpecBuilder]
