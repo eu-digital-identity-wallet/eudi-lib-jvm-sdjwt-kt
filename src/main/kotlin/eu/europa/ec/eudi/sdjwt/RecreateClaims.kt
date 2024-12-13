@@ -18,41 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.*
 
-/**
- * Recreates the claims, used to produce the SD-JWT
- * That are:
- * - The plain claims found into the [SdJwt.jwt]
- * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
- *   be replaced by [Disclosure.claim]
- *
- * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT to use
- * @return the claims that were used to produce the SD-JWT
- */
-fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> JsonObject): JsonObject {
-    return recreateClaims(visitor = null, claimsOf = claimsOf)
-}
-
-/**
- * Recreates the claims, used to produce the SD-JWT
- * That are:
- * - The plain claims found into the [SdJwt.jwt]
- * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
- *   be replaced by [Disclosure.claim]
- *
- * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
- * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
- * @param JWT the type representing the JWT part of the SD-JWT
- * @receiver the SD-JWT to use
- * @return the claims that were used to produce the SD-JWT
- */
-fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> JsonObject): JsonObject {
-    val disclosedClaims = JsonObject(claimsOf(jwt))
-    return RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
-}
-
-fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor? = null) = recreateClaims(visitor) { it }
+private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
 /**
  * Visitor for selectively disclosed claims.
@@ -67,7 +33,40 @@ fun interface ClaimVisitor {
     operator fun invoke(path: ClaimPath, disclosure: Disclosure?)
 }
 
-private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
+/**
+ * Operations related to recreating claims
+ *
+ * @param JWT the type representing the JWT part of the SD-JWT
+ */
+fun interface SdJwtRecreateClaimsOps<in JWT> {
+
+    /**
+     * Recreates the claims, used to produce the SD-JWT
+     * That are:
+     * - The plain claims found into the [SdJwt.jwt]
+     * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
+     *   be replaced by [Disclosure.claim]
+     *
+     * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
+
+     * @receiver the SD-JWT to use
+     * @return the claims that were used to produce the SD-JWT
+     */
+    fun SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor?): JsonObject
+
+    companion object {
+        /**
+         * Factory method
+         *
+         * @param claimsOf a function to get the claims of the [SdJwt.jwt]
+         */
+        operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtRecreateClaimsOps<JWT> =
+            SdJwtRecreateClaimsOps { visitor: ClaimVisitor? ->
+                val disclosedClaims = JsonObject(claimsOf(jwt))
+                RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
+            }
+    }
+}
 
 /**
  * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
@@ -150,7 +149,7 @@ private class DiscloseObject(
      * @param element the element to use
      * @param currentPath the [ClaimPath] of the current element
      *
-     * @return a json element where all digests have been replaced by disclosed claims
+     * @return a JSON element where all digests have been replaced by disclosed claims
      */
     private fun discloseElement(
         currentPath: ClaimPath,
@@ -181,7 +180,7 @@ private class DiscloseObject(
 
     /**
      * Replaces the direct (immediate) digests found in the _sd claim
-     * with the [Disclosure.ObjectProperty.claim] from [disclosuresPerDigest]
+     * with the claim in a [Disclosure.ObjectProperty] from [disclosuresPerDigest]
      *
      * @param jsonObject the claims to use
      * @param current the [ClaimPath] of the current element, or `null` if the root element

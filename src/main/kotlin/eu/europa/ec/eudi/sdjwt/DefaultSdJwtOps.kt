@@ -23,7 +23,8 @@ import kotlinx.serialization.json.jsonPrimitive
 interface DefaultSdJwtOps :
     SdJwtVerifier,
     SdJwtSerializationOps<JwtAndClaims>,
-    SdJwtPresentationOps<JwtAndClaims> {
+    SdJwtPresentationOps<JwtAndClaims>,
+    SdJwtRecreateClaimsOps<JwtAndClaims> {
 
     override fun SdJwt<JwtAndClaims>.serialize(): String =
         with(serializationOps) { serialize() }
@@ -52,6 +53,9 @@ interface DefaultSdJwtOps :
         option: JwsSerializationOption,
         buildKbJwt: BuildKbJwt,
     ): Result<JsonObject> = with(serializationOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
+
+    override fun SdJwt<JwtAndClaims>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
+        with(presentationOps) { recreateClaims(visitor) }
 
     companion object : DefaultSdJwtOps
 }
