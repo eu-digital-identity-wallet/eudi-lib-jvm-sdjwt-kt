@@ -284,6 +284,9 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresenta
         buildKbJwt: BuildKbJwt,
     ): Result<JsonObject> = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
 
+    override fun SdJwt<NimbusSignedJWT>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
+        with(presentationOps) { recreateClaims(visitor) }
+
     companion object : NimbusSdJwtOps {
 
         private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =

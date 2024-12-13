@@ -272,7 +272,6 @@ fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presen
  * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
  * @param JWT the type representing the JWT part of the SD-JWT
  *
- * @see SdJwt.recreateClaims
  */
 @Deprecated(
     message = "This method will be removed in a future version",
@@ -298,3 +297,42 @@ fun <JWT> SdJwt.Issuance<JWT>.present(
     query: Set<ClaimPath>,
     claimsOf: (JWT) -> JsonObject,
 ): SdJwt.Presentation<JWT>? = with(SdJwtPresentationOps(claimsOf)) { present(query) }
+
+/**
+ * Recreates the claims, used to produce the SD-JWT
+ * That are:
+ * - The plain claims found into the [SdJwt.jwt]
+ * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
+ *   be replaced by [Disclosure.claim]
+ *
+ * @param claimsOf a function to get the claims of the [SdJwt.jwt]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to use
+ * @return the claims that were used to produce the SD-JWT
+ */
+@Deprecated(
+    message = "Replace with SdJwtSerializationOps",
+    replaceWith = ReplaceWith("with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor = null) }"),
+)
+fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> JsonObject): JsonObject =
+    with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor = null) }
+
+/**
+ * Recreates the claims, used to produce the SD-JWT
+ * That are:
+ * - The plain claims found into the [SdJwt.jwt]
+ * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
+ *   be replaced by [Disclosure.claim]
+ *
+ * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
+ * @param claimsOf a function to get the claims of the [SdJwt.jwt]
+ * @param JWT the type representing the JWT part of the SD-JWT
+ * @receiver the SD-JWT to use
+ * @return the claims that were used to produce the SD-JWT
+ */
+@Deprecated(
+    message = "Replace with SdJwtSerializationOps",
+    replaceWith = ReplaceWith(" with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor) }"),
+)
+fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> JsonObject): JsonObject =
+    with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor) }
