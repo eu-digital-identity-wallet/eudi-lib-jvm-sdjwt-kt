@@ -336,3 +336,18 @@ fun <JWT> SdJwt<JWT>.recreateClaims(claimsOf: (JWT) -> JsonObject): JsonObject =
 )
 fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JWT) -> JsonObject): JsonObject =
     with(SdJwtRecreateClaimsOps(claimsOf)) { recreateClaims(visitor) }
+
+object JwtBase64 {
+
+    @Deprecated(
+        message = "This method will be removed in a future release.",
+        replaceWith = ReplaceWith("Base64UrlNoPadding.decode(value)"),
+    )
+    fun decode(value: String): ByteArray = Base64UrlNoPadding.decode(value)
+
+    @Deprecated(
+        message = "This method will be removed in a future release.",
+        replaceWith = ReplaceWith("Base64UrlNoPadding.encode(value)"),
+    )
+    fun encode(value: ByteArray): String = Base64UrlNoPadding.encode(value)
+}
