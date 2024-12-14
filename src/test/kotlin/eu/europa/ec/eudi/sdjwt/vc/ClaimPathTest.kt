@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 
 class ClaimPathTest {
     val jsonSupport = Json { ignoreUnknownKeys = true }

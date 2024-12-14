@@ -20,11 +20,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import org.junit.jupiter.api.assertDoesNotThrow
-import org.junit.jupiter.api.fail
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class SdJwtVerifierVerifyIssuanceTest {
 
@@ -75,13 +74,12 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier,
         unverifiedSdJwt: String,
     ) {
-        val verifiedSdJwt = assertDoesNotThrow {
+        val verifiedSdJwt =
             SdJwtVerifier.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
-        }
 
-        val sdJwtWithOutSigVerification = assertDoesNotThrow {
+        val sdJwtWithOutSigVerification =
             SdJwt.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
-        }
+
         assertEquals(verifiedSdJwt, sdJwtWithOutSigVerification)
     }
 
@@ -135,7 +133,7 @@ class SdJwtVerifierVerifyIssuanceTest {
                 if (exception is SdJwtVerificationException) {
                     assertEquals(expectedError, exception.reason)
                 } else {
-                    fail(exception)
+                    fail(exception.message)
                 }
             },
         )
@@ -156,7 +154,7 @@ class SdJwtVerifierVerifyIssuanceTest {
                 if (exception is SdJwtVerificationException) {
                     assertEquals(expectedError, exception.reason)
                 } else {
-                    fail(exception)
+                    fail(exception.message)
                 }
             },
         )
