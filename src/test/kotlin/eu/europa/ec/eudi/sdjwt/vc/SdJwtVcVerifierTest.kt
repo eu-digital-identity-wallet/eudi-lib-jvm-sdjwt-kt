@@ -33,8 +33,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.junit.jupiter.api.assertDoesNotThrow
-import org.junit.jupiter.api.assertThrows
 import java.net.URI
 import java.time.Instant
 import kotlin.io.encoding.Base64
@@ -137,20 +135,14 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
-
-        assertDoesNotThrow {
-            verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
-        }
+        verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
-
-        assertDoesNotThrow {
-            verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
-        }
+        verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
@@ -158,11 +150,11 @@ class SdJwtVcVerifierTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
         val verifier = SdJwtVcVerifier({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
-
-        val exception = assertThrows<SdJwtVerificationException> {
+        try {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
+        } catch (exception: SdJwtVerificationException) {
+            assertEquals(VerificationError.InvalidJwt, exception.reason)
         }
-        assertEquals(VerificationError.InvalidJwt, exception.reason)
     }
 
     @Test

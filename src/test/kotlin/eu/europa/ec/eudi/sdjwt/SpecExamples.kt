@@ -17,14 +17,13 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
-import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
 
 class SpecExamples {
 
     @Test
-    fun `Example 1 presentation of all claims`() = runTest {
-        val unverifiedSdJwt = """
+    fun `Example 1 presentation of all claims`() = test(
+        unverifiedSdJwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
             DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
             TVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHb
@@ -54,19 +53,12 @@ class SpecExamples {
             TAxIl0~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgInVwZGF0ZWRfYXQiLCAxNTcwM
             DAwMDAwXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIlVTIl0~WyJuUHVvUW5rUk
             ZxM0JJZUFtN0FuWEZBIiwgIkRFIl0~
-        """.trimIndent().removeNewLine()
-        assertDoesNotThrow {
-            SdJwtVerifier.verifyPresentation(
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustNotBePresent,
-                unverifiedSdJwt,
-            ).getOrThrow()
-        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
-    }
+        """.trimIndent().removeNewLine(),
+    )
 
     @Test
-    fun `Example 1 presentation of given_name, family_name, and address`() = runTest {
-        val unverifiedSdJwt = """
+    fun `Example 1 presentation of given_name, family_name, and address`() = test(
+        unverifiedSdJwt = """
             eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkNyUWU3UzVrcUJBSHQtbk1ZWGdjNmJkd
             DJTSDVhVFkxc1VfTS1QZ2tqUEkiLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5d
             TVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHb
@@ -90,19 +82,12 @@ class SpecExamples {
             kFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5ST
             jl3IiwgImdpdmVuX25hbWUiLCAiSm9obiJd~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNB
             IiwgIlVTIl0~
-        """.trimIndent().removeNewLine()
-        assertDoesNotThrow {
-            SdJwtVerifier.verifyPresentation(
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustNotBePresent,
-                unverifiedSdJwt,
-            ).getOrThrow()
-        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
-    }
+        """.trimIndent().removeNewLine(),
+    )
 
     @Test
-    fun example3() = runTest {
-        val unverifiedSdJwt = """
+    fun example3() = test(
+        unverifiedSdJwt = """
            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4V
            mdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUticllObjN2QTdXRUZyeXN2YmRCSmpERFVfR
            XZRSXIwVzE4dlRScFVTZyIsICJvdGt4dVQxNG5CaXd6TkozTVBhT2l0T2w5cFZuWE9hR
@@ -132,15 +117,16 @@ class SpecExamples {
            dTN1JRIiwgImFkZHJlc3MiLCB7ImxvY2FsaXR5IjogIk1heHN0YWR0IiwgInBvc3RhbF
            9jb2RlIjogIjEyMzQ0IiwgImNvdW50cnkiOiAiREUiLCAic3RyZWV0X2FkZHJlc3MiOi
            AiV2VpZGVuc3RyYVx1MDBkZmUgMjIifV0~
-        """.trimIndent().replace("\n", "")
+        """.trimIndent().replace("\n", ""),
+    )
 
-        assertDoesNotThrow {
-            SdJwtVerifier.verifyPresentation(
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustNotBePresent,
-                unverifiedSdJwt,
-            ).getOrThrow()
-        }.also { (sdJwt, _) -> sdJwt.printRecreated() }
+    private fun test(unverifiedSdJwt: String) = runTest {
+        SdJwtVerifier.verifyPresentation(
+            JwtSignatureVerifier.NoSignatureValidation,
+            KeyBindingVerifier.MustNotBePresent,
+            unverifiedSdJwt,
+        ).getOrThrow()
+            .also { (sdJwt, _) -> sdJwt.printRecreated() }
     }
 
     private fun SdJwt.Presentation<JwtAndClaims>.printRecreated() {

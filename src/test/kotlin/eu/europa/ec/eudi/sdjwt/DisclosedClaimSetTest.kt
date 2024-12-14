@@ -15,161 +15,106 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertContainsPlainClaims
+import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertDigestNumberGreaterOrEqualToDisclosures
+import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertHashFunctionClaimIsPresentIfDisclosures
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
-import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.Nested
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class DisclosedClaimSetTest {
+class StructuredDisclosure {
 
-    @Nested
-    @DisplayName("Flat disclosure test")
-    inner class FlatDisclosure {
-
-        @Test
-        fun `no sd-jwt with illegal attribute names`() {
-            val invalidClaims = listOf(
-                sdJwt {
-                    sdClaim("_sd", "foo")
-                },
-            )
-
-            val sdJwtFactory = SdJwtFactory.Default
-            invalidClaims.forEach { sdJwt ->
-                val result = sdJwtFactory.createSdJwt(sdJwt)
-                assertFalse { result.isSuccess }
+    @Test
+    fun basic() {
+        val plainClaims = buildJsonObject {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "sample issuer")
+        }
+        val claimsToBeDisclosed = buildJsonObject {
+            putJsonObject("address") {
+                put("street_address", "Schulstr. 12")
+                put("locality", "Schulpforta")
+                put("region", "Sachsen-Anhalt")
+                put("country", "DE")
             }
         }
 
-        @Test
-        fun flatDisclosureOfJsonObjectClaim() {
-            val plainClaims = buildJsonObject {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "sample issuer")
-            }
-            val claimsToBeDisclosed =
-                buildJsonObject {
-                    putJsonObject("address") {
-                        put("street_address", "Schulstr. 12")
-                        put("locality", "Schulpforta")
-                        put("region", "Sachsen-Anhalt")
-                        put("country", "DE")
-                    }
-                }
-            testFlatDisclosure(plainClaims, claimsToBeDisclosed)
+        testStructured(plainClaims, claimsToBeDisclosed)
+    }
+
+    @Test
+    fun advanced() {
+        // this is the json we want to include in the JWT (not disclosed)
+        val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
+        val (plainClaims, claimsToBeDisclosed) = jwtVcJson.extractClaim("credentialSubject")
+
+        testStructured(plainClaims, claimsToBeDisclosed)
+    }
+
+    private fun testStructured(
+        plainClaims: Map<String, JsonElement>,
+        claimsToBeDisclosed: Map<String, JsonElement>,
+    ) {
+        val hashAlgorithm = HashAlgorithm.SHA_256
+        val sdJwtElements = sdJwt {
+            plainClaims.forEach { claim(it.key, it.value) }
+            claimsToBeDisclosed.forEach { objClaim(it.key) { sdClaim(it.key, it.value) } }
+        }
+        val disclosedJsonObject = SdJwtFactory(
+            hashAlgorithm,
+            SaltProvider.Default,
+            DecoyGen.Default,
+            null,
+
+        ).createSdJwt(sdJwtElements).getOrThrow()
+
+        val (jwtClaimSet, disclosures) = disclosedJsonObject
+
+        /**
+         * Verifies the expected size of the jwt claim set
+         */
+        fun assertJwtClaimSetSize() {
+            // otherClaims size +  "_sd_alg" + "_sd"
+            val expectedJwtClaimSetSize =
+                plainClaims.size + 1 + claimsToBeDisclosed.size
+            assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
         }
 
-        @Test
-        fun flatDisclosureOfJsonPrimitive() {
-            val plainClaims = buildJsonObject {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "sample issuer")
-            }
-            val claimsToBeDisclosed =
-                buildJsonObject {
-                    put("street_address", "Schulstr. 12")
-                }
-            testFlatDisclosure(plainClaims, claimsToBeDisclosed)
-        }
+        assertJwtClaimSetSize()
+        assertContainsPlainClaims(jwtClaimSet, plainClaims)
+        assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
+        assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+    }
+}
 
-        @OptIn(ExperimentalSerializationApi::class)
-        @Test
-        fun flatDisclosureOfJsonArrayOfPrimitives() {
-            val plainClaims = buildJsonObject {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "sample issuer")
-            }
-            val claimsToBeDisclosed =
-                buildJsonObject {
-                    putJsonArray("countries") {
-                        addAll(listOf("GR", "DE"))
-                    }
-                }
-            testFlatDisclosure(plainClaims, claimsToBeDisclosed)
-        }
+class FlatDisclosure {
 
-        @Test
-        fun flatDisclosure() {
-            val jwtVcPayloadJson = Json.parseToJsonElement(jwtVcPayload).jsonObject
-            val otherClaims = jwtVcPayloadJson.filterNot { it.key == "credentialSubject" }
-            val claimsToBeDisclosed = jwtVcPayloadJson["credentialSubject"]!!.jsonObject
-            testFlatDisclosure(otherClaims, claimsToBeDisclosed)
-        }
+    @Test
+    fun `no sd-jwt with illegal attribute names`() {
+        val invalidClaims = listOf(
+            sdJwt {
+                sdClaim("_sd", "foo")
+            },
+        )
 
-        private fun testFlatDisclosure(
-            plainClaims: Map<String, JsonElement>,
-            claimsToBeDisclosed: Map<String, JsonElement>,
-        ): UnsignedSdJwt {
-            val hashAlgorithm = HashAlgorithm.SHA_256
-            val sdJwtElements = sdJwt {
-                plainClaims.forEach { claim(it.key, it.value) }
-                claimsToBeDisclosed.forEach { sdClaim(it.key, it.value) }
-            }
-
-            val disclosedJsonObject = SdJwtFactory(
-                hashAlgorithm,
-                SaltProvider.Default,
-                DecoyGen.Default,
-                4.atLeastDigests(),
-            ).createSdJwt(sdJwtElements).getOrThrow()
-
-            val (jwtClaimSet, disclosures) = disclosedJsonObject
-
-            /**
-             * Verifies the expected size of the jwt claim set
-             */
-            fun assertJwtClaimSetSize() {
-                // otherClaims size +  "_sd_alg" + "_sd"
-                val expectedJwtClaimSetSize = plainClaims.size + 1 + 1
-                assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
-            }
-
-            fun assertDisclosures() {
-                val expectedSize = claimsToBeDisclosed.size
-
-                assertEquals(
-                    expectedSize,
-                    disclosures.size,
-                    "Make sure the size of disclosures is equal to the number of address attributes",
-                )
-
-                disclosures.forEach { d ->
-                    when (d) {
-                        is Disclosure.ObjectProperty -> {
-                            val (claimName, claimValue) = d.claim()
-                            println("Found disclosure for $claimName -> $claimValue")
-                            assertEquals(claimsToBeDisclosed[claimName], claimValue)
-                        }
-
-                        else -> TODO()
-                    }
-                }
-            }
-
-            assertJwtClaimSetSize()
-            assertContainsPlainClaims(jwtClaimSet, plainClaims)
-            assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
-            assertDisclosures()
-            assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
-            return disclosedJsonObject
+        val sdJwtFactory = SdJwtFactory.Default
+        invalidClaims.forEach { sdJwt ->
+            val result = sdJwtFactory.createSdJwt(sdJwt)
+            assertFalse { result.isSuccess }
         }
     }
 
-    @DisplayName("Structured Disclosure")
-    @Nested
-    inner class StructuredDisclosure {
-
-        @Test
-        fun basic() {
-            val plainClaims = buildJsonObject {
-                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                put("iss", "sample issuer")
-            }
-            val claimsToBeDisclosed = buildJsonObject {
+    @Test
+    fun flatDisclosureOfJsonObjectClaim() {
+        val plainClaims = buildJsonObject {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "sample issuer")
+        }
+        val claimsToBeDisclosed =
+            buildJsonObject {
                 putJsonObject("address") {
                     put("street_address", "Schulstr. 12")
                     put("locality", "Schulpforta")
@@ -177,88 +122,137 @@ class DisclosedClaimSetTest {
                     put("country", "DE")
                 }
             }
+        testFlatDisclosure(plainClaims, claimsToBeDisclosed)
+    }
 
-            testStructured(plainClaims, claimsToBeDisclosed)
+    @Test
+    fun flatDisclosureOfJsonPrimitive() {
+        val plainClaims = buildJsonObject {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "sample issuer")
+        }
+        val claimsToBeDisclosed =
+            buildJsonObject {
+                put("street_address", "Schulstr. 12")
+            }
+        testFlatDisclosure(plainClaims, claimsToBeDisclosed)
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun flatDisclosureOfJsonArrayOfPrimitives() {
+        val plainClaims = buildJsonObject {
+            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+            put("iss", "sample issuer")
+        }
+        val claimsToBeDisclosed =
+            buildJsonObject {
+                putJsonArray("countries") {
+                    addAll(listOf("GR", "DE"))
+                }
+            }
+        testFlatDisclosure(plainClaims, claimsToBeDisclosed)
+    }
+
+    @Test
+    fun flatDisclosure() {
+        val jwtVcPayloadJson = Json.parseToJsonElement(jwtVcPayload).jsonObject
+        val otherClaims = jwtVcPayloadJson.filterNot { it.key == "credentialSubject" }
+        val claimsToBeDisclosed = jwtVcPayloadJson["credentialSubject"]!!.jsonObject
+        testFlatDisclosure(otherClaims, claimsToBeDisclosed)
+    }
+
+    private fun testFlatDisclosure(
+        plainClaims: Map<String, JsonElement>,
+        claimsToBeDisclosed: Map<String, JsonElement>,
+    ): UnsignedSdJwt {
+        val hashAlgorithm = HashAlgorithm.SHA_256
+        val sdJwtElements = sdJwt {
+            plainClaims.forEach { claim(it.key, it.value) }
+            claimsToBeDisclosed.forEach { sdClaim(it.key, it.value) }
         }
 
-        @Test
-        fun advanced() {
-            // this is the json we want to include in the JWT (not disclosed)
-            val jwtVcJson: JsonObject = format.parseToJsonElement(jwtVcPayload).jsonObject
-            val (plainClaims, claimsToBeDisclosed) = jwtVcJson.extractClaim("credentialSubject")
+        val disclosedJsonObject = SdJwtFactory(
+            hashAlgorithm,
+            SaltProvider.Default,
+            DecoyGen.Default,
+            4.atLeastDigests(),
+        ).createSdJwt(sdJwtElements).getOrThrow()
 
-            testStructured(plainClaims, claimsToBeDisclosed)
+        val (jwtClaimSet, disclosures) = disclosedJsonObject
+
+        /**
+         * Verifies the expected size of the jwt claim set
+         */
+        fun assertJwtClaimSetSize() {
+            // otherClaims size +  "_sd_alg" + "_sd"
+            val expectedJwtClaimSetSize = plainClaims.size + 1 + 1
+            assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
         }
 
-        private fun testStructured(
-            plainClaims: Map<String, JsonElement>,
-            claimsToBeDisclosed: Map<String, JsonElement>,
-        ) {
-            val hashAlgorithm = HashAlgorithm.SHA_256
-            val sdJwtElements = sdJwt {
-                plainClaims.forEach { claim(it.key, it.value) }
-                claimsToBeDisclosed.forEach { objClaim(it.key) { sdClaim(it.key, it.value) } }
+        fun assertDisclosures() {
+            val expectedSize = claimsToBeDisclosed.size
+
+            assertEquals(
+                expectedSize,
+                disclosures.size,
+                "Make sure the size of disclosures is equal to the number of address attributes",
+            )
+
+            disclosures.forEach { d ->
+                when (d) {
+                    is Disclosure.ObjectProperty -> {
+                        val (claimName, claimValue) = d.claim()
+                        println("Found disclosure for $claimName -> $claimValue")
+                        assertEquals(claimsToBeDisclosed[claimName], claimValue)
+                    }
+
+                    else -> TODO()
+                }
             }
-            val disclosedJsonObject = SdJwtFactory(
-                hashAlgorithm,
-                SaltProvider.Default,
-                DecoyGen.Default,
-                null,
+        }
 
-            ).createSdJwt(sdJwtElements).getOrThrow()
+        assertJwtClaimSetSize()
+        assertContainsPlainClaims(jwtClaimSet, plainClaims)
+        assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
+        assertDisclosures()
+        assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+        return disclosedJsonObject
+    }
+}
 
-            val (jwtClaimSet, disclosures) = disclosedJsonObject
+private object DisclosedClaimSetTest {
 
-            /**
-             * Verifies the expected size of the jwt claim set
-             */
-            fun assertJwtClaimSetSize() {
-                // otherClaims size +  "_sd_alg" + "_sd"
-                val expectedJwtClaimSetSize =
-                    plainClaims.size + 1 + claimsToBeDisclosed.size
-                assertEquals(expectedJwtClaimSetSize, jwtClaimSet.size, "Incorrect jwt payload attribute number")
-            }
-
-            assertJwtClaimSetSize()
-            assertContainsPlainClaims(jwtClaimSet, plainClaims)
-            assertHashFunctionClaimIsPresentIfDisclosures(jwtClaimSet, hashAlgorithm, disclosures)
-            assertDigestNumberGreaterOrEqualToDisclosures(jwtClaimSet, disclosures)
+    fun assertContainsPlainClaims(sdEncoded: Map<String, JsonElement>, plainClaims: Map<String, JsonElement>) {
+        for ((k, v) in plainClaims) {
+            assertEquals(v, sdEncoded[k], "Make sure that non selectively disclosable elements are present")
         }
     }
 
-    companion object {
-
-        fun assertContainsPlainClaims(sdEncoded: Map<String, JsonElement>, plainClaims: Map<String, JsonElement>) {
-            for ((k, v) in plainClaims) {
-                assertEquals(v, sdEncoded[k], "Make sure that non selectively disclosable elements are present")
-            }
+    fun assertHashFunctionClaimIsPresentIfDisclosures(
+        jwtClaimSet: JsonObject,
+        hashAlgorithm: HashAlgorithm,
+        disclosures: Collection<Disclosure>,
+    ) {
+        val sdAlgValue = jwtClaimSet["_sd_alg"]
+        val expectedSdAlgValue = if (disclosures.isNotEmpty()) {
+            JsonPrimitive(hashAlgorithm.alias)
+        } else {
+            null
         }
+        assertEquals(expectedSdAlgValue, sdAlgValue)
+    }
 
-        fun assertHashFunctionClaimIsPresentIfDisclosures(
-            jwtClaimSet: JsonObject,
-            hashAlgorithm: HashAlgorithm,
-            disclosures: Collection<Disclosure>,
-        ) {
-            val sdAlgValue = jwtClaimSet["_sd_alg"]
-            val expectedSdAlgValue = if (disclosures.isNotEmpty()) {
-                JsonPrimitive(hashAlgorithm.alias)
-            } else {
-                null
-            }
-            assertEquals(expectedSdAlgValue, sdAlgValue)
-        }
-
-        fun assertDigestNumberGreaterOrEqualToDisclosures(
-            sdEncoded: JsonObject,
-            disclosures: Collection<Disclosure>,
-        ) {
-            val hashes = collectDigests(sdEncoded)
-            // Hashes can be more than disclosures due to decoy
-            if (disclosures.isNotEmpty()) {
-                assertTrue { hashes.size >= disclosures.size }
-            } else {
-                assertTrue(hashes.isEmpty())
-            }
+    fun assertDigestNumberGreaterOrEqualToDisclosures(
+        sdEncoded: JsonObject,
+        disclosures: Collection<Disclosure>,
+    ) {
+        val hashes = collectDigests(sdEncoded)
+        // Hashes can be more than disclosures due to decoy
+        if (disclosures.isNotEmpty()) {
+            assertTrue { hashes.size >= disclosures.size }
+        } else {
+            assertTrue(hashes.isEmpty())
         }
     }
 }

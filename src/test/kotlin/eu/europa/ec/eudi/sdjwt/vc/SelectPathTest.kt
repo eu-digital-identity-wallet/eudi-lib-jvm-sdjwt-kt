@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SelectPathTest {

@@ -19,10 +19,10 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class SdJwtVerifierVerifyPresentationTest {
 
@@ -194,14 +194,16 @@ class SdJwtVerifierVerifyPresentationTest {
         holderBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
     ) {
-        val exception = assertThrows<SdJwtVerificationException> {
+        try {
             SdJwtVerifier.verifyPresentation(
                 jwtSignatureVerifier = jwtSignatureVerifier,
                 keyBindingVerifier = holderBindingVerifier,
                 unverifiedSdJwt = unverifiedSdJwt,
             ).getOrThrow()
+            fail("Was expecting $expectedError")
+        } catch (exception: SdJwtVerificationException) {
+            assertEquals(expectedError, exception.reason)
         }
-        assertEquals(expectedError, exception.reason)
     }
 
     private suspend fun verifySuccess(
