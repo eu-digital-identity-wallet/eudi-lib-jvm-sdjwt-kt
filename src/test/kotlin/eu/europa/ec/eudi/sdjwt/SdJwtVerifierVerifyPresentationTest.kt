@@ -195,7 +195,7 @@ class SdJwtVerifierVerifyPresentationTest {
         unverifiedSdJwt: String,
     ) {
         try {
-            SdJwtVerifier.verifyPresentation(
+            DefaultSdJwtOps.verifyPresentation(
                 jwtSignatureVerifier = jwtSignatureVerifier,
                 keyBindingVerifier = holderBindingVerifier,
                 unverifiedSdJwt = unverifiedSdJwt,
@@ -212,7 +212,7 @@ class SdJwtVerifierVerifyPresentationTest {
         unverifiedSdJwt: String,
     ) {
         val verification =
-            SdJwtVerifier.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+            DefaultSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
         assertTrue { verification.isSuccess }
     }
 
@@ -222,7 +222,7 @@ class SdJwtVerifierVerifyPresentationTest {
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
-            SdJwtVerifier.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+            DefaultSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
         assertTrue { verification.isSuccess }
     }
 

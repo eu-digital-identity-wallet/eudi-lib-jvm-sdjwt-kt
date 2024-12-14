@@ -24,7 +24,7 @@ val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
 
     val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-    SdJwtVerifier.verifyIssuance(
+    DefaultSdJwtOps.verifyIssuance(
         jwtSignatureVerifier = jwtSignatureVerifier,
         unverifiedSdJwt = unverifiedIssuanceSdJwt,
     ).getOrThrow()

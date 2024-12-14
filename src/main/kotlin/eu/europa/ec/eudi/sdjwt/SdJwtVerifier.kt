@@ -260,7 +260,7 @@ typealias JwtAndClaims = Pair<Jwt, JsonObject>
  * A single point for verifying SD-JWTs in both [Combined Issuance Format][verifyIssuance]
  * and [Combined Presentation Format][verifyPresentation]
  */
-interface SdJwtVerifier {
+interface SdJwtVerifier<out JWT> {
 
     /**
      * Verifies an SD-JWT (in simple format)
@@ -274,14 +274,7 @@ interface SdJwtVerifier {
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
-    suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-        // Parse
-        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
-        verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
-    }
+    suspend fun verifyIssuance(jwtSignatureVerifier: JwtSignatureVerifier, unverifiedSdJwt: String): Result<SdJwt.Issuance<JWT>>
 
     /**
      * Verifies an SD-JWT in JWS JSON general of flattened format as defined by RFC7515 and extended by SD-JWT
@@ -300,39 +293,7 @@ interface SdJwtVerifier {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
-    suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) =
-            JwsJsonSupport.parseJWSJson(unverifiedSdJwt)
-        if (null != unverifiedKbJwt) throw UnexpectedKeyBindingJwt.asException()
-        verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
-    }
-
-    /**
-     * Implementation of the verification for an issued SD-JWT which is independent of the serialization
-     * format used.
-     *
-     * @param jwtSignatureVerifier the verification the SD-JWT signature.
-     * To provide an implementation of this,
-     * Holder should be aware of the public key and the signing algorithm that the Issuer
-     * used to sign the SD-JWT
-     * @param unverifiedJwt the JWT of the SD-JWT
-     * @param unverifiedDisclosures the disclosures of the SD-JWT
-     * @return the verified SD-JWT, if valid.
-     * Otherwise, method could raise a [SdJwtVerificationException]
-     * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
-     */
-    private suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        unverifiedJwt: Jwt,
-        unverifiedDisclosures: List<String>,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> = runCatching {
-        // Check JWT signature
-        val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
-        verifyIssuance(unverifiedJwt, unverifiedDisclosures) { jwtClaims }.getOrThrow()
-    }
+    suspend fun verifyIssuance(jwtSignatureVerifier: JwtSignatureVerifier, unverifiedSdJwt: JsonObject): Result<SdJwt.Issuance<JWT>>
 
     /**
      * Verifies a SD-JWT in Combined Presentation Format
@@ -356,26 +317,7 @@ interface SdJwtVerifier {
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = runCatching {
-        // Parse
-        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
-            StandardSerialization.parse(unverifiedSdJwt)
-        // Check JWT
-        val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
-        val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
-        val disclosures = uniqueDisclosures(unverifiedDisclosures)
-        val digests = collectDigests(jwtClaims, disclosures)
-        verifyDisclosures(hashAlgorithm, disclosures, digests)
-
-        // Check Key binding
-        val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
-        val kbJwtClaims = keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
-
-        // Assemble it
-        val kbJwt: JwtAndClaims? = kbJwtClaims?.let { checkNotNull(unverifiedKBJwt) to it }
-        val sdJwt = SdJwt.Presentation(unverifiedJwt to jwtClaims, disclosures)
-        sdJwt to kbJwt
-    }
+    ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>>
 
     /**
      * Verifies a SD-JWT in JWS JSON serialization
@@ -398,13 +340,80 @@ interface SdJwtVerifier {
         jwtSignatureVerifier: JwtSignatureVerifier,
         keyBindingVerifier: KeyBindingVerifier,
         unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = runCatching {
-        // Parse and re-assemble it in combined form
-        val unverifiedSdJwtAsString = JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt)
-        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
-    }
+    ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>>
 
-    companion object : SdJwtVerifier
+    companion object {
+
+        operator fun <JWT> invoke(
+            jwtFrom: (JwtAndClaims) -> JWT,
+        ): SdJwtVerifier<JWT> = object : SdJwtVerifier<JWT> {
+
+            override suspend fun verifyIssuance(
+                jwtSignatureVerifier: JwtSignatureVerifier,
+                unverifiedSdJwt: String,
+            ): Result<SdJwt.Issuance<JWT>> = runCatching {
+                // Parse
+                val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
+                verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
+            }
+
+            override suspend fun verifyIssuance(
+                jwtSignatureVerifier: JwtSignatureVerifier,
+                unverifiedSdJwt: JsonObject,
+            ): Result<SdJwt.Issuance<JWT>> = runCatching {
+                val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) =
+                    JwsJsonSupport.parseJWSJson(unverifiedSdJwt)
+                if (null != unverifiedKbJwt) throw UnexpectedKeyBindingJwt.asException()
+                verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
+            }
+
+            private suspend fun verifyIssuance(
+                jwtSignatureVerifier: JwtSignatureVerifier,
+                unverifiedJwt: Jwt,
+                unverifiedDisclosures: List<String>,
+            ): Result<SdJwt.Issuance<JWT>> = runCatching {
+                // Check JWT signature
+                val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
+                verifyIssuance(unverifiedJwt, unverifiedDisclosures) { jwtClaims }.map { it.map(jwtFrom) }.getOrThrow()
+            }
+
+            override suspend fun verifyPresentation(
+                jwtSignatureVerifier: JwtSignatureVerifier,
+                keyBindingVerifier: KeyBindingVerifier,
+                unverifiedSdJwt: String,
+            ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>> = runCatching {
+                // Parse
+                val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
+                    StandardSerialization.parse(unverifiedSdJwt)
+                // Check JWT
+                val jwtClaims = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
+                val hashAlgorithm = hashingAlgorithmClaim(jwtClaims)
+                val disclosures = uniqueDisclosures(unverifiedDisclosures)
+                val digests = collectDigests(jwtClaims, disclosures)
+                verifyDisclosures(hashAlgorithm, disclosures, digests)
+
+                // Check Key binding
+                val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
+                val kbJwtClaims = keyBindingVerifier.verify(jwtClaims, expectedDigest, unverifiedKBJwt).getOrThrow()
+
+                // Assemble it
+                val kbJwt: JWT? = kbJwtClaims?.let { jwtFrom(checkNotNull(unverifiedKBJwt) to it) }
+                val jwt: JWT = jwtFrom(unverifiedJwt to jwtClaims)
+                val sdJwt = SdJwt.Presentation(jwt, disclosures)
+                sdJwt to kbJwt
+            }
+
+            override suspend fun verifyPresentation(
+                jwtSignatureVerifier: JwtSignatureVerifier,
+                keyBindingVerifier: KeyBindingVerifier,
+                unverifiedSdJwt: JsonObject,
+            ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>> = runCatching {
+                // Parse and re-assemble it in combined form
+                val unverifiedSdJwtAsString = JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt)
+                verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwtAsString).getOrThrow()
+            }
+        }
+    }
 }
 
 internal fun verifyIssuance(

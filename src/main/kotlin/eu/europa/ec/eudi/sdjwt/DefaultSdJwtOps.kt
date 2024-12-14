@@ -21,7 +21,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 interface DefaultSdJwtOps :
-    SdJwtVerifier,
+    SdJwtVerifier<JwtAndClaims>,
     SdJwtSerializationOps<JwtAndClaims>,
     SdJwtPresentationOps<JwtAndClaims>,
     SdJwtRecreateClaimsOps<JwtAndClaims> {
@@ -57,6 +57,31 @@ interface DefaultSdJwtOps :
     override fun SdJwt<JwtAndClaims>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
         with(presentationOps) { recreateClaims(visitor) }
 
+    override suspend fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: String,
+    ): Result<SdJwt.Issuance<JwtAndClaims>> =
+        with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: JsonObject,
+    ): Result<SdJwt.Issuance<JwtAndClaims>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyPresentation(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        keyBindingVerifier: KeyBindingVerifier,
+        unverifiedSdJwt: String,
+    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> =
+        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyPresentation(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        keyBindingVerifier: KeyBindingVerifier,
+        unverifiedSdJwt: JsonObject,
+    ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> =
+        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+
     companion object : DefaultSdJwtOps
 }
 
@@ -69,3 +94,5 @@ private val serializationOps = SdJwtSerializationOps<JwtAndClaims>(
 )
 
 private val presentationOps = SdJwtPresentationOps<JwtAndClaims>({ (_, claims) -> claims })
+
+private val verifierOps: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier({ it })

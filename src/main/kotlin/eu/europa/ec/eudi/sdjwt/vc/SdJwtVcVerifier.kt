@@ -91,7 +91,7 @@ class SdJwtVcVerifier(
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
         val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
-        SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
+        DefaultSdJwtOps.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
     /**
@@ -111,7 +111,7 @@ class SdJwtVcVerifier(
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JwtAndClaims>> = coroutineScope {
         val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
-        SdJwtVerifier.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
+        DefaultSdJwtOps.verifyIssuance(jwtSignatureVerifier.await(), unverifiedSdJwt)
     }
 
     /**
@@ -131,7 +131,7 @@ class SdJwtVcVerifier(
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
         val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
-        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
+        DefaultSdJwtOps.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
     /**
@@ -151,7 +151,7 @@ class SdJwtVcVerifier(
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> = coroutineScope {
         val jwtSignatureVerifier = async { sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup) }
         val keyBindingVerifier = KeyBindingVerifier.forSdJwtVc(challenge)
-        SdJwtVerifier.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
+        DefaultSdJwtOps.verifyPresentation(jwtSignatureVerifier.await(), keyBindingVerifier, unverifiedSdJwt)
     }
 
     companion object {

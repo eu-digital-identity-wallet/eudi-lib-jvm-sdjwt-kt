@@ -258,7 +258,10 @@ private object NimbusSdJwtIssuerFactory {
 //
 // Serialization
 //
-interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresentationOps<NimbusSignedJWT> {
+interface NimbusSdJwtOps :
+    SdJwtSerializationOps<NimbusSignedJWT>,
+    SdJwtPresentationOps<NimbusSignedJWT>,
+    SdJwtVerifier<NimbusSignedJWT> {
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
@@ -288,6 +291,31 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresenta
     override fun SdJwt<NimbusSignedJWT>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
         with(presentationOps) { recreateClaims(visitor) }
 
+    override suspend fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: String,
+    ): Result<SdJwt.Issuance<NimbusSignedJWT>> =
+        with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyIssuance(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        unverifiedSdJwt: JsonObject,
+    ): Result<SdJwt.Issuance<NimbusSignedJWT>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyPresentation(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        keyBindingVerifier: KeyBindingVerifier,
+        unverifiedSdJwt: String,
+    ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
+        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+
+    override suspend fun verifyPresentation(
+        jwtSignatureVerifier: JwtSignatureVerifier,
+        keyBindingVerifier: KeyBindingVerifier,
+        unverifiedSdJwt: JsonObject,
+    ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
+        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+
     companion object : NimbusSdJwtOps {
 
         private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
@@ -307,6 +335,12 @@ interface NimbusSdJwtOps : SdJwtSerializationOps<NimbusSignedJWT>, SdJwtPresenta
 
         private val presentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
             SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
+
+        private val verifierOps: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ (jwt, _) ->
+            // TODO That is not correct
+            //  Nimbus is not marked as verified
+            NimbusSignedJWT.parse(jwt)
+        })
 
         /**
          * Factory method for creating a [SdJwtIssuer] that uses Nimbus
