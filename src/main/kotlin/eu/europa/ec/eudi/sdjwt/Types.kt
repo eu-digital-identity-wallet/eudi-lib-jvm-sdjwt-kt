@@ -127,14 +127,14 @@ fun interface UnverifiedIssuanceFrom {
     fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>>
 }
 
-fun <JWT, JWT1> SdJwt.Issuance<JWT>.map(f: (JWT) -> JWT1): SdJwt.Issuance<JWT1> {
+inline fun <JWT, JWT1> SdJwt.Issuance<JWT>.map(f: (JWT) -> JWT1): SdJwt.Issuance<JWT1> {
     contract {
         callsInPlace(f, InvocationKind.AT_MOST_ONCE)
     }
     return SdJwt.Issuance<JWT1>(f(jwt), disclosures)
 }
 
-fun <JWT, JWT1> SdJwt.Presentation<JWT>.map(f: (JWT) -> JWT1): SdJwt.Presentation<JWT1> {
+inline fun <JWT, JWT1> SdJwt.Presentation<JWT>.map(f: (JWT) -> JWT1): SdJwt.Presentation<JWT1> {
     contract {
         callsInPlace(f, InvocationKind.AT_MOST_ONCE)
     }

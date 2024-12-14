@@ -19,6 +19,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
+ * A disclosable object which contains disclosable [claims][DisclosableElement].
+ *
  * @param content the content of the object. Each of its claims could be always or selectively disclosable
  * @param minimumDigests This is an optional hint; that expresses the minimum number of digests at the immediate level
  * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
@@ -29,11 +31,22 @@ class DisclosableObject(
     val minimumDigests: MinimumDigests?,
 ) : Map<String, DisclosableElement> by content
 
+/**
+ * An array of disclosable [claims][DisclosableElement]
+ * @param content the content of the object. Each of its claims could be always or selectively disclosable
+ * @param minimumDigests This is an optional hint; that expresses the minimum number of digests at the immediate level
+ * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
+ */
 class DisclosableArray(
     content: List<DisclosableElement>,
     val minimumDigests: MinimumDigests?,
 ) : List<DisclosableElement> by content
 
+/**
+ * Specifies whether something is claim [always][Disclosable.Always]
+ * or [Disclosable.Selectively] disclosable.
+ */
 enum class Disclosable {
     Always, Selectively;
 
@@ -43,29 +56,43 @@ enum class Disclosable {
     }
 }
 
+/**
+ * Values that can be disclosed:
+ * - [JSON][DisclosableValue.Json]
+ * - [A nested disclosable object][DisclosableValue.Obj]
+ * - [A nested disclosable array][DisclosableValue.Arr]
+ */
 sealed interface DisclosableValue {
+    /**
+     * A disclosable [JSON][value]
+     * @param value a nested disclosable JSON
+     */
     @JvmInline
     value class Json(val value: JsonElement) : DisclosableValue
 
+    /**
+     * A nested disclosable [object][value]
+     * @param value a nested disclosable object
+     */
     @JvmInline
     value class Obj(val value: DisclosableObject) : DisclosableValue
 
+    /**
+     * A nested disclosable [array][value]
+     * @param value the nested disclosable array
+     */
     @JvmInline
     value class Arr(val value: DisclosableArray) : DisclosableValue
 }
 
 /**
- * The elements within a disclosable object
+ * A disclosable claim (value)
+ *
+ * @param disclosable whether claims is always or selectively disclosable
+ * @param element the value of the claim
  */
 data class DisclosableElement(val disclosable: Disclosable, val element: DisclosableValue) {
     operator fun not(): DisclosableElement = copy(!disclosable)
-}
-
-private fun <T : Any> selectivelyDisclosable(t: T): DisclosableElement = when (t) {
-    is JsonElement -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Json(t))
-    is DisclosableObject -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Obj(t))
-    is DisclosableArray -> DisclosableElement(Disclosable.Selectively, DisclosableValue.Arr(t))
-    else -> error("Not supported")
 }
 
 @DslMarker
@@ -84,29 +111,38 @@ class DisclosableArraySpecBuilder(
     val elements: MutableList<DisclosableElement>,
 ) : MutableList<DisclosableElement> by elements {
 
-    fun claim(value: String) = add(!selectivelyDisclosable(JsonPrimitive(value)))
-    fun claim(value: Number) = add(!selectivelyDisclosable(JsonPrimitive(value)))
-    fun claim(value: Boolean) = add(!selectivelyDisclosable(JsonPrimitive(value)))
+    private fun addClaim(disclosable: Disclosable, value: JsonElement) {
+        add(DisclosableElement(disclosable, DisclosableValue.Json(value)))
+    }
 
-    fun sdClaim(value: String) = add(selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(value: Number) = add(selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(value: Boolean) = add(selectivelyDisclosable(JsonPrimitive(value)))
+    private fun addObjClaim(disclosable: Disclosable, value: DisclosableObject) {
+        add(DisclosableElement(disclosable, DisclosableValue.Obj(value)))
+    }
 
-    fun objClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
-        add(!selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
+    private fun addArrClaim(disclosable: Disclosable, value: DisclosableArray) {
+        add(DisclosableElement(disclosable, DisclosableValue.Arr(value)))
+    }
 
-    fun sdObjClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit) =
-        add(selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
+    fun claim(value: String): Unit = addClaim(Disclosable.Always, JsonPrimitive(value))
+    fun claim(value: Number): Unit = addClaim(Disclosable.Always, JsonPrimitive(value))
+    fun claim(value: Boolean): Unit = addClaim(Disclosable.Always, JsonPrimitive(value))
+    fun sdClaim(value: String): Unit = addClaim(Disclosable.Selectively, JsonPrimitive(value))
+    fun sdClaim(value: Number): Unit = addClaim(Disclosable.Selectively, JsonPrimitive(value))
+    fun sdClaim(value: Boolean): Unit = addClaim(Disclosable.Selectively, JsonPrimitive(value))
 
-    fun arrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
-        add(!selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
+    internal fun claim(value: JsonElement): Unit = addClaim(Disclosable.Always, value)
+    internal fun sdClaim(value: JsonElement): Unit = addClaim(Disclosable.Selectively, value)
 
-    fun sdArrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) =
-        add(selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
+    fun objClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit): Unit =
+        addObjClaim(Disclosable.Always, buildDisclosableObject(minimumDigests, action))
+    fun sdObjClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit): Unit =
+        addObjClaim(Disclosable.Selectively, buildDisclosableObject(minimumDigests, action))
+
+    fun arrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
+        addArrClaim(Disclosable.Always, buildDisclosableArray(minimumDigests, action))
+    fun sdArrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
+        addArrClaim(Disclosable.Selectively, buildDisclosableArray(minimumDigests, action))
 }
-
-internal fun DisclosableArraySpecBuilder.claim(value: JsonElement) = add(!selectivelyDisclosable(value))
-internal fun DisclosableArraySpecBuilder.sdClaim(value: JsonElement) = add(selectivelyDisclosable(value))
 
 /**
  * A convenient method for building a [DisclosableArray] given a [builderAction]
@@ -122,7 +158,9 @@ internal fun DisclosableArraySpecBuilder.sdClaim(value: JsonElement) = add(selec
  *
  * }
  * ```
- *
+ * @param minimumDigests This is an optional hint; that expresses the minimum number of digests at the immediate level
+ * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  * @return the [DisclosableArray] described by the [builderAction]
  */
 inline fun buildDisclosableArray(
@@ -146,36 +184,45 @@ class DisclosableObjectSpecBuilder(
     val elements: MutableMap<String, DisclosableElement>,
 ) : MutableMap<String, DisclosableElement> by elements {
 
-    fun claim(name: String, value: String) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-    fun claim(name: String, value: Number) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-    fun claim(name: String, value: Boolean) = put(name, !selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(name: String, value: String) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(name: String, value: Number) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
-    fun sdClaim(name: String, value: Boolean) = put(name, selectivelyDisclosable(JsonPrimitive(value)))
-
-    fun objClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-        put(name, !selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
+    private fun putClaim(name: String, disclosable: Disclosable, value: JsonElement) {
+        put(name, DisclosableElement(disclosable, DisclosableValue.Json(value)))
     }
 
-    fun sdObjClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit) {
-        put(name, selectivelyDisclosable(buildDisclosableObject(minimumDigests, action)))
+    private fun addObjClaim(name: String, disclosable: Disclosable, value: DisclosableObject) {
+        put(name, DisclosableElement(disclosable, DisclosableValue.Obj(value)))
     }
 
-    fun arrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-        put(name, !selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
+    private fun putArrClaim(name: String, disclosable: Disclosable, value: DisclosableArray) {
+        put(name, DisclosableElement(disclosable, DisclosableValue.Arr(value)))
     }
 
-    fun sdArrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit) {
-        put(name, selectivelyDisclosable(buildDisclosableArray(minimumDigests, action)))
-    }
+    internal fun claim(name: String, element: JsonElement): Unit = putClaim(name, Disclosable.Always, element)
+    internal fun sdClaim(name: String, element: JsonElement): Unit = putClaim(name, Disclosable.Selectively, element)
+
+    fun claim(name: String, value: String): Unit = putClaim(name, Disclosable.Always, JsonPrimitive(value))
+    fun claim(name: String, value: Number): Unit = putClaim(name, Disclosable.Always, JsonPrimitive(value))
+    fun claim(name: String, value: Boolean): Unit = putClaim(name, Disclosable.Always, JsonPrimitive(value))
+
+    fun sdClaim(name: String, value: String): Unit = putClaim(name, Disclosable.Selectively, JsonPrimitive(value))
+    fun sdClaim(name: String, value: Number): Unit = putClaim(name, Disclosable.Selectively, JsonPrimitive(value))
+    fun sdClaim(name: String, value: Boolean): Unit = putClaim(name, Disclosable.Selectively, JsonPrimitive(value))
+
+    fun objClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit): Unit =
+        addObjClaim(name, Disclosable.Always, buildDisclosableObject(minimumDigests, action))
+    fun sdObjClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit): Unit =
+        addObjClaim(name, Disclosable.Selectively, buildDisclosableObject(minimumDigests, action))
+
+    fun arrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
+        putArrClaim(name, Disclosable.Always, buildDisclosableArray(minimumDigests, action))
+    fun sdArrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
+        putArrClaim(name, Disclosable.Selectively, buildDisclosableArray(minimumDigests, action))
 }
-
-internal fun DisclosableObjectSpecBuilder.claim(name: String, element: JsonElement) = put(name, !selectivelyDisclosable(element))
-internal fun DisclosableObjectSpecBuilder.sdClaim(name: String, element: JsonElement) = put(name, selectivelyDisclosable(element))
 
 /**
  * Factory method for creating a [DisclosableObject] using the [DisclosableObjectSpecBuilder]
- * @param minimumDigests check [DisclosableObject.minimumDigests]
+ * @param minimumDigests This is an optional hint; that expresses the minimum number of digests at the immediate level
+ * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
  * @return the [DisclosableObject]
  */
@@ -189,7 +236,9 @@ inline fun buildDisclosableObject(
 
 /**
  * Factory method for creating a [DisclosableObject] using the [DisclosableObjectSpecBuilder]
- * @param minimumDigests check [DisclosableObject.minimumDigests]
+ * @param minimumDigests This is an optional hint; that expresses the minimum number of digests at the immediate level
+ * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
+ * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
  * @return the [DisclosableObject]
  */
