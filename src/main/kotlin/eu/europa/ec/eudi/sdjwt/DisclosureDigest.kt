@@ -33,7 +33,7 @@ value class DisclosureDigest private constructor(val value: String) {
          * @return the [DisclosureDigest] if the given input represents a valid base64 encoded string
          */
         internal fun wrap(s: String): Result<DisclosureDigest> = runCatching {
-            JwtBase64.decode(s)
+            Base64UrlNoPadding.decode(s)
             DisclosureDigest(s)
         }
 
@@ -59,7 +59,7 @@ value class DisclosureDigest private constructor(val value: String) {
         fun digest(hashingAlgorithm: HashAlgorithm, value: String): Result<DisclosureDigest> = runCatching {
             val hashFunction = MessageDigest.getInstance(hashingAlgorithm.alias.uppercase())
             val digest = hashFunction.digest(value.encodeToByteArray())
-            DisclosureDigest(JwtBase64.encode(digest))
+            DisclosureDigest(Base64UrlNoPadding.encode(digest))
         }
     }
 }
