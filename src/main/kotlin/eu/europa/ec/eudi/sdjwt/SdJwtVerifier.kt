@@ -16,12 +16,11 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
 /**
  * Errors that may occur during SD-JWT verification
@@ -135,12 +134,9 @@ fun interface JwtSignatureVerifier<out JWT> {
     }
 }
 
-inline fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(
-    crossinline f: (JWT) -> JWT1,
+fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(
+    f: (JWT) -> JWT1,
 ): JwtSignatureVerifier<JWT1> {
-    contract {
-        callsInPlace(f, InvocationKind.AT_MOST_ONCE)
-    }
     return JwtSignatureVerifier { jwt -> checkSignature(jwt)?.let { f(it) } }
 }
 
@@ -175,7 +171,7 @@ sealed interface KeyBindingError {
  * This represents the two kinds of Key Binding verification
  *
  * [MustNotBePresent] : A [presentation SD-JWT][SdJwt.Presentation] must not have a Key Binding
- * [MustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a valid Key Binding
+ * [mustBePresent]: A [presentation SD-JWT][SdJwt.Presentation] must have a valid Key Binding
  */
 sealed interface KeyBindingVerifier<out JWT> {
 
@@ -199,21 +195,13 @@ sealed interface KeyBindingVerifier<out JWT> {
     companion object {
 
         fun <JWT> mustBePresent(verifier: JwtSignatureVerifier<JWT>): MustBePresentAndValid<JWT> =
-            MustBePresentAndValid { _ ->
-                object : JwtSignatureVerifier<JWT> {
-                    override suspend fun checkSignature(jwt: String): JWT? =
-                        runCatching { verifier.checkSignature(jwt) }.getOrNull()
-                }
-            }
+            MustBePresentAndValid { _ -> verifier }
     }
 }
 
-inline fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(
-    crossinline f: (JWT) -> JWT1,
+fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(
+    f: (JWT) -> JWT1,
 ): KeyBindingVerifier<JWT1> {
-    contract {
-        callsInPlace(f, InvocationKind.AT_MOST_ONCE)
-    }
     return when (this) {
         is MustBePresentAndValid<JWT> -> MustBePresentAndValid { sdJwtClaims ->
             keyBindingVerifierProvider(sdJwtClaims)?.map { f(it) }
@@ -247,6 +235,7 @@ private interface KeyBindingVerifierOps<JWT> {
 
         operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): KeyBindingVerifierOps<JWT> =
             object : KeyBindingVerifierOps<JWT> {
+
                 override suspend fun KeyBindingVerifier<JWT>.verify(
                     jwtClaims: JsonObject,
                     expectedDigest: SdJwtDigest,
@@ -262,7 +251,7 @@ private interface KeyBindingVerifierOps<JWT> {
                         val keyBindingJwtVerifier =
                             keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
 
-                        return keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)
+                        return runCatching { keyBindingJwtVerifier.checkSignature(unverifiedKbJwt) }.getOrNull()
                             ?.takeIf { jwt ->
                                 val kbClaims = claimsOf(jwt)
                                 val sdHash = kbClaims[SdJwtSpec.CLAIM_SD_HASH]

@@ -60,7 +60,7 @@ fun interface LookupPublicKeysFromDIDDocument {
  * An SD-JWT-VC specific verifier
  *
  */
-interface SdJwtVcVerifier<JWT> {
+interface SdJwtVcVerifier<out JWT> {
 
     /**
      * Verifies an SD-JWT (in non enveloped, simple format)
