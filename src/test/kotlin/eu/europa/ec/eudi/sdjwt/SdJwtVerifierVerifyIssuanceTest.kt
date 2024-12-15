@@ -30,14 +30,14 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun simple() =
         runTest {
-            verifyIssuanceSuccess(JwtSignatureVerifier.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1~")
+            verifyIssuanceSuccess(DefaultSdJwtOps.NoSignatureValidation, unverifiedSdJwt = "$jwt~$d1~")
         }
 
     @Test
     fun simpleJWSJsonGeneral() =
         runTest {
             verifyIssuanceSuccess(
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 unverifiedSdJwtJWSJson(JwsSerializationOption.General),
             )
         }
@@ -46,7 +46,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun simpleJWSJsonFlattened() =
         runTest {
             verifyIssuanceSuccess(
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 unverifiedSdJwtJWSJson(JwsSerializationOption.Flattened),
             )
         }
@@ -56,13 +56,13 @@ class SdJwtVerifierVerifyIssuanceTest {
         runTest {
             verifyIssuanceExpectingError(
                 VerificationError.KeyBindingFailed(KeyBindingError.UnexpectedKeyBindingJwt),
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 "$jwt~$d1",
             )
         }
 
     private suspend fun verifyIssuanceSuccess(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
@@ -71,14 +71,14 @@ class SdJwtVerifierVerifyIssuanceTest {
     }
 
     private suspend fun verifyIssuanceSuccess(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
         val verifiedSdJwt =
             DefaultSdJwtOps.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
 
         val sdJwtWithOutSigVerification =
-            SdJwt.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
+            DefaultSdJwtOps.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
 
         assertEquals(verifiedSdJwt, sdJwtWithOutSigVerification)
     }
@@ -120,7 +120,7 @@ class SdJwtVerifierVerifyIssuanceTest {
 
     private suspend fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
         val verification = DefaultSdJwtOps.verifyIssuance(
@@ -141,7 +141,7 @@ class SdJwtVerifierVerifyIssuanceTest {
 
     private suspend fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification = DefaultSdJwtOps.verifyIssuance(
@@ -164,7 +164,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
         verifyIssuanceExpectingError(
             VerificationError.ParsingError,
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             "",
         )
     }
@@ -174,7 +174,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         runTest {
             verifyIssuanceExpectingError(
                 VerificationError.ParsingError,
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 "jwt",
             )
         }
@@ -184,7 +184,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         runTest {
             verifyIssuanceExpectingError(
                 VerificationError.ParsingError,
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 jwt,
             )
         }
@@ -193,7 +193,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
         verifyIssuanceExpectingError(
             VerificationError.InvalidJwt,
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             "jwt~",
         )
     }
@@ -201,7 +201,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no holderBinding verify should return Valid`() = runTest {
         verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             "$jwt~",
         )
     }
@@ -216,7 +216,7 @@ class SdJwtVerifierVerifyIssuanceTest {
             }
 
             verifyIssuanceSuccess(
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 unverifiedSdJwt,
             )
         }
@@ -232,7 +232,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         }
         verifyIssuanceExpectingError(
             VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt,
         )
     }
@@ -242,7 +242,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         runTest {
             verifyIssuanceExpectingError(
                 VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 "$jwt~d1~d2~",
             )
         }
@@ -250,7 +250,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() = runTest {
         verifyIssuanceSuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             "$jwt~$d1~",
         )
     }
@@ -266,7 +266,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         }
         verifyIssuanceExpectingError(
             VerificationError.NonUniqueDisclosures,
-            JwtSignatureVerifier.NoSignatureValidation,
+            DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt,
         )
     }
@@ -276,7 +276,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         runTest {
             verifyIssuanceExpectingError(
                 VerificationError.NonUniqueDisclosures,
-                JwtSignatureVerifier.NoSignatureValidation,
+                DefaultSdJwtOps.NoSignatureValidation,
                 "$jwt~$d1~$d1~",
             )
         }

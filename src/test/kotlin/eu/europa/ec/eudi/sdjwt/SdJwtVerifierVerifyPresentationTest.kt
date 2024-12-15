@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.KeyBindingVerifierMustBePresent
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.NoSignatureValidation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -24,14 +26,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class SdJwtVerifierVerifyPresentationTest {
+class SdJwtVerifierVerifyPresentationTest : DefaultSdJwtOps {
 
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
         verifyPresnetationExpectingError(
             VerificationError.ParsingError,
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustBePresent,
+            NoSignatureValidation,
+            KeyBindingVerifierMustBePresent,
             "",
         )
     }
@@ -41,8 +43,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.ParsingError,
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "jwt",
             )
         }
@@ -52,8 +54,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.ParsingError,
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 jwt,
             )
         }
@@ -62,8 +64,8 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
         verifyPresnetationExpectingError(
             VerificationError.InvalidJwt,
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustBePresent,
+            NoSignatureValidation,
+            KeyBindingVerifierMustBePresent,
             "jwt~",
         )
     }
@@ -73,8 +75,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.InvalidJwt,
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "jwt~hb",
             )
         }
@@ -82,7 +84,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `when sd-jwt has a valid jwt, no disclosures and no keyBinding verify should return Valid`() = runTest {
         verifySuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
+            NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~",
         )
@@ -93,8 +95,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "$jwt~hb",
             )
         }
@@ -104,8 +106,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "$jwt~$jwt",
             )
         }
@@ -114,8 +116,8 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, no disclosures valid keyBinding with 'sd_hash' verify should return Valid`() =
         runTest {
             verifySuccess(
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "$jwt~$kbWithoutD1",
             )
         }
@@ -124,7 +126,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
         verifyPresnetationExpectingError(
             VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-            JwtSignatureVerifier.NoSignatureValidation,
+            NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~d1~d2~",
         )
@@ -133,7 +135,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() = runTest {
         verifySuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
+            NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~$d1~",
         )
@@ -143,7 +145,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
         verifyPresnetationExpectingError(
             VerificationError.NonUniqueDisclosures,
-            JwtSignatureVerifier.NoSignatureValidation,
+            NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~$d1~$d1~",
         )
@@ -154,8 +156,8 @@ class SdJwtVerifierVerifyPresentationTest {
         runTest {
             verifyPresnetationExpectingError(
                 VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "$jwt~$d1~$jwt",
             )
         }
@@ -164,8 +166,8 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, valid disclosures and valid keyBinding with 'sd_hash' verify should return Valid`() =
         runTest {
             verifySuccess(
-                JwtSignatureVerifier.NoSignatureValidation,
-                KeyBindingVerifier.MustBePresent,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
                 "$jwt~$d1~$kbWithD1",
             )
         }
@@ -173,8 +175,8 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `happy path with sd-jwt with kb-jwt in JWS JSON`() = runTest {
         verifySuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
-            KeyBindingVerifier.MustBePresent,
+            NoSignatureValidation,
+            KeyBindingVerifierMustBePresent,
             Json.parseToJsonElement(ex2).jsonObject,
         )
     }
@@ -182,7 +184,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `happy path with sd-jwt without kb-jwt in JWS JSON`() = runTest {
         verifySuccess(
-            JwtSignatureVerifier.NoSignatureValidation,
+            NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             Json.parseToJsonElement(ex3).jsonObject,
         )
@@ -190,12 +192,12 @@ class SdJwtVerifierVerifyPresentationTest {
 
     private suspend fun verifyPresnetationExpectingError(
         expectedError: VerificationError,
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        holderBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
         try {
-            DefaultSdJwtOps.verifyPresentation(
+            verifyPresentation(
                 jwtSignatureVerifier = jwtSignatureVerifier,
                 keyBindingVerifier = holderBindingVerifier,
                 unverifiedSdJwt = unverifiedSdJwt,
@@ -207,8 +209,8 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     private suspend fun verifySuccess(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
         val verification =
@@ -217,8 +219,8 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     private suspend fun verifySuccess(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =

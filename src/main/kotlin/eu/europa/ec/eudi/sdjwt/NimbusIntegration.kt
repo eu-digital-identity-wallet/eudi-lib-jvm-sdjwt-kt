@@ -70,7 +70,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  *
  * <em>Should not be used in production use cases</em>
  */
-internal val PlatformJwtSignatureVerifierNoSignatureValidation: JwtSignatureVerifier by lazy {
+internal val PlatformJwtSignatureVerifierNoSignatureValidation: JwtSignatureVerifier<Any> by lazy {
     JwtSignatureVerifier { unverifiedJwt ->
         try {
             val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
@@ -93,8 +93,8 @@ internal val PlatformJwtSignatureVerifierNoSignatureValidation: JwtSignatureVeri
 fun KeyBindingVerifier.Companion.mustBePresentAndValid(
     holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
     challenge: JsonObject? = null,
-): KeyBindingVerifier.MustBePresentAndValid {
-    val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier = { sdJwtClaims ->
+): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> {
+    val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<NimbusSignedJWT> = { sdJwtClaims ->
         holderPubKeyExtractor(sdJwtClaims)?.let { holderPubKey ->
             val challengeClaimSet: NimbusJWTClaimsSet? =
                 challenge?.let { NimbusJWTClaimsSet.parse(it.toString()) }
@@ -159,11 +159,11 @@ val HolderPubKeyInConfirmationClaim: (JsonObject) -> NimbusAsymmetricJWK? = { cl
  *
  * @see NimbusJWTProcessor.asJwtVerifier
  */
-fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
+fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
     try {
         val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
         if (!signedJwt.verify(this)) null
-        else signedJwt.jwtClaimsSet.jsonObject()
+        else signedJwt
     } catch (_: ParseException) {
         null
     } catch (_: NimbusJOSEException) {
@@ -178,24 +178,15 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifi
  * @receiver the Nimbus processor to convert into [JwtSignatureVerifier]
  * @see NimbusJWSVerifier.asJwtVerifier
  */
-fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier = JwtSignatureVerifier { unverifiedJwt ->
-    process(unverifiedJwt, null).jsonObject()
-}
-
-/**
- * A method for obtaining an [SdJwt.Issuance] given an unverified SdJwt, without checking the signature
- * of the issuer.
- *
- * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
- * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
- *
- */
-internal val PlatformSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom = UnverifiedIssuanceFrom { unverifiedSdJwt ->
-    runCatching {
-        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
-        verifyIssuance(unverifiedJwt, unverifiedDisclosures) {
-            NimbusSignedJWT.parse(unverifiedJwt).jwtClaimsSet.jsonObject()
-        }.getOrThrow()
+fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
+    try {
+        val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+        process(signedJwt, null)
+        signedJwt
+    } catch (_: ParseException) {
+        null
+    } catch (_: NimbusJOSEException) {
+        null
     }
 }
 
@@ -292,26 +283,26 @@ interface NimbusSdJwtOps :
         with(presentationOps) { recreateClaims(visitor) }
 
     override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<NimbusSignedJWT>> =
         with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<NimbusSignedJWT>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
+        keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
     ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
+        keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
     ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
@@ -336,10 +327,8 @@ interface NimbusSdJwtOps :
         private val presentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
             SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
 
-        private val verifierOps: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ (jwt, _) ->
-            // TODO That is not correct
-            //  Nimbus is not marked as verified
-            NimbusSignedJWT.parse(jwt)
+        private val verifierOps: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ jwt ->
+            jwt.jwtClaimsSet.jsonObject()
         })
 
         /**
@@ -489,4 +478,8 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
                 throw NimbusBadJOSEException("Expected a JWK of type ${T::class.java.simpleName}")
             }
     }
+}
+
+internal fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims {
+    return checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()
 }

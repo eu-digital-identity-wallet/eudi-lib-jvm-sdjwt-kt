@@ -120,10 +120,11 @@ import kotlinx.coroutines.*
 ```kotlin
 val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+    val jwtSignatureVerifier =
+        RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
     val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-    SdJwtVerifier.verifyIssuance(
+    DefaultSdJwtOps.verifyIssuance(
         jwtSignatureVerifier = jwtSignatureVerifier,
         unverifiedSdJwt = unverifiedIssuanceSdJwt,
     ).getOrThrow()
@@ -211,10 +212,10 @@ import kotlinx.coroutines.*
 ```kotlin
 val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
     val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    val (sdJwt, _) = SdJwtVerifier.verifyPresentation(
+    val (sdJwt, _) = DefaultSdJwtOps.verifyPresentation(
         jwtSignatureVerifier = jwtSignatureVerifier,
         keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
         unverifiedSdJwt = unverifiedPresentationSdJwt,

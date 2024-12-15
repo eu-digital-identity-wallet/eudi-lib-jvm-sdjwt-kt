@@ -58,31 +58,40 @@ interface DefaultSdJwtOps :
         with(presentationOps) { recreateClaims(visitor) }
 
     override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JwtAndClaims>> =
         with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<JwtAndClaims>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+    ): Result<SdJwt.Issuance<JwtAndClaims>> =
+        with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier,
-        keyBindingVerifier: KeyBindingVerifier,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
-    companion object : DefaultSdJwtOps
+    companion object : DefaultSdJwtOps, UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom {
+        val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
+            JwtSignatureVerifier.noSignatureValidation { unverifiedJwt ->
+                val (_, claims, _) = jwtClaims(unverifiedJwt).getOrThrow()
+                unverifiedJwt to claims
+            }
+        val KeyBindingVerifierMustBePresent: KeyBindingVerifier<JwtAndClaims> =
+            KeyBindingVerifier.mustBePresent(NoSignatureValidation)
+    }
 }
 
 private val serializationOps = SdJwtSerializationOps<JwtAndClaims>(
@@ -95,4 +104,34 @@ private val serializationOps = SdJwtSerializationOps<JwtAndClaims>(
 
 private val presentationOps = SdJwtPresentationOps<JwtAndClaims>({ (_, claims) -> claims })
 
-private val verifierOps: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier({ it })
+private val verifierOps: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier({ (_, claims) -> claims })
+
+@Suppress("unused")
+fun interface UnverifiedIssuanceFrom {
+    /**
+     * A method for obtaining an [SdJwt.Issuance] given an [unverifiedSdJwt], without checking the signature
+     * of the issuer.
+     *
+     * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+     * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
+     *
+     */
+    fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt.Issuance<JwtAndClaims>>
+}
+
+/**
+ * A method for obtaining an [SdJwt.Issuance] given an unverified SdJwt, without checking the signature
+ * of the issuer.
+ *
+ * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+ * wants to just re-obtain an instance of the [SdJwt.Issuance] without repeating this verification
+ *
+ */
+internal val PlatformSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom = UnverifiedIssuanceFrom { unverifiedSdJwt ->
+    runCatching {
+        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
+        val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
+        val disclosures = verifyDisclosures(jwtClaims, unverifiedDisclosures).getOrThrow()
+        SdJwt.Issuance<JwtAndClaims>(unverifiedJwt to jwtClaims, disclosures)
+    }
+}

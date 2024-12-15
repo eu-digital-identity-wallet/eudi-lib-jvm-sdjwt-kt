@@ -101,7 +101,7 @@ private interface Printer {
     fun printError(unverifiedSdJwtVc: String, e: Throwable) {
         println("Problem!!!!")
         try {
-            val unverified = SdJwt.unverifiedIssuanceFrom(unverifiedSdJwtVc).getOrNull()
+            val unverified = DefaultSdJwtOps.unverifiedIssuanceFrom(unverifiedSdJwtVc).getOrNull()
             if (unverified != null) {
                 println(SignedJWT.parse(unverified.jwt.first).header)
                 unverified.prettyPrint { it.second }

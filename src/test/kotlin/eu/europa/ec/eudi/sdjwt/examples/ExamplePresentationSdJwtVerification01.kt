@@ -21,7 +21,7 @@ import kotlinx.coroutines.*
 
 val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
     val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
     val (sdJwt, _) = DefaultSdJwtOps.verifyPresentation(
