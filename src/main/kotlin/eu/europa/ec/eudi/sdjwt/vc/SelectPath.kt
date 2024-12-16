@@ -46,38 +46,39 @@ fun interface SelectPath {
 
 private fun default(): SelectPath = SelectPath { path ->
     try {
-        Result.success(selectPath(path))
+        Result.success(selectPath().invoke(this to path))
     } catch (e: IllegalStateException) {
         Result.failure(e)
     }
 }
 
-private fun JsonElement.selectPath(path: ClaimPath): JsonElement? {
-    val (head, tail) = path
-    return head.fold(
-        ifClaim = { name ->
-            check(this is JsonObject) {
-                "Path element is $head. Was expecting a JSON object, found $this"
-            }
-            val selectedElement = this[name]
-            if (tail == null) selectedElement
-            else selectedElement?.selectPath(tail)
-        },
-        ifArrayElement = { index ->
-            check(this is JsonArray) {
-                "Path element is $head. Was expecting a JSON array, found $this"
-            }
-            val selectedElement = this.getOrNull(index)
-            if (tail == null) selectedElement
-            else selectedElement?.selectPath(tail)
-        },
-        ifAllArrayElements = {
-            check(this is JsonArray) {
-                "Path element is $head. Was expecting a JSON array, found $this"
-            }
-            val selectedElement = this
-            if (tail == null) selectedElement
-            else selectedElement.mapNotNull { element -> element.selectPath(tail) }.let(::JsonArray)
-        },
-    )
-}
+private fun selectPath(): DeepRecursiveFunction<Pair<JsonElement, ClaimPath>, JsonElement?> =
+    DeepRecursiveFunction { (element, path) ->
+        val (head, tail) = path
+        head.fold(
+            ifClaim = { name ->
+                check(element is JsonObject) {
+                    "Path element is $head. Was expecting a JSON object, found $element"
+                }
+                val selectedElement = element[name]
+                if (tail == null) selectedElement
+                else selectedElement?.let { callRecursive(it to tail) }
+            },
+            ifArrayElement = { index ->
+                check(element is JsonArray) {
+                    "Path element is $head. Was expecting a JSON array, found $element"
+                }
+                val selectedElement = element.getOrNull(index)
+                if (tail == null) selectedElement
+                else selectedElement?.let { callRecursive(it to tail) }
+            },
+            ifAllArrayElements = {
+                check(element is JsonArray) {
+                    "Path element is $head. Was expecting a JSON array, found $element"
+                }
+                val selectedElement = element
+                if (tail == null) selectedElement
+                else selectedElement.mapNotNull { element -> callRecursive(element to tail) }.let(::JsonArray)
+            },
+        )
+    }
