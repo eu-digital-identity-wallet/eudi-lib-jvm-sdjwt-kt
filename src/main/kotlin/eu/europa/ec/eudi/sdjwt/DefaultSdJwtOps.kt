@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.DefaultSdJwtVcFactory
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFacotry
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -83,7 +85,11 @@ interface DefaultSdJwtOps :
     ): Result<Pair<SdJwt.Presentation<JwtAndClaims>, JwtAndClaims?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
-    companion object : DefaultSdJwtOps, UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom {
+    companion object :
+        DefaultSdJwtOps,
+        UnverifiedIssuanceFrom by PlatformSdJwtUnverifiedIssuanceFrom,
+        SdJwtVcVerifierFacotry<JwtAndClaims> by DefaultSdJwtVcFactory {
+
         val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
             JwtSignatureVerifier.noSignatureValidation { unverifiedJwt ->
                 val (_, claims, _) = jwtClaims(unverifiedJwt).getOrThrow()

@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFacotry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -307,7 +309,7 @@ interface NimbusSdJwtOps :
     ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
-    companion object : NimbusSdJwtOps {
+    companion object : NimbusSdJwtOps, SdJwtVcVerifierFacotry<NimbusSignedJWT> by NimbusSdJwtVcFactory {
 
         private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
             SdJwtSerializationOps(
