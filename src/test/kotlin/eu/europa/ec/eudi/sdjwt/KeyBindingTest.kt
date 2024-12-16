@@ -27,7 +27,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -52,7 +51,7 @@ class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
-    private val verifier = SdJwtVcVerifier.usingDID(lookup)
+    private val verifier = DefaultSdJwtOps.usingDID(lookup)
     private val holder = HolderActor(genKey("holder"), lookup)
 
     /**
@@ -269,7 +268,7 @@ class HolderActor(
     private val holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument,
 ) {
-    private val verifier = SdJwtVcVerifier.usingDID(lookup)
+    private val verifier = DefaultSdJwtOps.usingDID(lookup)
 
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
@@ -326,7 +325,7 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument,
 ) : DefaultSdJwtOps {
-    private val verifier = SdJwtVcVerifier.usingDID(lookup)
+    private val verifier = DefaultSdJwtOps.usingDID(lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt.Presentation<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(

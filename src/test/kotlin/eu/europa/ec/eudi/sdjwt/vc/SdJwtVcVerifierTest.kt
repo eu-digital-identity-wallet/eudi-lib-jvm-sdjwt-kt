@@ -133,14 +133,14 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
-        val verifier = SdJwtVcVerifier.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
         verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
-        val verifier = SdJwtVcVerifier.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
         verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
@@ -148,7 +148,7 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
-        val verifier = SdJwtVcVerifier.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
         try {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
@@ -175,7 +175,7 @@ class SdJwtVcVerifierTest {
                 signer.issue(spec).getOrThrow()
             }
 
-            val verifier = SdJwtVcVerifier.usingDID { did, _ ->
+            val verifier = DefaultSdJwtOps.usingDID { did, _ ->
                 assertEquals(didJwk, did)
                 listOf(key.toPublicJWK())
             }
