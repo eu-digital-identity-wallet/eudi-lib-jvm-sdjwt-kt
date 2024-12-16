@@ -67,23 +67,6 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 //
 
 /**
- * A [JwtSignatureVerifier] is added to the companion object, which just checks/parses the JWT,
- * without performing signature validation.
- *
- * <em>Should not be used in production use cases</em>
- */
-internal val PlatformJwtSignatureVerifierNoSignatureValidation: JwtSignatureVerifier<Any> by lazy {
-    JwtSignatureVerifier { unverifiedJwt ->
-        try {
-            val parsedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-            parsedJwt.jwtClaimsSet.jsonObject()
-        } catch (_: ParseException) {
-            null
-        }
-    }
-}
-
-/**
  * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
  * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
  * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
