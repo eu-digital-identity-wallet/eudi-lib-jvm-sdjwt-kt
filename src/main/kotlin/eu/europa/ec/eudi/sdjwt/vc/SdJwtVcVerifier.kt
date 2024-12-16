@@ -19,7 +19,10 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import io.ktor.client.*
 import io.ktor.http.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -212,7 +215,7 @@ private class NimbusSdJwtVcVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
     trust: X509CertificateTrust? = null,
     lookup: LookupPublicKeysFromDIDDocument? = null,
-) : SdJwtVcVerifier<NimbusSignedJWT> {
+) : SdJwtVcVerifier<NimbusSignedJWT>, NimbusSdJwtOps {
     init {
         require(httpClientFactory != null || trust != null || lookup != null) {
             "at least one of httpClientFactory, trust, or lookup must be provided"
@@ -221,35 +224,30 @@ private class NimbusSdJwtVcVerifier(
 
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT> =
         sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
+
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
 
-    override suspend fun verifyIssuance(
-        unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    override suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt.Issuance<NimbusSignedJWT>> =
+        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
-    override suspend fun verifyIssuance(
-        unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+    override suspend fun verifyIssuance(unverifiedSdJwt: JsonObject): Result<SdJwt.Issuance<NimbusSignedJWT>> =
+        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
     ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
-        val keyBindingVerifier =
-            keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
+        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject?,
     ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
-        val keyBindingVerifier =
-            keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
+        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 }
 
@@ -279,14 +277,18 @@ fun sdJwtVcSignatureVerifier(
     trust: X509CertificateTrust? = null,
     lookup: LookupPublicKeysFromDIDDocument? = null,
 ): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
-    try {
-        val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-        val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
-        val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
-        jwtProcessor.process(signedJwt, null)
-        signedJwt
-    } catch (_: NimbusBadJOSEException) {
-        null
+    withContext(Dispatchers.IO) {
+        try {
+            val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+            val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
+            yield()
+            val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
+            jwtProcessor.process(signedJwt, null)
+            yield()
+            signedJwt
+        } catch (_: NimbusBadJOSEException) {
+            null
+        }
     }
 }
 
