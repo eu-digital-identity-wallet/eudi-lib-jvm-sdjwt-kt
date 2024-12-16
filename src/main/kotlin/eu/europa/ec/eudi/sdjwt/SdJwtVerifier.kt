@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import com.nimbusds.jwt.JWT
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
@@ -283,7 +284,7 @@ typealias JwtAndClaims = Pair<Jwt, JsonObject>
  * A single point for verifying SD-JWTs in both [Combined Issuance Format][verifyIssuance]
  * and [Combined Presentation Format][verifyPresentation]
  */
-interface SdJwtVerifier<out JWT> {
+interface SdJwtVerifier<JWT> {
 
     /**
      * Verifies an SD-JWT (in simple format)
@@ -298,7 +299,7 @@ interface SdJwtVerifier<out JWT> {
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
     suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier<@UnsafeVariance JWT>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: String,
     ): Result<SdJwt.Issuance<JWT>>
 
@@ -320,7 +321,7 @@ interface SdJwtVerifier<out JWT> {
      * The verified SD-JWT will contain a [JWT][SdJwt.Issuance.jwt] as both string and decoded payload
      */
     suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier<@UnsafeVariance JWT>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwt.Issuance<JWT>>
 
@@ -343,8 +344,8 @@ interface SdJwtVerifier<out JWT> {
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier<@UnsafeVariance JWT>,
-        keyBindingVerifier: KeyBindingVerifier<@UnsafeVariance JWT>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+        keyBindingVerifier: KeyBindingVerifier<JWT>,
         unverifiedSdJwt: String,
     ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>>
 
@@ -366,8 +367,8 @@ interface SdJwtVerifier<out JWT> {
      * Expected errors are reported via a [SdJwtVerificationException]
      */
     suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier<@UnsafeVariance JWT>,
-        keyBindingVerifier: KeyBindingVerifier<@UnsafeVariance JWT>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+        keyBindingVerifier: KeyBindingVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
     ): Result<Pair<SdJwt.Presentation<JWT>, JWT?>>
 
