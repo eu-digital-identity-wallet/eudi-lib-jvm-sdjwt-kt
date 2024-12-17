@@ -123,7 +123,7 @@ interface SdJwtVcVerifier<out JWT> {
         challenge: JsonObject? = null,
     ): Result<Pair<SdJwt<JWT>, JWT?>>
 
-    companion object : SdJwtVcVerifierFacotry<JwtAndClaims> by DefaultSdJwtVcFactory
+    companion object : SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
@@ -152,7 +152,7 @@ fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1
     }
 }
 
-interface SdJwtVcVerifierFacotry<out JWT> {
+interface SdJwtVcVerifierFactory<out JWT> {
 
     /**
      * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
@@ -178,7 +178,7 @@ interface SdJwtVcVerifierFacotry<out JWT> {
     ): SdJwtVcVerifier<JWT>
 }
 
-internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFacotry<JwtAndClaims> {
+internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFactory<JwtAndClaims> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JwtAndClaims> =
         NimbusSdJwtVcFactory.usingIssuerMetadata(httpClientFactory).map(::nimbusToJwtAndClaims)
 
@@ -195,7 +195,7 @@ internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFacotry<JwtAndClaims> {
         NimbusSdJwtVcFactory.usingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory).map(::nimbusToJwtAndClaims)
 }
 
-internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFacotry<NimbusSignedJWT> {
+internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<NimbusSignedJWT> =
         NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory)
 

@@ -15,14 +15,12 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import com.nimbusds.jwt.JWT
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import kotlinx.serialization.json.*
-import kotlin.getOrThrow
 
 /**
  * Errors that may occur during SD-JWT verification
@@ -117,23 +115,6 @@ fun interface JwtSignatureVerifier<out JWT> {
      * @return the payload of the JWT if signature is valid, otherwise null
      */
     suspend fun checkSignature(jwt: String): JWT?
-
-    /**
-     * Constructs a new [JwtSignatureVerifier] that in addition applies to the
-     * extracted payload the [additionalCondition]
-     *
-     * @return a new [JwtSignatureVerifier] that in addition applies to the
-     *  extracted payload the [additionalCondition]
-     */
-    fun and(additionalCondition: suspend (JWT) -> Boolean): JwtSignatureVerifier<JWT> = JwtSignatureVerifier { jwt ->
-        this.checkSignature(jwt)?.let { claims -> if (additionalCondition(claims)) claims else null }
-    }
-
-    companion object {
-
-        fun <JWT> noSignatureValidation(parse: (Jwt) -> JWT): JwtSignatureVerifier<JWT> =
-            JwtSignatureVerifier { parse(it) }
-    }
 }
 
 fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(
@@ -201,17 +182,14 @@ sealed interface KeyBindingVerifier<out JWT> {
     }
 }
 
-fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(
-    f: (JWT) -> JWT1,
-): KeyBindingVerifier<JWT1> {
-    return when (this) {
+fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(f: (JWT) -> JWT1): KeyBindingVerifier<JWT1> =
+    when (this) {
         is MustBePresentAndValid<JWT> -> MustBePresentAndValid { sdJwtClaims ->
             keyBindingVerifierProvider(sdJwtClaims)?.map { f(it) }
         }
 
         MustNotBePresent -> MustNotBePresent
     }
-}
 
 private interface KeyBindingVerifierOps<JWT> {
     /**
@@ -275,6 +253,19 @@ private interface KeyBindingVerifierOps<JWT> {
 
 internal fun KeyBindingError.asException(): SdJwtVerificationException =
     KeyBindingFailed(this).asException()
+
+@Suppress("unused")
+fun interface UnverifiedIssuanceFrom<out JWT> {
+    /**
+     * A method for obtaining an [SdJwt] given an [unverifiedSdJwt], without checking the signature
+     * of the issuer.
+     *
+     * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+     * wants to just re-obtain an instance of the [SdJwt] without repeating this verification
+     *
+     */
+    fun unverifiedIssuanceFrom(unverifiedSdJwt: String): Result<SdJwt<JWT>>
+}
 
 /**
  * Representation of a JWT both as [string][Jwt] and its payload claims
@@ -392,8 +383,9 @@ interface SdJwtVerifier<JWT> {
                 jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                 unverifiedSdJwt: JsonObject,
             ): Result<SdJwt<JWT>> = runCatching {
-                val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) =
-                    JwsJsonSupport.parseJWSJson(unverifiedSdJwt)
+                val (unverifiedJwt, unverifiedDisclosures, unverifiedKbJwt) = JwsJsonSupport.parseJWSJson(
+                    unverifiedSdJwt,
+                )
                 if (null != unverifiedKbJwt) throw UnexpectedKeyBindingJwt.asException()
                 verifyIssuance(jwtSignatureVerifier, unverifiedJwt, unverifiedDisclosures).getOrThrow()
             }

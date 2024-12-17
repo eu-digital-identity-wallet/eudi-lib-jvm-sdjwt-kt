@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFacotry
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -88,7 +88,7 @@ internal fun <PubKey> keyBindingJWTProcess(
         typeVerifier = NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
         claimSetVerifier = NimbusDefaultJWTClaimsVerifier(
             challenge ?: NimbusJWTClaimsSet.Builder().build(),
-            setOf("aud", "iat", "nonce"),
+            setOf(RFC7519.AUDIENCE, RFC7519.ISSUED_AT, "nonce"),
         ),
         jwkSource = NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
     )
@@ -141,19 +141,20 @@ fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = J
  * @receiver the Nimbus processor to convert into [JwtSignatureVerifier]
  * @see NimbusJWSVerifier.asJwtVerifier
  */
-fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
-    withContext(Dispatchers.IO) {
-        try {
-            val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-            process(signedJwt, null)
-            signedJwt
-        } catch (_: ParseException) {
-            null
-        } catch (_: NimbusJOSEException) {
-            null
+fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> =
+    JwtSignatureVerifier { unverifiedJwt ->
+        withContext(Dispatchers.IO) {
+            try {
+                val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+                process(signedJwt, null)
+                signedJwt
+            } catch (_: ParseException) {
+                null
+            } catch (_: NimbusJOSEException) {
+                null
+            }
         }
     }
-}
 
 //
 // JSON Support
@@ -219,58 +220,58 @@ interface NimbusSdJwtOps :
     SdJwtPresentationOps<NimbusSignedJWT>,
     SdJwtVerifier<NimbusSignedJWT> {
 
-    override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
+    override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(NimbusSerializationOps) { serialize() }
 
     override suspend fun SdJwt<NimbusSignedJWT>.serializeWithKeyBinding(
         buildKbJwt: BuildKbJwt,
-    ): Result<String> = with(defaultOps) { serializeWithKeyBinding(buildKbJwt) }
+    ): Result<String> = with(NimbusSerializationOps) { serializeWithKeyBinding(buildKbJwt) }
 
     override fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
-        with(defaultOps) { asJwsJsonObject(option) }
+        with(NimbusSerializationOps) { asJwsJsonObject(option) }
 
     override fun SdJwt<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         kbJwt: Jwt,
-    ): JsonObject = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
+    ): JsonObject = with(NimbusSerializationOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
 
     override fun SdJwt<NimbusSignedJWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> =
-        with(presentationOps) { recreateClaimsAndDisclosuresPerClaim() }
+        with(NimbusPresentationOps) { recreateClaimsAndDisclosuresPerClaim() }
 
     override fun SdJwt<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt<NimbusSignedJWT>? =
-        with(presentationOps) { present(query) }
+        with(NimbusPresentationOps) { present(query) }
 
     override suspend fun SdJwt<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         buildKbJwt: BuildKbJwt,
-    ): Result<JsonObject> = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
+    ): Result<JsonObject> = with(NimbusSerializationOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
 
     override fun SdJwt<NimbusSignedJWT>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
-        with(presentationOps) { recreateClaims(visitor) }
+        with(NimbusPresentationOps) { recreateClaims(visitor) }
 
     override suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
     ): Result<SdJwt<NimbusSignedJWT>> =
-        with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+        with(NimbusVerifier) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt<NimbusSignedJWT>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+    ): Result<SdJwt<NimbusSignedJWT>> = with(NimbusVerifier) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
     ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
-        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+        with(NimbusVerifier) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
     ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
-        with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
+        with(NimbusVerifier) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     /**
      * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
@@ -296,29 +297,9 @@ interface NimbusSdJwtOps :
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
     }
 
-    companion object : NimbusSdJwtOps, SdJwtVcVerifierFacotry<NimbusSignedJWT> by NimbusSdJwtVcFactory {
-
-        private val defaultOps: SdJwtSerializationOps<NimbusSignedJWT> =
-            SdJwtSerializationOps(
-                serializeJwt = { jwt ->
-                    check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
-                        "It seems that the jwt is not signed"
-                    }
-                    jwt.serialize()
-                },
-                hashAlgorithm = { jwt ->
-                    jwt.jwtClaimsSet.getStringClaim(SdJwtSpec.CLAIM_SD_ALG)?.let {
-                        checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" }
-                    }
-                },
-            )
-
-        private val presentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
-            SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
-
-        private val verifierOps: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ jwt ->
-            jwt.jwtClaimsSet.jsonObject()
-        })
+    companion object :
+        NimbusSdJwtOps,
+        SdJwtVcVerifierFactory<NimbusSignedJWT> by NimbusSdJwtVcFactory {
 
         /**
          * Factory method for creating a [SdJwtIssuer] that uses Nimbus
@@ -366,6 +347,26 @@ interface NimbusSdJwtOps :
         }
     }
 }
+
+private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
+    SdJwtSerializationOps(
+        serializeJwt = { jwt ->
+            check(jwt.state == NimbusJWSObject.State.SIGNED || jwt.state == NimbusJWSObject.State.VERIFIED) {
+                "It seems that the jwt is not signed"
+            }
+            jwt.serialize()
+        },
+        hashAlgorithm = { jwt ->
+            jwt.jwtClaimsSet.getStringClaim(SdJwtSpec.CLAIM_SD_ALG)?.let {
+                checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" }
+            }
+        },
+    )
+
+private val NimbusPresentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
+    SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
+
+private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ jwt -> jwt.jwtClaimsSet.jsonObject() })
 
 /**
  * Creates a function that given some claims signs them producing a [NimbusSignedJWT]

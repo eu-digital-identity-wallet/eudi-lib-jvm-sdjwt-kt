@@ -158,10 +158,8 @@ private fun <JWT> defaultSdJwtSerializationOps(
         kbJwt: Jwt?,
     ): JsonObject {
         val (protected, payload, signature) = run {
-            val serializedSdJWt = serializeJwt(this@toJwsJsonObject.jwt)
-            val parts = serializedSdJWt.split(".")
-            check(parts.size == 3)
-            parts
+            val jwt = serializeJwt(this@toJwsJsonObject.jwt)
+            splitJwt(jwt).getOrThrow()
         }
         return with(JwsJsonSupport) {
             val ds = this@toJwsJsonObject.disclosures.map<Disclosure, String> { it.value }.toSet<String>()
