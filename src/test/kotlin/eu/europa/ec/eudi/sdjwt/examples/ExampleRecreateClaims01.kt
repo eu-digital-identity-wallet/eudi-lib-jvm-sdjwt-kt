@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
 
 val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
-    val sdJwt: SdJwt.Issuance<SignedJWT> = run {
+    val sdJwt: SdJwt<SignedJWT> = run {
         val spec = sdJwt {
             claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
             claim("iss", "https://example.com/issuer")

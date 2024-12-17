@@ -118,7 +118,7 @@ import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
+val verifiedIssuanceSdJwt: SdJwt<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier =
         RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
@@ -152,7 +152,7 @@ import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
+val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val issuedSdJwt = run {
             val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
@@ -210,7 +210,7 @@ import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
+val verifiedPresentationSdJwt: SdJwt<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
@@ -255,7 +255,7 @@ import kotlinx.serialization.json.JsonObject
 ```kotlin
 val claims: JsonObject = runBlocking {
     val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
-    val sdJwt: SdJwt.Issuance<SignedJWT> = run {
+    val sdJwt: SdJwt<SignedJWT> = run {
         val spec = sdJwt {
             claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
             claim("iss", "https://example.com/issuer")

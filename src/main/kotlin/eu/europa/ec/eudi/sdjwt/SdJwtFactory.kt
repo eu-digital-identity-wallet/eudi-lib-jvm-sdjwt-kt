@@ -52,9 +52,9 @@ class SdJwtFactory(
      * @param sdJwtSpec the contents of the SD-JWT
      * @return the [UnsignedSdJwt] for the given [SD-JWT element][sdJwtSpec]
      */
-    fun createSdJwt(sdJwtSpec: DisclosableObject): Result<UnsignedSdJwt> = runCatching {
+    fun createSdJwt(sdJwtSpec: DisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
         val (jwtClaimSet, disclosures) = encodeObj(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
-        UnsignedSdJwt(jwtClaimSet, disclosures)
+        SdJwt(jwtClaimSet, disclosures)
     }
 
     /**

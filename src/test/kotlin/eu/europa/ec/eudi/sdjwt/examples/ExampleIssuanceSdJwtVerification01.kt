@@ -19,7 +19,7 @@ import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.*
 
-val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
+val verifiedIssuanceSdJwt: SdJwt<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val jwtSignatureVerifier =
         RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)

@@ -43,7 +43,7 @@ private data class IssuerConfig(
 
 private class SdJwtVCIssuer(val config: IssuerConfig) {
 
-    suspend fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt.Issuance<SignedJWT> {
+    suspend fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt<SignedJWT> {
         val sdJwtSpec = holderData.sdJwtSpec(
             holderPubKey,
             iat = Instant.ofEpochSecond(1683000000),
@@ -163,7 +163,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
         //
         // Issue of SD-JWT according to SD-JWT VC
         //
-        val issuedSdJwt: SdJwt.Issuance<SignedJWT> = issuingService.issue(JohnDoe, HolderKey.toPublicJWK())
+        val issuedSdJwt: SdJwt<SignedJWT> = issuingService.issue(JohnDoe, HolderKey.toPublicJWK())
         issuedSdJwt.print()
         issuedSdJwt.printInJwsJson(JwsSerializationOption.Flattened)
         val serialized = with(NimbusSdJwtOps) { issuedSdJwt.serialize() }
@@ -254,11 +254,11 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
         println(json.encodeToString(jwsJson))
     }
 
-    private fun SdJwt.Issuance<SignedJWT>.print() {
+    private fun SdJwt<SignedJWT>.print() {
         prettyPrint { it.jwtClaimsSet.jsonObject() }
     }
 
-    private fun SdJwt.Issuance<SignedJWT>.printInJwsJson(option: JwsSerializationOption) {
+    private fun SdJwt<SignedJWT>.printInJwsJson(option: JwsSerializationOption) {
         with(NimbusSdJwtOps) {
             val jwsJson = asJwsJsonObject(option)
             println(json.encodeToString(jwsJson))
@@ -270,7 +270,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
     //
 
     private suspend fun verify(issuedSdJwtStr: String) {
-        val verified: SdJwt.Issuance<JwtAndClaims> = sdJwtVcVerifier.verifyIssuance(issuedSdJwtStr).getOrThrow()
+        val verified: SdJwt<JwtAndClaims> = sdJwtVcVerifier.verifyIssuance(issuedSdJwtStr).getOrThrow()
 
         // Check Header
         val jwsHeader = SignedJWT.parse(verified.jwt.first).header

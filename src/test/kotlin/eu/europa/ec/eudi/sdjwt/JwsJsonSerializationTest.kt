@@ -101,7 +101,7 @@ class JwsJsonSerializationTest {
     @Test
     fun ex1() {
         val trObj = TrObj.parse(ex1)
-        val sdJwt: SdJwt.Issuance<SignedJWT> = SdJwt.Issuance(trObj.jwt, trObj.disclosures)
+        val sdJwt: SdJwt<SignedJWT> = SdJwt(trObj.jwt, trObj.disclosures)
         val actual =
             with(NimbusSdJwtOps) {
                 sdJwt.asJwsJsonObject(option = JwsSerializationOption.Flattened)

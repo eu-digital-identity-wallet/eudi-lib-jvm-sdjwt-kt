@@ -120,7 +120,7 @@ suspend fun main() {
     )
 }
 
-suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt.Issuance<JwtAndClaims>> {
+suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt<JwtAndClaims>> {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier().map(::nimbusToJwtAndClaims)
     return DefaultSdJwtOps.verifyIssuance(jwtVer, sdJwt)
 }

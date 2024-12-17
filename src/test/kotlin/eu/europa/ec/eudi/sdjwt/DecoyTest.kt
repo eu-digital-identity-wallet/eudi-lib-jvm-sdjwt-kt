@@ -74,7 +74,7 @@ internal class DecoyTest {
         assertEquals(minimumDigests, issuer.issue(premiumMembershipSpec).countDigests())
     }
 
-    private fun Iterable<SdJwt.Issuance<SignedJWT>>.digestFrequency() =
+    private fun Iterable<SdJwt<SignedJWT>>.digestFrequency() =
         this
             .map { it.countDigests() }
             .groupBy { it }
@@ -83,7 +83,7 @@ internal class DecoyTest {
 
     // That's not safe, but it will do for them example
     // counts only top-level digests
-    private fun SdJwt.Issuance<SignedJWT>.countDigests() = jwt.jwtClaimsSet.jsonObject().directDigests().count()
+    private fun SdJwt<SignedJWT>.countDigests() = jwt.jwtClaimsSet.jsonObject().directDigests().count()
 
     private fun Membership.sdJwtSpec(minimumDigests: Int?) =
         sdJwt(minimumDigests) {
@@ -110,6 +110,6 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             signAlgorithm = alg,
         )
 
-    suspend fun issue(sdElements: DisclosableObject): SdJwt.Issuance<SignedJWT> =
+    suspend fun issue(sdElements: DisclosableObject): SdJwt<SignedJWT> =
         issuer.issue(sdElements).getOrThrow()
 }

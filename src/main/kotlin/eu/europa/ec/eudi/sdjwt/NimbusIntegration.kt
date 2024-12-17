@@ -207,7 +207,7 @@ private object NimbusSdJwtIssuerFactory {
         val signedJwt = withContext(Dispatchers.IO) {
             sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
         }
-        SdJwt.Issuance(signedJwt, disclosures)
+        SdJwt(signedJwt, disclosures)
     }
 }
 
@@ -221,14 +221,14 @@ interface NimbusSdJwtOps :
 
     override fun SdJwt<NimbusSignedJWT>.serialize(): String = with(defaultOps) { serialize() }
 
-    override suspend fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
+    override suspend fun SdJwt<NimbusSignedJWT>.serializeWithKeyBinding(
         buildKbJwt: BuildKbJwt,
     ): Result<String> = with(defaultOps) { serializeWithKeyBinding(buildKbJwt) }
 
     override fun SdJwt<NimbusSignedJWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
         with(defaultOps) { asJwsJsonObject(option) }
 
-    override fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
+    override fun SdJwt<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         kbJwt: Jwt,
     ): JsonObject = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
@@ -236,10 +236,10 @@ interface NimbusSdJwtOps :
     override fun SdJwt<NimbusSignedJWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> =
         with(presentationOps) { recreateClaimsAndDisclosuresPerClaim() }
 
-    override fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
+    override fun SdJwt<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt<NimbusSignedJWT>? =
         with(presentationOps) { present(query) }
 
-    override suspend fun SdJwt.Presentation<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
+    override suspend fun SdJwt<NimbusSignedJWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         buildKbJwt: BuildKbJwt,
     ): Result<JsonObject> = with(defaultOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
@@ -250,26 +250,26 @@ interface NimbusSdJwtOps :
     override suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
-    ): Result<SdJwt.Issuance<NimbusSignedJWT>> =
+    ): Result<SdJwt<NimbusSignedJWT>> =
         with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyIssuance(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt.Issuance<NimbusSignedJWT>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
+    ): Result<SdJwt<NimbusSignedJWT>> = with(verifierOps) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
+    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     override suspend fun verifyPresentation(
         jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         keyBindingVerifier: KeyBindingVerifier<NimbusSignedJWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt.Presentation<NimbusSignedJWT>, NimbusSignedJWT?>> =
+    ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> =
         with(verifierOps) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
 
     /**

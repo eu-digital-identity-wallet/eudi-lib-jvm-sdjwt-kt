@@ -48,11 +48,7 @@ val json = Json {
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
-    val type = when (this) {
-        is SdJwt.Issuance -> "issuance"
-        is SdJwt.Presentation -> "presentation"
-    }
-    println("SD-JWT of $type type with ${disclosures.size} disclosures")
+    println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
         val kind = when (d) {
             is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"

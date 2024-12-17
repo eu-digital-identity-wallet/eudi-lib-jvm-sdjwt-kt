@@ -165,7 +165,7 @@ class FlatDisclosure {
     private fun testFlatDisclosure(
         plainClaims: Map<String, JsonElement>,
         claimsToBeDisclosed: Map<String, JsonElement>,
-    ): UnsignedSdJwt {
+    ): SdJwt<JsonObject> {
         val hashAlgorithm = HashAlgorithm.SHA_256
         val sdJwtElements = sdJwt {
             plainClaims.forEach { claim(it.key, it.value) }

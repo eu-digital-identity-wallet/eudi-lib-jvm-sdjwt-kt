@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import java.security.MessageDigest
 
 /**
- * The digest of a [presentation][SdJwt.Presentation].
+ * The digest of a [presentation][SdJwt].
  * It contains the base64-url encoded digest of a presentation with all padding characters removed.
  */
 @JvmInline

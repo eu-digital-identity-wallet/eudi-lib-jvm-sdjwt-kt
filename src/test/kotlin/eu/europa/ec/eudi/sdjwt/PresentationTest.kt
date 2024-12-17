@@ -105,7 +105,7 @@ class PresentationTest : NimbusSdJwtOps {
         keyID(issuerKey.keyID)
     }
 
-    private suspend fun issuedSdJwt(): SdJwt.Issuance<SignedJWT> {
+    private suspend fun issuedSdJwt(): SdJwt<SignedJWT> {
         val sdJwt = issuer.issue(pidSpec).getOrThrow()
         println("Issued: ${sdJwt.serialize()}")
         sdJwt.prettyPrint { it.jwtClaimsSet.jsonObject() }

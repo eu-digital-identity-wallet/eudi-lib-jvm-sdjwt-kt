@@ -22,7 +22,7 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.runBlocking
 
-val presentationSdJwt: SdJwt.Presentation<SignedJWT> = runBlocking {
+val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val issuedSdJwt = run {
             val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
