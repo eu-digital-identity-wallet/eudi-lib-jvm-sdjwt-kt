@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.UnexpectedKeyBindingJwt
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.asException
 import eu.europa.ec.eudi.sdjwt.VerificationError.ParsingError
 import kotlinx.serialization.json.*
 
@@ -28,6 +27,7 @@ fun interface BuildKbJwt {
 /**
  * @param JWT the type representing the JWT part of the SD-JWT
  */
+@Suppress("unused")
 interface SdJwtSerializationOps<JWT> {
 
     /**
@@ -135,7 +135,8 @@ private fun <JWT> defaultSdJwtSerializationOps(
             "$presentationSdJwt$kbJwt"
         }
 
-    override fun SdJwt<JWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject = toJwsJsonObject(option, kbJwt = null)
+    override fun SdJwt<JWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
+        toJwsJsonObject(option, kbJwt = null)
 
     override suspend fun SdJwt.Presentation<JWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
@@ -188,6 +189,22 @@ private suspend fun kbJwt(
 
 enum class JwsSerializationOption {
     General, Flattened
+}
+
+internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> = runCatching {
+    fun json(s: String): JsonObject {
+        val decoded = JwtBase64.decode(s).toString(Charsets.UTF_8)
+        return Json.parseToJsonElement(decoded).jsonObject
+    }
+    val (h, p, s) = splitJwt(jwt).getOrThrow()
+    Triple(json(h), json(p), s)
+}
+
+private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> = runCatching {
+    val ps = jwt.split(".")
+    if (ps.size != 3) throw VerificationError.InvalidJwt.asException()
+    val (h, p, s) = jwt.split(".")
+    Triple(h, p, s)
 }
 
 internal object StandardSerialization {

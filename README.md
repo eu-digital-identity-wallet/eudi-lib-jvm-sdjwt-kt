@@ -120,10 +120,11 @@ import kotlinx.coroutines.*
 ```kotlin
 val verifiedIssuanceSdJwt: SdJwt.Issuance<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+    val jwtSignatureVerifier =
+        RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
     val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-    SdJwtVerifier.verifyIssuance(
+    DefaultSdJwtOps.verifyIssuance(
         jwtSignatureVerifier = jwtSignatureVerifier,
         unverifiedSdJwt = unverifiedIssuanceSdJwt,
     ).getOrThrow()
@@ -211,10 +212,10 @@ import kotlinx.coroutines.*
 ```kotlin
 val verifiedPresentationSdJwt: SdJwt.Presentation<JwtAndClaims> = runBlocking {
     val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
 
     val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    val (sdJwt, _) = SdJwtVerifier.verifyPresentation(
+    val (sdJwt, _) = DefaultSdJwtOps.verifyPresentation(
         jwtSignatureVerifier = jwtSignatureVerifier,
         keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
         unverifiedSdJwt = unverifiedPresentationSdJwt,
@@ -402,7 +403,6 @@ import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.sdJwt
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.asn1.x509.Extension
@@ -457,7 +457,7 @@ val sdJwtVcVerification = runBlocking {
         }
     }
 
-    val verifier = SdJwtVcVerifier.usingX5c { chain -> chain.firstOrNull() == certificate }
+    val verifier = NimbusSdJwtOps.usingX5c { chain -> chain.firstOrNull() == certificate }
     verifier.verifyIssuance(sdJwt)
 }
 ```

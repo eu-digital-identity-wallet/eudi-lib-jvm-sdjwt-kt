@@ -149,7 +149,7 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
 
-    val sdJwtVcVerifier = SdJwtVcVerifier.usingIssuerMetadata {
+    val sdJwtVcVerifier = DefaultSdJwtOps.usingIssuerMetadata {
         val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
         val issuerMetadata = SdJwtVcIssuerMetadata(
             issuer = issuingService.config.issuer,

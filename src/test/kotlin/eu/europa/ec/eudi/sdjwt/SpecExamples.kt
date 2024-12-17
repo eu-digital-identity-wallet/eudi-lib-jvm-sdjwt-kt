@@ -121,8 +121,8 @@ class SpecExamples {
     )
 
     private fun test(unverifiedSdJwt: String) = runTest {
-        SdJwtVerifier.verifyPresentation(
-            JwtSignatureVerifier.NoSignatureValidation,
+        DefaultSdJwtOps.verifyPresentation(
+            DefaultSdJwtOps.NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             unverifiedSdJwt,
         ).getOrThrow()

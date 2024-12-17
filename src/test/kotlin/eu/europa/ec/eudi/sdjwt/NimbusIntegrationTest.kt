@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.runTest
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.time.Clock
 import java.util.*
+import kotlin.onFailure
 import kotlin.test.Test
 import kotlin.test.fail
 
@@ -78,7 +79,7 @@ private val sdObject = sdJwt {
 private data class Context(
     val jwk: JWK,
     val issuer: SdJwtIssuer<SignedJWT>,
-    val verifier: JwtSignatureVerifier,
+    val verifier: JwtSignatureVerifier<SignedJWT>,
 )
 
 private fun createContext(algorithm: JWSAlgorithm): Context = run {
