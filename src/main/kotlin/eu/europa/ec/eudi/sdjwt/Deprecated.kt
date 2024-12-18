@@ -16,104 +16,12 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.AsymmetricJWK
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
 import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
 import com.nimbusds.jose.JWSSigner as NimbusJWSSigner
 import com.nimbusds.jose.jwk.AsymmetricJWK as NimbusAsymmetricJWK
-import com.nimbusds.jwt.JWTClaimsSet as NimbusJWTClaimsSet
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
-
-/**
- * Representations of multiple claims
- *
- */
-@Deprecated(
-    message = "Deprecated and will be removed in a future version",
-    replaceWith = ReplaceWith("JsonObject"),
-    level = DeprecationLevel.WARNING,
-)
-typealias Claims = Map<String, JsonElement>
-
-/**
- * An adapter that transforms the [payload][NimbusJWTClaimsSet] of a [Nimbus JWT]
- * to a KotlinX Serialization compatible representation
- */
-@Deprecated(
-    message = "Deprecated and will be removed in a future release",
-    replaceWith = ReplaceWith("jsonObject()"),
-)
-fun NimbusJWTClaimsSet.asClaims(): JsonObject = jsonObject()
-
-@Deprecated(
-    message = "Use suspendable methods of SdJwtSerializationOps",
-    level = DeprecationLevel.ERROR,
-)
-fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBinding(
-    jwtSerializer: (JWT) -> String,
-    hashAlgorithm: HashAlgorithm,
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-): String = runBlocking {
-    with(SdJwtSerializationOps(jwtSerializer, { _ -> hashAlgorithm })) {
-        val kbJwtBuilder = NimbusSdJwtOps.kbJwtIssuer(
-            keyBindingSigner.signAlgorithm,
-            keyBindingSigner,
-            keyBindingSigner.publicKey,
-            claimSetBuilderAction,
-        )
-        serializeWithKeyBinding(kbJwtBuilder)
-    }.getOrThrow()
-}
-
-@Deprecated(
-    message = "Use suspendable methods of SdJwtSerializationOps",
-    level = DeprecationLevel.ERROR,
-)
-fun <JWT> SdJwt.Presentation<JWT>.serializeWithKeyBindingAsJwsJson(
-    jwtSerializer: (JWT) -> String,
-    hashAlgorithm: HashAlgorithm,
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-    option: JwsSerializationOption = JwsSerializationOption.Flattened,
-): JsonObject =
-    runBlocking {
-        with(SdJwtSerializationOps<JWT>(jwtSerializer, { _ -> hashAlgorithm })) {
-            val kbJwtBuilder = NimbusSdJwtOps.kbJwtIssuer(
-                keyBindingSigner.signAlgorithm,
-                keyBindingSigner,
-                keyBindingSigner.publicKey,
-                claimSetBuilderAction,
-            )
-            asJwsJsonObjectWithKeyBinding(option, kbJwtBuilder)
-        }.getOrThrow()
-    }
-
-@Deprecated(
-    message = "Use suspendable methods of SdJwtSerializationOps",
-    level = DeprecationLevel.ERROR,
-)
-fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBindingAsJwsJson(
-    hashAlgorithm: HashAlgorithm,
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-): JsonObject =
-    runBlocking {
-        with(NimbusSdJwtOps) {
-            asJwsJsonObjectWithKeyBinding(
-                option = JwsSerializationOption.Flattened,
-                kbJwtIssuer(
-                    keyBindingSigner.signAlgorithm,
-                    keyBindingSigner,
-                    keyBindingSigner.publicKey,
-                    claimSetBuilderAction,
-                ),
-            )
-        }.getOrThrow()
-    }
 
 @Deprecated(
     message = "Deprecated",
@@ -146,28 +54,6 @@ interface KeyBindingSigner : NimbusJWSSigner {
     override fun supportedJWSAlgorithms(): MutableSet<NimbusJWSAlgorithm> = mutableSetOf(signAlgorithm)
 }
 
-@Deprecated(
-    message = "Use the suspended method of NimbusSdJwtSerializationOps",
-    level = DeprecationLevel.ERROR,
-)
-fun SdJwt.Presentation<NimbusSignedJWT>.serializeWithKeyBinding(
-    hashAlgorithm: HashAlgorithm,
-    keyBindingSigner: KeyBindingSigner,
-    claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit,
-): String =
-    runBlocking {
-        with(NimbusSdJwtOps) {
-            serializeWithKeyBinding(
-                kbJwtIssuer(
-                    keyBindingSigner.signAlgorithm,
-                    keyBindingSigner,
-                    keyBindingSigner.publicKey,
-                    claimSetBuilderAction,
-                ),
-            )
-        }.getOrThrow()
-    }
-
 /**
  * Serializes an [SdJwt] in combined format without key binding
  *
@@ -197,7 +83,6 @@ fun <JWT> SdJwt<JWT>.asJwsJsonObject(
     with(SdJwtSerializationOps<JWT>({ getParts(it).toList().joinToString(".") }, { _ -> error("Not used") })) {
         if (kbJwt == null) asJwsJsonObject(option)
         else {
-            require(this@asJwsJsonObject is SdJwt.Presentation<JWT>)
             this@asJwsJsonObject.asJwsJsonObjectWithKeyBinding(option, kbJwt)
         }
     }
@@ -228,46 +113,6 @@ fun SdJwtIssuer.Companion.nimbus(
     NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
 
 /**
- * A variation of [sdJwt] which produces signed SD-JWT
- * @param sdJwtFactory factory for creating the unsigned SD-JWT
- * @param signer the signer that will sign the SD-JWT
- * @param signAlgorithm It MUST use a JWS asymmetric digital signature algorithm.
- * @param digestNumberHint This is an optional hint; that expresses the number of digests on the immediate level
- * of this SD-JWT, that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
- * the number of [DisclosureDigest] is less than the [hint][digestNumberHint]
- *
- * @return signed SD-JWT
- *
- */
-@Deprecated(message = "Use NimbusSdJwtOps instead")
-suspend inline fun signedSdJwt(
-    signer: NimbusJWSSigner,
-    signAlgorithm: NimbusJWSAlgorithm,
-    sdJwtFactory: SdJwtFactory = SdJwtFactory.Default,
-    digestNumberHint: Int? = null,
-    builderAction: DisclosableObjectSpecBuilder.() -> Unit,
-): SdJwt.Issuance<NimbusSignedJWT> {
-    val issuer = NimbusSdJwtOps.issuer(sdJwtFactory, signer, signAlgorithm)
-    val sdJwtElements = sdJwt(digestNumberHint, builderAction)
-    return issuer.issue(sdJwtElements).getOrThrow()
-}
-
-/**
- *  Tries to create a presentation that discloses the claims that satisfy
- *  [query]
- * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
- * are relative to the unprotected JSON (not the JWT payload)
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @return the presentation if possible to satisfy the [query]
- */
-@Deprecated(
-    message = "Use NimbusSdJwtOps",
-    replaceWith = ReplaceWith(" with(NimbusSdJwtOps){present(query)}"),
-)
-fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presentation<NimbusSignedJWT>? =
-    with(NimbusSdJwtOps) { present(query) }
-
-/**
  * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaim]
  *
  * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
@@ -280,24 +125,6 @@ fun SdJwt.Issuance<NimbusSignedJWT>.present(query: Set<ClaimPath>): SdJwt.Presen
 )
 fun <JWT> SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(claimsOf: (JWT) -> JsonObject): Pair<JsonObject, DisclosuresPerClaimPath> =
     with(SdJwtPresentationOps(claimsOf)) { recreateClaimsAndDisclosuresPerClaim() }
-
-/**
- * Tries to create a presentation that discloses the [requested claims][query].
- * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
- * are relative to the unprotected JSON (not the JWT payload)
- * @param claimsOf a function to obtain the claims of the [SdJwt.jwt]
- * @receiver The issuance SD-JWT upon which the presentation will be based
- * @param JWT the type representing the JWT part of the SD-JWT
- * @return the presentation if possible to satisfy the [query]
- */
-@Deprecated(
-    message = "This method will be removed in a future version",
-    replaceWith = ReplaceWith("with(SdJwtPresentationOps(claimsOf)) { present(query) }"),
-)
-fun <JWT> SdJwt.Issuance<JWT>.present(
-    query: Set<ClaimPath>,
-    claimsOf: (JWT) -> JsonObject,
-): SdJwt.Presentation<JWT>? = with(SdJwtPresentationOps(claimsOf)) { present(query) }
 
 /**
  * Recreates the claims, used to produce the SD-JWT
@@ -352,7 +179,13 @@ fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JW
     replaceWith = ReplaceWith("with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }"),
 )
 fun KeyBindingVerifier.Companion.mustBePresentAndValid(
-    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
+    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = NimbusSdJwtOps.HolderPubKeyInConfirmationClaim,
     challenge: JsonObject? = null,
 ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
     with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }
+
+@Deprecated(
+    message = "This method will be removed in a future release.",
+    replaceWith = ReplaceWith("SdJwt<JsonObject>"),
+)
+typealias UnsignedSdJwt = SdJwt<JsonObject>

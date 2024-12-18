@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jwt.JWT
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
@@ -47,12 +49,12 @@ val json = Json {
 
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 
+fun SdJwt<SignedJWT>.prettyPrint() {
+    prettyPrint { it.jwtClaimsSet.jsonObject() }
+}
+
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
-    val type = when (this) {
-        is SdJwt.Issuance -> "issuance"
-        is SdJwt.Presentation -> "presentation"
-    }
-    println("SD-JWT of $type type with ${disclosures.size} disclosures")
+    println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
         val kind = when (d) {
             is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"

@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.HashAlgorithm.entries
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
@@ -73,56 +73,27 @@ enum class HashAlgorithm(val alias: String) {
 
 typealias Jwt = String
 
-typealias UnsignedSdJwt = SdJwt.Issuance<JsonObject>
-
 /**
  * A parameterized representation of the SD-JWT
  *
  * @param JWT the type representing the JWT part of the SD-JWT
  */
-sealed interface SdJwt<out JWT> {
-
+data class SdJwt<out JWT>(
     /**
      * The JWT part of the SD-JWT
      */
-    val jwt: JWT
+    val jwt: JWT,
 
     /**
      * The disclosures of the SD-JWT
      */
-    val disclosures: List<Disclosure>
+    val disclosures: List<Disclosure>,
 
-    /**
-     * The SD-JWT as it is produced by the issuer and handed-over to the holder
-     * @param jwt The JWT part of the SD-JWT
-     * @param disclosures the full set of disclosures
-     */
-    data class Issuance<out JWT>(
-        override val jwt: JWT,
-        override val disclosures: List<Disclosure>,
-    ) : SdJwt<JWT>
+)
 
-    /**
-     * The SD-JWT as it is produced by the holder and presented to the verifier
-     * @param jwt the JWT part of the SD-JWT
-     * @param disclosures the disclosures that holder decided to disclose to the verifier
-     */
-    data class Presentation<out JWT>(
-        override val jwt: JWT,
-        override val disclosures: List<Disclosure>,
-    ) : SdJwt<JWT>
-}
-
-inline fun <JWT, JWT1> SdJwt.Issuance<JWT>.map(f: (JWT) -> JWT1): SdJwt.Issuance<JWT1> {
+inline fun <JWT, JWT1> SdJwt<JWT>.map(f: (JWT) -> JWT1): SdJwt<JWT1> {
     contract {
         callsInPlace(f, InvocationKind.AT_MOST_ONCE)
     }
-    return SdJwt.Issuance<JWT1>(f(jwt), disclosures)
-}
-
-inline fun <JWT, JWT1> SdJwt.Presentation<JWT>.map(f: (JWT) -> JWT1): SdJwt.Presentation<JWT1> {
-    contract {
-        callsInPlace(f, InvocationKind.AT_MOST_ONCE)
-    }
-    return SdJwt.Presentation<JWT1>(f(jwt), disclosures)
+    return SdJwt<JWT1>(f(jwt), disclosures)
 }

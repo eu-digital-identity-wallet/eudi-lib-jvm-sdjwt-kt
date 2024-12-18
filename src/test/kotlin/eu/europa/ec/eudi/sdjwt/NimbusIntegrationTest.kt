@@ -35,7 +35,7 @@ import kotlin.test.fail
 /**
  * Test cases for Nimbus integration.
  */
-internal class NimbusIntegrationTest : NimbusSdJwtOps {
+internal class NimbusIntegrationTest {
 
     /**
      * Verifies SD-JWTs can be signed using both asymmetric and symmetric signing algorithms
@@ -82,7 +82,7 @@ private data class Context(
     val verifier: JwtSignatureVerifier<SignedJWT>,
 )
 
-private fun createContext(algorithm: JWSAlgorithm): Context = run {
+private fun createContext(algorithm: JWSAlgorithm): Context = with(NimbusSdJwtOps) {
     val keyId = UUID.randomUUID().toString()
     val issuedAt = Date(Clock.systemDefaultZone().millis())
 

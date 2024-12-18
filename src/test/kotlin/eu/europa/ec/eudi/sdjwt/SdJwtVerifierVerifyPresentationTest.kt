@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.KeyBindingVerifierMustBePresent
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.NoSignatureValidation
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.KeyBindingVerifierMustBePresent
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.NoSignatureValidation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -26,7 +26,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class SdJwtVerifierVerifyPresentationTest : DefaultSdJwtOps {
+class SdJwtVerifierVerifyPresentationTest {
 
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
@@ -197,11 +197,13 @@ class SdJwtVerifierVerifyPresentationTest : DefaultSdJwtOps {
         unverifiedSdJwt: String,
     ) {
         try {
-            verifyPresentation(
-                jwtSignatureVerifier = jwtSignatureVerifier,
-                keyBindingVerifier = holderBindingVerifier,
-                unverifiedSdJwt = unverifiedSdJwt,
-            ).getOrThrow()
+            with(DefaultSdJwtOps) {
+                verifyPresentation(
+                    jwtSignatureVerifier = jwtSignatureVerifier,
+                    keyBindingVerifier = holderBindingVerifier,
+                    unverifiedSdJwt = unverifiedSdJwt,
+                ).getOrThrow()
+            }
             fail("Was expecting $expectedError")
         } catch (exception: SdJwtVerificationException) {
             assertEquals(expectedError, exception.reason)

@@ -129,7 +129,7 @@ class SpecExamples {
             .also { (sdJwt, _) -> sdJwt.printRecreated() }
     }
 
-    private fun SdJwt.Presentation<JwtAndClaims>.printRecreated() {
+    private fun SdJwt<JwtAndClaims>.printRecreated() {
         with(DefaultSdJwtOps) {
             println(json.encodeToString(recreateClaims(visitor = null)))
         }

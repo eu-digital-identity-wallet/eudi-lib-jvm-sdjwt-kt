@@ -27,7 +27,7 @@ class ExampleReadMeTest01 {
 
     @Test
     fun testExampleIssuanceSdJwtVerification01() {
-        verifiedIssuanceSdJwt.prettyPrint { it.second }
+        verifiedIssuanceSdJwt.prettyPrint()
     }
 
     @Test
@@ -37,7 +37,7 @@ class ExampleReadMeTest01 {
 
     @Test
     fun testExamplePresentationSdJwtVerification01() {
-        verifiedPresentationSdJwt.prettyPrint { it.second }
+        verifiedPresentationSdJwt.prettyPrint()
     }
 
     @Test

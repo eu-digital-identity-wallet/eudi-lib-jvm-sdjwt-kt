@@ -15,15 +15,17 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.json.JsonObject
+
 /**
  * Signs an SD-JWT
  *
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  **/
-typealias SignSdJwt<SIGNED_JWT> = suspend (UnsignedSdJwt) -> SdJwt.Issuance<SIGNED_JWT>
+typealias SignSdJwt<SIGNED_JWT> = suspend (SdJwt<JsonObject>) -> SdJwt<SIGNED_JWT>
 
 /**
- * Representation of a function capable of producing an [issuance SD-JWT][SdJwt.Issuance]
+ * Representation of a function capable of producing an [issuance SD-JWT][SdJwt]
  *
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  */
@@ -35,7 +37,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
      * @param sdJwtSpec the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    suspend fun issue(sdJwtSpec: DisclosableObject): Result<SdJwt.Issuance<SIGNED_JWT>>
+    suspend fun issue(sdJwtSpec: DisclosableObject): Result<SdJwt<SIGNED_JWT>>
 
     companion object {
         /**
