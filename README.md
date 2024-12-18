@@ -402,6 +402,8 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
+import eu.europa.ec.eudi.sdjwt.RFC7519
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.sdJwt
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.DERSequence
@@ -446,7 +448,8 @@ val sdJwtVcVerification = runBlocking {
 
     val sdJwt = run {
         val spec = sdJwt {
-            claim("iss", issuer.toExternalForm())
+            claim(RFC7519.ISSUER, issuer.toExternalForm())
+            claim(SdJwtVcSpec.VCT, "urn:credential:sample")
         }
         with(NimbusSdJwtOps) {
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {
