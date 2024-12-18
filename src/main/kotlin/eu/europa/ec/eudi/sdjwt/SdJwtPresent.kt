@@ -55,24 +55,29 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
 
     /**
      * Tries to create a presentation that discloses the [requested claims][query].
-     * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPaths][ClaimPath]
-     * are relative to the unprotected JSON (not the JWT payload)
+     *
+     * @param query a set of [ClaimPaths][ClaimPath] to include in the presentation. The [ClaimPath]
+     * are relative to the unprotected JSON (not the JWT payload). In case that the [query] is empty
+     * it is implied that all claims are requested for presentation.
      * @receiver The issuance SD-JWT upon which the presentation will be based
      * @param JWT the type representing the JWT part of the SD-JWT
      * @return the presentation if possible to satisfy the [query]
      */
     fun SdJwt<JWT>.present(query: Set<ClaimPath>): SdJwt<JWT>? {
-        val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
-        infix fun ClaimPath.matches(other: ClaimPath): Boolean =
-            (value.size == other.value.size) && (this in other)
-
-        val keys = disclosuresPerClaim.keys.filter { claimFound ->
-            query.any { requested -> claimFound matches requested }
-        }
-        return if (keys.isEmpty()) null
+        return if (query.isEmpty()) this
         else {
-            val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
-            SdJwt(jwt, ds.toList())
+            val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
+            infix fun ClaimPath.matches(other: ClaimPath): Boolean =
+                (value.size == other.value.size) && (this in other)
+
+            val keys = disclosuresPerClaim.keys.filter { claimFound ->
+                query.any { requested -> claimFound matches requested }
+            }
+            return if (keys.isEmpty()) null
+            else {
+                val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
+                SdJwt(jwt, ds.toList())
+            }
         }
     }
 
@@ -81,8 +86,3 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
             object : SdJwtPresentationOps<JWT>, SdJwtRecreateClaimsOps<JWT> by SdJwtRecreateClaimsOps(claimsOf) {}
     }
 }
-
-/**
- * Creates a Presentation that discloses **ALL** the claims of this Issuance.
- */
-fun <JWT> SdJwt<JWT>.present(): SdJwt<JWT> = SdJwt(jwt, disclosures)

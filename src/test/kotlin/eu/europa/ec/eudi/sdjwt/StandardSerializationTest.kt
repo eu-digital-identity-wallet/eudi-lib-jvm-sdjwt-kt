@@ -81,7 +81,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
             claim("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.present()
+        val sdJwt = issuedSdJwt.present(emptySet())
         assertNotNull(sdJwt)
 
         val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
@@ -97,7 +97,7 @@ class StandardSerializationTest : NimbusSdJwtOps {
             sdClaim("foo", "bar")
         }
         val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val sdJwt = issuedSdJwt.present()
+        val sdJwt = issuedSdJwt.present(emptySet())
         assertNotNull(sdJwt)
 
         val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()

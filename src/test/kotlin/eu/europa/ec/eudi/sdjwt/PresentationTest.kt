@@ -128,7 +128,7 @@ class PresentationTest : NimbusSdJwtOps {
             }
         }
 
-        val allClaims = sdJwt.present()
+        val allClaims = sdJwt.present(emptySet())
 
         assertNotNull(allClaims)
         assertEquals(sdJwt.jwt, allClaims.jwt)
@@ -139,7 +139,7 @@ class PresentationTest : NimbusSdJwtOps {
     @Test
     fun `query for all claims should returned the issued sd-jwt`() = runTest {
         val issuedSdJwt = issuedSdJwt()
-        val presentationSdJwt = issuedSdJwt.present()
+        val presentationSdJwt = issuedSdJwt.present(emptySet())
         assertNotNull(presentationSdJwt)
         assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
         assertEquals(issuedSdJwt.disclosures.size, presentationSdJwt.disclosures.size)
