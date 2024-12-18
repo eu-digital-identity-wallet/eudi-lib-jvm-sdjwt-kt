@@ -470,6 +470,6 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     }
 }
 
-internal fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims {
+fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims {
     return checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()
 }
