@@ -64,8 +64,9 @@ private object SampleIssuer {
     suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
-            claim("iss", issuerMeta.issuer.toASCIIString())
-            claim("iat", Instant.now().toEpochMilli())
+            claim(RFC7519.ISSUER, issuerMeta.issuer.toASCIIString())
+            claim(RFC7519.ISSUED_AT, Instant.now().epochSecond)
+            claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             sdClaim("foo", "bar")
         }
         return with(NimbusSdJwtOps) {
@@ -133,14 +134,14 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
     }
 
@@ -148,7 +149,7 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata({ HttpMock.clientReturning(SampleIssuer.issuerMeta) })
+        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         try {
             verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
@@ -164,7 +165,8 @@ class SdJwtVcVerifierTest {
 
             val sdJwt = run {
                 val spec = sdJwt {
-                    claim("iss", didJwk)
+                    claim(RFC7519.ISSUER, didJwk)
+                    claim(SdJwtVcSpec.VCT, "urn:credential:sample")
                 }
                 val signer = NimbusSdJwtOps.issuer(
                     signer = Ed25519Signer(key),

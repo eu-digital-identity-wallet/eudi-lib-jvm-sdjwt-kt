@@ -227,9 +227,10 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
         val sdJwtElements =
             sdJwt {
-                claim("iss", iss)
-                claim("iat", iat.epochSecond)
-                claim("exp", exp.epochSecond)
+                claim(RFC7519.ISSUER, iss)
+                claim(RFC7519.ISSUED_AT, iat.epochSecond)
+                claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
+                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
                 cnf(holderPubKey as JWK)
                 objClaim("credentialSubject") {
                     Json.encodeToJsonElement(credential).jsonObject.forEach { sdClaim(it.key, it.value) }

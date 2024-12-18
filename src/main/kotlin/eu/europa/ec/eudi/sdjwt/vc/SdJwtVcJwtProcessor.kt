@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.JwkSourceJWTProcessor
+import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
@@ -53,7 +54,7 @@ internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
         private fun <C : NimbusSecurityContext> claimSetVerifier(): NimbusJWTClaimsSetVerifier<C> =
             NimbusDefaultJWTClaimsVerifier(
                 NimbusJWTClaimsSet.Builder().build(),
-                setOf("iss"),
+                setOf(RFC7519.ISSUER, SdJwtVcSpec.VCT),
             )
 
         /**
