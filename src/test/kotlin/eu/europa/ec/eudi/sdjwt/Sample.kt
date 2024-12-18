@@ -21,6 +21,7 @@ import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.*
@@ -99,7 +100,7 @@ suspend fun main() {
         issuer.issue(spec).map { it.serialize() }.getOrThrow()
     }
 
-    val verification = verifyIssuance(sdJwt, issuerPubKey)
+    val verification = verifyIssuance(sdJwt, issuerPubKey).map { sdJwt -> sdJwt.map { nimbusToJwtAndClaims(it) } }
 
     println("\nJWT-VC payload\n================")
     println(jwtVcPayload)
@@ -120,7 +121,7 @@ suspend fun main() {
     )
 }
 
-suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt<JwtAndClaims>> {
-    val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier().map(::nimbusToJwtAndClaims)
-    return DefaultSdJwtOps.verifyIssuance(jwtVer, sdJwt)
+suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt<SignedJWT>> = with(NimbusSdJwtOps) {
+    val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
+    return verifyIssuance(jwtVer, sdJwt)
 }

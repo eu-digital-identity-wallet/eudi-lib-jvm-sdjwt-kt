@@ -82,7 +82,7 @@ private data class Context(
     val verifier: JwtSignatureVerifier<SignedJWT>,
 )
 
-private fun createContext(algorithm: JWSAlgorithm): Context = run {
+private fun createContext(algorithm: JWSAlgorithm): Context = with(NimbusSdJwtOps) {
     val keyId = UUID.randomUUID().toString()
     val issuedAt = Date(Clock.systemDefaultZone().millis())
 

@@ -112,28 +112,26 @@ In this case, the SD-JWT is expected to be in serialized form.
 - the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
 
 <!--- INCLUDE
-import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val verifiedIssuanceSdJwt: SdJwt<JwtAndClaims> = runBlocking {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier =
-        RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
-
-    val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-    DefaultSdJwtOps.verifyIssuance(
-        jwtSignatureVerifier = jwtSignatureVerifier,
-        unverifiedSdJwt = unverifiedIssuanceSdJwt,
-    ).getOrThrow()
+val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
+    with(NimbusSdJwtOps) {
+        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+        val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+        val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
+        verifyIssuance(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+    }
 }
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssuanceSdJwtVerification01.kt).
 
-<!--- TEST verifiedIssuanceSdJwt.prettyPrint { it.second } -->
+<!--- TEST verifiedIssuanceSdJwt.prettyPrint() -->
 
 ## Holder Presentation
 
@@ -205,22 +203,24 @@ the Holder used to sign the `Key Binding JWT`
 
 <!--- INCLUDE
 import com.nimbusds.jose.crypto.*
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedPresentationSdJwt: SdJwt<JwtAndClaims> = runBlocking {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
-
-    val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    val (sdJwt, _) = DefaultSdJwtOps.verifyPresentation(
-        jwtSignatureVerifier = jwtSignatureVerifier,
-        keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
-        unverifiedSdJwt = unverifiedPresentationSdJwt,
-    ).getOrThrow()
-    sdJwt
+val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
+    with(NimbusSdJwtOps) {
+        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+        val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+        val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
+        val (sdJwt, _) = verifyPresentation(
+            jwtSignatureVerifier,
+            KeyBindingVerifier.MustNotBePresent,
+            unverifiedPresentationSdJwt,
+        ).getOrThrow()
+        sdJwt
+    }
 }
 ```
 
@@ -231,7 +231,7 @@ Library provides various variants of the above method that:
 - Preserve the KB-JWT, if present, to the successful outcome of a verification
 - Accept the unverified SD-JWT serialized in JWS JSON  
 
-<!--- TEST verifiedPresentationSdJwt.prettyPrint { it.second } -->
+<!--- TEST verifiedPresentationSdJwt.prettyPrint() -->
 
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for a more advanced
 presentation scenario which includes key binding

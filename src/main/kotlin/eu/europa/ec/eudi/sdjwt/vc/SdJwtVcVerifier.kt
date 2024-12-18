@@ -227,7 +227,7 @@ private class NimbusSdJwtVcVerifier(
         sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
 
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
-        KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
+        KeyBindingVerifier.mustBePresentAndValid(NimbusSdJwtOps.HolderPubKeyInConfirmationClaim, challenge)
 
     override suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)

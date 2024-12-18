@@ -93,69 +93,6 @@ internal fun <PubKey> keyBindingJWTProcess(
         jwkSource = NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
     )
 
-/**
- * This is a dual of [cnf] function
- * Obtains holder's pub key from claims
- *
- * @return the holder's pub key, if found
- */
-val HolderPubKeyInConfirmationClaim: (JsonObject) -> NimbusAsymmetricJWK? = { claims ->
-
-    claims["cnf"]
-        ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
-        ?.let { jwk -> jwk as? JsonObject }
-        ?.let { jwk ->
-            runCatching {
-                val key = NimbusJWK.parse(jwk.toString())
-                require(key is NimbusAsymmetricJWK)
-                key
-            }.getOrNull()
-        }
-}
-
-/**
- * An adapter that converts a [NimbusJWSVerifier] into a [JwtSignatureVerifier]
- * @return a [JwtSignatureVerifier]using the validation logic provided by [NimbusJWSVerifier]
- * @receiver the [NimbusJWSVerifier] to convert into a [JwtSignatureVerifier]
- *
- * @see NimbusJWTProcessor.asJwtVerifier
- */
-fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
-    withContext(Dispatchers.IO) {
-        try {
-            val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-            if (!signedJwt.verify(this@asJwtVerifier)) null
-            else signedJwt
-        } catch (_: ParseException) {
-            null
-        } catch (_: NimbusJOSEException) {
-            null
-        }
-    }
-}
-
-/**
- * An adapter that converts a [NimbusJWTProcessor] into a [JwtSignatureVerifier]
- *
- * @return a [JwtSignatureVerifier] using the validation logic provided by [NimbusJWTProcessor]
- * @receiver the Nimbus processor to convert into [JwtSignatureVerifier]
- * @see NimbusJWSVerifier.asJwtVerifier
- */
-fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> =
-    JwtSignatureVerifier { unverifiedJwt ->
-        withContext(Dispatchers.IO) {
-            try {
-                val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-                process(signedJwt, null)
-                signedJwt
-            } catch (_: ParseException) {
-                null
-            } catch (_: NimbusJOSEException) {
-                null
-            }
-        }
-    }
-
 //
 // JSON Support
 //
@@ -297,9 +234,70 @@ interface NimbusSdJwtOps :
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
     }
 
+    /**
+     * An adapter that converts a [NimbusJWSVerifier] into a [JwtSignatureVerifier]
+     * @return a [JwtSignatureVerifier]using the validation logic provided by [NimbusJWSVerifier]
+     * @receiver the [NimbusJWSVerifier] to convert into a [JwtSignatureVerifier]
+     *
+     */
+    fun NimbusJWSVerifier.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
+        withContext(Dispatchers.IO) {
+            try {
+                val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+                if (!signedJwt.verify(this@asJwtVerifier)) null
+                else signedJwt
+            } catch (_: ParseException) {
+                null
+            } catch (_: NimbusJOSEException) {
+                null
+            }
+        }
+    }
+
+    /**
+     * An adapter that converts a [NimbusJWTProcessor] into a [JwtSignatureVerifier]
+     *
+     * @return a [JwtSignatureVerifier] using the validation logic provided by [NimbusJWTProcessor]
+     * @receiver the Nimbus processor to convert into [JwtSignatureVerifier]
+     */
+    fun NimbusJWTProcessor<*>.asJwtVerifier(): JwtSignatureVerifier<NimbusSignedJWT> =
+        JwtSignatureVerifier { unverifiedJwt ->
+            withContext(Dispatchers.IO) {
+                try {
+                    val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
+                    process(signedJwt, null)
+                    signedJwt
+                } catch (_: ParseException) {
+                    null
+                } catch (_: NimbusJOSEException) {
+                    null
+                }
+            }
+        }
+
     companion object :
         NimbusSdJwtOps,
         SdJwtVcVerifierFactory<NimbusSignedJWT> by NimbusSdJwtVcFactory {
+
+        /**
+         * This is a dual of [cnf] function
+         * Obtains holder's pub key from claims
+         *
+         * @return the holder's pub key, if found
+         */
+        val HolderPubKeyInConfirmationClaim: (JsonObject) -> NimbusAsymmetricJWK? = { claims ->
+
+            claims["cnf"]
+                ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
+                ?.let { jwk -> jwk as? JsonObject }
+                ?.let { jwk ->
+                    runCatching {
+                        val key = NimbusJWK.parse(jwk.toString())
+                        require(key is NimbusAsymmetricJWK)
+                        key
+                    }.getOrNull()
+                }
+        }
 
         /**
          * Factory method for creating a [SdJwtIssuer] that uses Nimbus

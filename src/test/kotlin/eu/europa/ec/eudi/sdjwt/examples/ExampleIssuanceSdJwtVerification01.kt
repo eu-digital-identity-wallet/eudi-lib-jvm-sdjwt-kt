@@ -15,18 +15,16 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 
-val verifiedIssuanceSdJwt: SdJwt<JwtAndClaims> = runBlocking {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier =
-        RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
-
-    val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-    DefaultSdJwtOps.verifyIssuance(
-        jwtSignatureVerifier = jwtSignatureVerifier,
-        unverifiedSdJwt = unverifiedIssuanceSdJwt,
-    ).getOrThrow()
+val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
+    with(NimbusSdJwtOps) {
+        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+        val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+        val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
+        verifyIssuance(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+    }
 }

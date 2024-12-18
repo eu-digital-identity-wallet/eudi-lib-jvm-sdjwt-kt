@@ -25,6 +25,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.Companion.HolderPubKeyInConfirmationClaim
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
 import kotlinx.coroutines.test.runTest
@@ -59,7 +60,7 @@ class KeyBindingTest {
      *
      * It makes sure that [IssuerActor] is able to produce correctly an SD-JWT (issuance variation).
      * Furthermore, assures that the [verifier] successfully verifies the before-mentioned SD-JWT and
-     * that [HolderPubKeyInConfirmationClaim] is indeed able to extract holder pub key from SD-JWT claims
+     * that [eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim] is indeed able to extract holder pub key from SD-JWT claims
      */
     @Test
     fun testIssuance() = runTest {

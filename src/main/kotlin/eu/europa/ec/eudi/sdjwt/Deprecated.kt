@@ -179,7 +179,7 @@ fun <JWT> SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor? = null, claimsOf: (JW
     replaceWith = ReplaceWith("with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }"),
 )
 fun KeyBindingVerifier.Companion.mustBePresentAndValid(
-    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
+    holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = NimbusSdJwtOps.HolderPubKeyInConfirmationClaim,
     challenge: JsonObject? = null,
 ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
     with(NimbusSdJwtOps) { KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor, challenge) }

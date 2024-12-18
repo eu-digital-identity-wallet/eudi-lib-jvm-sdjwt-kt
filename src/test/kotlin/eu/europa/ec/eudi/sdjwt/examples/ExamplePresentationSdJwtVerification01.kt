@@ -16,18 +16,20 @@
 package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.crypto.*
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.*
 
-val verifiedPresentationSdJwt: SdJwt<JwtAndClaims> = runBlocking {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
-    val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier().map(::nimbusToJwtAndClaims)
-
-    val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-    val (sdJwt, _) = DefaultSdJwtOps.verifyPresentation(
-        jwtSignatureVerifier = jwtSignatureVerifier,
-        keyBindingVerifier = KeyBindingVerifier.MustNotBePresent,
-        unverifiedSdJwt = unverifiedPresentationSdJwt,
-    ).getOrThrow()
-    sdJwt
+val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
+    with(NimbusSdJwtOps) {
+        val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
+        val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
+        val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
+        val (sdJwt, _) = verifyPresentation(
+            jwtSignatureVerifier,
+            KeyBindingVerifier.MustNotBePresent,
+            unverifiedPresentationSdJwt,
+        ).getOrThrow()
+        sdJwt
+    }
 }
