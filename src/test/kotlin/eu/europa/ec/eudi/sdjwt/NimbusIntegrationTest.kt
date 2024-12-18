@@ -35,7 +35,7 @@ import kotlin.test.fail
 /**
  * Test cases for Nimbus integration.
  */
-internal class NimbusIntegrationTest : NimbusSdJwtOps {
+internal class NimbusIntegrationTest {
 
     /**
      * Verifies SD-JWTs can be signed using both asymmetric and symmetric signing algorithms

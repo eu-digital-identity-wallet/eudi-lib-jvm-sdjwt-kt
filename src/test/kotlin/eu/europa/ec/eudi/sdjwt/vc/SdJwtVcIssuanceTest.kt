@@ -145,7 +145,7 @@ private val IssuerSampleCfg = IssuerConfig(
     vct = URI.create("https://credentials.example.com/identity_credential"),
 )
 
-class SdJwtVcIssuanceTest : DefaultSdJwtOps {
+class SdJwtVcIssuanceTest {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
 
@@ -248,10 +248,12 @@ class SdJwtVcIssuanceTest : DefaultSdJwtOps {
 
         println(json.encodeToString(JsonObject(kbJwtClaims)))
 
-        val jwsJson =
-            sdJwt.asJwsJsonObjectWithKeyBinding(JwsSerializationOption.Flattened, kbJwt)
+        with(DefaultSdJwtOps) {
+            val jwsJson =
+                sdJwt.asJwsJsonObjectWithKeyBinding(JwsSerializationOption.Flattened, kbJwt)
 
-        println(json.encodeToString(jwsJson))
+            println(json.encodeToString(jwsJson))
+        }
     }
 
     private fun SdJwt<SignedJWT>.print() {

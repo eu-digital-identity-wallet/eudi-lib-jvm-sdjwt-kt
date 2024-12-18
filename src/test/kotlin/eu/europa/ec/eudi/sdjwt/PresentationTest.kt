@@ -31,7 +31,7 @@ import kotlinx.serialization.json.*
 import java.time.Instant
 import kotlin.test.*
 
-class PresentationTest : NimbusSdJwtOps {
+class PresentationTest {
 
     private val issuerKey = genKey("issuer")
     private val holderKey = genKey("holder")
@@ -105,7 +105,7 @@ class PresentationTest : NimbusSdJwtOps {
         keyID(issuerKey.keyID)
     }
 
-    private suspend fun issuedSdJwt(): SdJwt<SignedJWT> {
+    private suspend fun issuedSdJwt(): SdJwt<SignedJWT> = with(NimbusSdJwtOps) {
         val sdJwt = issuer.issue(pidSpec).getOrThrow()
         println("Issued: ${sdJwt.serialize()}")
         sdJwt.prettyPrint { it.jwtClaimsSet.jsonObject() }
@@ -118,228 +118,254 @@ class PresentationTest : NimbusSdJwtOps {
 
     @Test
     fun `querying AllClaims or NonSdClaims against an sd-jwt with no disclosures is the same`() = runTest {
-        val sdJwt = run {
-            val spec = sdJwt {
-                claim("iss", "foo")
-                claim("iat", Instant.now().epochSecond)
+        with(NimbusSdJwtOps) {
+            val sdJwt = run {
+                val spec = sdJwt {
+                    claim("iss", "foo")
+                    claim("iat", Instant.now().epochSecond)
+                }
+                issuer.issue(spec).getOrThrow().also {
+                    assertTrue { it.disclosures.isEmpty() }
+                }
             }
-            issuer.issue(spec).getOrThrow().also {
-                assertTrue { it.disclosures.isEmpty() }
-            }
+
+            val allClaims = sdJwt.present(emptySet())
+
+            assertNotNull(allClaims)
+            assertEquals(sdJwt.jwt, allClaims.jwt)
+
+            assertTrue { allClaims.disclosures.isEmpty() }
         }
-
-        val allClaims = sdJwt.present(emptySet())
-
-        assertNotNull(allClaims)
-        assertEquals(sdJwt.jwt, allClaims.jwt)
-
-        assertTrue { allClaims.disclosures.isEmpty() }
     }
 
     @Test
     fun `query for all claims should returned the issued sd-jwt`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val presentationSdJwt = issuedSdJwt.present(emptySet())
-        assertNotNull(presentationSdJwt)
-        assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
-        assertEquals(issuedSdJwt.disclosures.size, presentationSdJwt.disclosures.size)
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val presentationSdJwt = issuedSdJwt.present(emptySet())
+            assertNotNull(presentationSdJwt)
+            assertEquals(issuedSdJwt.jwt, presentationSdJwt.jwt)
+            assertEquals(issuedSdJwt.disclosures.size, presentationSdJwt.disclosures.size)
+        }
     }
 
     @Test
     fun `query for non SD claim should not reveal disclosure`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val claimsToPresent = setOf("iss", "vct", "cnf")
-        val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
-        assertNotNull(presentation)
-        assertTrue { presentation.disclosures.isEmpty() }
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val claimsToPresent = setOf("iss", "vct", "cnf")
+            val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
+            val presentation = issuedSdJwt.present(query)
+            assertNotNull(presentation)
+            assertTrue { presentation.disclosures.isEmpty() }
+        }
     }
 
     @Test
     fun `query for top-level SD claims reveal equal number of disclosures`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val claimsToPresent = listOf("given_name", "also_known_as", "nationalities")
-        val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
-        assertNotNull(presentation)
-        assertEquals(claimsToPresent.size, presentation.disclosures.size)
-        assertTrue {
-            presentation.disclosures.all { d ->
-                val (name, _) = d.claim()
-                name in claimsToPresent
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val claimsToPresent = listOf("given_name", "also_known_as", "nationalities")
+            val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
+            val presentation = issuedSdJwt.present(query)
+            assertNotNull(presentation)
+            assertEquals(claimsToPresent.size, presentation.disclosures.size)
+            assertTrue {
+                presentation.disclosures.all { d ->
+                    val (name, _) = d.claim()
+                    name in claimsToPresent
+                }
             }
         }
     }
 
     @Test
     fun `query for recursive claim's with no nested SD claims should reveal equal no of disclosures`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val claimsToPresent = listOf("place_of_birth", "address")
-        val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
-        val presentation = issuedSdJwt.present(query)
-        assertNotNull(presentation)
-        assertEquals(claimsToPresent.size, presentation.disclosures.size)
-        assertTrue {
-            presentation.disclosures.all { d ->
-                val (name, _) = d.claim()
-                name in claimsToPresent
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val claimsToPresent = listOf("place_of_birth", "address")
+            val query = claimsToPresent.map { ClaimPath.claim(it) }.toSet()
+            val presentation = issuedSdJwt.present(query)
+            assertNotNull(presentation)
+            assertEquals(claimsToPresent.size, presentation.disclosures.size)
+            assertTrue {
+                presentation.disclosures.all { d ->
+                    val (name, _) = d.claim()
+                    name in claimsToPresent
+                }
             }
         }
     }
 
     @Test
     fun `query for a sd claim nested inside a recursive object should reveal parent & child disclosures`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val query = setOf(ClaimPath.claim("place_of_birth").claim("locality"))
-        val presentation = issuedSdJwt.present(query)
-        assertNotNull(presentation)
-        assertEquals(2, presentation.disclosures.size)
-        val disclosedClaimNames = presentation.disclosures.map { it.claim().name() }
-        assertContains(disclosedClaimNames, "place_of_birth")
-        assertContains(disclosedClaimNames, "locality")
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val query = setOf(ClaimPath.claim("place_of_birth").claim("locality"))
+            val presentation = issuedSdJwt.present(query)
+            assertNotNull(presentation)
+            assertEquals(2, presentation.disclosures.size)
+            val disclosedClaimNames = presentation.disclosures.map { it.claim().name() }
+            assertContains(disclosedClaimNames, "place_of_birth")
+            assertContains(disclosedClaimNames, "locality")
+        }
     }
 
     @Test
     fun `query for a sd claim nested inside a structured SD object should reveal the child disclosure`() = runTest {
-        val issuedSdJwt = issuedSdJwt()
-        val query = setOf(ClaimPath.claim("age_equal_or_over").claim("18"))
-        val presentation = issuedSdJwt.present(query)
-        assertNotNull(presentation)
-        assertEquals(1, presentation.disclosures.size)
-        assertEquals("18", presentation.disclosures.first().claim().name())
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt = issuedSdJwt()
+            val query = setOf(ClaimPath.claim("age_equal_or_over").claim("18"))
+            val presentation = issuedSdJwt.present(query)
+            assertNotNull(presentation)
+            assertEquals(1, presentation.disclosures.size)
+            assertEquals("18", presentation.disclosures.first().claim().name())
+        }
     }
 
     @Test
     fun `query for a structured SD claim with only plain sub-claims reveals no disclosures`() = runTest {
-        val spec = sdJwt {
-            objClaim("credentialSubject") {
-                claim("type", "VaccinationEvent")
+        with(NimbusSdJwtOps) {
+            val spec = sdJwt {
+                objClaim("credentialSubject") {
+                    claim("type", "VaccinationEvent")
+                }
             }
+            val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+            val p = sdJwt.present(setOf(ClaimPath.claim("credentialSubject").claim("type")))
+            assertNotNull(p)
+            assertTrue { p.disclosures.isEmpty() }
         }
-        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
-        val p = sdJwt.present(setOf(ClaimPath.claim("credentialSubject").claim("type")))
-        assertNotNull(p)
-        assertTrue { p.disclosures.isEmpty() }
     }
 
     @Test
     fun `query for a recursive SD claim with only plain sub-claims reveals only the container disclosure`() = runTest {
-        val spec = sdJwt {
-            sdObjClaim("credentialSubject") {
-                claim("type", "VaccinationEvent")
+        with(NimbusSdJwtOps) {
+            val spec = sdJwt {
+                sdObjClaim("credentialSubject") {
+                    claim("type", "VaccinationEvent")
+                }
             }
-        }
-        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+            val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
 
-        val p = sdJwt.present(setOf(ClaimPath.claim("credentialSubject").claim("type")))
-        assertNotNull(p)
-        assertEquals(1, p.disclosures.size)
-        assertEquals("credentialSubject", p.disclosures.firstOrNull()?.claim()?.name())
+            val p = sdJwt.present(setOf(ClaimPath.claim("credentialSubject").claim("type")))
+            assertNotNull(p)
+            assertEquals(1, p.disclosures.size)
+            assertEquals("credentialSubject", p.disclosures.firstOrNull()?.claim()?.name())
+        }
     }
 
     @Test
     fun `query for sd array`() = runTest {
-        val spec = sdJwt {
-            arrClaim("evidence") {
-                sdObjClaim {
-                    sdClaim("type", "document")
-                }
-                objClaim {
-                    claim("foo", "bar")
+        with(NimbusSdJwtOps) {
+            val spec = sdJwt {
+                arrClaim("evidence") {
+                    sdObjClaim {
+                        sdClaim("type", "document")
+                    }
+                    objClaim {
+                        claim("foo", "bar")
+                    }
                 }
             }
+
+            val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+            // All claims below should not require a disclosure
+            val q1 = setOf(
+                ClaimPath.claim("evidence"),
+                ClaimPath.claim("evidence").arrayElement(1),
+                ClaimPath.claim("evidence").arrayElement(1).claim("foo"),
+            )
+            val p1 = sdJwt.present(q1)
+            assertNotNull(p1)
+            assertTrue { p1.disclosures.isEmpty() }
+
+            val p2 = sdJwt.present(
+                setOf(
+                    ClaimPath.claim("evidence").arrayElement(0).claim("type"),
+                ),
+            )
+            assertNotNull(p2)
+            // To reveal `type` we need
+            // - an array disclosure for the first element of the array
+            // - a disclosure to reveal `type`
+            assertEquals(2, p2.disclosures.size)
         }
-
-        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
-        // All claims below should not require a disclosure
-        val q1 = setOf(
-            ClaimPath.claim("evidence"),
-            ClaimPath.claim("evidence").arrayElement(1),
-            ClaimPath.claim("evidence").arrayElement(1).claim("foo"),
-        )
-        val p1 = sdJwt.present(q1)
-        assertNotNull(p1)
-        assertTrue { p1.disclosures.isEmpty() }
-
-        val p2 = sdJwt.present(
-            setOf(
-                ClaimPath.claim("evidence").arrayElement(0).claim("type"),
-            ),
-        )
-        assertNotNull(p2)
-        // To reveal `type` we need
-        // - an array disclosure for the first element of the array
-        // - a disclosure to reveal `type`
-        assertEquals(2, p2.disclosures.size)
     }
 
     @Test
     fun `querying for a recursive SD array`() = runTest {
-        val spec = sdJwt {
-            sdArrClaim("evidence") {
-                sdObjClaim {
-                    sdClaim("type", "document")
-                }
-                objClaim {
-                    claim("foo", "bar")
+        with(NimbusSdJwtOps) {
+            val spec = sdJwt {
+                sdArrClaim("evidence") {
+                    sdObjClaim {
+                        sdClaim("type", "document")
+                    }
+                    objClaim {
+                        claim("foo", "bar")
+                    }
                 }
             }
+
+            val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+
+            val q1 = setOf(
+                ClaimPath.claim("evidence"),
+                ClaimPath.claim("evidence").arrayElement(1),
+                ClaimPath.claim("evidence").arrayElement(1).claim("foo"),
+            )
+            val p1 = sdJwt.present(q1)
+            assertNotNull(p1)
+            assertEquals(1, p1.disclosures.size)
+            assertEquals("evidence", p1.disclosures.firstOrNull()?.claim()?.name())
+
+            val p2 = sdJwt.present(
+                setOf(
+                    ClaimPath.claim("evidence").arrayElement(0).claim("type"),
+                ),
+            )
+            assertNotNull(p2)
+            // To reveal `type` we need
+            // - "evidence" <- since it is a recursive array
+            // - an array disclosure for the first element of the array
+            // - a disclosure to reveal `type`
+            assertEquals(3, p2.disclosures.size)
         }
-
-        val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
-
-        val q1 = setOf(
-            ClaimPath.claim("evidence"),
-            ClaimPath.claim("evidence").arrayElement(1),
-            ClaimPath.claim("evidence").arrayElement(1).claim("foo"),
-        )
-        val p1 = sdJwt.present(q1)
-        assertNotNull(p1)
-        assertEquals(1, p1.disclosures.size)
-        assertEquals("evidence", p1.disclosures.firstOrNull()?.claim()?.name())
-
-        val p2 = sdJwt.present(
-            setOf(
-                ClaimPath.claim("evidence").arrayElement(0).claim("type"),
-            ),
-        )
-        assertNotNull(p2)
-        // To reveal `type` we need
-        // - "evidence" <- since it is a recursive array
-        // - an array disclosure for the first element of the array
-        // - a disclosure to reveal `type`
-        assertEquals(3, p2.disclosures.size)
     }
 
     @Test
     fun complexStructuredSdJwt() = runTest {
-        val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
-        val p =
-            sdJwt.present(
-                setOf(
-                    ClaimPath.claim("verified_claims")
-                        .claim("verification")
-                        .claim("evidence")
-                        .arrayElement(0)
-                        .claim("document"),
-                ),
-            )
-        assertNotNull(p)
+        with(NimbusSdJwtOps) {
+            val sdJwt = issuer.issue(complexStructuredSdJwt).getOrThrow().also { it.prettyPrintAll() }
+            val p =
+                sdJwt.present(
+                    setOf(
+                        ClaimPath.claim("verified_claims")
+                            .claim("verification")
+                            .claim("evidence")
+                            .arrayElement(0)
+                            .claim("document"),
+                    ),
+                )
+            assertNotNull(p)
+        }
     }
 
     @Test
     fun sdJwtVcDataV2() = runTest {
-        val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
-        val p = sdJwt.present(
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("recipient").claim("gender"),
+        with(NimbusSdJwtOps) {
+            val sdJwt = issuer.issue(sdJwtVcDataV2).getOrThrow().also { it.prettyPrintAll() }
+            val p = sdJwt.present(
+                setOf(
+                    ClaimPath.claim("credentialSubject").claim("recipient").claim("gender"),
 
-            ),
-        )
-        assertNotNull(p)
+                ),
+            )
+            assertNotNull(p)
+        }
     }
 
-    private fun SdJwt<SignedJWT>.prettyPrintAll() {
+    private fun SdJwt<SignedJWT>.prettyPrintAll() = with(NimbusSdJwtOps) {
         val (claims, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
         prettyPrint { it.jwtClaimsSet.jsonObject() }
         println(claims.pretty())

@@ -216,7 +216,7 @@ private class NimbusSdJwtVcVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
     trust: X509CertificateTrust? = null,
     lookup: LookupPublicKeysFromDIDDocument? = null,
-) : SdJwtVcVerifier<NimbusSignedJWT>, NimbusSdJwtOps {
+) : SdJwtVcVerifier<NimbusSignedJWT> {
     init {
         require(httpClientFactory != null || trust != null || lookup != null) {
             "at least one of httpClientFactory, trust, or lookup must be provided"
@@ -230,17 +230,17 @@ private class NimbusSdJwtVcVerifier(
         KeyBindingVerifier.mustBePresentAndValid(NimbusSdJwtOps.HolderPubKeyInConfirmationClaim, challenge)
 
     override suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
-        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyIssuance(unverifiedSdJwt: JsonObject): Result<SdJwt<NimbusSignedJWT>> =
-        verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt)
 
     override suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
     ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
         val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 
     override suspend fun verifyPresentation(
@@ -248,7 +248,7 @@ private class NimbusSdJwtVcVerifier(
         challenge: JsonObject?,
     ): Result<Pair<SdJwt<NimbusSignedJWT>, NimbusSignedJWT?>> = coroutineScope {
         val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+        NimbusSdJwtOps.verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
 }
 

@@ -15,89 +15,26 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefaultSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-interface DefaultSdJwtOps :
-    SdJwtVerifier<JwtAndClaims>,
-    SdJwtSerializationOps<JwtAndClaims>,
-    SdJwtPresentationOps<JwtAndClaims>,
-    SdJwtRecreateClaimsOps<JwtAndClaims> {
+object DefaultSdJwtOps :
+    SdJwtVerifier<JwtAndClaims> by DefaultVerifier,
+    SdJwtSerializationOps<JwtAndClaims> by DefaultSerializationOps,
+    SdJwtPresentationOps<JwtAndClaims> by DefaultPresentationOps,
+    UnverifiedIssuanceFrom<JwtAndClaims> by DefaultSdJwtUnverifiedIssuanceFrom,
+    SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory {
 
-    override fun SdJwt<JwtAndClaims>.serialize(): String =
-        with(DefaultSerializationOps) { serialize() }
+    val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
+        JwtSignatureVerifier { unverifiedJwt ->
+            val (_, claims, _) = jwtClaims(unverifiedJwt).getOrThrow()
+            unverifiedJwt to claims
+        }
 
-    override suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
-        buildKbJwt: BuildKbJwt,
-    ): Result<String> = with(DefaultSerializationOps) { serializeWithKeyBinding(buildKbJwt) }
-
-    override fun SdJwt<JwtAndClaims>.asJwsJsonObject(
-        option: JwsSerializationOption,
-    ): JsonObject = with(DefaultSerializationOps) { asJwsJsonObject(option) }
-
-    override fun SdJwt<JwtAndClaims>.asJwsJsonObjectWithKeyBinding(
-        option: JwsSerializationOption,
-        kbJwt: Jwt,
-    ): JsonObject = with(DefaultSerializationOps) { asJwsJsonObjectWithKeyBinding(option, kbJwt) }
-
-    override fun SdJwt<JwtAndClaims>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> =
-        with(DefaultPresentationOps) { recreateClaimsAndDisclosuresPerClaim() }
-
-    override fun SdJwt<JwtAndClaims>.present(
-        query: Set<ClaimPath>,
-    ): SdJwt<JwtAndClaims>? = with(DefaultPresentationOps) { present(query) }
-
-    override suspend fun SdJwt<JwtAndClaims>.asJwsJsonObjectWithKeyBinding(
-        option: JwsSerializationOption,
-        buildKbJwt: BuildKbJwt,
-    ): Result<JsonObject> = with(DefaultSerializationOps) { asJwsJsonObjectWithKeyBinding(option, buildKbJwt) }
-
-    override fun SdJwt<JwtAndClaims>.recreateClaims(visitor: ClaimVisitor?): JsonObject =
-        with(DefaultPresentationOps) { recreateClaims(visitor) }
-
-    override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
-        unverifiedSdJwt: String,
-    ): Result<SdJwt<JwtAndClaims>> =
-        with(DefaultVerifier) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
-
-    override suspend fun verifyIssuance(
-        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
-        unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt<JwtAndClaims>> =
-        with(DefaultVerifier) { verifyIssuance(jwtSignatureVerifier, unverifiedSdJwt) }
-
-    override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
-        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
-        unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt<JwtAndClaims>, JwtAndClaims?>> =
-        with(DefaultVerifier) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
-
-    override suspend fun verifyPresentation(
-        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
-        keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
-        unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt<JwtAndClaims>, JwtAndClaims?>> =
-        with(DefaultVerifier) { verifyPresentation(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt) }
-
-    companion object :
-        DefaultSdJwtOps,
-        UnverifiedIssuanceFrom<JwtAndClaims> by DefaultSdJwtUnverifiedIssuanceFrom,
-        SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory {
-
-        val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
-            JwtSignatureVerifier { unverifiedJwt ->
-                val (_, claims, _) = jwtClaims(unverifiedJwt).getOrThrow()
-                unverifiedJwt to claims
-            }
-        val KeyBindingVerifierMustBePresent: KeyBindingVerifier<JwtAndClaims> =
-            KeyBindingVerifier.mustBePresent(NoSignatureValidation)
-    }
+    val KeyBindingVerifierMustBePresent: KeyBindingVerifier<JwtAndClaims> =
+        KeyBindingVerifier.mustBePresent(NoSignatureValidation)
 }
 
 private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
@@ -120,11 +57,12 @@ private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier({ (_, c
  * wants to just re-obtain an instance of the [SdJwt] without repeating this verification
  *
  */
-private val DefaultSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom<JwtAndClaims> = UnverifiedIssuanceFrom { unverifiedSdJwt ->
-    runCatching {
-        val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
-        val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
-        val disclosures = verifyDisclosures(jwtClaims, unverifiedDisclosures).getOrThrow()
-        SdJwt<JwtAndClaims>(unverifiedJwt to jwtClaims, disclosures)
+private val DefaultSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom<JwtAndClaims> =
+    UnverifiedIssuanceFrom { unverifiedSdJwt ->
+        runCatching {
+            val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
+            val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
+            val disclosures = verifyDisclosures(jwtClaims, unverifiedDisclosures).getOrThrow()
+            SdJwt<JwtAndClaims>(unverifiedJwt to jwtClaims, disclosures)
+        }
     }
-}

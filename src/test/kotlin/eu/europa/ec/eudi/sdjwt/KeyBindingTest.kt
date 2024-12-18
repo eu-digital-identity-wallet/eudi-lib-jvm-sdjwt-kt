@@ -25,7 +25,7 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.Companion.HolderPubKeyInConfirmationClaim
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
 import kotlinx.coroutines.test.runTest
@@ -196,7 +196,7 @@ data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: S
 /**
  * Sample issuer
  */
-class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
+class IssuerActor(val issuerKey: ECKey) {
 
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
@@ -222,7 +222,7 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String {
+    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String = with(NimbusSdJwtOps) {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Instant.now()
         val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
@@ -245,7 +245,7 @@ class IssuerActor(val issuerKey: ECKey) : NimbusSdJwtOps {
                     }
                 }
             }
-        return sdJwtIssuer.issue(sdJwtSpec = sdJwtElements).fold(
+        sdJwtIssuer.issue(sdJwtSpec = sdJwtElements).fold(
             onSuccess = { issued ->
                 issuerDebug("Issued new SD-JWT")
                 issued.serialize()
@@ -326,7 +326,7 @@ class VerifierActor(
     private val whatToDisclose: Set<ClaimPath>,
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument,
-) : DefaultSdJwtOps {
+) {
     private val verifier = DefaultSdJwtOps.usingDID(lookup)
     private var lastChallenge: JsonObject? = null
     private var presentation: SdJwt<JwtAndClaims>? = null
@@ -343,7 +343,8 @@ class VerifierActor(
     }
 
     private fun SdJwt<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths = recreateClaimsAndDisclosuresPerClaim().second.keys
+        val disclosedPaths =
+            with(DefaultSdJwtOps) { recreateClaimsAndDisclosuresPerClaim().second.keys }
         whatToDisclose.forEach { requested ->
             assertTrue("Requested $requested was not disclosed") {
                 disclosedPaths.any { disclosed -> disclosed in requested }
