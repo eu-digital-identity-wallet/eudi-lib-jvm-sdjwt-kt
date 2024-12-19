@@ -53,129 +53,95 @@ class SdJwtFactory(
      * @return the [UnsignedSdJwt] for the given [SD-JWT element][sdJwtSpec]
      */
     fun createSdJwt(sdJwtSpec: DisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
-        val (jwtClaimSet, disclosures) = encodeObj(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
+        val (jwtClaimSet, disclosures) = encodeObject(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
         SdJwt(jwtClaimSet, disclosures)
     }
 
     /**
-     * Encodes a set of  [SD-JWT element][disclosableObject]
-     * @param disclosableObject the set of elements to disclose
+     * Encodes a set of [SD-JWT element][DisclosableObject]
+     *
      * @return the [UnsignedSdJwt]
      */
-    private fun encodeObj(disclosableObject: DisclosableObject): EncodedSdElement {
-        val disclosures = mutableListOf<Disclosure>()
-        val encodedClaims = mutableMapOf<String, JsonElement>()
+    private val encodeObject: DeepRecursiveFunction<DisclosableObject, EncodedSdElement> =
+        DeepRecursiveFunction { disclosableObject ->
+            val disclosures = mutableListOf<Disclosure>()
+            val encodedClaims = mutableMapOf<String, JsonElement>()
 
-        // Add the given claim to encodedClaims
-        fun add(encodedClaim: JsonObject) {
-            val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
-            encodedClaims += encodedClaim
-            if (mergedSdClaim.isNotEmpty()) {
-                encodedClaims[SdJwtSpec.CLAIM_SD] = mergedSdClaim
+            // Add the given claim to encodedClaims
+            fun add(encodedClaim: JsonObject) {
+                val mergedSdClaim = JsonArray(encodedClaims.sdClaim() + encodedClaim.sdClaim())
+                encodedClaims += encodedClaim
+                if (mergedSdClaim.isNotEmpty()) {
+                    encodedClaims[SdJwtSpec.CLAIM_SD] = mergedSdClaim
+                }
             }
-        }
 
-        // Adds decoys if needed
-        fun addDecoysIfNeeded() {
-            val digests = encodedClaims.sdClaim()
-            val decoys = genDecoys(digests.size, disclosableObject.minimumDigests).map { JsonPrimitive(it.value) }
-            val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
-            if (digestAndDecoys.isNotEmpty()) {
-                encodedClaims[SdJwtSpec.CLAIM_SD] = JsonArray(digestAndDecoys)
+            // Adds decoys if needed
+            fun addDecoysIfNeeded() {
+                val digests = encodedClaims.sdClaim()
+                val decoys = genDecoys(digests.size, disclosableObject.minimumDigests).map { JsonPrimitive(it.value) }
+                val digestAndDecoys = (digests + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+                if (digestAndDecoys.isNotEmpty()) {
+                    encodedClaims[SdJwtSpec.CLAIM_SD] = JsonArray(digestAndDecoys)
+                }
             }
-        }
 
-        for ((subClaimName, subClaimValue) in disclosableObject) {
-            val (encodedSubClaim, subClaimDisclosures) = encodeClaim(subClaimName, subClaimValue)
-            disclosures += subClaimDisclosures
-            add(encodedSubClaim)
-        }
+            for ((subClaimName, subClaimValue) in disclosableObject) {
+                val (encodedSubClaim, subClaimDisclosures) = encodeClaim.callRecursive(subClaimName to subClaimValue)
+                disclosures += subClaimDisclosures
+                add(encodedSubClaim)
+            }
 
-        addDecoysIfNeeded()
-        val sdObjectClaims = JsonObject(encodedClaims)
-        return sdObjectClaims to disclosures
-    }
+            addDecoysIfNeeded()
+            val sdObjectClaims = JsonObject(encodedClaims)
+            sdObjectClaims to disclosures
+        }
 
     /**
      * Produces the disclosures and the JWT claims (which include digests)
      * for the given claim
      *
-     * @param claimName the name of the claim
-     * @param disclosableElement the value of the claim
-     *
      * @return the disclosures and the JWT claims (which include digests)
      *  for the given claim
      */
-    private fun encodeClaim(claimName: String, disclosableElement: DisclosableElement): EncodedSdElement {
-        fun encodeAlwaysDisclosable(disclosable: JsonElement): EncodedSdElement {
-            val plainClaim = JsonObject(mapOf(claimName to disclosable))
-            return plainClaim to emptyList()
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: JsonElement): EncodedSdElement {
-            val claim = claimName to disclosable
-            val (disclosure, digest) = objectPropertyDisclosure(claim)
-            val digestAndDecoys = setOf(digest)
-            val sdClaim = digestAndDecoys.sdClaim()
-            return sdClaim to listOf(disclosure)
-        }
-
-        fun encodeAlwaysDisclosable(disclosable: DisclosableObject): EncodedSdElement {
-            val (encodedSubClaims, disclosures) = encodeObj(disclosable)
-            val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
-            return structuredSdClaim to disclosures
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: DisclosableObject): EncodedSdElement {
-            val (contentClaims, contentDisclosures) = encodeObj(disclosable)
-            val wrapper = contentClaims
-            val (wrapperClaim, wrapperDisclosures) = encodeSelectivelyDisclosable(wrapper)
-            val disclosures = contentDisclosures + wrapperDisclosures
-            return wrapperClaim to disclosures
-        }
-
-        fun encodeAlwaysDisclosable(disclosable: DisclosableArray): EncodedSdElement {
-            val (disclosures, plainOrDigestElements) = arrayElementsDisclosure(disclosable)
-            val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
-            val decoys = genDecoys(actualDisclosureDigests, disclosable.minimumDigests).map { PlainOrDigest.Dig(it) }
-            val allElements = JsonArray(
-                (plainOrDigestElements + decoys).map {
-                    when (it) {
-                        is PlainOrDigest.Dig -> it.value.asDigestClaim()
-                        is PlainOrDigest.Plain -> it.value
-                    }
-                },
-            )
-            val arrayClaim = JsonObject(mapOf(claimName to allElements))
-            return arrayClaim to disclosures
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: DisclosableArray): EncodedSdElement {
-            val (contentClaims, contentDisclosures) = encodeAlwaysDisclosable(disclosable)
-            val wrapper = checkNotNull(contentClaims[claimName])
-            val (wrapperClaim, wrapperDisclosures) = encodeSelectivelyDisclosable(wrapper)
-            val disclosures = contentDisclosures + wrapperDisclosures
-            return wrapperClaim to disclosures
-        }
-
-        val (disclosable, element) = disclosableElement
-        return when (element) {
-            is DisclosableValue.Json -> when (disclosable) {
-                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
+    private val encodeClaim: DeepRecursiveFunction<Pair<String, DisclosableElement>, EncodedSdElement> =
+        DeepRecursiveFunction { (claimName, disclosableElement) ->
+            fun encodeSelectivelyDisclosable(disclosable: JsonElement): EncodedSdElement {
+                val claim = claimName to disclosable
+                val (disclosure, digest) = objectPropertyDisclosure(claim)
+                val digestAndDecoys = setOf(digest)
+                val sdClaim = digestAndDecoys.sdClaim()
+                return sdClaim to listOf(disclosure)
             }
 
-            is DisclosableValue.Arr -> when (disclosable) {
-                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
+            val (disclosable, element) = disclosableElement
+            val (encodedElementValue, contentDisclosures) = when (element) {
+                is DisclosableValue.Arr -> {
+                    val (arrayElementDisclosures, encodedArrayElements) = encodeArray.callRecursive(element.value)
+                    val actualDisclosureDigests = encodedArrayElements.filterIsInstance<PlainOrDigest.Dig>().size
+                    val decoys = genDecoys(actualDisclosureDigests, element.value.minimumDigests).map { PlainOrDigest.Dig(it) }
+                    val allElements = JsonArray(
+                        (encodedArrayElements + decoys).map {
+                            when (it) {
+                                is PlainOrDigest.Dig -> it.value.asDigestClaim()
+                                is PlainOrDigest.Plain -> it.value
+                            }
+                        },
+                    )
+                    allElements to arrayElementDisclosures
+                }
+                is DisclosableValue.Json -> element.value to emptyList()
+                is DisclosableValue.Obj -> encodeObject.callRecursive(element.value)
             }
 
-            is DisclosableValue.Obj -> when (disclosable) {
-                Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
+            when (disclosable) {
+                Disclosable.Always -> JsonObject(mapOf(claimName to encodedElementValue)) to contentDisclosures
+                Disclosable.Selectively -> {
+                    val (encodedElement, elementDisclosure) = encodeSelectivelyDisclosable(encodedElementValue)
+                    encodedElement to (contentDisclosures + elementDisclosure)
+                }
             }
         }
-    }
 
     /**
      * Adds the hash algorithm claim if disclosures are present
@@ -219,81 +185,49 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
-    private fun arrayElementsDisclosure(array: DisclosableArray): Pair<List<Disclosure>, List<PlainOrDigest>> {
-        fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
-            val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
-            val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
-            return disclosure to digest
-        }
-
-        val disclosures = mutableListOf<Disclosure>()
-        val plainOrDigestElements = mutableListOf<PlainOrDigest>()
-
-        fun encodeAlwaysDisclosable(disclosable: JsonElement) {
-            plainOrDigestElements += PlainOrDigest.Plain(disclosable)
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: JsonElement) {
-            val (disclosure, digest) = disclosureOf(disclosable)
-            disclosures += disclosure
-            plainOrDigestElements += PlainOrDigest.Dig(digest)
-        }
-
-        fun encodeAlwaysDisclosable(disclosable: DisclosableObject) {
-            val (json, ds) = encodeObj(disclosable)
-            disclosures += ds
-            plainOrDigestElements += PlainOrDigest.Plain(json)
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: DisclosableObject) {
-            val (json, ds) = encodeObj(disclosable)
-            val (ds2, dig) = disclosureOf(json)
-            disclosures += (ds + ds2)
-            plainOrDigestElements += PlainOrDigest.Dig(dig)
-        }
-
-        fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
-            is PlainOrDigest.Plain -> value
-            is PlainOrDigest.Dig -> value.asDigestClaim()
-        }
-
-        fun encodeAlwaysDisclosable(disclosable: DisclosableArray) {
-            val (ds, elems) = arrayElementsDisclosure(disclosable)
-            val json = JsonArray(elems.map { it.toJsonElement() })
-            disclosures += ds
-            plainOrDigestElements += PlainOrDigest.Plain(json)
-        }
-
-        fun encodeSelectivelyDisclosable(disclosable: DisclosableArray) {
-            val (ds, elems) = arrayElementsDisclosure(disclosable)
-            val json = JsonArray(elems.map { it.toJsonElement() })
-            val (ds2, dig) = disclosureOf(json)
-            disclosures += (ds + ds2)
-            plainOrDigestElements += PlainOrDigest.Dig(dig)
-        }
-
-        fun DisclosableElement.encode() {
-            val (disclosable, element) = this
-            when (element) {
-                is DisclosableValue.Json -> when (disclosable) {
-                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
-                }
-
-                is DisclosableValue.Obj -> when (disclosable) {
-                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
-                }
-
-                is DisclosableValue.Arr -> when (disclosable) {
-                    Disclosable.Always -> encodeAlwaysDisclosable(element.value)
-                    Disclosable.Selectively -> encodeSelectivelyDisclosable(element.value)
-                }
+    private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, List<PlainOrDigest>>> =
+        DeepRecursiveFunction { array ->
+            fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
+                val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
+                val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
+                return disclosure to digest
             }
+
+            val disclosures = mutableListOf<Disclosure>()
+            val plainOrDigestElements = mutableListOf<PlainOrDigest>()
+
+            fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
+                is PlainOrDigest.Plain -> value
+                is PlainOrDigest.Dig -> value.asDigestClaim()
+            }
+
+            array.forEach { (disclosable, element) ->
+                val (encodedArray, arrayElementDisclosures) = when (element) {
+                    is DisclosableValue.Arr -> {
+                        val (arrayElementDisclosures, encodedArrayElements) = callRecursive(element.value)
+                        JsonArray(encodedArrayElements.map { it.toJsonElement() }) to arrayElementDisclosures
+                    }
+
+                    is DisclosableValue.Json -> element.value to emptyList()
+                    is DisclosableValue.Obj -> encodeObject.callRecursive(element.value)
+                }
+
+                val (disclosuresToAdd, plainOrDigestElementToAdd) = when (disclosable) {
+                    Disclosable.Always -> arrayElementDisclosures to PlainOrDigest.Plain(encodedArray)
+                    Disclosable.Selectively -> {
+                        val (encodedElementDisclosure, encodedElementDigest) = disclosureOf(encodedArray)
+                        (arrayElementDisclosures + encodedElementDisclosure) to PlainOrDigest.Dig(
+                            encodedElementDigest,
+                        )
+                    }
+                }
+
+                disclosures += disclosuresToAdd
+                plainOrDigestElements += plainOrDigestElementToAdd
+            }
+
+            disclosures to plainOrDigestElements
         }
-        array.forEach { it.encode() }
-        return disclosures to plainOrDigestElements
-    }
 
     companion object {
 
