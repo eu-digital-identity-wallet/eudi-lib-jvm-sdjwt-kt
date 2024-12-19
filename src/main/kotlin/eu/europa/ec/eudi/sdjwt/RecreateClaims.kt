@@ -225,11 +225,15 @@ private class DiscloseObject(
     private fun discloseArray(
         currentPath: ClaimPath,
         jsonArray: JsonArray,
-    ): JsonArray {
+    ): JsonArray = buildJsonArray {
         var index = 0
-        return jsonArray
-            .mapNotNull { element -> discloseArrayElement(currentPath, element, index)?.also { index++ } }
-            .let { elements -> JsonArray(elements) }
+        jsonArray.forEach { element ->
+            discloseArrayElement(currentPath, element, index)
+                ?.let {
+                    add(it)
+                    index++
+                }
+        }
     }
 
     private fun discloseArrayElement(
