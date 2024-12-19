@@ -45,15 +45,15 @@ private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
     },
 )
 
-private val DefaultPresentationOps = SdJwtPresentationOps<JwtAndClaims>({ (_, claims) -> claims })
+private val DefaultPresentationOps = SdJwtPresentationOps<JwtAndClaims> { (_, claims) -> claims }
 
-private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier({ (_, claims) -> claims })
+private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier { (_, claims) -> claims }
 
 /**
  * A method for obtaining an [SdJwt] given an unverified SdJwt, without checking the signature
  * of the issuer.
  *
- * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verifyIssuance] the SD-JWT and
+ * The method can be useful in case where a holder has previously [verified][SdJwtVerifier.verify] the SD-JWT and
  * wants to just re-obtain an instance of the [SdJwt] without repeating this verification
  *
  */

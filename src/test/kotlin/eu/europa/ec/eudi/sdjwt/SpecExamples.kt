@@ -121,12 +121,11 @@ class SpecExamples {
     )
 
     private fun test(unverifiedSdJwt: String) = runTest {
-        DefaultSdJwtOps.verifyPresentation(
+        DefaultSdJwtOps.verify(
             DefaultSdJwtOps.NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
             unverifiedSdJwt,
         ).getOrThrow()
-            .also { (sdJwt, _) -> sdJwt.printRecreated() }
+            .also { it.printRecreated() }
     }
 
     private fun SdJwt<JwtAndClaims>.printRecreated() {

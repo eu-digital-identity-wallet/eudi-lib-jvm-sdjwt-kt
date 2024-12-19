@@ -135,14 +135,14 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
         val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
-        verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
+        verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
         val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
-        verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
+        verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
@@ -151,7 +151,7 @@ class SdJwtVcVerifierTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
         val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         try {
-            verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
+            verifier.verify(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
             assertEquals(VerificationError.InvalidJwt, exception.reason)
         }
@@ -184,6 +184,6 @@ class SdJwtVcVerifierTest {
 
             val serialized =
                 with(NimbusSdJwtOps) { sdJwt.serialize() }
-            verifier.verifyIssuance(serialized).getOrThrow()
+            verifier.verify(serialized).getOrThrow()
         }
 }

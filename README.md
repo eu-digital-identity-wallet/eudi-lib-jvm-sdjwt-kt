@@ -105,8 +105,6 @@ val issuedSdJwt: String = runBlocking {
 
 ## Holder Verification
 
-In this case, the SD-JWT is expected to be in serialized form.
-
 `Holder` must know:
 
 - the public key of the `Issuer` and the algorithm used by the Issuer to sign the SD-JWT
@@ -124,7 +122,7 @@ val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
         val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
         val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
         val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-        verifyIssuance(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
     }
 }
 ```
@@ -193,9 +191,8 @@ disclosed as well.
 
 ## Presentation Verification
 
-### In simple format
+### Using compact serialization
 
-In this case, the SD-JWT is expected to be in Combined Presentation format.
 Verifier should know the public key of the Issuer and the algorithm used by the Issuer
 to sign the SD-JWT. Also, if verification includes Key Binding, the Verifier must also
 know how the public key of the Holder was included in the SD-JWT and which algorithm
@@ -214,9 +211,8 @@ val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
         val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
         val jwtSignatureVerifier = RSASSAVerifier(issuerKeyPair).asJwtVerifier()
         val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
-        val (sdJwt, _) = verifyPresentation(
+        val sdJwt = verify(
             jwtSignatureVerifier,
-            KeyBindingVerifier.MustNotBePresent,
             unverifiedPresentationSdJwt,
         ).getOrThrow()
         sdJwt
@@ -389,7 +385,7 @@ The library support verifying
 More specifically, Issuer-signed JWT Verification Key Validation support is provided by
 [SdJwtVcVerifier](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/SdJwtVcVerifier.kt).  
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for code examples of
-verifying an Issuance SD-JWT VC and a Presentation SD-JWT VC (including verification of the Key Binding JWT).
+verifying an SD-JWT VC and an SD-JWT+KB VC (including verification of the Key Binding JWT).
 
 Example:
 
@@ -461,7 +457,7 @@ val sdJwtVcVerification = runBlocking {
     }
 
     val verifier = NimbusSdJwtOps.usingX5c { chain -> chain.firstOrNull() == certificate }
-    verifier.verifyIssuance(sdJwt)
+    verifier.verify(sdJwt)
 }
 ```
 

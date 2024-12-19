@@ -80,5 +80,5 @@ val sdJwtVcVerification = runBlocking {
     }
 
     val verifier = NimbusSdJwtOps.usingX5c { chain -> chain.firstOrNull() == certificate }
-    verifier.verifyIssuance(sdJwt)
+    verifier.verify(sdJwt)
 }

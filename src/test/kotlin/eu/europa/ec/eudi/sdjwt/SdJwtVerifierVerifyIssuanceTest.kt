@@ -66,7 +66,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
-            DefaultSdJwtOps.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt)
+            DefaultSdJwtOps.verify(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt)
         assertTrue { verification.isSuccess }
     }
 
@@ -75,7 +75,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: String,
     ) {
         val verifiedSdJwt =
-            DefaultSdJwtOps.verifyIssuance(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
+            DefaultSdJwtOps.verify(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
 
         val sdJwtWithOutSigVerification =
             DefaultSdJwtOps.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
@@ -123,7 +123,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
-        val verification = DefaultSdJwtOps.verifyIssuance(
+        val verification = DefaultSdJwtOps.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
         )
@@ -144,7 +144,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ) {
-        val verification = DefaultSdJwtOps.verifyIssuance(
+        val verification = DefaultSdJwtOps.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
         )
