@@ -521,47 +521,35 @@ private fun collectDigests(jwtClaims: JsonObject, disclosures: List<Disclosure>)
  * Extracts all the [digests][DisclosureDigest] from the given [claims],
  * including also subclaims
  *
- * @param claims to use
  * @return the digests found in the given [claims]
  */
-internal fun collectDigests(claims: JsonObject): List<DisclosureDigest> {
-    val digestsOf = object {
-        private val digestsOfJsonObject: DeepRecursiveFunction<JsonObject, List<DisclosureDigest>> =
-            DeepRecursiveFunction {
-                it.flatMap { (attribute, json) -> digestsOfClaim.callRecursive(attribute to json) }
+internal val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDigest>> =
+    DeepRecursiveFunction { claims ->
+        claims.flatMap { (attribute, json) ->
+            when {
+                attribute == SdJwtSpec.CLAIM_SD && json is JsonArray ->
+                    json.mapNotNull { element ->
+                        if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
+                        else null
+                    }
+
+                attribute == SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
+                    DisclosureDigest.wrap(json.content).getOrNull()
+                        ?.let { listOf(it) }
+                        ?: emptyList()
+
+                json is JsonObject -> callRecursive(json)
+
+                json is JsonArray ->
+                    json.flatMap {
+                        if (it is JsonObject) callRecursive(it)
+                        else emptyList()
+                    }
+
+                else -> emptyList()
             }
-
-        private val digestsOfClaim: DeepRecursiveFunction<Pair<String, JsonElement>, List<DisclosureDigest>> =
-            DeepRecursiveFunction { (attribute, json) ->
-                when {
-                    attribute == SdJwtSpec.CLAIM_SD && json is JsonArray ->
-                        json.mapNotNull { element ->
-                            if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
-                            else null
-                        }
-
-                    attribute == SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
-                        DisclosureDigest.wrap(json.content).getOrNull()
-                            ?.let { listOf(it) }
-                            ?: emptyList()
-
-                    json is JsonObject -> digestsOfJsonObject.callRecursive(json)
-
-                    json is JsonArray ->
-                        json.flatMap {
-                            if (it is JsonObject) digestsOfJsonObject.callRecursive(it)
-                            else emptyList()
-                        }
-
-                    else -> emptyList()
-                }
-            }
-
-        operator fun invoke(json: JsonObject): List<DisclosureDigest> = digestsOfJsonObject(json)
+        }
     }
-
-    return digestsOf(claims)
-}
 
 internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): String {
     val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) =
