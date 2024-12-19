@@ -307,7 +307,7 @@ class HolderActor(
         checkNotNull(presentationSdJwt)
 
         return with(NimbusSdJwtOps) {
-            val buildKbJwt = kbJwtIssuer(JWSAlgorithm.ES256, ECDSASigner(holderKey), holderKey.toPublicJWK()) {
+            val buildKbJwt = kbJwtIssuer(ECDSASigner(holderKey), JWSAlgorithm.ES256, holderKey.toPublicJWK()) {
                 audience(verifierQuery.challenge.aud)
                 claim("nonce", verifierQuery.challenge.nonce)
                 issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))

@@ -264,8 +264,8 @@ object NimbusSdJwtOps :
         NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
 
     fun kbJwtIssuer(
-        signAlgorithm: NimbusJWSAlgorithm,
         signer: NimbusJWSSigner,
+        signAlgorithm: NimbusJWSAlgorithm,
         publicKey: NimbusAsymmetricJWK,
         claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit = {},
     ): BuildKbJwt = BuildKbJwt { sdJwtDigest ->
