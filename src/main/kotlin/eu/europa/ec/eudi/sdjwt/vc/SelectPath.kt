@@ -46,13 +46,13 @@ fun interface SelectPath {
 
 private fun default(): SelectPath = SelectPath { path ->
     try {
-        Result.success(selectPath().invoke(this to path))
+        Result.success(selectPath(this to path))
     } catch (e: IllegalStateException) {
         Result.failure(e)
     }
 }
 
-private fun selectPath(): DeepRecursiveFunction<Pair<JsonElement, ClaimPath>, JsonElement?> =
+private val selectPath: DeepRecursiveFunction<Pair<JsonElement, ClaimPath>, JsonElement?> =
     DeepRecursiveFunction { (element, path) ->
         val (head, tail) = path
         head.fold(
