@@ -202,7 +202,7 @@ class SdJwtFactory(
             }
 
             array.forEach { (disclosable, element) ->
-                val (encodedArray, arrayElementDisclosures) = when (element) {
+                val (encodedArrayElement, contentDisclosures) = when (element) {
                     is DisclosableValue.Arr -> {
                         val (arrayElementDisclosures, encodedArrayElements) = callRecursive(element.value)
                         JsonArray(encodedArrayElements.map { it.toJsonElement() }) to arrayElementDisclosures
@@ -212,18 +212,16 @@ class SdJwtFactory(
                     is DisclosableValue.Obj -> encodeObject.callRecursive(element.value)
                 }
 
-                val (disclosuresToAdd, plainOrDigestElementToAdd) = when (disclosable) {
-                    Disclosable.Always -> arrayElementDisclosures to PlainOrDigest.Plain(encodedArray)
+                val (disclosuresToAdd, elementToAdd) = when (disclosable) {
+                    Disclosable.Always -> contentDisclosures to PlainOrDigest.Plain(encodedArrayElement)
                     Disclosable.Selectively -> {
-                        val (encodedElementDisclosure, encodedElementDigest) = disclosureOf(encodedArray)
-                        (arrayElementDisclosures + encodedElementDisclosure) to PlainOrDigest.Dig(
-                            encodedElementDigest,
-                        )
+                        val (arrayElementDisclosures, arrayElementDigest) = disclosureOf(encodedArrayElement)
+                        (contentDisclosures + arrayElementDisclosures) to PlainOrDigest.Dig(arrayElementDigest)
                     }
                 }
 
                 disclosures += disclosuresToAdd
-                plainOrDigestElements += plainOrDigestElementToAdd
+                plainOrDigestElements += elementToAdd
             }
 
             disclosures to plainOrDigestElements
