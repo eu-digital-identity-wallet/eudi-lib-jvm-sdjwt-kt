@@ -242,8 +242,7 @@ class SdJwtVcIssuanceTest {
                 EOtnT09YNGp9nZbETjor3nCzM0J0MvQ
             """.trimIndent().removeNewLine()
 
-        val (sdJwt, kbJwtAndClaims) =
-            sdJwtVcVerifier.verifyWithKeyBinding(unverified).getOrThrow()
+        val (sdJwt, kbJwtAndClaims) = sdJwtVcVerifier.verify(unverified, null).getOrThrow()
         val (kbJwt, kbJwtClaims) = assertNotNull(kbJwtAndClaims)
 
         println(json.encodeToString(JsonObject(kbJwtClaims)))

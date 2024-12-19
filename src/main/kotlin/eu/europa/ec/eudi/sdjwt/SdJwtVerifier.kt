@@ -280,7 +280,9 @@ interface SdJwtVerifier<JWT> {
 
     /**
      * Verifies an SD-JWT serialized using compact serialization.
-     * Typically, this is useful to Holder that wants to verify an issued SD-JWT
+     *
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT, or to Verifier that wants to verify
+     * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param jwtSignatureVerifier the verification the SD-JWT signature.
      * To provide an implementation of this,
@@ -299,7 +301,8 @@ interface SdJwtVerifier<JWT> {
      * Verifies an SD-JWT serialized using JWS JSON serialization (either general or flattened format) as defined by RFC7515
      * and extended by SD-JWT specification.
      *
-     * Typically, this is useful to Holder that wants to verify an issued SD-JWT
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT, or to Verifier that wants to verify
+     * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param jwtSignatureVerifier the verification the SD-JWT signature.
      * To provide an implementation of this,
@@ -319,7 +322,8 @@ interface SdJwtVerifier<JWT> {
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
-     * Typically, this is useful to Verifier that want to verify presentation SD-JWT communicated by Holders.
+     *
+     * Typically, this is useful to Verifiers that want to verify presentation SD-JWT communicated by Holders.
      *
      * @param jwtSignatureVerifier the verification of SD-JWT signature.
      * To provide an implementation of this,
@@ -339,11 +343,12 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: KeyBindingVerifier.MustBePresentAndValid<JWT>,
         unverifiedSdJwt: String,
-    ): Result<Pair<SdJwt<JWT>, JWT>>
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
-     * Typically, this is useful to Verifier that want to verify presentation SD-JWT communicated by Holders
+     *
+     * Typically, this is useful to Verifiers that want to verify presentation SD-JWT communicated by Holders
      *
      * @param jwtSignatureVerifier the verification of SD-JWT signature.
      * To provide an implementation of this,
@@ -363,7 +368,7 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: KeyBindingVerifier.MustBePresentAndValid<JWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<Pair<SdJwt<JWT>, JWT>>
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     companion object {
 
@@ -394,17 +399,17 @@ interface SdJwtVerifier<JWT> {
                 jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                 keyBindingVerifier: KeyBindingVerifier.MustBePresentAndValid<JWT>,
                 unverifiedSdJwt: String,
-            ): Result<Pair<SdJwt<JWT>, JWT>> = runCatching {
+            ): Result<SdJwtAndKbJwt<JWT>> = runCatching {
                 val (sdJwt, kbJwt) = doVerify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
                 checkNotNull(kbJwt) { "KeyBinding JWT is expected" }
-                sdJwt to kbJwt
+                SdJwtAndKbJwt(sdJwt, kbJwt)
             }
 
             override suspend fun verify(
                 jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                 keyBindingVerifier: KeyBindingVerifier.MustBePresentAndValid<JWT>,
                 unverifiedSdJwt: JsonObject,
-            ): Result<Pair<SdJwt<JWT>, JWT>> = verify(
+            ): Result<SdJwtAndKbJwt<JWT>> = verify(
                 jwtSignatureVerifier,
                 keyBindingVerifier,
                 JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt),

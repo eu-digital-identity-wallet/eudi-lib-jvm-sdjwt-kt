@@ -307,7 +307,7 @@ private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
 private val NimbusPresentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
     SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
 
-private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier({ jwt -> jwt.jwtClaimsSet.jsonObject() })
+private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier { jwt -> jwt.jwtClaimsSet.jsonObject() }
 
 /**
  * Creates a function that given some claims signs them producing a [NimbusSignedJWT]

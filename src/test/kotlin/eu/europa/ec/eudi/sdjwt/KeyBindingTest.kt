@@ -336,7 +336,7 @@ class VerifierActor(
     ).also { lastChallenge = it.challenge.asJson() }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
-        val (presented, _) = verifier.verifyWithKeyBinding(unverifiedSdJwt, lastChallenge).getOrThrow()
+        val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
         presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
