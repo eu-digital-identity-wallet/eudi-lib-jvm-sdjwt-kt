@@ -106,7 +106,12 @@ class SdJwtFactory(
      */
     private val encodeClaim: DeepRecursiveFunction<Pair<String, DisclosableElement>, EncodedSdElement> =
         DeepRecursiveFunction { (claimName, disclosableElement) ->
-            fun encodeSelectivelyDisclosable(disclosable: JsonElement): EncodedSdElement {
+            fun encodeAlwaysDisclosableElement(disclosable: JsonElement): EncodedSdElement {
+                val plainClaim = JsonObject(mapOf(claimName to disclosable))
+                return plainClaim to emptyList()
+            }
+
+            fun encodeSelectivelyDisclosableElement(disclosable: JsonElement): EncodedSdElement {
                 val claim = claimName to disclosable
                 val (disclosure, digest) = objectPropertyDisclosure(claim)
                 val digestAndDecoys = setOf(digest)
@@ -114,31 +119,64 @@ class SdJwtFactory(
                 return sdClaim to listOf(disclosure)
             }
 
-            val (disclosable, element) = disclosableElement
-            val (encodedClaimValue, contentDisclosures) = when (element) {
-                is DisclosableValue.Arr -> {
-                    val (arrayElementDisclosures, encodedArrayElements) = encodeArray.callRecursive(element.value)
-                    val actualDisclosureDigests = encodedArrayElements.filterIsInstance<PlainOrDigest.Dig>().size
-                    val decoys = genDecoys(actualDisclosureDigests, element.value.minimumDigests).map { PlainOrDigest.Dig(it) }
+            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<DisclosableObject, EncodedSdElement> =
+                DeepRecursiveFunction { disclosable ->
+                    val (encodedSubClaims, disclosures) = encodeObject.callRecursive(disclosable)
+                    val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
+                    structuredSdClaim to disclosures
+                }
+
+            val encodeSelectivelyDisclosableObject: DeepRecursiveFunction<DisclosableObject, EncodedSdElement> =
+                DeepRecursiveFunction { disclosable ->
+                    val (contentClaims, contentDisclosures) = encodeObject.callRecursive(disclosable)
+                    val wrapper = contentClaims
+                    val (wrapperClaim, wrapperDisclosures) = encodeSelectivelyDisclosableElement(wrapper)
+                    val disclosures = contentDisclosures + wrapperDisclosures
+                    wrapperClaim to disclosures
+                }
+
+            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<DisclosableArray, EncodedSdElement> =
+                DeepRecursiveFunction { disclosable ->
+                    val (disclosures, plainOrDigestElements) = encodeArray.callRecursive(disclosable)
+                    val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
+                    val decoys =
+                        genDecoys(actualDisclosureDigests, disclosable.minimumDigests).map { PlainOrDigest.Dig(it) }
                     val allElements = JsonArray(
-                        (encodedArrayElements + decoys).map {
+                        (plainOrDigestElements + decoys).map {
                             when (it) {
                                 is PlainOrDigest.Dig -> it.value.asDigestClaim()
                                 is PlainOrDigest.Plain -> it.value
                             }
                         },
                     )
-                    allElements to arrayElementDisclosures
+                    val arrayClaim = JsonObject(mapOf(claimName to allElements))
+                    arrayClaim to disclosures
                 }
-                is DisclosableValue.Json -> element.value to emptyList()
-                is DisclosableValue.Obj -> encodeObject.callRecursive(element.value)
-            }
 
-            when (disclosable) {
-                Disclosable.Always -> JsonObject(mapOf(claimName to encodedClaimValue)) to contentDisclosures
-                Disclosable.Selectively -> {
-                    val (encoded, disclosure) = encodeSelectivelyDisclosable(encodedClaimValue)
-                    encoded to (contentDisclosures + disclosure)
+            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<DisclosableArray, EncodedSdElement> =
+                DeepRecursiveFunction { disclosable ->
+                    val (contentClaims, contentDisclosures) = encodeAlwaysDisclosableArray.callRecursive(disclosable)
+                    val wrapper = checkNotNull(contentClaims[claimName])
+                    val (wrapperClaim, wrapperDisclosures) = encodeSelectivelyDisclosableElement(wrapper)
+                    val disclosures = contentDisclosures + wrapperDisclosures
+                    wrapperClaim to disclosures
+                }
+
+            val (disclosable, element) = disclosableElement
+            when (element) {
+                is DisclosableValue.Json -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableElement(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableElement(element.value)
+                }
+
+                is DisclosableValue.Arr -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableArray.callRecursive(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableArray.callRecursive(element.value)
+                }
+
+                is DisclosableValue.Obj -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableObject.callRecursive(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableObject.callRecursive(element.value)
                 }
             }
         }
