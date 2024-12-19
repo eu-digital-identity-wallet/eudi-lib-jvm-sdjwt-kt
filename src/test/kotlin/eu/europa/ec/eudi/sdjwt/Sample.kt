@@ -123,5 +123,5 @@ suspend fun main() {
 
 suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt<SignedJWT>> = with(NimbusSdJwtOps) {
     val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
-    return verifyIssuance(jwtVer, sdJwt)
+    return verify(jwtVer, sdJwt)
 }
