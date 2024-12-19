@@ -35,8 +35,8 @@ class StandardSerializationTest {
     private val keyBindingSigner: BuildKbJwt by lazy {
         val holderKey = ECKeyGenerator(Curve.P_256).generate()
         NimbusSdJwtOps.kbJwtIssuer(
-            signAlgorithm = JWSAlgorithm.ES256,
             signer = ECDSASigner(holderKey),
+            signAlgorithm = JWSAlgorithm.ES256,
             publicKey = holderKey.toPublicJWK(),
         )
     }

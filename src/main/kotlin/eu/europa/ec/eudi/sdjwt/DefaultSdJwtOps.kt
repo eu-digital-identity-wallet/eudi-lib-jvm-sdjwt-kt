@@ -24,8 +24,7 @@ object DefaultSdJwtOps :
     SdJwtVerifier<JwtAndClaims> by DefaultVerifier,
     SdJwtSerializationOps<JwtAndClaims> by DefaultSerializationOps,
     SdJwtPresentationOps<JwtAndClaims> by DefaultPresentationOps,
-    UnverifiedIssuanceFrom<JwtAndClaims> by DefaultSdJwtUnverifiedIssuanceFrom,
-    SdJwtVcVerifierFactory<JwtAndClaims> by DefaultSdJwtVcFactory {
+    UnverifiedIssuanceFrom<JwtAndClaims> by DefaultSdJwtUnverifiedIssuanceFrom {
 
     val NoSignatureValidation: JwtSignatureVerifier<JwtAndClaims> =
         JwtSignatureVerifier { unverifiedJwt ->
@@ -35,6 +34,8 @@ object DefaultSdJwtOps :
 
     val KeyBindingVerifierMustBePresent: KeyBindingVerifier<JwtAndClaims> =
         KeyBindingVerifier.mustBePresent(NoSignatureValidation)
+
+    val SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims> = DefaultSdJwtVcFactory
 }
 
 private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
