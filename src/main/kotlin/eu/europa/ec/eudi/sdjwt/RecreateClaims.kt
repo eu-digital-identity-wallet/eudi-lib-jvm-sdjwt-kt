@@ -135,7 +135,7 @@ private class DiscloseObject(
     operator fun invoke(
         currentPath: ClaimPath?,
         jsonObject: JsonObject,
-    ): JsonObject = discloseObject(currentPath, jsonObject)
+    ): JsonObject = discloseObject(currentPath to jsonObject)
 
     //
     // Any JSON Element
@@ -151,32 +151,29 @@ private class DiscloseObject(
      *
      * @return a JSON element where all digests have been replaced by disclosed claims
      */
-    private fun discloseElement(
-        currentPath: ClaimPath,
-        element: JsonElement,
-    ): JsonElement {
-        visited(currentPath, null)
-        return when (element) {
-            is JsonObject -> discloseObject(currentPath, element)
-            is JsonArray -> discloseArray(currentPath, element)
-            else -> element
+    private val discloseElement: DeepRecursiveFunction<Pair<ClaimPath, JsonElement>, JsonElement> =
+        DeepRecursiveFunction { (currentPath, element) ->
+            visited(currentPath, null)
+            when (element) {
+                is JsonObject -> discloseObject.callRecursive(currentPath to element)
+                is JsonArray -> discloseArray.callRecursive(currentPath to element)
+                else -> element
+            }
         }
-    }
 
     //
     // JSON Object
     //
 
-    private fun discloseObject(
-        currentPath: ClaimPath?,
-        jsonObject: JsonObject,
-    ): JsonObject =
-        replaceObjectDigests(currentPath, jsonObject)
-            .mapValues { (name, element) ->
-                val nestedPath = currentPath?.claim(name) ?: ClaimPath.claim(name)
-                discloseElement(nestedPath, element)
-            }
-            .let { obj -> JsonObject(obj) }
+    private val discloseObject: DeepRecursiveFunction<Pair<ClaimPath?, JsonObject>, JsonObject> =
+        DeepRecursiveFunction { (currentPath, jsonObject) ->
+            replaceObjectDigests(currentPath, jsonObject)
+                .mapValues { (name, element) ->
+                    val nestedPath = currentPath?.claim(name) ?: ClaimPath.claim(name)
+                    discloseElement.callRecursive(nestedPath to element)
+                }
+                .let { obj -> JsonObject(obj) }
+        }
 
     /**
      * Replaces the direct (immediate) digests found in the _sd claim
@@ -222,42 +219,38 @@ private class DiscloseObject(
     // JSON Array
     //
 
-    private fun discloseArray(
-        currentPath: ClaimPath,
-        jsonArray: JsonArray,
-    ): JsonArray = buildJsonArray {
-        var index = 0
-        jsonArray.forEach { element ->
-            discloseArrayElement(currentPath, element, index)
-                ?.let {
-                    add(it)
-                    index++
+    private val discloseArray: DeepRecursiveFunction<Pair<ClaimPath, JsonArray>, JsonArray> =
+        DeepRecursiveFunction { (currentPath, jsonArray) ->
+            buildJsonArray {
+                var index = 0
+                jsonArray.forEach { element ->
+                    discloseArrayElement.callRecursive(Triple(currentPath, element, index))
+                        ?.let {
+                            add(it)
+                            index++
+                        }
                 }
-        }
-    }
-
-    private fun discloseArrayElement(
-        currentPath: ClaimPath,
-        arrayElement: JsonElement,
-        index: Int,
-    ): JsonElement? {
-        val elementPath = currentPath.arrayElement(index)
-        val disclosedElement =
-            when (val disclosed = DisclosedArrayElement.of(arrayElement)) {
-                is DisclosedArrayElement.Digest -> {
-                    replaceArrayDigest(elementPath, disclosed.digest)
-                }
-
-                DisclosedArrayElement.Object -> {
-                    visited(elementPath, null)
-                    arrayElement
-                }
-
-                DisclosedArrayElement.NotAnObject -> arrayElement
             }
-        return disclosedElement
-            ?.let { discloseElement(elementPath, it) }
-    }
+        }
+
+    private val discloseArrayElement: DeepRecursiveFunction<Triple<ClaimPath, JsonElement, Int>, JsonElement?> =
+        DeepRecursiveFunction { (currentPath, arrayElement, index) ->
+            val elementPath = currentPath.arrayElement(index)
+            val disclosedElement =
+                when (val disclosed = DisclosedArrayElement.of(arrayElement)) {
+                    is DisclosedArrayElement.Digest -> {
+                        replaceArrayDigest(elementPath, disclosed.digest)
+                    }
+
+                    DisclosedArrayElement.Object -> {
+                        visited(elementPath, null)
+                        arrayElement
+                    }
+
+                    DisclosedArrayElement.NotAnObject -> arrayElement
+                }
+            disclosedElement?.let { discloseElement.callRecursive(elementPath to it) }
+        }
 
     private fun replaceArrayDigest(
         current: ClaimPath,
