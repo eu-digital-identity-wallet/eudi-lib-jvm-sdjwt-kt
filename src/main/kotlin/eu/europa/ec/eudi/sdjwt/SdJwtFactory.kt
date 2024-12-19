@@ -115,7 +115,7 @@ class SdJwtFactory(
             }
 
             val (disclosable, element) = disclosableElement
-            val (encodedElementValue, contentDisclosures) = when (element) {
+            val (encodedClaimValue, contentDisclosures) = when (element) {
                 is DisclosableValue.Arr -> {
                     val (arrayElementDisclosures, encodedArrayElements) = encodeArray.callRecursive(element.value)
                     val actualDisclosureDigests = encodedArrayElements.filterIsInstance<PlainOrDigest.Dig>().size
@@ -135,10 +135,10 @@ class SdJwtFactory(
             }
 
             when (disclosable) {
-                Disclosable.Always -> JsonObject(mapOf(claimName to encodedElementValue)) to contentDisclosures
+                Disclosable.Always -> JsonObject(mapOf(claimName to encodedClaimValue)) to contentDisclosures
                 Disclosable.Selectively -> {
-                    val (encodedElement, elementDisclosure) = encodeSelectivelyDisclosable(encodedElementValue)
-                    encodedElement to (contentDisclosures + elementDisclosure)
+                    val (encoded, disclosure) = encodeSelectivelyDisclosable(encodedClaimValue)
+                    encoded to (contentDisclosures + disclosure)
                 }
             }
         }
