@@ -57,11 +57,6 @@ class SdJwtFactory(
         SdJwt(jwtClaimSet, disclosures)
     }
 
-    /**
-     * Encodes a set of [SD-JWT element][DisclosableObject]
-     *
-     * @return the [UnsignedSdJwt]
-     */
     private val encodeObject: DeepRecursiveFunction<DisclosableObject, EncodedSdElement> =
         DeepRecursiveFunction { disclosableObject ->
             val disclosures = mutableListOf<Disclosure>()
@@ -97,13 +92,20 @@ class SdJwtFactory(
             sdObjectClaims to disclosures
         }
 
-    /**
-     * Produces the disclosures and the JWT claims (which include digests)
-     * for the given claim
-     *
-     * @return the disclosures and the JWT claims (which include digests)
-     *  for the given claim
-     */
+    private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, List<PlainOrDigest>>> =
+        DeepRecursiveFunction { array ->
+            val disclosures = mutableListOf<Disclosure>()
+            val plainOrDigestElements = mutableListOf<PlainOrDigest>()
+
+            array.forEach {
+                val (disclosuresToAdd, elementToAdd) = encodeArrayElement.callRecursive(it)
+                disclosures += disclosuresToAdd
+                plainOrDigestElements += elementToAdd
+            }
+
+            disclosures to plainOrDigestElements
+        }
+
     private val encodeClaim: DeepRecursiveFunction<Pair<String, DisclosableElement>, EncodedSdElement> =
         DeepRecursiveFunction { (claimName, disclosableElement) ->
             fun encodeAlwaysDisclosableElement(disclosable: JsonElement): EncodedSdElement {
@@ -174,67 +176,6 @@ class SdJwtFactory(
             }
         }
 
-    /**
-     * Adds the hash algorithm claim if disclosures are present
-     * @param h the hash algorithm
-     * @return a new [EncodedSdElement] with an updated claims to
-     * contain the hash algorithm claim, if disclosures are present
-     */
-    private fun EncodedSdElement.addHashAlgClaim(h: HashAlgorithm): EncodedSdElement {
-        val (jwtClaimSet, disclosures) = this
-        return if (disclosures.isEmpty()) this
-        else {
-            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec.CLAIM_SD_ALG to JsonPrimitive(h.alias)))
-            newClaimSet to disclosures
-        }
-    }
-
-    /**
-     * Generates decoys, if needed.
-     *
-     */
-    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): Set<DisclosureDigest> {
-        val min = (minimumDigests ?: fallbackMinimumDigests)?.value ?: 0
-        val numOfDecoys = min - disclosureDigests
-        return decoyGen.gen(hashAlgorithm, numOfDecoys)
-    }
-
-    private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
-        if (isEmpty()) JsonObject(emptyMap())
-        else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
-
-    private fun Map<String, JsonElement>.sdClaim(): List<JsonElement> =
-        this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
-
-    private fun DisclosureDigest.asDigestClaim(): JsonObject {
-        return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
-    }
-
-    private fun objectPropertyDisclosure(claim: Claim): Pair<Disclosure, DisclosureDigest> {
-        val disclosure = Disclosure.objectProperty(saltProvider, claim).getOrThrow()
-        val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
-        return disclosure to digest
-    }
-
-    private fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
-        is PlainOrDigest.Plain -> value
-        is PlainOrDigest.Dig -> value.asDigestClaim()
-    }
-
-    private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, List<PlainOrDigest>>> =
-        DeepRecursiveFunction { array ->
-            val disclosures = mutableListOf<Disclosure>()
-            val plainOrDigestElements = mutableListOf<PlainOrDigest>()
-
-            array.forEach {
-                val (disclosuresToAdd, elementToAdd) = encodeArrayElement.callRecursive(it)
-                disclosures += disclosuresToAdd
-                plainOrDigestElements += elementToAdd
-            }
-
-            disclosures to plainOrDigestElements
-        }
-
     private val encodeArrayElement: DeepRecursiveFunction<DisclosableElement, Pair<List<Disclosure>, PlainOrDigest>> =
         DeepRecursiveFunction { (disclosable, element) ->
             fun encodeAlwaysDisclosableElement(disclosable: JsonElement): Pair<List<Disclosure>, PlainOrDigest> {
@@ -297,6 +238,53 @@ class SdJwtFactory(
                 }
             }
         }
+
+    /**
+     * Adds the hash algorithm claim if disclosures are present
+     * @param h the hash algorithm
+     * @return a new [EncodedSdElement] with an updated claims to
+     * contain the hash algorithm claim, if disclosures are present
+     */
+    private fun EncodedSdElement.addHashAlgClaim(h: HashAlgorithm): EncodedSdElement {
+        val (jwtClaimSet, disclosures) = this
+        return if (disclosures.isEmpty()) this
+        else {
+            val newClaimSet = JsonObject(jwtClaimSet + (SdJwtSpec.CLAIM_SD_ALG to JsonPrimitive(h.alias)))
+            newClaimSet to disclosures
+        }
+    }
+
+    /**
+     * Generates decoys, if needed.
+     *
+     */
+    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): Set<DisclosureDigest> {
+        val min = (minimumDigests ?: fallbackMinimumDigests)?.value ?: 0
+        val numOfDecoys = min - disclosureDigests
+        return decoyGen.gen(hashAlgorithm, numOfDecoys)
+    }
+
+    private fun Set<DisclosureDigest>.sdClaim(): JsonObject =
+        if (isEmpty()) JsonObject(emptyMap())
+        else JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(map { JsonPrimitive(it.value) })))
+
+    private fun Map<String, JsonElement>.sdClaim(): List<JsonElement> =
+        this[SdJwtSpec.CLAIM_SD]?.jsonArray ?: emptyList()
+
+    private fun DisclosureDigest.asDigestClaim(): JsonObject {
+        return JsonObject(mapOf(SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST to JsonPrimitive(value)))
+    }
+
+    private fun objectPropertyDisclosure(claim: Claim): Pair<Disclosure, DisclosureDigest> {
+        val disclosure = Disclosure.objectProperty(saltProvider, claim).getOrThrow()
+        val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
+        return disclosure to digest
+    }
+
+    private fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
+        is PlainOrDigest.Plain -> value
+        is PlainOrDigest.Dig -> value.asDigestClaim()
+    }
 
     companion object {
 
