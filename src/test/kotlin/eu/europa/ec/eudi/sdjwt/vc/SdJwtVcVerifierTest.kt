@@ -134,14 +134,14 @@ class SdJwtVcVerifierTest {
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
@@ -149,7 +149,7 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should not verify an SD-JWT-VC when iss is HTTPS url using wrong kid`() = runTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
-        val verifier = DefaultSdJwtOps.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
+        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata { HttpMock.clientReturning(SampleIssuer.issuerMeta) }
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
@@ -177,7 +177,7 @@ class SdJwtVcVerifierTest {
                 signer.issue(spec).getOrThrow()
             }
 
-            val verifier = DefaultSdJwtOps.usingDID { did, _ ->
+            val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingDID { did, _ ->
                 assertEquals(didJwk, did)
                 listOf(key.toPublicJWK())
             }

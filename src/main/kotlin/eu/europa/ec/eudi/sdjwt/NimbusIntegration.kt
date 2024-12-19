@@ -154,8 +154,7 @@ private object NimbusSdJwtIssuerFactory {
 object NimbusSdJwtOps :
     SdJwtSerializationOps<NimbusSignedJWT> by NimbusSerializationOps,
     SdJwtPresentationOps<NimbusSignedJWT> by NimbusPresentationOps,
-    SdJwtVerifier<NimbusSignedJWT> by NimbusVerifier,
-    SdJwtVcVerifierFactory<NimbusSignedJWT> by NimbusSdJwtVcFactory {
+    SdJwtVerifier<NimbusSignedJWT> by NimbusVerifier {
 
     /**
      * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
@@ -287,6 +286,8 @@ object NimbusSdJwtOps :
             }
         }
     }
+
+    val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT> = NimbusSdJwtVcFactory
 }
 
 private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
