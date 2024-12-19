@@ -141,14 +141,7 @@ class SdJwtFactory(
                     val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
                     val decoys =
                         genDecoys(actualDisclosureDigests, disclosable.minimumDigests).map { PlainOrDigest.Dig(it) }
-                    val allElements = JsonArray(
-                        (plainOrDigestElements + decoys).map {
-                            when (it) {
-                                is PlainOrDigest.Dig -> it.value.asDigestClaim()
-                                is PlainOrDigest.Plain -> it.value
-                            }
-                        },
-                    )
+                    val allElements = JsonArray((plainOrDigestElements + decoys).map { it.toJsonElement() })
                     val arrayClaim = JsonObject(mapOf(claimName to allElements))
                     arrayClaim to disclosures
                 }
@@ -223,46 +216,86 @@ class SdJwtFactory(
         return disclosure to digest
     }
 
+    private fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
+        is PlainOrDigest.Plain -> value
+        is PlainOrDigest.Dig -> value.asDigestClaim()
+    }
+
     private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, List<PlainOrDigest>>> =
         DeepRecursiveFunction { array ->
+            val disclosures = mutableListOf<Disclosure>()
+            val plainOrDigestElements = mutableListOf<PlainOrDigest>()
+
+            array.forEach {
+                val (disclosuresToAdd, elementToAdd) = encodeArrayElement.callRecursive(it)
+                disclosures += disclosuresToAdd
+                plainOrDigestElements += elementToAdd
+            }
+
+            disclosures to plainOrDigestElements
+        }
+
+    private val encodeArrayElement: DeepRecursiveFunction<DisclosableElement, Pair<List<Disclosure>, PlainOrDigest>> =
+        DeepRecursiveFunction { (disclosable, element) ->
+            fun encodeAlwaysDisclosableElement(disclosable: JsonElement): Pair<List<Disclosure>, PlainOrDigest> {
+                return (emptyList<Disclosure>() to PlainOrDigest.Plain(disclosable))
+            }
+
             fun disclosureOf(jsonElement: JsonElement): Pair<Disclosure, DisclosureDigest> {
                 val disclosure = Disclosure.arrayElement(saltProvider, jsonElement).getOrThrow()
                 val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
                 return disclosure to digest
             }
 
-            val disclosures = mutableListOf<Disclosure>()
-            val plainOrDigestElements = mutableListOf<PlainOrDigest>()
-
-            fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
-                is PlainOrDigest.Plain -> value
-                is PlainOrDigest.Dig -> value.asDigestClaim()
+            fun encodeSelectivelyDisclosableElement(disclosable: JsonElement): Pair<List<Disclosure>, PlainOrDigest> {
+                val (disclosure, digest) = disclosureOf(disclosable)
+                return listOf(disclosure) to PlainOrDigest.Dig(digest)
             }
 
-            array.forEach { (disclosable, element) ->
-                val (encodedArrayElement, contentDisclosures) = when (element) {
-                    is DisclosableValue.Arr -> {
-                        val (arrayElementDisclosures, encodedArrayElements) = callRecursive(element.value)
-                        JsonArray(encodedArrayElements.map { it.toJsonElement() }) to arrayElementDisclosures
-                    }
-
-                    is DisclosableValue.Json -> element.value to emptyList()
-                    is DisclosableValue.Obj -> encodeObject.callRecursive(element.value)
+            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<DisclosableObject, Pair<List<Disclosure>, PlainOrDigest>> =
+                DeepRecursiveFunction { disclosable ->
+                    val (json, ds) = encodeObject.callRecursive(disclosable)
+                    ds to PlainOrDigest.Plain(json)
                 }
 
-                val (disclosuresToAdd, elementToAdd) = when (disclosable) {
-                    Disclosable.Always -> contentDisclosures to PlainOrDigest.Plain(encodedArrayElement)
-                    Disclosable.Selectively -> {
-                        val (arrayElementDisclosures, arrayElementDigest) = disclosureOf(encodedArrayElement)
-                        (contentDisclosures + arrayElementDisclosures) to PlainOrDigest.Dig(arrayElementDigest)
-                    }
+            val encodeSelectivelyDisclosableObject: DeepRecursiveFunction<DisclosableObject, Pair<List<Disclosure>, PlainOrDigest>> =
+                DeepRecursiveFunction { disclosable ->
+                    val (json, ds) = encodeObject.callRecursive(disclosable)
+                    val (ds2, dig) = disclosureOf(json)
+                    (ds + ds2) to PlainOrDigest.Dig(dig)
                 }
 
-                disclosures += disclosuresToAdd
-                plainOrDigestElements += elementToAdd
+            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
+                DeepRecursiveFunction { disclosable ->
+                    val (ds, elems) = encodeArray.callRecursive(disclosable)
+                    val json = JsonArray(elems.map { it.toJsonElement() })
+                    ds to PlainOrDigest.Plain(json)
+                }
+
+            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
+                DeepRecursiveFunction { disclosable ->
+                    val (ds, elems) = encodeArray.callRecursive(disclosable)
+                    val json = JsonArray(elems.map { it.toJsonElement() })
+                    val (ds2, dig) = disclosureOf(json)
+                    (ds + ds2) to PlainOrDigest.Dig(dig)
+                }
+
+            when (element) {
+                is DisclosableValue.Json -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableElement(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableElement(element.value)
+                }
+
+                is DisclosableValue.Obj -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableObject.callRecursive(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableObject.callRecursive(element.value)
+                }
+
+                is DisclosableValue.Arr -> when (disclosable) {
+                    Disclosable.Always -> encodeAlwaysDisclosableArray.callRecursive(element.value)
+                    Disclosable.Selectively -> encodeSelectivelyDisclosableArray.callRecursive(element.value)
+                }
             }
-
-            disclosures to plainOrDigestElements
         }
 
     companion object {
