@@ -441,22 +441,23 @@ val sdJwtVcVerification = runBlocking {
         X509CertUtils.parse(holder.encoded)
     }
 
-    val sdJwt = run {
-        val spec = sdJwt {
-            claim(RFC7519.ISSUER, issuer.toExternalForm())
-            claim(SdJwtVcSpec.VCT, "urn:credential:sample")
-        }
-        with(NimbusSdJwtOps) {
+    with(NimbusSdJwtOps) {
+        val sdJwt = run {
+            val spec = sdJwt {
+                claim(RFC7519.ISSUER, issuer.toExternalForm())
+                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
+            }
+
             val signer = issuer(signer = ECDSASigner(key), signAlgorithm = JWSAlgorithm.ES512) {
                 type(JOSEObjectType("vc+sd-jwt"))
                 x509CertChain(listOf(Base64.encode(certificate.encoded)))
             }
             signer.issue(spec).getOrThrow().serialize()
         }
-    }
 
-    val verifier = NimbusSdJwtOps.usingX5c { chain -> chain.firstOrNull() == certificate }
-    verifier.verify(sdJwt)
+        val verifier = SdJwtVcVerifier.usingX5c { chain -> chain.firstOrNull() == certificate }
+        verifier.verify(sdJwt)
+    }
 }
 ```
 
