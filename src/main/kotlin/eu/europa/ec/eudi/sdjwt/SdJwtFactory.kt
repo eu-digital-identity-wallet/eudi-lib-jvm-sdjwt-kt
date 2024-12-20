@@ -92,8 +92,13 @@ class SdJwtFactory(
             sdObjectClaims to disclosures
         }
 
-    private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, List<PlainOrDigest>>> =
+    private val encodeArray: DeepRecursiveFunction<DisclosableArray, Pair<JsonArray, List<Disclosure>>> =
         DeepRecursiveFunction { array ->
+            fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
+                is PlainOrDigest.Plain -> value
+                is PlainOrDigest.Dig -> value.asDigestClaim()
+            }
+
             val disclosures = mutableListOf<Disclosure>()
             val plainOrDigestElements = mutableListOf<PlainOrDigest>()
 
@@ -103,7 +108,11 @@ class SdJwtFactory(
                 plainOrDigestElements += elementToAdd
             }
 
-            disclosures to plainOrDigestElements
+            val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
+            val decoys = genDecoys(actualDisclosureDigests, array.minimumDigests).map { PlainOrDigest.Dig(it) }
+            val allElements = JsonArray((plainOrDigestElements + decoys).map { it.toJsonElement() })
+
+            allElements to disclosures
         }
 
     private val encodeClaim: DeepRecursiveFunction<Pair<String, DisclosableElement>, EncodedSdElement> =
@@ -139,11 +148,7 @@ class SdJwtFactory(
 
             val encodeAlwaysDisclosableArray: DeepRecursiveFunction<DisclosableArray, EncodedSdElement> =
                 DeepRecursiveFunction { disclosable ->
-                    val (disclosures, plainOrDigestElements) = encodeArray.callRecursive(disclosable)
-                    val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
-                    val decoys =
-                        genDecoys(actualDisclosureDigests, disclosable.minimumDigests).map { PlainOrDigest.Dig(it) }
-                    val allElements = JsonArray((plainOrDigestElements + decoys).map { it.toJsonElement() })
+                    val (allElements, disclosures) = encodeArray.callRecursive(disclosable)
                     val arrayClaim = JsonObject(mapOf(claimName to allElements))
                     arrayClaim to disclosures
                 }
@@ -208,15 +213,13 @@ class SdJwtFactory(
 
             val encodeAlwaysDisclosableArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
-                    val (ds, elems) = encodeArray.callRecursive(disclosable)
-                    val json = JsonArray(elems.map { it.toJsonElement() })
+                    val (json, ds) = encodeArray.callRecursive(disclosable)
                     ds to PlainOrDigest.Plain(json)
                 }
 
             val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<DisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
-                    val (ds, elems) = encodeArray.callRecursive(disclosable)
-                    val json = JsonArray(elems.map { it.toJsonElement() })
+                    val (json, ds) = encodeArray.callRecursive(disclosable)
                     val (ds2, dig) = disclosureOf(json)
                     (ds + ds2) to PlainOrDigest.Dig(dig)
                 }
@@ -279,11 +282,6 @@ class SdJwtFactory(
         val disclosure = Disclosure.objectProperty(saltProvider, claim).getOrThrow()
         val digest = DisclosureDigest.digest(hashAlgorithm, disclosure).getOrThrow()
         return disclosure to digest
-    }
-
-    private fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
-        is PlainOrDigest.Plain -> value
-        is PlainOrDigest.Dig -> value.asDigestClaim()
     }
 
     companion object {
