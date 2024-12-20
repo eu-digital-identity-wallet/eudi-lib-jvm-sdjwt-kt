@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.*
+import kotlin.random.Random
 
 private typealias EncodedSdElement = Pair<JsonObject, List<Disclosure>>
 
@@ -110,7 +111,12 @@ class SdJwtFactory(
 
             val actualDisclosureDigests = plainOrDigestElements.filterIsInstance<PlainOrDigest.Dig>().size
             val decoys = genDecoys(actualDisclosureDigests, array.minimumDigests).map { PlainOrDigest.Dig(it) }
-            val allElements = JsonArray((plainOrDigestElements + decoys).map { it.toJsonElement() })
+            decoys.forEach { decoy ->
+                val index = Random.nextInt(plainOrDigestElements.size + 1)
+                plainOrDigestElements.add(index, decoy)
+            }
+
+            val allElements = JsonArray(plainOrDigestElements.map { it.toJsonElement() })
 
             allElements to disclosures
         }
