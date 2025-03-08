@@ -187,7 +187,7 @@ enum class JwsSerializationOption {
 
 internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> = runCatching {
     fun json(s: String): JsonObject {
-        val decoded = JwtBase64.decode(s).toString(Charsets.UTF_8)
+        val decoded = Base64UrlNoPadding.decode(s).toString(Charsets.UTF_8)
         return Json.parseToJsonElement(decoded).jsonObject
     }
     val (h, p, s) = splitJwt(jwt).getOrThrow()

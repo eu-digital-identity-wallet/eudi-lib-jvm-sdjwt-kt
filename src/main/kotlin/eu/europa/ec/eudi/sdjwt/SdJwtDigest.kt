@@ -34,7 +34,7 @@ value class SdJwtDigest private constructor(val value: String) {
          * @return the wrapped value
          */
         fun wrap(value: String): Result<SdJwtDigest> = runCatching {
-            JwtBase64.decode(value)
+            Base64UrlNoPadding.decode(value)
             SdJwtDigest(value)
         }
 
@@ -56,7 +56,7 @@ value class SdJwtDigest private constructor(val value: String) {
 
             val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
             val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
-            SdJwtDigest(JwtBase64.encode(digest))
+            SdJwtDigest(Base64UrlNoPadding.encode(digest))
         }
     }
 }
