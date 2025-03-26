@@ -196,7 +196,7 @@ internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>>
 
 private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> = runCatching {
     val ps = jwt.split(".")
-    if (ps.size != 3) throw VerificationError.InvalidJwt.asException()
+    if (ps.size != 3) throw VerificationError.InvalidJwt().asException()
     val (h, p, s) = jwt.split(".")
     Triple(h, p, s)
 }
