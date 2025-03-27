@@ -63,7 +63,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
         verifyPresentationExpectingError(
-            VerificationError.InvalidJwt(),
+            VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts"),
             NoSignatureValidation,
             KeyBindingVerifierMustBePresent,
             "jwt~",
@@ -74,7 +74,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an invalid jwt, no disclosures and has keyBinding verify should return InvalidJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.InvalidJwt(),
+                VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts"),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "jwt~hb",

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
 import io.ktor.client.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
@@ -174,45 +175,41 @@ interface SdJwtVcVerifierFactory<out JWT> {
 /**
  * SD-JWT VC verification errors.
  */
-sealed interface SdJwtVcVerificationError
-
-/**
- * Verification errors regarding the resolution of the Issuer's key or the verification of the Issuer's signature.
- */
-sealed interface SdJwtVcIssuerKeyVerificationError : SdJwtVcVerificationError {
+sealed interface SdJwtVcVerificationError {
 
     /**
-     * Indicates the key verification methods is not supported.
-     *
-     * @property method one of 'issuer-metadata', 'x5c', or 'did'
+     * Verification errors regarding the resolution of the Issuer's key or the verification of the Issuer's signature.
      */
-    data class UnsupportedVerificationMethod(val method: String) : SdJwtVcIssuerKeyVerificationError
+    sealed interface IssuerKeyVerificationError : SdJwtVcVerificationError {
 
-    /**
-     * Indicates an error while trying to resolve the Issuer's metadata.
-     */
-    data class IssuerMetadataResolutionFailure(val cause: Throwable? = null) : SdJwtVcIssuerKeyVerificationError
+        /**
+         * Indicates the key verification methods is not supported.
+         *
+         * @property method one of 'issuer-metadata', 'x5c', or 'did'
+         */
+        data class UnsupportedVerificationMethod(val method: String) : IssuerKeyVerificationError
 
-    /**
-     * Indicates the leaf certificate of the 'x5c' certificate chain is not trusted.
-     */
-    data class NonTrustedX5CLeafCertificate(val reason: String? = null) : SdJwtVcIssuerKeyVerificationError
+        /**
+         * Indicates an error while trying to resolve the Issuer's metadata.
+         */
+        data class IssuerMetadataResolutionFailure(val cause: Throwable? = null) : IssuerKeyVerificationError
 
-    /**
-     * DID resolution failed.
-     */
-    data class DIDLookupError(val message: String, val cause: Throwable? = null) : SdJwtVcIssuerKeyVerificationError
+        /**
+         * Indicates the leaf certificate of the 'x5c' certificate chain is not trusted.
+         */
+        data class UntrustedIssuerCertificate(val reason: String? = null) : IssuerKeyVerificationError
 
-    /**
-     * Indicates a key source for the Issuer could not be determined.
-     */
-    data object NoIssuerKeySource : SdJwtVcIssuerKeyVerificationError
+        /**
+         * DID resolution failed.
+         */
+        data class DIDLookupFailure(val message: String, val cause: Throwable? = null) : IssuerKeyVerificationError
+
+        /**
+         * Indicates a key source for the Issuer could not be determined.
+         */
+        data object CannotDetermineIssuerVerificationMethod : IssuerKeyVerificationError
+    }
 }
-
-/**
- * Converts this [SdJwtVcVerificationError] to an [SdJwtVerificationException].
- */
-fun SdJwtVcVerificationError.asException(): SdJwtVerificationException = SdJwtVerificationException(VerificationError.SdJwtVcError(this))
 
 internal object DefaultSdJwtVcFactory : SdJwtVcVerifierFactory<JwtAndClaims> {
     override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JwtAndClaims> =
@@ -337,7 +334,7 @@ fun sdJwtVcSignatureVerifier(
     }
 }
 
-private fun raise(error: SdJwtVcVerificationError): Nothing = throw error.asException()
+private fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))
 
 private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory?,
@@ -346,32 +343,32 @@ private suspend fun issuerJwkSource(
     signedJwt: NimbusSignedJWT,
 ): NimbusJWKSource<NimbusSecurityContext> {
     suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
-        if (httpClientFactory == null) raise(SdJwtVcIssuerKeyVerificationError.UnsupportedVerificationMethod("issuer-metadata"))
+        if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatching {
             httpClientFactory().use { httpClient ->
                 with(MetadataOps) { httpClient.getJWKSetFromSdJwtVcIssuerMetadata(source.iss) }
             }
-        }.getOrElse { raise(SdJwtVcIssuerKeyVerificationError.IssuerMetadataResolutionFailure(it)) }
+        }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
         return NimbusImmutableJWKSet(jwks)
     }
 
     suspend fun fromX509CertChain(source: X509CertChain): NimbusJWKSource<NimbusSecurityContext> {
-        return trust?.let {
-            if (it.isTrusted(source.chain)) {
-                val jwk = NimbusJWK.parse(source.chain.first())
-                NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk)))
-            } else raise(SdJwtVcIssuerKeyVerificationError.NonTrustedX5CLeafCertificate())
-        } ?: raise(SdJwtVcIssuerKeyVerificationError.UnsupportedVerificationMethod("x5c"))
+        if (null == trust) raise(UnsupportedVerificationMethod("x5c"))
+        if (!trust.isTrusted(source.chain)) raise(UntrustedIssuerCertificate())
+
+        val jwk = NimbusJWK.parse(source.chain.first())
+        return NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk)))
     }
 
-    suspend fun fromDid(source: DIDUrl): NimbusJWKSource<NimbusSecurityContext> =
-        lookup?.let {
-            val jwks = runCatching {
-                it.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
-            }.getOrElse { error -> raise(SdJwtVcIssuerKeyVerificationError.DIDLookupError("Failed to resolve $source", error)) }
-            if (null == jwks) raise(SdJwtVcIssuerKeyVerificationError.DIDLookupError("Failed to resolve $source"))
-            else SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, jwks)
-        } ?: raise(SdJwtVcIssuerKeyVerificationError.UnsupportedVerificationMethod("did"))
+    suspend fun fromDid(source: DIDUrl): NimbusJWKSource<NimbusSecurityContext> {
+        if (null == lookup) raise(UnsupportedVerificationMethod("did"))
+        val jwks = runCatching {
+            lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
+        }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
+        if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
+
+        return SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, jwks)
+    }
 
     return when (val source = keySource(signedJwt)) {
         is Metadata -> fromMetadata(source)
@@ -417,16 +414,12 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
         issScheme == HTTPS_URI_SCHEME && certChain.isNotEmpty() -> {
             val leaf = certChain.first()
             if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(issUrl, certChain)
-            else raise(
-                SdJwtVcIssuerKeyVerificationError.NonTrustedX5CLeafCertificate(
-                    "Failed to find $issUrl in SAN URI or SAN DNS entries of provided leaf certificate",
-                ),
-            )
+            else raise(UntrustedIssuerCertificate("Failed to find $issUrl in SAN URI or SAN DNS entries of provided leaf certificate"))
         }
 
         issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
-        else -> raise(SdJwtVcIssuerKeyVerificationError.NoIssuerKeySource)
+        else -> raise(CannotDetermineIssuerVerificationMethod)
     }
 }
 

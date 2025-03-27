@@ -38,7 +38,9 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains in invalid JWT
      */
-    data class InvalidJwt(val cause: Throwable? = null) : VerificationError
+    data class InvalidJwt(val message: String? = null, val cause: Throwable? = null) : VerificationError {
+        constructor(cause: Throwable) : this(null, cause)
+    }
 
     /**
      * Failure to verify key binding
@@ -52,9 +54,9 @@ sealed interface VerificationError {
     data class InvalidDisclosures(val invalidDisclosures: List<String>) : VerificationError
 
     /**
-     * SD-JWT contains a JWT which contains an invalid Hashing Algorithm claim
+     * SD-JWT contains a JWT which contains an unsupported Hashing Algorithm claim
      */
-    data object UnknownHashingAlgorithm : VerificationError
+    data class UnsupportedHashingAlgorithm(val algorithm: String) : VerificationError
 
     /**
      * SD-JWT contains non-unique disclosures
@@ -72,14 +74,8 @@ sealed interface VerificationError {
      */
     data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
 
-    @Deprecated(message = "Deprecated. Will be removed in a future release.")
-    @JvmInline
-    value class Other(val value: String) : VerificationError {
-        override fun toString(): String = value
-    }
-
     /**
-     * Failed to verify an SD-JWT Verifiable Credential.
+     * Failed to verify an SD-JWT VC.
      */
     data class SdJwtVcError(val error: SdJwtVcVerificationError) : VerificationError
 }
@@ -495,16 +491,17 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
 
 /**
  * Looks in the provided claims for the hashing algorithm
+ *
  * @param jwtClaims the claims in the JWT part of the SD-jWT
  * @return the hashing algorithm, if a hashing algorithm is present and contains a string
- * representing a supported [HashAlgorithm]. Otherwise raises [UnknownHashingAlgorithm]
+ * representing a supported [HashAlgorithm]. Otherwise, raises [InvalidJwt] if hash algorithm is present but does not contain a string,
+ * or [UnsupportedHashingAlgorithm] if hash algorithm is present and contains a string but is not supported.
  */
 private fun hashingAlgorithmClaim(jwtClaims: JsonObject): HashAlgorithm {
     val element = jwtClaims[SdJwtSpec.CLAIM_SD_ALG] ?: JsonPrimitive(SdJwtSpec.DEFAULT_SD_ALG)
-    val alg =
-        if (element is JsonPrimitive) HashAlgorithm.fromString(element.content)
-        else null
-    return alg ?: throw UnknownHashingAlgorithm.asException()
+    return if (element is JsonPrimitive) {
+        HashAlgorithm.fromString(element.content) ?: throw UnsupportedHashingAlgorithm(element.content).asException()
+    } else throw InvalidJwt("'${SdJwtSpec.CLAIM_SD_ALG}' claim is not a string").asException()
 }
 
 /**
