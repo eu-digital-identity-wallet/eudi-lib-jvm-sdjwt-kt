@@ -26,6 +26,7 @@ import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
+import com.nimbusds.jose.proc.BadJOSEException
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
@@ -38,6 +39,7 @@ import java.time.Instant
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 private object SampleIssuer {
     const val KEY_ID = "signing-key-01"
@@ -153,7 +155,9 @@ class SdJwtVcVerifierTest {
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
-            assertEquals(VerificationError.InvalidJwt, exception.reason)
+            val invalidJwt = assertIs<VerificationError.InvalidJwt>(exception.reason)
+            val badJoseException = assertIs<BadJOSEException>(invalidJwt.cause)
+            assertEquals("Signed JWT rejected: Another algorithm expected, or no matching key(s) found", badJoseException.message)
         }
     }
 

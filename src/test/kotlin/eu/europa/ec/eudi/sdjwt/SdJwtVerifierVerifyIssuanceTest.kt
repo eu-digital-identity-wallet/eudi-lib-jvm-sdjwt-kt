@@ -192,7 +192,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
         verifyIssuanceExpectingError(
-            VerificationError.InvalidJwt,
+            VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts"),
             DefaultSdJwtOps.NoSignatureValidation,
             "jwt~",
         )
