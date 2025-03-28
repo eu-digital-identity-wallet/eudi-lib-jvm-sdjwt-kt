@@ -94,7 +94,12 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, no disclosures and invalid keyBinding verify should return InvalidKeyBindingJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
+                VerificationError.KeyBindingFailed(
+                    KeyBindingError.InvalidKeyBindingJwt(
+                        "Could not verify KeyBinding JWT",
+                        SdJwtVerificationException(reason = VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts")),
+                    ),
+                ),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "$jwt~hb",
@@ -105,7 +110,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, no disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
+                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("sd_hash claim contains an invalid value")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "$jwt~$jwt",
@@ -155,7 +160,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt),
+                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("sd_hash claim contains an invalid value")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "$jwt~$d1~$jwt",
