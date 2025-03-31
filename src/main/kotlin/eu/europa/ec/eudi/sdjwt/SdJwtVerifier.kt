@@ -131,15 +131,22 @@ fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(
 sealed interface KeyBindingError {
 
     /**
-     * Indicates that the pub key of the holder cannot be located
-     * in SD-JWT, JWT claims
+     * Indicates that the public key of the holder cannot be located in SD-JWT claims
      */
-    data object MissingHolderPubKey : KeyBindingError
+    data object MissingHolderPublicKey : KeyBindingError
+
+    /**
+     * Indicates that the public key of the holder located in SD-JWT claims, is not supported
+     */
+    data object UnsupportedHolderPublicKey : KeyBindingError
 
     /**
      * SD-JWT contains in invalid Key Binding JWT
      */
-    data object InvalidKeyBindingJwt : KeyBindingError
+    data class InvalidKeyBindingJwt(val message: String? = null, val cause: Throwable? = null) : KeyBindingError {
+        constructor(message: String) : this(message = message, cause = null)
+        constructor(cause: Throwable) : this(message = null, cause = cause)
+    }
 
     /**
      * SD-JWT contains a Key Binding JWT, but this was not expected
@@ -230,20 +237,25 @@ private interface KeyBindingVerifierOps<JWT> {
                     suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?): JWT {
                         if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
-                        val keyBindingJwtVerifier =
-                            keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPubKey.asException()
-
-                        return runCatching { keyBindingJwtVerifier.checkSignature(unverifiedKbJwt) }.getOrNull()
-                            ?.takeIf { jwt ->
-                                val kbClaims = claimsOf(jwt)
-                                val sdHash = kbClaims[SdJwtSpec.CLAIM_SD_HASH]
-                                    ?.takeIf { element -> element is JsonPrimitive && element.isString }
-                                    ?.jsonPrimitive
-                                    ?.contentOrNull
-                                expectedDigest.value == sdHash
+                        val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
+                        val keyBindingJwt = runCatching {
+                            requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
+                                "KeyBinding JWT cannot be null"
                             }
-                            ?: throw InvalidKeyBindingJwt.asException()
+                        }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
+
+                        val keyBindingJwtClaims = claimsOf(keyBindingJwt)
+                        val sdHash = keyBindingJwtClaims[SdJwtSpec.CLAIM_SD_HASH]
+                            ?.takeIf { element -> element is JsonPrimitive && element.isString }
+                            ?.jsonPrimitive
+                            ?.contentOrNull
+                        if (expectedDigest.value != sdHash) throw InvalidKeyBindingJwt(
+                            "${SdJwtSpec.CLAIM_SD_HASH} claim contains an invalid value",
+                        ).asException()
+
+                        return keyBindingJwt
                     }
+
                     when (this) {
                         is MustNotBePresent -> mustBeNotPresent()
                         is MustBePresentAndValid -> mustBePresentAndValid(keyBindingVerifierProvider)
