@@ -29,18 +29,20 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import java.time.Instant
-import java.time.Period
-import java.time.temporal.ChronoUnit
 import java.util.*
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 
 /**
  * This is an advanced test.
@@ -186,7 +188,7 @@ data class VerifierChallenge(
     fun asJson(): JsonObject = Json.encodeToJsonElement(this).jsonObject
 
     companion object {
-        operator fun invoke(nonce: String, aud: String, iat: Instant) = VerifierChallenge(nonce, aud, iat.epochSecond)
+        operator fun invoke(nonce: String, aud: String, iat: Instant) = VerifierChallenge(nonce, aud, iat.epochSeconds)
     }
 }
 
@@ -203,7 +205,7 @@ class IssuerActor(val issuerKey: ECKey) {
     private val iss: String by lazy {
         "did:jwk:${Base64UrlNoPadding.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }
-    private val expirationPeriod: Period = Period.ofMonths(12)
+    private val expirationPeriod: DatePeriod = DatePeriod(months = 12)
 
     /**
      * The [SdJwtIssuer]
@@ -224,13 +226,13 @@ class IssuerActor(val issuerKey: ECKey) {
      */
     suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String = with(NimbusSdJwtOps) {
         issuerDebug("Issuing new SD-JWT ...")
-        val iat = Instant.now()
-        val exp = iat.plus(expirationPeriod.days.toLong(), ChronoUnit.DAYS)
+        val iat = Clock.System.now()
+        val exp = iat.plus(expirationPeriod.days.days)
         val sdJwtElements =
             sdJwt {
                 claim(RFC7519.ISSUER, iss)
-                claim(RFC7519.ISSUED_AT, iat.epochSecond)
-                claim(RFC7519.EXPIRATION_TIME, exp.epochSecond)
+                claim(RFC7519.ISSUED_AT, iat.epochSeconds)
+                claim(RFC7519.EXPIRATION_TIME, exp.epochSeconds)
                 claim(SdJwtVcSpec.VCT, "urn:credential:sample")
                 cnf(holderPubKey as JWK)
                 objClaim("credentialSubject") {
@@ -310,7 +312,7 @@ class HolderActor(
             val buildKbJwt = kbJwtIssuer(ECDSASigner(holderKey), JWSAlgorithm.ES256, holderKey.toPublicJWK()) {
                 audience(verifierQuery.challenge.aud)
                 claim("nonce", verifierQuery.challenge.nonce)
-                issueTime(Date.from(Instant.ofEpochSecond(verifierQuery.challenge.iat)))
+                issueTime(Date.from(Instant.fromEpochSeconds(verifierQuery.challenge.iat).toJavaInstant()))
             }
             presentationSdJwt.serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
@@ -331,7 +333,7 @@ class VerifierActor(
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
-        VerifierChallenge(Random.nextBytes(10).toString(), clientId, Instant.now()),
+        VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
         whatToDisclose,
     ).also { lastChallenge = it.challenge.asJson() }
 

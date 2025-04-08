@@ -26,9 +26,9 @@ import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
 import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import java.time.Instant
 import kotlin.test.*
 
 class PresentationTest {
@@ -122,7 +122,7 @@ class PresentationTest {
             val sdJwt = run {
                 val spec = sdJwt {
                     claim("iss", "foo")
-                    claim("iat", Instant.now().epochSecond)
+                    claim("iat", Clock.System.now().epochSeconds)
                 }
                 issuer.issue(spec).getOrThrow().also {
                     assertTrue { it.disclosures.isEmpty() }

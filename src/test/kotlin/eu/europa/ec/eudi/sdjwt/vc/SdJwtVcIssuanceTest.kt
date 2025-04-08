@@ -24,11 +24,11 @@ import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.net.URI
-import java.time.Instant
-import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -46,8 +46,8 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
     suspend fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt<SignedJWT> {
         val sdJwtSpec = holderData.sdJwtSpec(
             holderPubKey,
-            iat = Instant.ofEpochSecond(1683000000),
-            exp = Instant.ofEpochSecond(1883000000),
+            iat = Instant.fromEpochSeconds(1683000000),
+            exp = Instant.fromEpochSeconds(1883000000),
         )
         return issuer.issue(sdJwtSpec).getOrThrow()
     }
@@ -63,8 +63,8 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
             //
             claim("iss", config.issuer.toASCIIString())
             claim(SdJwtVcSpec.VCT, config.vct.toASCIIString())
-            claim("iat", iat.epochSecond)
-            exp?.let { claim("exp", it.epochSecond) }
+            claim("iat", iat.epochSeconds)
+            exp?.let { claim("exp", it.epochSeconds) }
             cnf(holderPubKey)
 
             //
@@ -119,7 +119,7 @@ private val JohnDoe = IdentityCredential(
         region = "Anystate",
         country = "US",
     ),
-    birthDate = LocalDate.of(1940, 1, 1),
+    birthDate = LocalDate(1940, 1, 1),
     isOver18 = true,
     isOver21 = true,
     isOver65 = true,
