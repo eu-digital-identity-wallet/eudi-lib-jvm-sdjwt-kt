@@ -32,10 +32,10 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import java.net.URI
-import java.time.Instant
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,7 +67,7 @@ private object SampleIssuer {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
             claim(RFC7519.ISSUER, issuerMeta.issuer.toASCIIString())
-            claim(RFC7519.ISSUED_AT, Instant.now().epochSecond)
+            claim(RFC7519.ISSUED_AT, Clock.System.now().epochSeconds)
             claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             sdClaim("foo", "bar")
         }

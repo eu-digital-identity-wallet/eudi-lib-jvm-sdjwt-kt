@@ -5,6 +5,7 @@ foojay = "0.8.0"
 spotless = "6.25.0"
 java = "17"
 kotlinxSerialization = "1.7.3"
+kotlinxDatetime = "0.6.2"
 nimbusJoseWwt = "9.47"
 ktlintVersion = "0.50.0"
 sonarqube = "6.0.1.5171"
@@ -19,6 +20,7 @@ bouncyCastle = "1.79"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseWwt" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }

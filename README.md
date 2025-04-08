@@ -401,6 +401,8 @@ import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.sdJwt
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
 import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.GeneralName
@@ -409,11 +411,9 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
 import java.net.URL
-import java.time.Clock
 import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaDuration
 -->
 
 ```kotlin
@@ -421,16 +421,15 @@ val sdJwtVcVerification = runBlocking {
     val issuer = URL("https://issuer.example.com")
     val key = ECKeyGenerator(Curve.P_521).generate()
     val certificate = run {
-        val clock = Clock.systemDefaultZone()
-        val issuedAt = clock.instant()
-        val expiresAt = issuedAt + 365.days.toJavaDuration()
+        val issuedAt = Clock.System.now()
+        val expiresAt = issuedAt.plus(365.days)
         val subject = X500Principal("CN=${issuer.host}")
         val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())
         val holder = JcaX509v3CertificateBuilder(
             subject,
             BigInteger.ONE,
-            Date.from(issuedAt),
-            Date.from(expiresAt),
+            Date.from(issuedAt.toJavaInstant()),
+            Date.from(expiresAt.toJavaInstant()),
             subject,
             key.toECPublicKey(),
         ).addExtension(
