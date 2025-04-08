@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import java.security.SecureRandom
-
 /**
  * An interface for generating [Salt] values.
  */
@@ -36,7 +34,7 @@ fun interface SaltProvider {
          */
         val Default: SaltProvider by lazy { randomSaltProvider(16) }
 
-        private val secureRandom: SecureRandom = SecureRandom()
+        private val secureRandom: Random = platform().random
 
         /**
          * Creates a salt provider which generates random [Salt] values
@@ -47,7 +45,7 @@ fun interface SaltProvider {
          */
         fun randomSaltProvider(numberOfBytes: Int): SaltProvider =
             SaltProvider {
-                val randomByteArray: ByteArray = ByteArray(numberOfBytes).also { secureRandom.nextBytes(it) }
+                val randomByteArray: ByteArray = ByteArray(numberOfBytes).also { secureRandom.nextBytesCopyTo(it) }
                 Base64UrlNoPadding.encode(randomByteArray)
             }
     }
