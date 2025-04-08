@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import java.security.MessageDigest
-
 /**
  * The digest of a [presentation][SdJwt].
  * It contains the base64-url encoded digest of a presentation with all padding characters removed.
@@ -45,7 +43,13 @@ value class SdJwtDigest private constructor(val value: String) {
          * @param value the serialized SD-JWT to calculate the digest for
          * @return the calculated digest
          */
-        fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
+        fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> =
+            digestInternal(platform().hashes, hashAlgorithm, value)
+
+        /**
+         * Internal version of digest that takes a Platform parameter
+         */
+        internal fun digestInternal(hashes: Hashes, hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
             require(value.contains(SdJwtSpec.DISCLOSURE_SEPARATOR))
             fun String.noKeyBinding() =
                 if (endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)) {
@@ -54,8 +58,8 @@ value class SdJwtDigest private constructor(val value: String) {
                     removeRange(lastIndexOf(SdJwtSpec.DISCLOSURE_SEPARATOR) + 1, length)
                 }
 
-            val digestAlgorithm = MessageDigest.getInstance(hashAlgorithm.alias.uppercase())
-            val digest = digestAlgorithm.digest(value.noKeyBinding().encodeToByteArray())
+            val input = value.noKeyBinding().encodeToByteArray()
+            val digest = hashes.digest(hashAlgorithm, input)
             SdJwtDigest(Base64UrlNoPadding.encode(digest))
         }
     }

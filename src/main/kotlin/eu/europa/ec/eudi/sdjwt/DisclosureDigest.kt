@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import java.security.MessageDigest
-
 /**
  * The digest of a [disclosure][Disclosure]
  */
@@ -56,9 +54,19 @@ value class DisclosureDigest private constructor(val value: String) {
          *
          * @return the [DisclosureDigest] of the given [value]
          */
-        fun digest(hashingAlgorithm: HashAlgorithm, value: String): Result<DisclosureDigest> = runCatching {
-            val hashFunction = MessageDigest.getInstance(hashingAlgorithm.alias.uppercase())
-            val digest = hashFunction.digest(value.encodeToByteArray())
+        fun digest(hashingAlgorithm: HashAlgorithm, value: String): Result<DisclosureDigest> =
+            digestInternal(platform().hashes, hashingAlgorithm, value)
+
+        /**
+         * Internal version of digest that takes a Platform parameter
+         */
+        internal fun digestInternal(
+            hashes: Hashes,
+            hashingAlgorithm: HashAlgorithm,
+            value: String,
+        ): Result<DisclosureDigest> = runCatching {
+            val input = value.encodeToByteArray()
+            val digest = hashes.digest(hashingAlgorithm, input)
             DisclosureDigest(Base64UrlNoPadding.encode(digest))
         }
     }
