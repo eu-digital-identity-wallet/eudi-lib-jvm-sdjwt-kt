@@ -7,16 +7,14 @@ import java.net.URI
 plugins {
     base
     `java-library`
-    `maven-publish`
-    signing
-    alias(libs.plugins.dokka)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
-    alias(libs.plugins.dependency.check)
-    alias(libs.plugins.maven.publish)
-    alias(libs.plugins.kotlinx.knit)
     alias(libs.plugins.kover)
+    alias(libs.plugins.kotlinx.knit)
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.maven.publish)
+    alias(libs.plugins.dependency.check)
 }
 
 repositories {
