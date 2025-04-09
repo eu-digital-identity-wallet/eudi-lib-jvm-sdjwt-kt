@@ -8,8 +8,6 @@ kotlinxSerialization = "1.7.3"
 kotlinxDatetime = "0.6.2"
 nimbusJoseWwt = "9.47"
 ktlintVersion = "0.50.0"
-sonarqube = "6.0.1.5171"
-dependencycheck = "11.1.0"
 maven-publish = "0.30.0"
 kotlinx-knit = "0.5.0"
 tink = "1.15.0"
@@ -17,6 +15,8 @@ kotlinxCoroutines = "1.9.0"
 ktor = "3.0.1"
 logback = "1.5.12"
 bouncyCastle = "1.79"
+kover = "0.9.1"
+dependency-check = "11.1.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -37,12 +37,11 @@ logback-classic = {module="ch.qos.logback:logback-classic", version.ref="logback
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
 
 [plugins]
-foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }
-sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependency-check" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 kotlinx-knit = { id = "org.jetbrains.kotlinx.knit", version.ref = "kotlinx-knit" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

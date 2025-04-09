@@ -2,26 +2,21 @@ import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
-import java.net.URL
-
-object Meta {
-    const val BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
-}
+import java.net.URI
 
 plugins {
     base
     `java-library`
     `maven-publish`
     signing
-    jacoco
     alias(libs.plugins.dokka)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
-    alias(libs.plugins.sonarqube)
-    alias(libs.plugins.dependencycheck)
+    alias(libs.plugins.dependency.check)
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.kotlinx.knit)
+    alias(libs.plugins.kover)
 }
 
 repositories {
@@ -107,12 +102,6 @@ testing {
     }
 }
 
-tasks.jacocoTestReport {
-    reports {
-        xml.required.set(true)
-    }
-}
-
 tasks.jar {
     manifest {
         attributes(
@@ -124,6 +113,9 @@ tasks.jar {
     }
 }
 
+object Meta {
+    const val BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
+}
 tasks.withType<DokkaTask>().configureEach {
     dokkaSourceSets {
         named("main") {
@@ -140,7 +132,7 @@ tasks.withType<DokkaTask>().configureEach {
                 ),
             )
 
-            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URL("${Meta.BASE_URL}/tree/$it/src") }
+            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URI.create("${Meta.BASE_URL}/tree/$it/src").toURL() }
             remoteSourceUrl
                 ?.let {
                     sourceLink {
