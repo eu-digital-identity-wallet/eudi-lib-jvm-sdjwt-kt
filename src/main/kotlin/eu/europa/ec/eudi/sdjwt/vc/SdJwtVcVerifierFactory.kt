@@ -23,6 +23,9 @@ import kotlinx.serialization.json.jsonPrimitive
 fun interface X509CertificateTrust<in X509Chain> {
     suspend fun isTrusted(chain: X509Chain, claimSet: JsonObject): Boolean
 
+    fun <X509Chain1> contraMap(convert: (X509Chain1) -> X509Chain): X509CertificateTrust<X509Chain1> =
+        X509CertificateTrust { chain -> isTrusted(convert(chain)) }
+
     companion object {
         val None: X509CertificateTrust<*> = X509CertificateTrust<Any> { _, _ -> false }
 
@@ -49,6 +52,9 @@ fun interface LookupPublicKeysFromDIDDocument<out JWK> {
      * @return the matching public keys or null in case lookup fails for any reason
      */
     suspend fun lookup(did: String, didUrl: String?): List<JWK>?
+
+    fun <JWK1> map(convert: (JWK) -> JWK1): LookupPublicKeysFromDIDDocument<JWK1> =
+        LookupPublicKeysFromDIDDocument { did, didUrl -> lookup(did, didUrl)?.map(convert) }
 }
 
 interface SdJwtVcVerifierFactory<out JWT, in JWK, out X509Chain> {
@@ -75,4 +81,29 @@ interface SdJwtVcVerifierFactory<out JWT, in JWK, out X509Chain> {
         x509CertificateTrust: X509CertificateTrust<X509Chain>,
         httpClientFactory: KtorHttpClientFactory,
     ): SdJwtVcVerifier<JWT>
+
+    fun <JWT1, JWK1, X509Chain1> transform(
+        convertJwt: (JWT) -> JWT1,
+        convertJwk: (JWK1) -> JWK,
+        convertX509Chain: (X509Chain) -> X509Chain1,
+    ): SdJwtVcVerifierFactory<JWT1, JWK1, X509Chain1> =
+        object : SdJwtVcVerifierFactory<JWT1, JWK1, X509Chain1> {
+            override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JWT1> =
+                this@SdJwtVcVerifierFactory.usingIssuerMetadata(httpClientFactory).map(convertJwt)
+
+            override fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain1>): SdJwtVcVerifier<JWT1> =
+                this@SdJwtVcVerifierFactory.usingX5c(x509CertificateTrust.contraMap(convertX509Chain)).map(convertJwt)
+
+            override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK1>): SdJwtVcVerifier<JWT1> =
+                this@SdJwtVcVerifierFactory.usingDID(didLookup.map(convertJwk)).map(convertJwt)
+
+            override fun usingX5cOrIssuerMetadata(
+                x509CertificateTrust: X509CertificateTrust<X509Chain1>,
+                httpClientFactory: KtorHttpClientFactory,
+            ): SdJwtVcVerifier<JWT1> =
+                this@SdJwtVcVerifierFactory.usingX5cOrIssuerMetadata(
+                    httpClientFactory = httpClientFactory,
+                    x509CertificateTrust = x509CertificateTrust.contraMap(convertX509Chain),
+                ).map(convertJwt)
+        }
 }
