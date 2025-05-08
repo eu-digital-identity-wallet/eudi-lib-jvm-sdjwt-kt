@@ -19,14 +19,11 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import java.net.URI
 
 @Serializable
 data class SdJwtVcIssuerMetadata(
-    @Serializable(with = URISerializer::class)
-    @SerialName(SdJwtVcSpec.ISSUER) val issuer: URI,
-    @Serializable(with = URISerializer::class)
-    @SerialName("jwks_uri") val jwksUri: URI? = null,
+    @SerialName(SdJwtVcSpec.ISSUER) val issuer: String,
+    @SerialName("jwks_uri") val jwksUri: String? = null,
     @SerialName("jwks") val jwks: JsonObject? = null,
 ) {
 

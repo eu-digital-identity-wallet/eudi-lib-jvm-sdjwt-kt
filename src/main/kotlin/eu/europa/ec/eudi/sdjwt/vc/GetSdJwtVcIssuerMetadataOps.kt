@@ -22,7 +22,6 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
-import java.net.URI
 
 /**
  * Gets the metadata of an SD-JWT VC issuer.
@@ -39,7 +38,7 @@ interface GetSdJwtVcIssuerMetadataOps {
         internal val Alt get() = FormWellKnownURL.appendAtTheEnd(SdJwtVcSpec.WELL_KNOWN_JWT_VC_ISSUER)
         private val alternatives get() = listOf(BySpec, Alt)
 
-        private fun SdJwtVcIssuerMetadata.ensureIssuerIs(expected: URI) {
+        private fun SdJwtVcIssuerMetadata.ensureIssuerIs(expected: String) {
             check(expected == issuer) { "Metadata do not contain expected ${SdJwtVcSpec.ISSUER}" }
         }
 
@@ -48,14 +47,12 @@ interface GetSdJwtVcIssuerMetadataOps {
             formWellKnownUrl: FormWellKnownURL,
         ): SdJwtVcIssuerMetadata? =
             coroutineScope {
-                val expectedIssuer = issuer.toURI()
-
                 val issuerMetadataUrl = formWellKnownUrl(issuer)
                 val httpResponse = get(issuerMetadataUrl)
                 when {
                     httpResponse.status.isSuccess() -> {
                         val metadata = httpResponse.body<SdJwtVcIssuerMetadata>()
-                        metadata.apply { ensureIssuerIs(expectedIssuer) }
+                        metadata.apply { ensureIssuerIs(issuer.toString()) }
                     }
 
                     else -> null
