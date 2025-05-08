@@ -21,7 +21,6 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Gets the metadata of an SD-JWT VC issuer.
@@ -58,22 +57,6 @@ interface GetSdJwtVcIssuerMetadataOps {
                     else -> null
                 }
             }
-    }
-}
-
-/**
- * Gets the JWKSet given a location
- */
-interface GetJwkSetKtorOps {
-
-    suspend fun HttpClient.getJWKSet(jwksUri: Url): JsonObject? = getJWKSetAs(jwksUri)
-
-    companion object : GetJwkSetKtorOps {
-        suspend inline fun <reified JWK> HttpClient.getJWKSetAs(jwksUri: Url): JWK? = coroutineScope {
-            val httpResponse = get(jwksUri)
-            if (httpResponse.status.isSuccess()) httpResponse.body()
-            else null
-        }
     }
 }
 

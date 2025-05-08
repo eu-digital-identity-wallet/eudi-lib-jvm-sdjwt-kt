@@ -15,16 +15,15 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.nimbusds.jose.jwk.JWKSet
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
-import io.ktor.client.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
 import java.text.ParseException
@@ -154,9 +153,10 @@ private suspend fun issuerJwkSource(
     suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
         if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatching {
-            httpClientFactory().use { httpClient ->
-                with(MetadataOps) { httpClient.getJWKSetFromSdJwtVcIssuerMetadata(source.iss) }
+            val json = httpClientFactory().use { httpClient ->
+                with(GetSdJwtVcIssuerJwkSetKtorOps) { httpClient.getSdJwtIssuerKeySet(source.iss) }
             }
+            NimbusJWKSet.parse(Json.encodeToString(json))
         }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
         return NimbusImmutableJWKSet(jwks)
     }
@@ -235,28 +235,4 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
         issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
         else -> raise(CannotDetermineIssuerVerificationMethod)
     }
-}
-
-internal interface MetadataOps : GetSdJwtVcIssuerMetadataOps, GetJwkSetKtorOps {
-
-    suspend fun HttpClient.getJWKSetFromSdJwtVcIssuerMetadata(issuer: Url): NimbusJWKSet = coroutineScope {
-        val metadata = getSdJwtVcIssuerMetadata(issuer)
-        checkNotNull(metadata) { "Failed to obtain issuer metadata for $issuer" }
-        val jwkSet = jwkSetOf(metadata)
-        checkNotNull(jwkSet) { "Failed to obtain JWKSet from metadata" }
-        val nJwkSet = jwkSet.asNimbusJWKSet().getOrNull()
-        checkNotNull(nJwkSet) { "Failed to parse JWKSet" }
-    }
-
-    private suspend fun HttpClient.jwkSetOf(metadata: SdJwtVcIssuerMetadata): JsonObject? = coroutineScope {
-        when {
-            metadata.jwksUri != null -> getJWKSet(Url(metadata.jwksUri))
-            else -> metadata.jwks
-        }
-    }
-
-    private fun JsonObject.asNimbusJWKSet(): Result<NimbusJWKSet> =
-        runCatching { JWKSet.parse(toString()) }
-
-    companion object : MetadataOps
 }
