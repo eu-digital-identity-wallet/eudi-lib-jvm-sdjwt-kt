@@ -29,7 +29,7 @@ fun interface X509CertificateTrust<in X509Chain> {
     companion object {
         val None: X509CertificateTrust<*> = X509CertificateTrust<Any> { _, _ -> false }
 
-        fun <X509Chain> usingVct(trust: suspend (X509Chain, String) -> Boolean): X509CertificateTrust<X509Chain> =
+        inline fun <X509Chain> usingVct(crossinline trust: suspend (X509Chain, String) -> Boolean): X509CertificateTrust<X509Chain> =
             X509CertificateTrust { chain, claimSet ->
                 val vct = checkNotNull(claimSet[SdJwtVcSpec.VCT]) { "missing '${SdJwtVcSpec.VCT}' claim" }
                 trust(chain, vct.jsonPrimitive.content)

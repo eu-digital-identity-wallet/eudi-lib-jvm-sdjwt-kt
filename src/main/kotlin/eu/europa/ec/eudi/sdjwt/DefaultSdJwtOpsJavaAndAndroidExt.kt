@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
+import eu.europa.ec.eudi.sdjwt.vc.X509CertificateTrust
+import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
@@ -30,3 +32,11 @@ val DefaultSdJwtOps.SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims, Nimbus
 
 internal fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims =
     checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()
+
+operator fun X509CertificateTrust.Companion.invoke(
+    trust: suspend (List<X509Certificate>, JsonObject) -> Boolean,
+): X509CertificateTrust<List<X509Certificate>> = X509CertificateTrust { chain, claimSet -> trust(chain, claimSet) }
+
+fun X509CertificateTrust.Companion.usingVct(
+    trust: suspend (List<X509Certificate>, String) -> Boolean,
+): X509CertificateTrust<List<X509Certificate>> = usingVct(trust)
