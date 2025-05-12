@@ -24,7 +24,7 @@ fun interface X509CertificateTrust<in X509Chain> {
     suspend fun isTrusted(chain: X509Chain, claimSet: JsonObject): Boolean
 
     fun <X509Chain1> contraMap(convert: (X509Chain1) -> X509Chain): X509CertificateTrust<X509Chain1> =
-        X509CertificateTrust { chain -> isTrusted(convert(chain)) }
+        X509CertificateTrust { chain, claimSet -> isTrusted(convert(chain), claimSet) }
 
     companion object {
         val None: X509CertificateTrust<*> = X509CertificateTrust<Any> { _, _ -> false }
