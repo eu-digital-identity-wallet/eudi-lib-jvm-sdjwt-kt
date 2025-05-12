@@ -25,6 +25,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -41,6 +42,12 @@ fun interface X509CertificateTrust {
 
     companion object {
         val None: X509CertificateTrust = X509CertificateTrust { _, _ -> false }
+
+        fun usingVct(trust: suspend (List<X509Certificate>, String) -> Boolean): X509CertificateTrust =
+            X509CertificateTrust { chain, claimSet ->
+                val vct = checkNotNull(claimSet[SdJwtVcSpec.VCT]) { "missing '${SdJwtVcSpec.VCT}' claim" }
+                trust(chain, vct.jsonPrimitive.content)
+            }
     }
 }
 
