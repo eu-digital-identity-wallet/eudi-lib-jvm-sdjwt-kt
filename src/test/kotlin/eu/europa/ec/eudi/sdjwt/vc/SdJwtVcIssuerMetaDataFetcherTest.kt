@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.RSAKey
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import io.ktor.client.*
@@ -22,7 +23,7 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.JsonConvertException
+import io.ktor.serialization.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -30,8 +31,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.*
 
-internal class SdJwtVcIssuerMetaDataFetcherTest :
-    MetadataOps {
+internal class SdJwtVcIssuerMetaDataFetcherTest : GetSdJwtVcIssuerJwkSetKtorOps {
 
     @Test
     fun `verify issuer jwks resolution fails when issuer is mismatched`() = runTest {
@@ -110,7 +110,9 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
                 }
             }
 
-            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
+            val jwks = client.getSdJwtIssuerKeySet(issuer).let {
+                JWKSet.parse(Json.encodeToString(it))
+            }
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)
@@ -150,7 +152,9 @@ internal class SdJwtVcIssuerMetaDataFetcherTest :
                 }
             }
 
-            val jwks = client.getJWKSetFromSdJwtVcIssuerMetadata(issuer)
+            val jwks = client.getSdJwtIssuerKeySet(issuer).let {
+                JWKSet.parse(Json.encodeToString(it))
+            }
             assertEquals(1, jwks.size())
             val jwk = assertNotNull(jwks.getKeyByKeyId("doc-signer-05-25-2022"))
             assertIs<RSAKey>(jwk)

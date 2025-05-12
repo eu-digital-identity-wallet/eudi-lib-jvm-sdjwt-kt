@@ -19,11 +19,11 @@ import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
+import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
@@ -289,7 +289,7 @@ object NimbusSdJwtOps :
         }
     }
 
-    val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT> = NimbusSdJwtVcFactory
+    val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> = NimbusSdJwtVcFactory
 }
 
 private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
@@ -307,8 +307,7 @@ private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
         },
     )
 
-private val NimbusPresentationOps: SdJwtPresentationOps<NimbusSignedJWT> =
-    SdJwtPresentationOps({ jwt -> jwt.jwtClaimsSet.jsonObject() })
+private val NimbusPresentationOps: SdJwtPresentationOps<NimbusSignedJWT> = SdJwtPresentationOps { jwt -> jwt.jwtClaimsSet.jsonObject() }
 
 private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier { jwt -> jwt.jwtClaimsSet.jsonObject() }
 
@@ -412,8 +411,4 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
                 throw NimbusBadJOSEException("Expected a JWK of type ${T::class.java.simpleName}")
             }
     }
-}
-
-fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims {
-    return checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()
 }

@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.vc.DefaultSdJwtVcFactory
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -34,8 +32,6 @@ object DefaultSdJwtOps :
 
     val KeyBindingVerifierMustBePresent: KeyBindingVerifier<JwtAndClaims> =
         KeyBindingVerifier.mustBePresent(NoSignatureValidation)
-
-    val SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims> = DefaultSdJwtVcFactory
 }
 
 private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
@@ -64,6 +60,6 @@ private val DefaultSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom<JwtAndCla
             val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
             val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
             val disclosures = verifyDisclosures(jwtClaims, unverifiedDisclosures).getOrThrow()
-            SdJwt<JwtAndClaims>(unverifiedJwt to jwtClaims, disclosures)
+            SdJwt(unverifiedJwt to jwtClaims, disclosures)
         }
     }
