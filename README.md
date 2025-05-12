@@ -454,7 +454,7 @@ val sdJwtVcVerification = runBlocking {
             signer.issue(spec).getOrThrow().serialize()
         }
 
-        val verifier = SdJwtVcVerifier.usingX5c { chain -> chain.firstOrNull() == certificate }
+        val verifier = SdJwtVcVerifier.usingX5c { chain, _ -> chain.firstOrNull() == certificate }
         verifier.verify(sdJwt)
     }
 }

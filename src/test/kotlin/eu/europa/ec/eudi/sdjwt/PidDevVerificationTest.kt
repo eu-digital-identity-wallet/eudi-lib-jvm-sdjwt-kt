@@ -23,7 +23,6 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Ignore
 import kotlin.test.Test
@@ -48,7 +47,7 @@ class PidDevVerificationTest :
     private fun doTest(unverifiedSdJwtVc: String, enableLogging: Boolean = false) = runTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingX5cOrIssuerMetadata(
             httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
-            x509CertificateTrust = { _ -> true },
+            x509CertificateTrust = { _, _ -> true },
         )
 
         val issuedSdJwt = try {
