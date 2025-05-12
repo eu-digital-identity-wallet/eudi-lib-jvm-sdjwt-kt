@@ -25,6 +25,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -37,10 +38,16 @@ import com.nimbusds.jose.util.X509CertUtils as NimbusX509CertUtils
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 fun interface X509CertificateTrust {
-    suspend fun isTrusted(chain: List<X509Certificate>): Boolean
+    suspend fun isTrusted(chain: List<X509Certificate>, claimSet: JsonObject): Boolean
 
     companion object {
-        val None: X509CertificateTrust = X509CertificateTrust { false }
+        val None: X509CertificateTrust = X509CertificateTrust { _, _ -> false }
+
+        fun usingVct(trust: suspend (List<X509Certificate>, String) -> Boolean): X509CertificateTrust =
+            X509CertificateTrust { chain, claimSet ->
+                val vct = checkNotNull(claimSet[SdJwtVcSpec.VCT]) { "missing '${SdJwtVcSpec.VCT}' claim" }
+                trust(chain, vct.jsonPrimitive.content)
+            }
     }
 }
 
@@ -354,7 +361,9 @@ private suspend fun issuerJwkSource(
 
     suspend fun fromX509CertChain(source: X509CertChain): NimbusJWKSource<NimbusSecurityContext> {
         if (null == trust) raise(UnsupportedVerificationMethod("x5c"))
-        if (!trust.isTrusted(source.chain)) raise(UntrustedIssuerCertificate())
+
+        val claimSet = signedJwt.jwtClaimsSet.jsonObject()
+        if (!trust.isTrusted(source.chain, claimSet)) raise(UntrustedIssuerCertificate())
 
         val jwk = NimbusJWK.parse(source.chain.first())
         return NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk)))
