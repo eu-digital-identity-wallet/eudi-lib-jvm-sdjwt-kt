@@ -270,7 +270,7 @@ class IssuerActor(val issuerKey: ECKey) {
  */
 class HolderActor(
     private val holderKey: ECKey,
-    lookup: LookupPublicKeysFromDIDDocument,
+    lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingDID(lookup)
 
@@ -327,7 +327,7 @@ class VerifierActor(
     private val clientId: String,
     private val whatToDisclose: Set<ClaimPath>,
     private val expectedNumberOfDisclosures: Int,
-    lookup: LookupPublicKeysFromDIDDocument,
+    lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingDID(lookup)
     private lateinit var lastChallenge: JsonObject

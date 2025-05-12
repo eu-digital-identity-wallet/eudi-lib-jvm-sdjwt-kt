@@ -35,7 +35,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import java.net.URI
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,7 +49,7 @@ private object SampleIssuer {
         .algorithm(alg)
         .generate()
     val issuerMeta = SdJwtVcIssuerMetadata(
-        issuer = URI.create("https://example.com"),
+        issuer = "https://example.com",
         jwks = Json.parseToJsonElement(JWKSet(key.toPublicJWK()).toString()).jsonObject,
     )
 
@@ -66,7 +65,7 @@ private object SampleIssuer {
     suspend fun issueUsingKid(kid: String?): String {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
-            claim(RFC7519.ISSUER, issuerMeta.issuer.toASCIIString())
+            claim(RFC7519.ISSUER, issuerMeta.issuer)
             claim(RFC7519.ISSUED_AT, Clock.System.now().epochSeconds)
             claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             sdClaim("foo", "bar")

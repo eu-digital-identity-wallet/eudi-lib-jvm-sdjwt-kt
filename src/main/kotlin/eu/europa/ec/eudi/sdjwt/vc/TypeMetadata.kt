@@ -17,14 +17,10 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.*
-import java.net.URI
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -45,7 +41,7 @@ data class SdJwtVcTypeMetadata(
     /**
      * A URI of another type that this type extends
      */
-    @Serializable(with = URISerializer::class) @SerialName(SdJwtVcSpec.EXTENDS) val extends: URI? = null,
+    @SerialName(SdJwtVcSpec.EXTENDS) val extends: String? = null,
 
     @SerialName(SdJwtVcSpec.EXTENDS_INTEGRITY) val extendsIntegrity: DocumentIntegrity? = null,
 
@@ -70,8 +66,7 @@ data class SdJwtVcTypeMetadata(
      * A URL pointing to a JSON Schema document describing the structure of the Verifiable Credential
      * MUST NOT be used if schema is present
      */
-    @Serializable(with = URISerializer::class)
-    @SerialName(SdJwtVcSpec.SCHEMA_URI) val schemaUri: URI? = null,
+    @SerialName(SdJwtVcSpec.SCHEMA_URI) val schemaUri: String? = null,
 
     @SerialName(SdJwtVcSpec.SCHEMA_URI_INTEGRITY) val schemaUriIntegrity: DocumentIntegrity? = null,
 
@@ -284,9 +279,8 @@ data class SvgTemplate(
     /**
      * A URI pointing to the SVG template
      */
-    @Serializable(with = URISerializer::class)
     @SerialName(SdJwtVcSpec.SVG_URI)
-    @Required val uri: URI,
+    @Required val uri: String,
 
     @SerialName(SdJwtVcSpec.SVG_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
@@ -364,9 +358,8 @@ data class LogoMetadata(
     /**
      * A URI pointing to the logo image
      */
-    @Serializable(with = URISerializer::class)
     @SerialName(SdJwtVcSpec.LOGO_URI)
-    @Required val uri: URI,
+    @Required val uri: String,
 
     @SerialName(SdJwtVcSpec.LOGO_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
@@ -398,16 +391,4 @@ value class CssColor(val value: String) {
     }
 
     override fun toString() = value
-}
-
-object URISerializer : KSerializer<URI> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("URI", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: URI) {
-        encoder.encodeString(value.toASCIIString())
-    }
-
-    override fun deserialize(decoder: Decoder): URI {
-        return decoder.decodeString().let { rawString -> URI.create(rawString) }
-    }
 }

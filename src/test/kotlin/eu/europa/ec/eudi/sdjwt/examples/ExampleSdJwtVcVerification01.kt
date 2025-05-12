@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.sdJwt
+import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
@@ -36,13 +37,12 @@ import org.bouncycastle.asn1.x509.GeneralNames
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
-import java.net.URL
 import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.time.Duration.Companion.days
 
 val sdJwtVcVerification = runBlocking {
-    val issuer = URL("https://issuer.example.com")
+    val issuer = Url("https://issuer.example.com")
     val key = ECKeyGenerator(Curve.P_521).generate()
     val certificate = run {
         val issuedAt = Clock.System.now()
@@ -67,7 +67,7 @@ val sdJwtVcVerification = runBlocking {
     with(NimbusSdJwtOps) {
         val sdJwt = run {
             val spec = sdJwt {
-                claim(RFC7519.ISSUER, issuer.toExternalForm())
+                claim(RFC7519.ISSUER, issuer.toString())
                 claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             }
 
