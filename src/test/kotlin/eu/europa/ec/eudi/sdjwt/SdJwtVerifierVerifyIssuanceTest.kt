@@ -230,8 +230,9 @@ class SdJwtVerifierVerifyIssuanceTest {
             mutable["header"] = JsonObject(mutableHeader)
             JsonObject(mutable)
         }
+        val list = listOf("d1", "d2").map { VerificationError.InvalidDisclosures.InvalidDisclosure(it) }
         verifyIssuanceExpectingError(
-            VerificationError.InvalidDisclosures(listOf("d1", "d2")),
+            VerificationError.InvalidDisclosures(list),
             DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt,
         )
@@ -240,8 +241,10 @@ class SdJwtVerifierVerifyIssuanceTest {
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures in JWS Json`() =
         runTest {
+            val list = listOf("d1", "d2").map { VerificationError.InvalidDisclosures.InvalidDisclosure(it) }
+
             verifyIssuanceExpectingError(
-                VerificationError.InvalidDisclosures(listOf("d1", "d2")),
+                VerificationError.InvalidDisclosures(list),
                 DefaultSdJwtOps.NoSignatureValidation,
                 "$jwt~d1~d2~",
             )

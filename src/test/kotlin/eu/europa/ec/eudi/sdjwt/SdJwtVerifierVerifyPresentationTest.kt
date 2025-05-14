@@ -129,8 +129,10 @@ class SdJwtVerifierVerifyPresentationTest {
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
+        val list = listOf("d1", "d2").map { VerificationError.InvalidDisclosures.InvalidDisclosure(it) }
+
         verifyPresentationExpectingError(
-            VerificationError.InvalidDisclosures(listOf("d1", "d2")),
+            VerificationError.InvalidDisclosures(list),
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~d1~d2~",
