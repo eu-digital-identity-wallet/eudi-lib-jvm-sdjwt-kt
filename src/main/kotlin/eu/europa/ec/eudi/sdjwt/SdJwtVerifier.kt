@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
+import io.ktor.util.*
 import kotlinx.serialization.json.*
 
 /**
@@ -52,7 +53,9 @@ sealed interface VerificationError {
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
     data class InvalidDisclosures(val invalidDisclosures: List<InvalidDisclosure>) : VerificationError { // List of object  opos afto sto 41
-        data class InvalidDisclosure(val disclose: String, val message: String? = null, val cause: Throwable? = null)
+        data class InvalidDisclosure(val disclosure: String, val message: String? = null, val cause: Throwable) {
+            // constructor(disclose: String, cause: Throwable) : this (disclose, null, cause)
+        }
     }
 
     /**
@@ -494,14 +497,22 @@ private fun verifyDisclosures(
  */
 private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
     val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
-    maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
+    maybeDisclosures.filterValues {
+        it.isFailure
+    }.also { invalidDisclosures ->
         if (invalidDisclosures.isNotEmpty()) {
-            val failedDisclosures: List<InvalidDisclosures.InvalidDisclosure> = invalidDisclosures.map {
-                InvalidDisclosures.InvalidDisclosure(it)
+            val error: List<InvalidDisclosures.InvalidDisclosure> = invalidDisclosures.map { (invalidDisclosure, failure) ->
+                val cause = failure.exceptionOrNull()!!
+                InvalidDisclosures.InvalidDisclosure(
+                    disclosure = invalidDisclosure,
+                    message = cause.message,
+                    cause = cause,
+                )
             }
-            throw InvalidDisclosures(failedDisclosures).asException()
+            throw InvalidDisclosures(error).asException()
         }
     }
+
     return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
         if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
     }
