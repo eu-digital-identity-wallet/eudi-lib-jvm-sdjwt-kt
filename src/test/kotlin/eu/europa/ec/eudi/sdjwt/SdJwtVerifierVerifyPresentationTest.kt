@@ -218,7 +218,7 @@ class SdJwtVerifierVerifyPresentationTest {
     }
 
     private suspend fun verifyPresentationExpectingDisclosureError(
-        disclosures: List<String>,
+        invalidDisclosures: List<String>,
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
@@ -236,10 +236,8 @@ class SdJwtVerifierVerifyPresentationTest {
             verification.getOrThrow()
             fail("Was expecting Disclosure error")
         } catch (exception: SdJwtVerificationException) {
-            val invalidDisclosures = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-            assertEquals(disclosures, invalidDisclosures.invalidDisclosures.map { it.disclosure })
-
-//            assertEquals(expectedError, exception.reason)
+            val invalidDisclosuresResult = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+            assertEquals(invalidDisclosures, invalidDisclosuresResult.invalidDisclosures.map { it.disclosure })
         }
     }
 

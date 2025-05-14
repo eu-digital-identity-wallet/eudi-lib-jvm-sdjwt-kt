@@ -116,7 +116,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     """.trimIndent().removeNewLine()
 
     private suspend fun verifyIssuanceExceptingInvalidDisclosure(
-        list: List<String>,
+        invalidDisclosures: List<String>,
         unverifiedSdJwt: String,
     ) {
         val verification = DefaultSdJwtOps.verify(
@@ -127,8 +127,8 @@ class SdJwtVerifierVerifyIssuanceTest {
             onSuccess = { fail("Was expecting error") },
             onFailure = { exception ->
                 if (exception is SdJwtVerificationException) {
-                    val invalidDisclosures = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-                    assertEquals(list, invalidDisclosures.invalidDisclosures.map { it.disclosure })
+                    val invalidDisclosuresResults = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+                    assertEquals(invalidDisclosures, invalidDisclosuresResults.invalidDisclosures.map { it.disclosure })
                 } else {
                     fail(exception.message)
                 }
@@ -136,7 +136,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         )
     }
     private suspend fun verifyIssuanceExceptingInvalidDisclosure(
-        disclosures: List<String>,
+        invalidDisclosures: List<String>,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification = DefaultSdJwtOps.verify(
@@ -147,8 +147,8 @@ class SdJwtVerifierVerifyIssuanceTest {
             onSuccess = { fail("Was expecting error") },
             onFailure = { exception ->
                 if (exception is SdJwtVerificationException) {
-                    val invalidDisclosures = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-                    assertEquals(disclosures, invalidDisclosures.invalidDisclosures.map { it.disclosure })
+                    val invalidDisclosuresResults = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+                    assertEquals(invalidDisclosures, invalidDisclosuresResults.invalidDisclosures.map { it.disclosure })
                 } else {
                     fail(exception.message)
                 }

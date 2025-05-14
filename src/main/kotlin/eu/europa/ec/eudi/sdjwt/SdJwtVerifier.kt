@@ -21,7 +21,6 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
-import io.ktor.util.*
 import kotlinx.serialization.json.*
 
 /**
@@ -52,10 +51,8 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
-    data class InvalidDisclosures(val invalidDisclosures: List<InvalidDisclosure>) : VerificationError { // List of object  opos afto sto 41
-        data class InvalidDisclosure(val disclosure: String, val message: String? = null, val cause: Throwable) {
-            // constructor(disclose: String, cause: Throwable) : this (disclose, null, cause)
-        }
+    data class InvalidDisclosures(val invalidDisclosures: List<InvalidDisclosure>) : VerificationError {
+        data class InvalidDisclosure(val disclosure: String, val message: String? = null, val cause: Throwable)
     }
 
     /**
@@ -501,7 +498,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
         it.isFailure
     }.also { invalidDisclosures ->
         if (invalidDisclosures.isNotEmpty()) {
-            val error: List<InvalidDisclosures.InvalidDisclosure> = invalidDisclosures.map { (invalidDisclosure, failure) ->
+            val errors = invalidDisclosures.map { (invalidDisclosure, failure) ->
                 val cause = failure.exceptionOrNull()!!
                 InvalidDisclosures.InvalidDisclosure(
                     disclosure = invalidDisclosure,
@@ -509,7 +506,7 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
                     cause = cause,
                 )
             }
-            throw InvalidDisclosures(error).asException()
+            throw InvalidDisclosures(errors).asException()
         }
     }
 
