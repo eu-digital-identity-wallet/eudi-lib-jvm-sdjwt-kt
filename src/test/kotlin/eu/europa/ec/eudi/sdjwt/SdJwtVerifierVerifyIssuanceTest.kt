@@ -115,46 +115,6 @@ class SdJwtVerifierVerifyIssuanceTest {
             QiLCAiY291bnRyeSI6ICJERSJ9XQ
     """.trimIndent().removeNewLine()
 
-    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
-        invalidDisclosures: List<String>,
-        unverifiedSdJwt: String,
-    ) {
-        val verification = DefaultSdJwtOps.verify(
-            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
-            unverifiedSdJwt = unverifiedSdJwt,
-        )
-        verification.fold(
-            onSuccess = { fail("Was expecting error") },
-            onFailure = { exception ->
-                if (exception is SdJwtVerificationException) {
-                    val invalidDisclosuresResults = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-                    assertEquals(invalidDisclosures, invalidDisclosuresResults.invalidDisclosures.map { it.disclosure })
-                } else {
-                    fail(exception.message)
-                }
-            },
-        )
-    }
-    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
-        invalidDisclosures: List<String>,
-        unverifiedSdJwt: JsonObject,
-    ) {
-        val verification = DefaultSdJwtOps.verify(
-            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
-            unverifiedSdJwt = unverifiedSdJwt,
-        )
-        verification.fold(
-            onSuccess = { fail("Was expecting error") },
-            onFailure = { exception ->
-                if (exception is SdJwtVerificationException) {
-                    val invalidDisclosuresResults = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-                    assertEquals(invalidDisclosures, invalidDisclosuresResults.invalidDisclosures.map { it.disclosure })
-                } else {
-                    fail(exception.message)
-                }
-            },
-        )
-    }
     private suspend fun verifyIssuanceExpectingError(
         expectedError: VerificationError,
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
@@ -196,6 +156,38 @@ class SdJwtVerifierVerifyIssuanceTest {
             },
         )
     }
+
+    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
+        invalidDisclosures: List<String>,
+        unverifiedSdJwt: String,
+    ) {
+        DefaultSdJwtOps.verify(
+            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
+            unverifiedSdJwt = unverifiedSdJwt,
+        ).validateInvalidDisclosures(invalidDisclosures)
+    }
+
+    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
+        invalidDisclosures: List<String>,
+        unverifiedSdJwt: JsonObject,
+    ) {
+        DefaultSdJwtOps.verify(
+            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
+            unverifiedSdJwt = unverifiedSdJwt,
+        ).validateInvalidDisclosures(invalidDisclosures)
+    }
+
+    private fun Result<SdJwt<JwtAndClaims>>.validateInvalidDisclosures(invalidDisclosures: List<String>) = this.fold(
+        onSuccess = { fail("Was expecting error") },
+        onFailure = { exception ->
+            if (exception is SdJwtVerificationException) {
+                val errorCause = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+                assertEquals(invalidDisclosures, errorCause.invalidDisclosures.map { it.disclosure })
+            } else {
+                fail(exception.message)
+            }
+        },
+    )
 
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
