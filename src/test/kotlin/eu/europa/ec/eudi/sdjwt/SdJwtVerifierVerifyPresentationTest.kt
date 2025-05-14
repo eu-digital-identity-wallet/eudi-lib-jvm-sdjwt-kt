@@ -236,8 +236,8 @@ class SdJwtVerifierVerifyPresentationTest {
             verification.getOrThrow()
             fail("Was expecting Disclosure error")
         } catch (exception: SdJwtVerificationException) {
-            val invalidDisclosuresResult = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-            assertEquals(invalidDisclosures, invalidDisclosuresResult.invalidDisclosures.map { it.disclosure })
+            val errorCause = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+            assertEquals(invalidDisclosures, errorCause.invalidDisclosures.values.flatten())
         }
     }
 

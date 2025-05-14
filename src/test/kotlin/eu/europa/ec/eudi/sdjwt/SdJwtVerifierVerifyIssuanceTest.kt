@@ -182,7 +182,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         onFailure = { exception ->
             if (exception is SdJwtVerificationException) {
                 val errorCause = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-                assertEquals(invalidDisclosures, errorCause.invalidDisclosures.map { it.disclosure })
+                assertEquals(invalidDisclosures, errorCause.invalidDisclosures.values.flatten())
             } else {
                 fail(exception.message)
             }
