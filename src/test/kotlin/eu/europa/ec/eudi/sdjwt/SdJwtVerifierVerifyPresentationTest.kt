@@ -21,10 +21,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 
 class SdJwtVerifierVerifyPresentationTest {
 
@@ -129,10 +126,10 @@ class SdJwtVerifierVerifyPresentationTest {
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
-        val list = listOf("d1", "d2").map { VerificationError.InvalidDisclosures.InvalidDisclosure(it) }
+        val list = listOf("d1", "d2")
 
-        verifyPresentationExpectingError(
-            VerificationError.InvalidDisclosures(list),
+        verifyPresentationExpectingDisclosureError(
+            list,
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~d1~d2~",
@@ -217,6 +214,32 @@ class SdJwtVerifierVerifyPresentationTest {
             fail("Was expecting $expectedError")
         } catch (exception: SdJwtVerificationException) {
             assertEquals(expectedError, exception.reason)
+        }
+    }
+
+    private suspend fun verifyPresentationExpectingDisclosureError(
+        disclosures: List<String>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
+        unverifiedSdJwt: String,
+    ) {
+        try {
+            val verification =
+                when (holderBindingVerifier) {
+                    KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
+                    is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                        jwtSignatureVerifier,
+                        holderBindingVerifier,
+                        unverifiedSdJwt,
+                    )
+                }
+            verification.getOrThrow()
+            fail("Was expecting Disclosure error")
+        } catch (exception: SdJwtVerificationException) {
+            val invalidDisclosures = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+            assertEquals(disclosures, invalidDisclosures.invalidDisclosures.map { it.disclosure })
+
+//            assertEquals(expectedError, exception.reason)
         }
     }
 
