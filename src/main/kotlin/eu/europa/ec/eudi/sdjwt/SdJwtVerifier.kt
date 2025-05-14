@@ -51,7 +51,9 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
-    data class InvalidDisclosures(val invalidDisclosures: List<String>) : VerificationError
+    data class InvalidDisclosures(val invalidDisclosures: List<InvalidDisclosure>) : VerificationError { // List of object  opos afto sto 41
+        data class InvalidDisclosure(val disclose: String, val message: String? = null, val cause: Throwable? = null)
+    }
 
     /**
      * SD-JWT contains a JWT which contains an unsupported Hashing Algorithm claim
@@ -493,8 +495,12 @@ private fun verifyDisclosures(
 private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
     val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
     maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
-        if (invalidDisclosures.isNotEmpty())
-            throw InvalidDisclosures(invalidDisclosures.toList()).asException()
+        if (invalidDisclosures.isNotEmpty()) {
+            val failedDisclosures: List<InvalidDisclosures.InvalidDisclosure> = invalidDisclosures.map {
+                InvalidDisclosures.InvalidDisclosure(it)
+            }
+            throw InvalidDisclosures(failedDisclosures).asException()
+        }
     }
     return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
         if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
