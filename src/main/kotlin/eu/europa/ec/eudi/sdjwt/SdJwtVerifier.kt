@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
@@ -51,8 +50,13 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
-    data class InvalidDisclosures(val invalidDisclosures: List<InvalidDisclosure>) : VerificationError {
-        data class InvalidDisclosure(val disclosure: String, val message: String? = null, val cause: Throwable)
+    data class InvalidDisclosures(val invalidDisclosures: Map<String, List<String>>) : VerificationError {
+        init {
+            require(invalidDisclosures.isNotEmpty())
+            require(invalidDisclosures.values.all { it.isNotEmpty() })
+        }
+        companion object fun invoke(reason: String, vararg invalidDisclosures: String): InvalidDisclosures =
+            InvalidDisclosures(mapOf(reason to invalidDisclosures.asList()))
     }
 
     /**
@@ -498,15 +502,13 @@ private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclos
         it.isFailure
     }.also { invalidDisclosures ->
         if (invalidDisclosures.isNotEmpty()) {
-            val errors = invalidDisclosures.map { (invalidDisclosure, failure) ->
-                val cause = failure.exceptionOrNull()!!
-                InvalidDisclosures.InvalidDisclosure(
-                    disclosure = invalidDisclosure,
-                    message = cause.message,
-                    cause = cause,
-                )
-            }
-            throw InvalidDisclosures(errors).asException()
+            val cause = invalidDisclosures.map { (invalidDisclosure, message) ->
+                message.exceptionOrNull()!!.message!! to invalidDisclosure
+            }.groupBy(
+                { it.first },
+                { it.second },
+            )
+            throw InvalidDisclosures(cause).asException()
         }
     }
 
