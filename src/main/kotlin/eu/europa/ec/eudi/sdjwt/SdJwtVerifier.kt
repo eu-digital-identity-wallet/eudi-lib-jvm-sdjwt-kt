@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
@@ -55,8 +56,6 @@ sealed interface VerificationError {
             require(invalidDisclosures.isNotEmpty())
             require(invalidDisclosures.values.all { it.isNotEmpty() })
         }
-        companion object fun invoke(reason: String, vararg invalidDisclosures: String): InvalidDisclosures =
-            InvalidDisclosures(mapOf(reason to invalidDisclosures.asList()))
     }
 
     /**
@@ -67,7 +66,11 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains non-unique disclosures
      */
-    data object NonUniqueDisclosures : VerificationError
+    data class NonUniqueDisclosures(val nonUniqueDisclosures: List<String>) : VerificationError {
+        init {
+            require(nonUniqueDisclosures.isNotEmpty())
+        }
+    }
 
     /**
      * SD-JWT contains a JWT which has non unique digests
@@ -497,24 +500,19 @@ private fun verifyDisclosures(
  * @return the list of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
  */
 private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
-    val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
-    maybeDisclosures.filterValues {
-        it.isFailure
-    }.also { invalidDisclosures ->
-        if (invalidDisclosures.isNotEmpty()) {
-            val cause = invalidDisclosures.map { (invalidDisclosure, message) ->
-                message.exceptionOrNull()!!.message!! to invalidDisclosure
-            }.groupBy(
-                { it.first },
-                { it.second },
-            )
-            throw InvalidDisclosures(cause).asException()
-        }
-    }
+    val nonUniqueDisclosures = unverifiedDisclosures.groupBy { it }.filterValues { it.size > 1 }.keys
+    if (nonUniqueDisclosures.isNotEmpty()) throw NonUniqueDisclosures(nonUniqueDisclosures.toList()).asException()
 
-    return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
-        if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
-    }
+    val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
+    val invalidDisclosures = maybeDisclosures.filterValues { it.isFailure }
+        .map { (invalidDisclosure, failure) ->
+            val cause = failure.exceptionOrNull()!!.message ?: "unknown error occurred"
+            cause to invalidDisclosure
+        }
+        .groupBy({ it.first }, { it.second })
+    if (invalidDisclosures.isNotEmpty()) throw InvalidDisclosures(invalidDisclosures).asException()
+
+    return maybeDisclosures.values.map { it.getOrNull()!! }
 }
 
 /**

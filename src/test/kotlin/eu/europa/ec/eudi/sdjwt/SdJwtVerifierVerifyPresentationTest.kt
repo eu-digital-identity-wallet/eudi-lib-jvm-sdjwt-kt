@@ -21,7 +21,10 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class SdJwtVerifierVerifyPresentationTest {
 
@@ -128,7 +131,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
         val list = listOf("d1", "d2")
 
-        verifyPresentationExpectingDisclosureError(
+        verifyPresentationExpectingInvalidDisclosuresError(
             list,
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
@@ -148,7 +151,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
         verifyPresentationExpectingError(
-            VerificationError.NonUniqueDisclosures,
+            VerificationError.NonUniqueDisclosures(listOf(d1)),
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~$d1~$d1~",
@@ -217,28 +220,22 @@ class SdJwtVerifierVerifyPresentationTest {
         }
     }
 
-    private suspend fun verifyPresentationExpectingDisclosureError(
+    private suspend fun verifyPresentationExpectingInvalidDisclosuresError(
         invalidDisclosures: List<String>,
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
-        try {
-            val verification =
-                when (holderBindingVerifier) {
-                    KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
-                    is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
-                        jwtSignatureVerifier,
-                        holderBindingVerifier,
-                        unverifiedSdJwt,
-                    )
-                }
-            verification.getOrThrow()
-            fail("Was expecting Disclosure error")
-        } catch (exception: SdJwtVerificationException) {
-            val errorCause = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-            assertEquals(invalidDisclosures, errorCause.invalidDisclosures.values.flatten())
-        }
+        val verification =
+            when (holderBindingVerifier) {
+                KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
+                is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                    jwtSignatureVerifier,
+                    holderBindingVerifier,
+                    unverifiedSdJwt,
+                )
+            }
+        verification.assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 
     private suspend fun verifySuccess(

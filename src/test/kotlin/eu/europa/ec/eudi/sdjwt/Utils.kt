@@ -25,10 +25,11 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.fail
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
     val otherClaims = JsonObject(filterKeys { it != attributeName })
@@ -127,3 +128,16 @@ internal object HttpMock {
             }
         }
 }
+
+internal fun Result<*>.assertIsFailureWithInvalidDisclosures(invalidDisclosures: List<String>): Unit =
+    fold(
+        onSuccess = { fail("Was expecting error") },
+        onFailure = { exception ->
+            if (exception is SdJwtVerificationException) {
+                val errorCause = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+                assertEquals(invalidDisclosures, errorCause.invalidDisclosures.values.flatten())
+            } else {
+                fail(exception.message)
+            }
+        },
+    )
