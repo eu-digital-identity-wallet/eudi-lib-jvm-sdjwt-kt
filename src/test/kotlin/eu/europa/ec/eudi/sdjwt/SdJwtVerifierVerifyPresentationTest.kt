@@ -129,8 +129,10 @@ class SdJwtVerifierVerifyPresentationTest {
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
-        verifyPresentationExpectingError(
-            VerificationError.InvalidDisclosures(listOf("d1", "d2")),
+        val list = listOf("d1", "d2")
+
+        verifyPresentationExpectingInvalidDisclosuresError(
+            list,
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~d1~d2~",
@@ -149,7 +151,7 @@ class SdJwtVerifierVerifyPresentationTest {
     @Test
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
         verifyPresentationExpectingError(
-            VerificationError.NonUniqueDisclosures,
+            VerificationError.NonUniqueDisclosures(listOf(d1)),
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
             "$jwt~$d1~$d1~",
@@ -216,6 +218,24 @@ class SdJwtVerifierVerifyPresentationTest {
         } catch (exception: SdJwtVerificationException) {
             assertEquals(expectedError, exception.reason)
         }
+    }
+
+    private suspend fun verifyPresentationExpectingInvalidDisclosuresError(
+        invalidDisclosures: List<String>,
+        jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
+        holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
+        unverifiedSdJwt: String,
+    ) {
+        val verification =
+            when (holderBindingVerifier) {
+                KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
+                is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                    jwtSignatureVerifier,
+                    holderBindingVerifier,
+                    unverifiedSdJwt,
+                )
+            }
+        verification.assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 
     private suspend fun verifySuccess(

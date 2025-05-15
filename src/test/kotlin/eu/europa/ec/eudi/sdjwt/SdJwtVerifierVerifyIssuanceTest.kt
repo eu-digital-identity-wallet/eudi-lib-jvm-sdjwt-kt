@@ -160,6 +160,26 @@ class SdJwtVerifierVerifyIssuanceTest {
         )
     }
 
+    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
+        invalidDisclosures: List<String>,
+        unverifiedSdJwt: String,
+    ) {
+        DefaultSdJwtOps.verify(
+            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
+            unverifiedSdJwt = unverifiedSdJwt,
+        ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
+    }
+
+    private suspend fun verifyIssuanceExceptingInvalidDisclosure(
+        invalidDisclosures: List<String>,
+        unverifiedSdJwt: JsonObject,
+    ) {
+        DefaultSdJwtOps.verify(
+            jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
+            unverifiedSdJwt = unverifiedSdJwt,
+        ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
+    }
+
     @Test
     fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
         verifyIssuanceExpectingError(
@@ -230,21 +250,15 @@ class SdJwtVerifierVerifyIssuanceTest {
             mutable["header"] = JsonObject(mutableHeader)
             JsonObject(mutable)
         }
-        verifyIssuanceExpectingError(
-            VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-            DefaultSdJwtOps.NoSignatureValidation,
-            unverifiedSdJwt,
-        )
+        val list = listOf("d1", "d2")
+        verifyIssuanceExceptingInvalidDisclosure(list, unverifiedSdJwt)
     }
 
     @Test
     fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures in JWS Json`() =
         runTest {
-            verifyIssuanceExpectingError(
-                VerificationError.InvalidDisclosures(listOf("d1", "d2")),
-                DefaultSdJwtOps.NoSignatureValidation,
-                "$jwt~d1~d2~",
-            )
+            val list = listOf("d1", "d2")
+            verifyIssuanceExceptingInvalidDisclosure(list, "$jwt~d1~d2~")
         }
 
     @Test
@@ -265,7 +279,7 @@ class SdJwtVerifierVerifyIssuanceTest {
             JsonObject(mutable)
         }
         verifyIssuanceExpectingError(
-            VerificationError.NonUniqueDisclosures,
+            VerificationError.NonUniqueDisclosures(listOf(d1)),
             DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt,
         )
@@ -275,7 +289,7 @@ class SdJwtVerifierVerifyIssuanceTest {
     fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures in JWS JSon`() =
         runTest {
             verifyIssuanceExpectingError(
-                VerificationError.NonUniqueDisclosures,
+                VerificationError.NonUniqueDisclosures(listOf(d1)),
                 DefaultSdJwtOps.NoSignatureValidation,
                 "$jwt~$d1~$d1~",
             )

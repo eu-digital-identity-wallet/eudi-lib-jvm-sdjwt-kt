@@ -51,7 +51,12 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
-    data class InvalidDisclosures(val invalidDisclosures: List<String>) : VerificationError
+    data class InvalidDisclosures(val invalidDisclosures: Map<String, List<String>>) : VerificationError {
+        init {
+            require(invalidDisclosures.isNotEmpty())
+            require(invalidDisclosures.values.all { it.isNotEmpty() })
+        }
+    }
 
     /**
      * SD-JWT contains a JWT which contains an unsupported Hashing Algorithm claim
@@ -61,7 +66,11 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains non-unique disclosures
      */
-    data object NonUniqueDisclosures : VerificationError
+    data class NonUniqueDisclosures(val nonUniqueDisclosures: List<String>) : VerificationError {
+        init {
+            require(nonUniqueDisclosures.isNotEmpty())
+        }
+    }
 
     /**
      * SD-JWT contains a JWT which has non unique digests
@@ -491,14 +500,19 @@ private fun verifyDisclosures(
  * @return the list of [Disclosure]. Otherwise, it may raise [InvalidDisclosures] or [NonUniqueDisclosures]
  */
 private fun uniqueDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
+    val nonUniqueDisclosures = unverifiedDisclosures.groupBy { it }.filterValues { it.size > 1 }.keys
+    if (nonUniqueDisclosures.isNotEmpty()) throw NonUniqueDisclosures(nonUniqueDisclosures.toList()).asException()
+
     val maybeDisclosures = unverifiedDisclosures.associateWith { Disclosure.wrap(it) }
-    maybeDisclosures.filterValues { it.isFailure }.keys.also { invalidDisclosures ->
-        if (invalidDisclosures.isNotEmpty())
-            throw InvalidDisclosures(invalidDisclosures.toList()).asException()
-    }
-    return unverifiedDisclosures.map { maybeDisclosures[it]!!.getOrThrow() }.also { disclosures ->
-        if (maybeDisclosures.keys.size != disclosures.size) throw NonUniqueDisclosures.asException()
-    }
+    val invalidDisclosures = maybeDisclosures.filterValues { it.isFailure }
+        .map { (invalidDisclosure, failure) ->
+            val cause = failure.exceptionOrNull()!!.message ?: "unknown error occurred"
+            cause to invalidDisclosure
+        }
+        .groupBy({ it.first }, { it.second })
+    if (invalidDisclosures.isNotEmpty()) throw InvalidDisclosures(invalidDisclosures).asException()
+
+    return maybeDisclosures.values.map { it.getOrNull()!! }
 }
 
 /**
