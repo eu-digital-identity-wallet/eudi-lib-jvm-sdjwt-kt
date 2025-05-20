@@ -41,7 +41,7 @@ data class SdJwtVcTypeMetadata(
     /**
      * A URI of another type that this type extends
      */
-    @SerialName(SdJwtVcSpec.EXTENDS) val extends: String? = null,
+    @SerialName(SdJwtVcSpec.EXTENDS) val extends: Vct? = null,
 
     @SerialName(SdJwtVcSpec.EXTENDS_INTEGRITY) val extendsIntegrity: DocumentIntegrity? = null,
 
