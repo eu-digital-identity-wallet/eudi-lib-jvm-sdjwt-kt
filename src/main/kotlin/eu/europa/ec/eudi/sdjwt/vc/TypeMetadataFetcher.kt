@@ -15,30 +15,38 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import io.ktor.client.HttpClient
+import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 
-fun interface RetrieveTypeMetadata {
-    suspend operator fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata>
+/**
+ * Fetches the Type Metadata of a VCT.
+ */
+fun interface TypeMetadataFetcher {
+    suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata>
 }
 
-class RetrieveTypeMetadataUsingKtor(
+/**
+ * Fetches the Type Metadata of a VCT that is an HTTPS URL using Ktor.
+ */
+class HttpsTypeMetadataFetcher(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-) : RetrieveTypeMetadata {
-    override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
+) : TypeMetadataFetcher {
+    override suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
         val url = Url(vct.value)
-        require(url.protocol == URLProtocol.HTTPS)
+        require(URLProtocol.HTTPS == url.protocol) { "$vct is not an https url" }
         httpClientFactory().use { httpClient -> httpClient.retrieveTypeMetadata(url) }
     }
 
     private suspend fun HttpClient.retrieveTypeMetadata(url: Url): SdJwtVcTypeMetadata {
         val httpResponse = get(url) {
-            url { URLProtocol.HTTPS }
-            headers { append(HttpHeaders.Accept, ContentType.Application.Json) }
+            headers {
+                set(HttpHeaders.Accept, ContentType.Application.Json.toString())
+            }
         }
-        check(httpResponse.status.isSuccess(), { "Failed to retrieve type metadata from $url: ${httpResponse.status.description}" })
+
+        check(httpResponse.status.isSuccess()) { "Failed to fetch Type Metadata from $url: ${httpResponse.status.description}" }
         return httpResponse.body<SdJwtVcTypeMetadata>()
     }
 }
