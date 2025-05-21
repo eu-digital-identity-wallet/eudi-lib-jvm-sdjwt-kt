@@ -30,7 +30,7 @@ class RetrieveTypeMetadataUsingKtor(
     override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
         val url = Url(vct.value)
         require(url.protocol == URLProtocol.HTTPS)
-        httpClientFactory().retrieveTypeMetadata(url)
+        httpClientFactory().use { httpClient -> httpClient.retrieveTypeMetadata(url) }
     }
 
     private suspend fun HttpClient.retrieveTypeMetadata(url: Url): SdJwtVcTypeMetadata =
@@ -41,7 +41,7 @@ class RetrieveTypeMetadataUsingKtor(
                         URLProtocol.HTTPS
                     }
                     headers {
-                        append("Accept", "application/json")
+                        append(HttpHeaders.Accept, ContentType.Application.Json)
                     }
                 }
             return httpResponse.body<SdJwtVcTypeMetadata>()
