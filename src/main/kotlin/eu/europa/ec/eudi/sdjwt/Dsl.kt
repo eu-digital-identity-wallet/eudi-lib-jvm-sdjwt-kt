@@ -15,6 +15,12 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableElementDsl
+import eu.europa.ec.eudi.sdjwt.dsl.json.JsonDisclosableElement
+import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableArray
+import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
+import eu.europa.ec.eudi.sdjwt.dsl.not
+import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -26,6 +32,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
  * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  */
+@Deprecated("To be removed")
 class DisclosableObject(
     content: Map<String, DisclosableElement>,
     val minimumDigests: MinimumDigests?,
@@ -38,6 +45,7 @@ class DisclosableObject(
  * of this [DisclosableObject], that the [SdJwtFactory] will try to satisfy. [SdJwtFactory] will add decoy digests if
  * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  */
+@Deprecated("To be removed")
 class DisclosableArray(
     content: List<DisclosableElement>,
     val minimumDigests: MinimumDigests?,
@@ -47,6 +55,7 @@ class DisclosableArray(
  * Specifies whether something is claim [always][Disclosable.Always]
  * or [Disclosable.Selectively] disclosable.
  */
+@Deprecated("To be removed")
 enum class Disclosable {
     Always, Selectively;
 
@@ -62,6 +71,7 @@ enum class Disclosable {
  * - [A nested disclosable object][DisclosableValue.Obj]
  * - [A nested disclosable array][DisclosableValue.Arr]
  */
+@Deprecated("To be removed")
 sealed interface DisclosableValue {
     /**
      * A disclosable [JSON][value]
@@ -91,13 +101,10 @@ sealed interface DisclosableValue {
  * @param disclosable whether claims is always or selectively disclosable
  * @param element the value of the claim
  */
+@Deprecated("To be removed")
 data class DisclosableElement(val disclosable: Disclosable, val element: DisclosableValue) {
     operator fun not(): DisclosableElement = copy(!disclosable)
 }
-
-@DslMarker
-@Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
-internal annotation class DisclosableElementDsl
 
 /**
  * [DisclosableArray] is actually a [List] of [elements][DisclosableElement]
@@ -106,6 +113,7 @@ internal annotation class DisclosableElementDsl
  *
  * @see buildDisclosableArray
  */
+@Deprecated("To be removed")
 @DisclosableElementDsl
 class DisclosableArraySpecBuilder(
     val elements: MutableList<DisclosableElement>,
@@ -135,11 +143,13 @@ class DisclosableArraySpecBuilder(
 
     fun objClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit): Unit =
         addObjClaim(Disclosable.Always, buildDisclosableObject(minimumDigests, action))
+
     fun sdObjClaim(minimumDigests: Int? = null, action: DisclosableObjectSpecBuilder.() -> Unit): Unit =
         addObjClaim(Disclosable.Selectively, buildDisclosableObject(minimumDigests, action))
 
     fun arrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
         addArrClaim(Disclosable.Always, buildDisclosableArray(minimumDigests, action))
+
     fun sdArrClaim(minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
         addArrClaim(Disclosable.Selectively, buildDisclosableArray(minimumDigests, action))
 }
@@ -163,6 +173,7 @@ class DisclosableArraySpecBuilder(
  * the number of actual [DisclosureDigest] is less than the [hint][minimumDigests]
  * @return the [DisclosableArray] described by the [builderAction]
  */
+@Deprecated("To be removed")
 inline fun buildDisclosableArray(
     minimumDigests: Int?,
     builderAction: DisclosableArraySpecBuilder.() -> Unit,
@@ -179,6 +190,7 @@ inline fun buildDisclosableArray(
  * @see sdJwt
  * @see buildDisclosableObject
  */
+@Deprecated("To be removed")
 @DisclosableElementDsl
 class DisclosableObjectSpecBuilder(
     val elements: MutableMap<String, DisclosableElement>,
@@ -209,11 +221,13 @@ class DisclosableObjectSpecBuilder(
 
     fun objClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit): Unit =
         addObjClaim(name, Disclosable.Always, buildDisclosableObject(minimumDigests, action))
+
     fun sdObjClaim(name: String, minimumDigests: Int? = null, action: (DisclosableObjectSpecBuilder).() -> Unit): Unit =
         addObjClaim(name, Disclosable.Selectively, buildDisclosableObject(minimumDigests, action))
 
     fun arrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
         putArrClaim(name, Disclosable.Always, buildDisclosableArray(minimumDigests, action))
+
     fun sdArrClaim(name: String, minimumDigests: Int? = null, action: DisclosableArraySpecBuilder.() -> Unit): Unit =
         putArrClaim(name, Disclosable.Selectively, buildDisclosableArray(minimumDigests, action))
 }
@@ -226,6 +240,7 @@ class DisclosableObjectSpecBuilder(
  * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
  * @return the [DisclosableObject]
  */
+@Deprecated("To be removed")
 inline fun buildDisclosableObject(
     minimumDigests: Int? = null,
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
@@ -242,7 +257,46 @@ inline fun buildDisclosableObject(
  * @param builderAction some usage/action of the [DisclosableObjectSpecBuilder]
  * @return the [DisclosableObject]
  */
+@Deprecated("To be removed")
 inline fun sdJwt(
     minimumDigests: Int? = null,
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): DisclosableObject = buildDisclosableObject(minimumDigests, builderAction)
+
+fun DisclosableObject.migrate(): JsonElementDisclosableObject {
+    val newContent = mapValues { (_, value) -> value.migrate() }
+    return JsonElementDisclosableObject(
+        content = newContent,
+        minimumDigests = minimumDigests,
+    )
+}
+
+private fun DisclosableArray.migrate(): JsonElementDisclosableArray {
+    val newContent = map { it.migrate() }
+    return JsonElementDisclosableArray(
+        content = newContent,
+        minimumDigests = minimumDigests,
+    )
+}
+
+private fun DisclosableElement.migrate(): JsonDisclosableElement {
+    val newElement = element.migrate()
+    return when (disclosable) {
+        Disclosable.Always -> !newElement
+        Disclosable.Selectively -> +newElement
+    }
+}
+
+private fun DisclosableValue.migrate(): eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue<String, JsonElement> {
+    return when (this) {
+        is DisclosableValue.Json -> eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue(value)
+        is DisclosableValue.Arr -> {
+            val newValue: JsonElementDisclosableArray = value.migrate()
+            eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue.arr(newValue)
+        }
+        is DisclosableValue.Obj -> {
+            val newValue: JsonElementDisclosableObject = value.migrate()
+            eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue.obj(newValue)
+        }
+    }
+}
