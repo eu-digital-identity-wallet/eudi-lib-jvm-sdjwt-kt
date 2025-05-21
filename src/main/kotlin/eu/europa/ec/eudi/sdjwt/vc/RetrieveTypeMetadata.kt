@@ -33,17 +33,11 @@ class RetrieveTypeMetadataUsingKtor(
         httpClientFactory().use { httpClient -> httpClient.retrieveTypeMetadata(url) }
     }
 
-    private suspend fun HttpClient.retrieveTypeMetadata(url: Url): SdJwtVcTypeMetadata =
-        use { httpClient ->
-            val httpResponse = httpClient
-                .get(url) {
-                    url {
-                        URLProtocol.HTTPS
-                    }
-                    headers {
-                        append(HttpHeaders.Accept, ContentType.Application.Json)
-                    }
-                }
-            return httpResponse.body<SdJwtVcTypeMetadata>()
+    private suspend fun HttpClient.retrieveTypeMetadata(url: Url): SdJwtVcTypeMetadata {
+        val httpResponse = get(url) {
+            url { URLProtocol.HTTPS }
+            headers { append(HttpHeaders.Accept, ContentType.Application.Json) }
         }
+        return httpResponse.body<SdJwtVcTypeMetadata>()
+    }
 }
