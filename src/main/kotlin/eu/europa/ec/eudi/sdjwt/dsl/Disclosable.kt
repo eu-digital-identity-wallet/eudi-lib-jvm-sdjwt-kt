@@ -135,101 +135,89 @@ fun <K, A, B> DisclosableElement<K, A>.mapValue(
     factory: DisclosableContainerFactory<K, B> = DisclosableContainerFactory.default(),
     f: (A) -> B,
 ): DisclosableElement<K, B> {
-    val mapDisclosableElement = mapDisclosableElement<K, A, B>()
-    return mapDisclosableElement(Triple(this, f, factory))
+    val mapDisclosableElement = mapDisclosableElement<K, A, B>(factory)
+    return mapDisclosableElement(this to f)
 }
 
 fun <K, A, B> DisclosableObject<K, A>.mapElements(
     factory: DisclosableContainerFactory<K, B> = DisclosableContainerFactory.default(),
     f: (A) -> B,
 ): DisclosableObject<K, B> {
-    val mapObjValues = mapObjValues<K, A, B>()
-    return mapObjValues(Triple(this, f, factory))
+    val mapObjValues = mapObjValues<K, A, B>(factory)
+    return mapObjValues(this to f)
 }
 
 fun <K, A, B> DisclosableArray<K, A>.mapElements(
     factory: DisclosableContainerFactory<K, B> = DisclosableContainerFactory.default(),
     f: (A) -> B,
 ): DisclosableArray<K, B> {
-    val mapArrValues = mapArrValues<K, A, B>()
-    return mapArrValues(Triple(this, f, factory))
+    val mapArrValues = mapArrValues<K, A, B>(factory)
+    return mapArrValues(this to f)
 }
 
 fun <K, A, B> DisclosableValue<K, A>.map(
     factory: DisclosableContainerFactory<K, B> = DisclosableContainerFactory.default(),
     f: (A) -> B,
 ): DisclosableValue<K, B> {
-    val mapDisclosableValue = mapDisclosableValue<K, A, B>()
-    return mapDisclosableValue.invoke(Triple(this, f, factory))
+    val mapDisclosableValue = mapDisclosableValue<K, A, B>(factory)
+    return mapDisclosableValue.invoke(this to f)
 }
 
 @Suppress("standard:max-line-length")
-private fun<K, A, B> mapDisclosableElement(): DeepRecursiveFunction<
-    Triple<
-        DisclosableElement<K, A>,
-        (
-            A,
-        ) -> B,
-        DisclosableContainerFactory<K, B>,
-        >,
+private fun<K, A, B> mapDisclosableElement(factory: DisclosableContainerFactory<K, B>): DeepRecursiveFunction<
+    Pair<DisclosableElement<K, A>, (A) -> B>,
     DisclosableElement<K, B>,
     > =
-    DeepRecursiveFunction { (de, f, factory) ->
-        val mapDisclosableValue = mapDisclosableValue<K, A, B>()
+    DeepRecursiveFunction { (de, f) ->
+        val mapDisclosableValue = mapDisclosableValue<K, A, B>(factory)
         de.map { v ->
-            mapDisclosableValue.callRecursive(Triple(v, f, factory))
+            mapDisclosableValue.callRecursive(v to f)
         }
     }
-private fun<K, A, B> mapObjValues(): DeepRecursiveFunction<
-    Triple<
-        DisclosableObject<K, A>,
-        (
-            A,
-        ) -> B,
-        DisclosableContainerFactory<K, B>,
-        >,
+private fun<K, A, B> mapObjValues(factory: DisclosableContainerFactory<K, B>): DeepRecursiveFunction<
+    Pair<DisclosableObject<K, A>, (A) -> B>,
     DisclosableObject<K, B>,
     > =
-    DeepRecursiveFunction { (obj, f, factory) ->
-        val mapDisclosableElement = mapDisclosableElement<K, A, B>()
+    DeepRecursiveFunction { (obj, f) ->
+        val mapDisclosableElement = mapDisclosableElement<K, A, B>(factory)
         val elements = obj.content.mapValues { (_, de) ->
-            mapDisclosableElement.callRecursive(Triple(de, f, factory))
+            mapDisclosableElement.callRecursive(de to f)
         }
         factory.obj(elements)
     }
 
 @Suppress("standard:max-line-length")
-private fun<K, A, B> mapArrValues(): DeepRecursiveFunction<
-    Triple<DisclosableArray<K, A>, (A) -> B, DisclosableContainerFactory<K, B>>,
+private fun<K, A, B> mapArrValues(factory: DisclosableContainerFactory<K, B>): DeepRecursiveFunction<
+    Pair<DisclosableArray<K, A>, (A) -> B>,
     DisclosableArray<K, B>,
     > =
-    DeepRecursiveFunction { (arr, f, factory) ->
-        val mapDisclosableElement = mapDisclosableElement<K, A, B>()
+    DeepRecursiveFunction { (arr, f) ->
+        val mapDisclosableElement = mapDisclosableElement<K, A, B>(factory)
         val elements = arr.content.map { de ->
-            mapDisclosableElement.callRecursive(Triple(de, f, factory))
+            mapDisclosableElement.callRecursive(de to f)
         }
         factory.arr(elements)
     }
 
 @Suppress("standard:max-line-length")
-internal fun <K, A, B> mapDisclosableValue(): DeepRecursiveFunction<
-    Triple<DisclosableValue<K, A>, (A) -> B, DisclosableContainerFactory<K, B>>,
+internal fun <K, A, B> mapDisclosableValue(factory: DisclosableContainerFactory<K, B>): DeepRecursiveFunction<
+    Pair<DisclosableValue<K, A>, (A) -> B>,
     DisclosableValue<K, B>,
     > =
-    DeepRecursiveFunction { (dv, f, factory) ->
+    DeepRecursiveFunction { (dv, f) ->
         when (dv) {
             is DisclosableValue.Id<K, A> -> {
                 val mappedValue = f(dv.value)
                 DisclosableValue.Id(mappedValue)
             }
             is DisclosableValue.Obj<K, A> -> {
-                val mapObjValues = mapObjValues<K, A, B>()
-                val mappedObj = mapObjValues.callRecursive(Triple(dv.value, f, factory))
+                val mapObjValues = mapObjValues<K, A, B>(factory)
+                val mappedObj = mapObjValues.callRecursive(dv.value to f)
                 DisclosableValue.Obj(mappedObj)
             }
             is DisclosableValue.Arr<K, A> -> {
-                val mapArrValues = mapArrValues<K, A, B>()
-                val mappedArr = mapArrValues.callRecursive(Triple(dv.value, f, factory))
+                val mapArrValues = mapArrValues<K, A, B>(factory)
+                val mappedArr = mapArrValues.callRecursive(dv.value to f)
                 DisclosableValue.Arr(mappedArr)
             }
         }

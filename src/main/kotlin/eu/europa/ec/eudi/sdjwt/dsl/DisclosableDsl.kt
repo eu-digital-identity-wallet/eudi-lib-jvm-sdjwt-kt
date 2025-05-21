@@ -87,7 +87,7 @@ class DisclosableArraySpecBuilder<K, P>(
 }
 
 fun <K, P> buildDisclosableArray(
-    factory: DisclosableContainerFactory<K, P>,
+    factory: DisclosableContainerFactory<K, P> = DisclosableContainerFactory.default(),
     builderAction: DisclosableArraySpecBuilder<K, P>.() -> Unit,
 ): DisclosableArray<K, P> {
     val builder = DisclosableArraySpecBuilder(factory, mutableListOf())
@@ -97,8 +97,8 @@ fun <K, P> buildDisclosableArray(
 
 @DisclosableElementDsl
 class DisclosableObjectSpecBuilder<K, P>(
-    val factory: DisclosableContainerFactory<K, P>,
-    val elements: MutableMap<K, DisclosableElement<K, P>>,
+    val factory: DisclosableContainerFactory<K, P> = DisclosableContainerFactory.default(),
+    val elements: MutableMap<K, DisclosableElement<K, P>> = mutableMapOf(),
 ) {
 
     private fun addValue(
@@ -175,7 +175,7 @@ class DisclosableObjectSpecBuilder<K, P>(
 }
 
 fun <K, P> buildDisclosableObject(
-    factory: DisclosableContainerFactory<K, P>,
+    factory: DisclosableContainerFactory<K, P> = DisclosableContainerFactory.default(),
     builderAction: DisclosableObjectSpecBuilder<K, P>.() -> Unit,
 ): DisclosableObject<K, P> {
     val content = DisclosableObjectSpecBuilder(factory, mutableMapOf()).apply(builderAction)
