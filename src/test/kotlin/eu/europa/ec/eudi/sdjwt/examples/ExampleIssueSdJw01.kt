@@ -15,11 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.crypto.RSASSASigner
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
+import com.nimbusds.jose.*
+import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
-import eu.europa.ec.eudi.sdjwt.loadRsaKey
 import kotlinx.coroutines.runBlocking
 
 val issuedSdJwt: String = runBlocking {

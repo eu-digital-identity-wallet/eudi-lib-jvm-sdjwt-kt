@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.crypto.*
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.*
 
