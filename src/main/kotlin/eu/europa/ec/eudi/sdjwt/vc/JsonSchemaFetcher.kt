@@ -15,16 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
 import io.ktor.http.*
 
 /**
  * Fetches a [JsonSchema] from a Uri.
  */
 interface JsonSchemaFetcher {
-    suspend fun fetch(uri: String): Result<JsonSchema>
+    suspend fun fetch(uri: String): Result<JsonSchema?>
 }
 
 /**
@@ -34,18 +31,8 @@ class KtorJsonSchemaFetcher(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : JsonSchemaFetcher {
 
-    override suspend fun fetch(uri: String): Result<JsonSchema> =
+    override suspend fun fetch(uri: String): Result<JsonSchema?> =
         runCatching {
-            httpClientFactory().use { it.fetchJsonSchema(Url(uri)) }
-        }
-
-    private suspend fun HttpClient.fetchJsonSchema(url: Url): JsonSchema =
-        get(url) {
-            headers {
-                set(HttpHeaders.Accept, ContentType.Application.Json.toString())
-            }
-        }.let {
-            check(it.status.isSuccess()) { "failed to fetch JsonSchema from $url: ${it.status.description}" }
-            it.body()
+            httpClientFactory().use { it.getJsonOrNull(Url(uri)) }
         }
 }

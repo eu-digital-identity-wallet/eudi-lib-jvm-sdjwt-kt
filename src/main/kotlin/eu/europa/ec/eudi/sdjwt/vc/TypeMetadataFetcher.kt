@@ -15,16 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
 import io.ktor.http.*
 
 /**
  * Fetches the Type Metadata of a VCT.
  */
 fun interface TypeMetadataFetcher {
-    suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata>
+    suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata?>
 }
 
 /**
@@ -33,20 +30,9 @@ fun interface TypeMetadataFetcher {
 class HttpsTypeMetadataFetcher(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : TypeMetadataFetcher {
-    override suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
+    override suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata?> = runCatching {
         val url = Url(vct.value)
         require(URLProtocol.HTTPS == url.protocol) { "$vct is not an https url" }
-        httpClientFactory().use { httpClient -> httpClient.fetchTypeMetadata(url) }
-    }
-
-    private suspend fun HttpClient.fetchTypeMetadata(url: Url): SdJwtVcTypeMetadata {
-        val httpResponse = get(url) {
-            headers {
-                set(HttpHeaders.Accept, ContentType.Application.Json.toString())
-            }
-        }
-
-        check(httpResponse.status.isSuccess()) { "failed to fetch Type Metadata from $url: ${httpResponse.status.description}" }
-        return httpResponse.body<SdJwtVcTypeMetadata>()
+        httpClientFactory().use { httpClient -> httpClient.getJsonOrNull(url) }
     }
 }
