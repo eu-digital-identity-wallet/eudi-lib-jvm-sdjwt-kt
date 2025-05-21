@@ -21,32 +21,31 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 
 /**
- * Fetches the Type Metadata of a VCT.
+ * Fetches a [JsonSchema] from a Uri.
  */
-fun interface TypeMetadataFetcher {
-    suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata>
+interface JsonSchemaFetcher {
+    suspend fun fetch(uri: String): Result<JsonSchema>
 }
 
 /**
- * Fetches the Type Metadata of a VCT that is an HTTPS URL using Ktor.
+ * Ktor implementation of [JsonSchemaFetcher] that fetches JsonSchemas from Uris that correspond to Urls.
  */
-class HttpsTypeMetadataFetcher(
+class KtorJsonSchemaFetcher(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-) : TypeMetadataFetcher {
-    override suspend fun fetch(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
-        val url = Url(vct.value)
-        require(URLProtocol.HTTPS == url.protocol) { "$vct is not an https url" }
-        httpClientFactory().use { httpClient -> httpClient.fetchTypeMetadata(url) }
-    }
+) : JsonSchemaFetcher {
 
-    private suspend fun HttpClient.fetchTypeMetadata(url: Url): SdJwtVcTypeMetadata {
-        val httpResponse = get(url) {
+    override suspend fun fetch(uri: String): Result<JsonSchema> =
+        runCatching {
+            httpClientFactory().use { it.fetchJsonSchema(Url(uri)) }
+        }
+
+    private suspend fun HttpClient.fetchJsonSchema(url: Url): JsonSchema =
+        get(url) {
             headers {
                 set(HttpHeaders.Accept, ContentType.Application.Json.toString())
             }
+        }.let {
+            check(it.status.isSuccess()) { "failed to fetch JsonSchema from $url: ${it.status.description}" }
+            it.body()
         }
-
-        check(httpResponse.status.isSuccess()) { "failed to fetch Type Metadata from $url: ${httpResponse.status.description}" }
-        return httpResponse.body<SdJwtVcTypeMetadata>()
-    }
 }
