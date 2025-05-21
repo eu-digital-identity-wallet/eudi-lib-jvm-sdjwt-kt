@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -23,18 +24,26 @@ fun interface RetrieveTypeMetadata {
     suspend operator fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata>
 }
 
-class DefaultHttpsTypeMetadataRetrievalMechanism(
+class RetrieveTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : RetrieveTypeMetadata {
     override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata> = runCatching {
         val url = Url(vct.value)
         require(url.protocol == URLProtocol.HTTPS)
-        retrieveMetadata(url)
+        httpClientFactory().retrieveTypeMetadata(url)
     }
 
-    private suspend fun retrieveMetadata(url: Url): SdJwtVcTypeMetadata = httpClientFactory()
-        .use { httpClient ->
-            val httpResponse = httpClient.get(url)
+    private suspend fun HttpClient.retrieveTypeMetadata(url: Url): SdJwtVcTypeMetadata =
+        use { httpClient ->
+            val httpResponse = httpClient
+                .get(url) {
+                    url {
+                        URLProtocol.HTTPS
+                    }
+                    headers {
+                        append("Accept", "application/json")
+                    }
+                }
             return httpResponse.body<SdJwtVcTypeMetadata>()
         }
 }
