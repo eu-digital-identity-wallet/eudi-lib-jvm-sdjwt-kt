@@ -69,7 +69,7 @@ class StructuredDisclosure {
             DecoyGen.Default,
             null,
 
-        ).createSdJwt(sdJwtElements).getOrThrow()
+        ).createSdJwt(sdJwtElements.migrate()).getOrThrow()
 
         val (jwtClaimSet, disclosures) = disclosedJsonObject
 
