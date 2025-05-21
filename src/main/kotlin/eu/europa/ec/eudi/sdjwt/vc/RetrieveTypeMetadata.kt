@@ -38,7 +38,7 @@ class RetrieveTypeMetadataUsingKtor(
             url { URLProtocol.HTTPS }
             headers { append(HttpHeaders.Accept, ContentType.Application.Json) }
         }
-        check(httpResponse.status.isSuccess())
+        check(httpResponse.status.isSuccess(), { "Failed to retrieve type metadata from $url: ${httpResponse.status.description}" })
         return httpResponse.body<SdJwtVcTypeMetadata>()
     }
 }
