@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import kotlin.test.*
 
 class ExampleFlatSdJwt01Test {

@@ -17,8 +17,8 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import kotlinx.coroutines.runBlocking
 
 val issuedSdJwt: String = runBlocking {
