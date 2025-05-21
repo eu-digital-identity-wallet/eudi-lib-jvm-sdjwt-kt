@@ -19,6 +19,9 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import kotlin.test.*
 
+/**
+* [sdJwt]
+*/
 class ExampleReadMeTest01 {
 
     @Test
