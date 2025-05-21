@@ -38,6 +38,7 @@ class RetrieveTypeMetadataUsingKtor(
             url { URLProtocol.HTTPS }
             headers { append(HttpHeaders.Accept, ContentType.Application.Json) }
         }
+        check(httpResponse.status.isSuccess())
         return httpResponse.body<SdJwtVcTypeMetadata>()
     }
 }
