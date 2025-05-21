@@ -42,7 +42,8 @@ fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
  * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
  * @param saltProvider provides [Salt] for the calculation of [Disclosure]
  * @param fallbackMinimumDigests This is an optional hint, that expresses the number of digests on the immediate level
- * of every [DisclosableObject]. It will be taken into account if there is not an explicit [hint][DisclosableObject.minimumDigests] for
+ * of every [DisclosableObject]. It will be taken into account if there is not an explicitly
+ * defined [hint][DisclosableObject.minimumDigests] for
  * this [DisclosableObject]. If not provided, decoys will be added only if there is a hint at [DisclosableObject] level.
  */
 @Suppress("ktlint:standard:max-line-length")
@@ -64,7 +65,7 @@ class SdJwtFactory(
         replaceWith = ReplaceWith("createSdJwt(sdJwtSpec.migrate())"),
     )
     fun createSdJwt(
-        sdJwtSpec: eu.europa.ec.eudi.sdjwt.DisclosableObject,
+        sdJwtSpec: DisclosableObject,
     ): Result<SdJwt<JsonObject>> = runCatching {
         val migrated = sdJwtSpec.migrate()
         createSdJwt(migrated).getOrThrow()
@@ -305,7 +306,7 @@ class SdJwtFactory(
     /**
      * Adds the hash algorithm claim if disclosures are present
      * @param h the hash algorithm
-     * @return a new [EncodedSdElement] with an updated claims to
+     * @return a new [EncodedSdElement] with an updated claim to
      * contain the hash algorithm claim, if disclosures are present
      */
     private fun EncodedSdElement.addHashAlgClaim(h: HashAlgorithm): EncodedSdElement {

@@ -263,7 +263,6 @@ inline fun sdJwt(
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): DisclosableObject = buildDisclosableObject(minimumDigests, builderAction)
 
-@Deprecated("To be removed")
 fun DisclosableObject.migrate(): JsonElementDisclosableObject {
     val newContent = mapValues { (_, value) -> value.migrate() }
     return JsonElementDisclosableObject(
