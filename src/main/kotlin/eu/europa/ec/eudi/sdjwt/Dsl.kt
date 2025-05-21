@@ -263,6 +263,7 @@ inline fun sdJwt(
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): DisclosableObject = buildDisclosableObject(minimumDigests, builderAction)
 
+@Deprecated("To be removed")
 fun DisclosableObject.migrate(): JsonElementDisclosableObject {
     val newContent = mapValues { (_, value) -> value.migrate() }
     return JsonElementDisclosableObject(
@@ -271,6 +272,7 @@ fun DisclosableObject.migrate(): JsonElementDisclosableObject {
     )
 }
 
+@Deprecated("To be removed")
 private fun DisclosableArray.migrate(): JsonElementDisclosableArray {
     val newContent = map { it.migrate() }
     return JsonElementDisclosableArray(
@@ -279,6 +281,7 @@ private fun DisclosableArray.migrate(): JsonElementDisclosableArray {
     )
 }
 
+@Deprecated("To be removed")
 private fun DisclosableElement.migrate(): JsonDisclosableElement {
     val newElement = element.migrate()
     return when (disclosable) {
@@ -287,6 +290,7 @@ private fun DisclosableElement.migrate(): JsonDisclosableElement {
     }
 }
 
+@Deprecated("To be removed")
 private fun DisclosableValue.migrate(): eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue<String, JsonElement> {
     return when (this) {
         is DisclosableValue.Json -> eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue(value)

@@ -22,13 +22,14 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
 import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlin.test.*
 
 class PresentationTest {
@@ -258,18 +259,20 @@ class PresentationTest {
     @Test
     fun `query for sd array`() = runTest {
         with(NimbusSdJwtOps) {
-            val spec = sdJwt {
-                arrClaim("evidence") {
-                    sdObjClaim {
-                        sdClaim("type", "document")
-                    }
-                    objClaim {
-                        claim("foo", "bar")
+            val spec =
+                sdJwt {
+                    arrClaim("evidence") {
+                        sdObjClaim {
+                            sdClaim("type", "document")
+                        }
+                        objClaim {
+                            claim("foo", "bar")
+                        }
                     }
                 }
-            }
 
             val sdJwt = issuer.issue(spec).getOrThrow().also { it.prettyPrintAll() }
+            sdJwt.prettyPrintAll()
             // All claims below should not require a disclosure
             val q1 = setOf(
                 ClaimPath.claim("evidence"),

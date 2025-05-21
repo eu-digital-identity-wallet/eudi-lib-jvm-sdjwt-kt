@@ -63,7 +63,7 @@ class DisclosableArraySpecBuilder<K, P>(
 
     fun sdObjClaim(
         element: DisclosableObject<K, P>,
-    ): Unit = addObj({ !it }, element)
+    ): Unit = addObj({ +it }, element)
 
     fun sdObjClaim(
         action: DisclosableObjectSpecBuilder<K, P>.() -> Unit,

@@ -55,9 +55,11 @@ class JsonElementDisclosableArraySpecBuilder(
     val elements: List<JsonDisclosableElement>
         get() = claims.elements
 
+    fun claim(value: JsonElement): Unit = claims.claim(value)
     fun claim(value: String): Unit = claims.claim(JsonPrimitive(value))
     fun claim(value: Number): Unit = claims.claim(JsonPrimitive(value))
     fun claim(value: Boolean): Unit = claims.claim(JsonPrimitive(value))
+    fun sdClaim(value: JsonElement): Unit = claims.sdClaim(value)
     fun sdClaim(value: String): Unit = claims.sdClaim(JsonPrimitive(value))
     fun sdClaim(value: Number): Unit = claims.sdClaim(JsonPrimitive(value))
     fun sdClaim(value: Boolean): Unit = claims.sdClaim(JsonPrimitive(value))
@@ -76,7 +78,7 @@ class JsonElementDisclosableArraySpecBuilder(
 }
 
 fun buildJsonElementDisclosableArray(
-    minimumDigests: Int?,
+    minimumDigests: Int? = null,
     builderAction: JsonElementDisclosableArraySpecBuilder.() -> Unit,
 ): JsonElementDisclosableArray {
     val builder = JsonElementDisclosableArraySpecBuilder(mutableListOf())
@@ -92,13 +94,15 @@ class JsonElementDisclosableObjectSpecBuilder(
     val elements: Map<String, JsonDisclosableElement>
         get() = claims.elements
 
-    fun claim(name: String, value: String): Unit = claims.claim(name, JsonPrimitive(value))
-    fun claim(name: String, value: Number): Unit = claims.claim(name, JsonPrimitive(value))
-    fun claim(name: String, value: Boolean): Unit = claims.claim(name, JsonPrimitive(value))
+    fun claim(name: String, value: JsonElement): Unit = claims.claim(name, value)
+    fun claim(name: String, value: String): Unit = claim(name, JsonPrimitive(value))
+    fun claim(name: String, value: Number): Unit = claim(name, JsonPrimitive(value))
+    fun claim(name: String, value: Boolean): Unit = claim(name, JsonPrimitive(value))
 
-    fun sdClaim(name: String, value: String): Unit = claims.sdClaim(name, JsonPrimitive(value))
-    fun sdClaim(name: String, value: Number): Unit = claims.sdClaim(name, JsonPrimitive(value))
-    fun sdClaim(name: String, value: Boolean): Unit = claims.sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(name: String, value: JsonElement): Unit = claims.sdClaim(name, value)
+    fun sdClaim(name: String, value: String): Unit = sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(name: String, value: Number): Unit = sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(name: String, value: Boolean): Unit = sdClaim(name, JsonPrimitive(value))
 
     fun objClaim(
         name: String,
@@ -130,7 +134,7 @@ class JsonElementDisclosableObjectSpecBuilder(
 }
 
 fun buildJsonElementDisclosableObject(
-    minimumDigests: Int?,
+    minimumDigests: Int? = null,
     builderAction: JsonElementDisclosableObjectSpecBuilder.() -> Unit,
 ): JsonElementDisclosableObject {
     val builder = JsonElementDisclosableObjectSpecBuilder(mutableMapOf())

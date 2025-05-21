@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
-import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
@@ -94,10 +94,10 @@ fun DisclosuresPerClaimPath.prettyPrint() {
 
 fun String.removeNewLine(): String = replace("\n", "")
 
-internal fun DisclosableObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
+internal fun JsonElementDisclosableObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
-    val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this.migrate()).getOrNull()).apply { prettyPrint { it } }
+    val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }

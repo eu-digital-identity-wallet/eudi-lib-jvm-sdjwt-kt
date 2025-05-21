@@ -22,6 +22,8 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -110,6 +112,6 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             signAlgorithm = alg,
         )
 
-    suspend fun issue(sdElements: DisclosableObject): SdJwt<SignedJWT> =
+    suspend fun issue(sdElements: JsonElementDisclosableObject): SdJwt<SignedJWT> =
         issuer.issue(sdElements).getOrThrow()
 }

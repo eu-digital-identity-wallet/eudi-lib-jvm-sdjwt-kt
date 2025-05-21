@@ -19,7 +19,10 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
+import eu.europa.ec.eudi.sdjwt.SdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.loadRsaKey
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
