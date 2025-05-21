@@ -70,6 +70,7 @@ In the example below, the Issuer decides to issue an SD-JWT as follows:
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.runBlocking
 -->
 

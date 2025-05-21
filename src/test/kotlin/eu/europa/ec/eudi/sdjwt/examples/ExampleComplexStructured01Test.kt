@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import eu.europa.ec.eudi.sdjwt.assertThat
-import kotlin.test.Test
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.*
+import kotlin.test.*
 
 class ExampleComplexStructured01Test {
 
