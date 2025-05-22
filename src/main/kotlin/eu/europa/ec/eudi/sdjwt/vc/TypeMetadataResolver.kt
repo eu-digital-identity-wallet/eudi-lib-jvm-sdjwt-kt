@@ -15,24 +15,36 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-data class TypeMetadata(
+data class ResolvedTypeMetadata(
     val vct: Vct,
-    val name: String? = null,
-    val description: String? = null,
-    val display: List<DisplayMetadata> = emptyList(),
-    val claims: List<ClaimMetadata> = emptyList(),
-    val schemas: List<JsonSchema> = emptyList(),
-)
+    val name: String?,
+    val description: String?,
+    val display: List<DisplayMetadata>,
+    val claims: List<ClaimMetadata>,
+    val schemas: List<JsonSchema>,
+) {
+    companion object
+}
+
+private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata =
+    ResolvedTypeMetadata(
+        vct = vct,
+        name = null,
+        description = null,
+        display = emptyList(),
+        claims = emptyList(),
+        schemas = emptyList(),
+    )
 
 /**
- * Resolver for [TypeMetadata].
+ * Resolver for [ResolvedTypeMetadata].
  */
 interface TypeMetadataResolver {
 
     /**
-     * Resolves the [TypeMetadata] for [vct].
+     * Resolves the [ResolvedTypeMetadata] for [vct].
      */
-    suspend fun resolve(vct: Vct): Result<TypeMetadata>
+    suspend fun resolve(vct: Vct): Result<ResolvedTypeMetadata>
 }
 
 /**
@@ -48,8 +60,8 @@ class DefaultTypeMetadataResolver(
         require(jsonSchemaFetchers.isNotEmpty()) { "no jsonSchemaFetchers configured" }
     }
 
-    override suspend fun resolve(vct: Vct): Result<TypeMetadata> = runCatching {
-        tailrec suspend fun resolve(vct: Vct, accumulator: TypeMetadata, resolved: Set<Vct>): TypeMetadata {
+    override suspend fun resolve(vct: Vct): Result<ResolvedTypeMetadata> = runCatching {
+        tailrec suspend fun resolve(vct: Vct, accumulator: ResolvedTypeMetadata, resolved: Set<Vct>): ResolvedTypeMetadata {
             require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
             val current = fetchTypeMetadata(vct)
                 .let {
@@ -71,7 +83,7 @@ class DefaultTypeMetadataResolver(
             }
         }
 
-        resolve(vct, TypeMetadata(vct = vct), emptySet())
+        resolve(vct, ResolvedTypeMetadata.empty(vct = vct), emptySet())
     }
 
     private suspend fun fetchTypeMetadata(vct: Vct): SdJwtVcTypeMetadata =
@@ -84,9 +96,9 @@ class DefaultTypeMetadataResolver(
 }
 
 /**
- * Merges the [TypeMetadata] of a [Vct] with those of its [parent].
+ * Merges the [ResolvedTypeMetadata] of a [Vct] with those of its [parent].
  *
- * The resulting [TypeMetadata] has:
+ * The resulting [ResolvedTypeMetadata] has:
  * 1. vct: the vct of this instance
  * 2. name: the name of this instance, or the name of parent in case this has no name
  * 3. description: the description of this instance, or the description of parent in case this has no description
@@ -96,13 +108,13 @@ class DefaultTypeMetadataResolver(
  *   languages not defined by this
  * 6. schemas: the schemas of this instance and the schema of parent if one is present
  */
-private operator fun TypeMetadata.plus(parent: SdJwtVcTypeMetadata): TypeMetadata {
+private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): ResolvedTypeMetadata {
     val newName = name ?: parent.name
     val newDescription = description ?: parent.description
     val newDisplay = display.mergeWith(parent.display?.value.orEmpty(), DisplayMetadata::lang) { current, _ -> current }
     val newClaims = claims.mergeWith(parent.claims.orEmpty(), ClaimMetadata::path, ClaimMetadata::mergeWith)
     val newSchemas = schemas + listOfNotNull(parent.schema)
-    return TypeMetadata(
+    return ResolvedTypeMetadata(
         vct = vct,
         name = newName,
         description = newDescription,
