@@ -99,8 +99,8 @@ class DefaultTypeMetadataResolver(
 private operator fun TypeMetadata.plus(parent: SdJwtVcTypeMetadata): TypeMetadata {
     val newName = name ?: parent.name
     val newDescription = description ?: parent.description
-    val newDisplay = merge(display, parent.display?.value.orEmpty(), DisplayMetadata::lang) { current, _ -> current }
-    val newClaims = merge(claims, parent.claims.orEmpty(), ClaimMetadata::path, ClaimMetadata::mergeWith)
+    val newDisplay = display.mergeWith(parent.display?.value.orEmpty(), DisplayMetadata::lang) { current, _ -> current }
+    val newClaims = claims.mergeWith(parent.claims.orEmpty(), ClaimMetadata::path, ClaimMetadata::mergeWith)
     val newSchemas = schemas + listOfNotNull(parent.schema)
     return TypeMetadata(
         vct = vct,
@@ -112,18 +112,18 @@ private operator fun TypeMetadata.plus(parent: SdJwtVcTypeMetadata): TypeMetadat
     )
 }
 
-private fun <T, K> merge(currentValues: List<T>, parentValues: List<T>, extractKey: (T) -> K, mergeValues: (T, T) -> T): List<T> {
-    val currentValuesByKey = currentValues.associateBy { extractKey(it) }
-    val parentValuesByKey = parentValues.associateBy { extractKey(it) }
-    val allKeys = currentValuesByKey.keys + parentValuesByKey.keys
+private fun <T, K> Iterable<T>.mergeWith(other: Iterable<T>, extractKey: (T) -> K, mergeValues: (T, T) -> T): List<T> {
+    val thisValuesByKey = associateBy { extractKey(it) }
+    val otherValuesByKey = other.associateBy { extractKey(it) }
+    val allKeys = thisValuesByKey.keys + otherValuesByKey.keys
     return allKeys.map { key ->
-        val currentValue = currentValuesByKey[key]
-        val parentValue = parentValuesByKey[key]
+        val thisValue = thisValuesByKey[key]
+        val otherValue = otherValuesByKey[key]
 
         when {
-            currentValue != null && parentValue != null -> mergeValues(currentValue, parentValue)
-            currentValue != null && parentValue == null -> currentValue
-            currentValue == null && parentValue != null -> parentValue
+            thisValue != null && otherValue != null -> mergeValues(thisValue, otherValue)
+            thisValue != null && otherValue == null -> thisValue
+            thisValue == null && otherValue != null -> otherValue
             else -> error("cannot find value for $key")
         }
     }
@@ -133,7 +133,7 @@ private fun ClaimMetadata.mergeWith(parent: ClaimMetadata): ClaimMetadata {
     require(path == parent.path)
     return ClaimMetadata(
         path = path,
-        display = merge(display.orEmpty(), parent.display.orEmpty(), ClaimDisplay::lang) { current, _ -> current },
+        display = display.orEmpty().mergeWith(parent.display.orEmpty(), ClaimDisplay::lang) { current, _ -> current },
         selectivelyDisclosable = selectivelyDisclosable,
         svgId = svgId,
     )
