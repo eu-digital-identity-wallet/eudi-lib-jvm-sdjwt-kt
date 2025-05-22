@@ -144,89 +144,16 @@ class DisclosableTest {
     }
 
     @Test
-    fun `test mapValue function`() {
-        val value = 5
-        val element: DisclosableElement<String, Int> = Disclosable.NeverSelectively(DisclosableValue.Id(value))
-        val mapped = element.mapValue { it * 2 }
-
-        assertIs<Disclosable.NeverSelectively<DisclosableValue<String, Int>>>(mapped)
-        val mappedValue = (mapped.value as DisclosableValue.Id<String, Int>).value
-        assertEquals(10, mappedValue)
-    }
-
-    @Test
     fun `test mapElements function for DisclosableObject`() {
         val factory = DisclosableContainerFactory.default<String, Int>()
         val objContent = mapOf<String, DisclosableElement<String, Int>>(
             "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
         )
         val obj = factory.obj(objContent)
-        val mapped = obj.mapElements { it * 2 }
+        val mapped = obj.map(fK = { it }) { it * 2 }
 
         val mappedElement = mapped.content["key"]
         assertTrue(mappedElement != null)
-        assertIs<Disclosable.AlwaysSelectively<DisclosableValue<String, Int>>>(mappedElement)
-        val mappedValue = (mappedElement.value as DisclosableValue.Id<String, Int>).value
-        assertEquals(10, mappedValue)
-    }
-
-    @Test
-    fun `test mapElements function for DisclosableArray`() {
-        val factory = DisclosableContainerFactory.default<String, Int>()
-        val arrContent = listOf<DisclosableElement<String, Int>>(
-            Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
-        )
-        val arr = factory.arr(arrContent)
-        val mapped = arr.mapElements { it * 2 }
-
-        val mappedElement = mapped.content[0]
-        assertIs<Disclosable.AlwaysSelectively<DisclosableValue<String, Int>>>(mappedElement)
-        val mappedValue = (mappedElement.value as DisclosableValue.Id<String, Int>).value
-        assertEquals(10, mappedValue)
-    }
-
-    @Test
-    fun `test map function for DisclosableValue Id`() {
-        val value = 5
-        val disclosableValue = DisclosableValue.Id<String, Int>(value)
-        val mapped = disclosableValue.map { it * 2 }
-
-        assertIs<DisclosableValue.Id<String, Int>>(mapped)
-        assertEquals(10, mapped.value)
-    }
-
-    @Test
-    fun `test map function for DisclosableValue Obj`() {
-        val factory = DisclosableContainerFactory.default<String, Int>()
-        val objContent = mapOf<String, DisclosableElement<String, Int>>(
-            "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
-        )
-        val obj = factory.obj(objContent)
-        val disclosableObj = DisclosableValue.Obj(obj)
-        val mapped = disclosableObj.map { it * 2 }
-
-        assertIs<DisclosableValue.Obj<String, Int>>(mapped)
-        val mappedObj = mapped.value
-        val mappedElement = mappedObj.content["key"]
-        assertTrue(mappedElement != null)
-        assertIs<Disclosable.AlwaysSelectively<DisclosableValue<String, Int>>>(mappedElement)
-        val mappedValue = (mappedElement.value as DisclosableValue.Id<String, Int>).value
-        assertEquals(10, mappedValue)
-    }
-
-    @Test
-    fun `test map function for DisclosableValue Arr`() {
-        val factory = DisclosableContainerFactory.default<String, Int>()
-        val arrContent = listOf<DisclosableElement<String, Int>>(
-            Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
-        )
-        val arr = factory.arr(arrContent)
-        val disclosableArr = DisclosableValue.Arr(arr)
-        val mapped = disclosableArr.map { it * 2 }
-
-        assertIs<DisclosableValue.Arr<String, Int>>(mapped)
-        val mappedArr = mapped.value
-        val mappedElement = mappedArr.content[0]
         assertIs<Disclosable.AlwaysSelectively<DisclosableValue<String, Int>>>(mappedElement)
         val mappedValue = (mappedElement.value as DisclosableValue.Id<String, Int>).value
         assertEquals(10, mappedValue)
