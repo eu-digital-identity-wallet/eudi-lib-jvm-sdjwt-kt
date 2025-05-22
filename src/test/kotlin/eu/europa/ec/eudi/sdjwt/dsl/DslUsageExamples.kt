@@ -13,12 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt
+package eu.europa.ec.eudi.sdjwt.dsl
 
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableObject
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableObjectSpecBuilder
-import eu.europa.ec.eudi.sdjwt.dsl.buildDisclosableObject
-import eu.europa.ec.eudi.sdjwt.dsl.calculateSelectiveDisclosureMap
 import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
