@@ -15,6 +15,72 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import io.ktor.http.*
+
+/**
+ * Lookup the Type Metadata of a VCT.
+ */
+fun interface LookupTypeMetadata {
+
+    suspend operator fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?>
+
+    companion object {
+        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
+            val lookups = listOf(first, *remaining)
+            return LookupTypeMetadata { vct ->
+                runCatching {
+                    lookups.firstNotNullOfOrNull { lookup -> lookup(vct).getOrNull() }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Lookup the Type Metadata of an HTTPS URL VCT using Ktor.
+ */
+class LookupTypeMetadataUsingKtor(
+    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+) : LookupTypeMetadata {
+    override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?> = runCatching {
+        val url = Url(vct.value)
+        require(URLProtocol.HTTPS == url.protocol) { "$vct is not an https url" }
+        httpClientFactory().use { httpClient -> httpClient.getJsonOrNull(url) }
+    }
+}
+
+/**
+ * Lookup a [JsonSchema] from a Uri.
+ */
+fun interface LookupJsonSchema {
+
+    suspend operator fun invoke(uri: String): Result<JsonSchema?>
+
+    companion object {
+        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
+            val lookups = listOf(first, *remaining)
+            return LookupJsonSchema { uri ->
+                runCatching {
+                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri).getOrNull() }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Lookup a [JsonSchema] from a Uri that is a Url using Ktor.
+ */
+class LookupJsonSchemaUsingKtor(
+    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+) : LookupJsonSchema {
+
+    override suspend fun invoke(uri: String): Result<JsonSchema?> =
+        runCatching {
+            httpClientFactory().use { it.getJsonOrNull(Url(uri)) }
+        }
+}
+
 data class ResolvedTypeMetadata(
     val vct: Vct,
     val name: String?,
@@ -39,60 +105,44 @@ private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata
 /**
  * Resolver for [ResolvedTypeMetadata].
  */
-interface TypeMetadataResolver {
+interface ResolveTypeMetadata {
+
+    val lookupTypeMetadata: LookupTypeMetadata
+    val lookupJsonSchema: LookupJsonSchema
 
     /**
      * Resolves the [ResolvedTypeMetadata] for [vct].
      */
-    suspend fun resolve(vct: Vct): Result<ResolvedTypeMetadata>
-}
-
-/**
- * Default implementation for [TypeMetadataResolver].
- * Relies on a list of configured [TypeMetadataFetcher] and [JsonSchemaFetcher] that are registered in order of precedence.
- */
-class DefaultTypeMetadataResolver(
-    private val typeMetadataFetchers: List<TypeMetadataFetcher>,
-    private val jsonSchemaFetchers: List<JsonSchemaFetcher>,
-) : TypeMetadataResolver {
-    init {
-        require(typeMetadataFetchers.isNotEmpty()) { "no typeMetadataFetchers configured" }
-        require(jsonSchemaFetchers.isNotEmpty()) { "no jsonSchemaFetchers configured" }
-    }
-
-    override suspend fun resolve(vct: Vct): Result<ResolvedTypeMetadata> = runCatching {
-        tailrec suspend fun resolve(vct: Vct, accumulator: ResolvedTypeMetadata, resolved: Set<Vct>): ResolvedTypeMetadata {
-            require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
-            val current = fetchTypeMetadata(vct)
-                .let {
-                    when {
-                        it.schemaUri != null -> {
-                            val schema = fetchJsonSchema(it.schemaUri)
-                            it.copy(schema = schema, schemaUri = null)
-                        }
-
-                        else -> it
-                    }
+    suspend operator fun invoke(vct: Vct): Result<ResolvedTypeMetadata> =
+        runCatching {
+            tailrec suspend fun resolve(vct: Vct, accumulator: ResolvedTypeMetadata, resolved: Set<Vct>): ResolvedTypeMetadata {
+                require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
+                val current = run {
+                    val current = lookupTypeMetadata(vct).getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
+                    val schema = current.schemaUri?.let { schemaUri ->
+                        lookupJsonSchema(schemaUri).getOrThrow() ?: error("unable to lookup JsonSchema for $schemaUri")
+                    } ?: current.schema
+                    current.copy(schema = schema, schemaUri = null)
                 }
-            val updatedAccumulator = accumulator + current
-            val parent = current.extends?.let { Vct(it) }
-            return if (parent != null) {
-                resolve(parent, updatedAccumulator, resolved + vct)
-            } else {
-                updatedAccumulator
+                val updatedAccumulator = accumulator + current
+                val parent = current.extends?.let { Vct(it) }
+                return if (null != parent) {
+                    resolve(parent, updatedAccumulator, resolved + vct)
+                } else {
+                    updatedAccumulator
+                }
             }
+
+            resolve(vct, ResolvedTypeMetadata.empty(vct), emptySet())
         }
 
-        resolve(vct, ResolvedTypeMetadata.empty(vct = vct), emptySet())
+    companion object {
+        operator fun invoke(lookupTypeMetadata: LookupTypeMetadata, lookupJsonSchema: LookupJsonSchema): ResolveTypeMetadata =
+            object : ResolveTypeMetadata {
+                override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
+                override val lookupJsonSchema: LookupJsonSchema = lookupJsonSchema
+            }
     }
-
-    private suspend fun fetchTypeMetadata(vct: Vct): SdJwtVcTypeMetadata =
-        typeMetadataFetchers.firstNotNullOfOrNull { fetcher -> fetcher.fetch(vct).getOrNull() }
-            ?: error("Unable to fetch Type Metadata for $vct using registered TypeMetadataFetchers")
-
-    private suspend fun fetchJsonSchema(uri: String): JsonSchema =
-        jsonSchemaFetchers.firstNotNullOfOrNull { it.fetch(uri).getOrNull() }
-            ?: error("Unable to fetch JsonSchema for $uri using registered JsonSchemaFetchers")
 }
 
 /**
