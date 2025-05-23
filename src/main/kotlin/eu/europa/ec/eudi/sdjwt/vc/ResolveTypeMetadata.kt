@@ -17,6 +17,20 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import io.ktor.http.*
 
+abstract class FirstNotNullOfOrNull<F, A, B>(
+    private val use: suspend F.(A) -> Result<B?>,
+    private val lift: (suspend (A) -> Result<B?>) -> F,
+) {
+    fun firstNotNullOfOrNull(first: F, vararg remaining: F): F {
+        val all = listOf(first, *remaining)
+        return lift {
+            runCatching {
+                all.firstNotNullOfOrNull { f -> f.use(it).getOrNull() }
+            }
+        }
+    }
+}
+
 /**
  * Lookup the Type Metadata of a VCT.
  */
@@ -24,15 +38,12 @@ fun interface LookupTypeMetadata {
 
     suspend operator fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?>
 
-    companion object {
-        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
-            val lookups = listOf(first, *remaining)
-            return LookupTypeMetadata { vct ->
-                runCatching {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(vct).getOrNull() }
-                }
-            }
-        }
+    companion object : FirstNotNullOfOrNull<LookupTypeMetadata, Vct, SdJwtVcTypeMetadata>(
+        LookupTypeMetadata::invoke,
+        ::LookupTypeMetadata,
+    ) {
+        operator fun invoke(lookup: suspend (Vct) -> Result<SdJwtVcTypeMetadata?>): LookupTypeMetadata =
+            LookupTypeMetadata { lookup(it) }
     }
 }
 
@@ -56,15 +67,12 @@ fun interface LookupJsonSchema {
 
     suspend operator fun invoke(uri: String): Result<JsonSchema?>
 
-    companion object {
-        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
-            val lookups = listOf(first, *remaining)
-            return LookupJsonSchema { uri ->
-                runCatching {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri).getOrNull() }
-                }
-            }
-        }
+    companion object : FirstNotNullOfOrNull<LookupJsonSchema, String, JsonSchema>(
+        LookupJsonSchema::invoke,
+        ::LookupJsonSchema,
+    ) {
+        operator fun invoke(lookup: suspend (String) -> Result<JsonSchema?>): LookupJsonSchema =
+            LookupJsonSchema { lookup(it) }
     }
 }
 
