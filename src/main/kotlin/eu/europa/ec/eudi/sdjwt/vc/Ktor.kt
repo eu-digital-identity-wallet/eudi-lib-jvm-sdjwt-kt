@@ -16,7 +16,11 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 
 /**
@@ -38,3 +42,19 @@ val DefaultHttpClientFactory: KtorHttpClientFactory = {
         expectSuccess = true
     }
 }
+
+/**
+ * Performs a Get request to fetch Json data from a Url. In case of failure, it returns null.
+ */
+internal suspend inline fun <reified T> HttpClient.getJsonOrNull(url: Url): T? =
+    get(url) {
+        expectSuccess = false
+        headers {
+            set(HttpHeaders.Accept, ContentType.Application.Json.toString())
+        }
+    }.let { response ->
+        when (response.status) {
+            HttpStatusCode.OK -> response.body()
+            else -> null
+        }
+    }
