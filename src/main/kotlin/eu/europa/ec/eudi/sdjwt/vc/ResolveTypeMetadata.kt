@@ -152,17 +152,23 @@ interface ResolveTypeMetadata {
  * 1. vct: the vct of this instance
  * 2. name: the name of this instance, or the name of parent in case this has no name
  * 3. description: the description of this instance, or the description of parent in case this has no description
- * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
- * 5. claims: the claims of this instance and the claims of parent not already present in this.
- *   for claims present both in this and parent, their display are merged keeping display of this and display of the parent for
- *   languages not defined by this
+ * 4. display: the result of [mergeDisplay]
+ * 5. claims: the result of [mergeClaims]
  * 6. schemas: the schemas of this instance and the schema of parent if one is present
+ *
+ * @param parent the Type Metadata of a parent Vct
+ * @param mergeDisplay function used to merge the [DisplayMetadata] of this instance with those of [parent]
+ * @param mergeClaims function used to merge the [ClaimMetadata] of this instance with those of [parent]
  */
-private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): ResolvedTypeMetadata {
+private fun ResolvedTypeMetadata.mergeWith(
+    parent: SdJwtVcTypeMetadata,
+    mergeDisplay: (List<DisplayMetadata>, List<DisplayMetadata>) -> List<DisplayMetadata>,
+    mergeClaims: (List<ClaimMetadata>, List<ClaimMetadata>) -> List<ClaimMetadata>,
+): ResolvedTypeMetadata {
     val newName = name ?: parent.name
     val newDescription = description ?: parent.description
-    val newDisplay = display.mergeWith(parent.display?.value.orEmpty(), DisplayMetadata::lang) { current, _ -> current }
-    val newClaims = claims.mergeWith(parent.claims.orEmpty(), ClaimMetadata::path, ClaimMetadata::mergeWith)
+    val newDisplay = mergeDisplay(display, parent.display?.value.orEmpty())
+    val newClaims = mergeClaims(claims, parent.claims.orEmpty())
     val newSchemas = schemas + listOfNotNull(parent.schema)
     return ResolvedTypeMetadata(
         vct = vct,
@@ -173,6 +179,32 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
         schemas = newSchemas,
     )
 }
+
+/**
+ * Merges the [ResolvedTypeMetadata] of a [Vct] with those of its [parent].
+ *
+ * The resulting [ResolvedTypeMetadata] has:
+ * 1. vct: the vct of this instance
+ * 2. name: the name of this instance, or the name of parent in case this has no name
+ * 3. description: the description of this instance, or the description of parent in case this has no description
+ * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
+ * 5. claims: the claims of this instance and the claims of parent not already present in this.
+ *   for claims present both in this and parent, their display are merged keeping display of this and display of the parent for
+ *   languages not defined by this
+ * 6. schemas: the schemas of this instance and the schema of parent if one is present
+ *
+ * @param parent the Type Metadata of a parent Vct
+ */
+private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): ResolvedTypeMetadata =
+    mergeWith(
+        parent = parent,
+        mergeDisplay = { thisDisplays, parentDisplays ->
+            thisDisplays.mergeWith(parentDisplays, DisplayMetadata::lang) { thisDisplay, _ -> thisDisplay }
+        },
+        mergeClaims = { thisClaims, parentClaims ->
+            thisClaims.mergeWith(parentClaims, ClaimMetadata::path, ClaimMetadata::mergeWith)
+        },
+    )
 
 private fun <T, K> Iterable<T>.mergeWith(other: Iterable<T>, extractKey: (T) -> K, mergeValues: (T, T) -> T): List<T> {
     val thisValuesByKey = associateBy { extractKey(it) }
