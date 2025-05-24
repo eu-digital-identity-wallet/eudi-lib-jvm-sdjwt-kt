@@ -24,10 +24,10 @@ package eu.europa.ec.eudi.sdjwt.dsl
  * @property result The result of the fold operation
  * @property metadata Additional metadata for the fold operation
  */
-data class Folded<K, R, M>(
+data class Folded<out K, out R, out M>(
     val path: List<K?> = emptyList(),
-    val result: R,
     val metadata: M,
+    val result: R,
 )
 
 /**
@@ -41,7 +41,7 @@ data class Folded<K, R, M>(
  */
 interface ObjectFoldHandlers<K, A, R, M> {
     /**
-     * Handles a selectively disclosable primitive value in an object.
+     * Handles a selectively disclosable primitive value
      *
      * @param path The current path in the structure
      * @param key The key of the current element
@@ -51,35 +51,35 @@ interface ObjectFoldHandlers<K, A, R, M> {
     fun ifAlwaysSelectivelyDisclosableId(path: List<K?>, key: K, value: A): Folded<K, R, M>
 
     /**
-     * Handles a selectively disclosable array in an object.
+     * Handles a selectively disclosable array
      *
      * @param path The current path in the structure
      * @param key The key of the current element
-     * @param foldedArrayResult The result of folding the array
+     * @param foldedArray The result of folding the array
      * @return The fold context with the result and metadata
      */
     fun ifAlwaysSelectivelyDisclosableArr(
         path: List<K?>,
         key: K,
-        foldedArrayResult: Folded<K, R, M>,
+        foldedArray: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
-     * Handles a selectively disclosable object in an object.
+     * Handles a selectively disclosable object
      *
      * @param path The current path in the structure
      * @param key The key of the current element
-     * @param foldedObjectResult The result of folding the object
+     * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
     fun ifAlwaysSelectivelyDisclosableObj(
         path: List<K?>,
         key: K,
-        foldedObjectResult: Folded<K, R, M>,
+        foldedObject: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
-     * Handles a non-selectively disclosable primitive value in an object.
+     * Handles a non-selectively disclosable primitive value
      *
      * @param path The current path in the structure
      * @param key The key of the current element
@@ -89,17 +89,17 @@ interface ObjectFoldHandlers<K, A, R, M> {
     fun ifNeverSelectivelyDisclosableId(path: List<K?>, key: K, value: A): Folded<K, R, M>
 
     /**
-     * Handles a non-selectively disclosable array in an object.
+     * Handles a non-selectively disclosable array
      *
      * @param path The current path in the structure
      * @param key The key of the current element
-     * @param foldedArrayResult The result of folding the array
+     * @param foldedArray The result of folding the array
      * @return The fold context with the result and metadata
      */
     fun ifNeverSelectivelyDisclosableArr(
         path: List<K?>,
         key: K,
-        foldedArrayResult: Folded<K, R, M>,
+        foldedArray: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
@@ -107,13 +107,13 @@ interface ObjectFoldHandlers<K, A, R, M> {
      *
      * @param path The current path in the structure
      * @param key The key of the current element
-     * @param foldedObjectResult The result of folding the object
+     * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
     fun ifNeverSelectivelyDisclosableObj(
         path: List<K?>,
         key: K,
-        foldedObjectResult: Folded<K, R, M>,
+        foldedObject: Folded<K, R, M>,
     ): Folded<K, R, M>
 }
 
@@ -142,13 +142,13 @@ interface ArrayFoldHandlers<K, A, R, M> {
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
-     * @param foldedArrayResult The result of folding the nested array
+     * @param foldedArray The result of folding the nested array
      * @return The fold context with the result and metadata
      */
     fun ifAlwaysSelectivelyDisclosableArr(
         path: List<K?>,
         index: Int,
-        foldedArrayResult: Folded<K, R, M>,
+        foldedArray: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
@@ -156,13 +156,13 @@ interface ArrayFoldHandlers<K, A, R, M> {
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
-     * @param foldedObjectResult The result of folding the object
+     * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
     fun ifAlwaysSelectivelyDisclosableObj(
         path: List<K?>,
         index: Int,
-        foldedObjectResult: Folded<K, R, M>,
+        foldedObject: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
@@ -180,13 +180,13 @@ interface ArrayFoldHandlers<K, A, R, M> {
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
-     * @param foldedArrayResult The result of folding the nested array
+     * @param foldedArray The result of folding the nested array
      * @return The fold context with the result and metadata
      */
     fun ifNeverSelectivelyDisclosableArr(
         path: List<K?>,
         index: Int,
-        foldedArrayResult: Folded<K, R, M>,
+        foldedArray: Folded<K, R, M>,
     ): Folded<K, R, M>
 
     /**
@@ -194,13 +194,13 @@ interface ArrayFoldHandlers<K, A, R, M> {
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
-     * @param foldedObjectResult The result of folding the object
+     * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
     fun ifNeverSelectivelyDisclosableObj(
         path: List<K?>,
         index: Int,
-        foldedObjectResult: Folded<K, R, M>,
+        foldedObject: Folded<K, R, M>,
     ): Folded<K, R, M>
 }
 
@@ -211,8 +211,6 @@ interface ArrayFoldHandlers<K, A, R, M> {
  * @param arrayHandlers Handlers for processing array elements
  * @param initial Initial context for the fold operation
  * @param combine Function to combine fold results from sibling object properties.
- * @param arrayResultWrapper Function to convert a list of individual element results into the final result type for an array.
- * @param arrayMetadataCombiner Function to combine metadata from individual array elements into a single metadata for the array.
  * @param postProcess Optional function to post-process the fold result
  * @return The result of the fold operation
  */
@@ -300,18 +298,18 @@ private class Fold<K, A, R, M>(
         DeepRecursiveFunction { (obj, currentPath) ->
             obj.content.entries.fold(initial) { acc, (key, disclosableElement) ->
                 val keyPath = currentPath + key
-                val elementResult = when (disclosableElement) {
+                val folded = when (disclosableElement) {
                     is Disclosable.AlwaysSelectively -> {
                         when (val disclosableValue = disclosableElement.value) {
                             is DisclosableValue.Id ->
                                 objectHandlers.ifAlwaysSelectivelyDisclosableId(currentPath, key, disclosableValue.value)
                             is DisclosableValue.Arr -> {
-                                val foldedArrayResult = foldArray.callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifAlwaysSelectivelyDisclosableArr(currentPath, key, foldedArrayResult)
+                                val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifAlwaysSelectivelyDisclosableArr(currentPath, key, foldedArray)
                             }
                             is DisclosableValue.Obj -> {
-                                val foldedObjectResult = callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifAlwaysSelectivelyDisclosableObj(currentPath, key, foldedObjectResult)
+                                val foldedObj = callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifAlwaysSelectivelyDisclosableObj(currentPath, key, foldedObj)
                             }
                         }
                     }
@@ -320,17 +318,17 @@ private class Fold<K, A, R, M>(
                             is DisclosableValue.Id ->
                                 objectHandlers.ifNeverSelectivelyDisclosableId(currentPath, key, disclosableValue.value)
                             is DisclosableValue.Arr -> {
-                                val foldedArrayResult = foldArray.callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifNeverSelectivelyDisclosableArr(currentPath, key, foldedArrayResult)
+                                val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifNeverSelectivelyDisclosableArr(currentPath, key, foldedArray)
                             }
                             is DisclosableValue.Obj -> {
-                                val foldedObjectResult = callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifNeverSelectivelyDisclosableObj(currentPath, key, foldedObjectResult)
+                                val foldedObj = callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifNeverSelectivelyDisclosableObj(currentPath, key, foldedObj)
                             }
                         }
                     }
                 }
-                combine(acc, elementResult)
+                combine(acc, folded)
             }
         }
 
@@ -383,8 +381,8 @@ private class Fold<K, A, R, M>(
 
             Folded(
                 path = arrayContentPathPrefix,
-                result = finalArrayResult,
                 metadata = finalArrayMetadata,
+                result = finalArrayResult,
             )
         }
 }
