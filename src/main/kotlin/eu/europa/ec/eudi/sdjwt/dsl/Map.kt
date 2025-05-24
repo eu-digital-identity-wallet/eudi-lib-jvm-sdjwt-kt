@@ -15,6 +15,14 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl
 
+/**
+ * Transforms the keys and values of the current `DisclosableObject` using the provided factory and mapping functions.
+ *
+ * @param factory The factory used to create the transformed `DisclosableObject` and `DisclosableArray` instances.
+ * @param fK A function that maps the keys of the current `DisclosableObject` to keys of a new type.
+ * @param fA A function that maps the values of the current `DisclosableObject` to values of a new type.
+ * @return A transformed `DisclosableObject` of type `DObj1` created using the provided factory and mapping functions.
+ */
 fun <K, K1, A, A1, DObj1, DArr1> DisclosableObject<K, A>.map(
     factory: DisclosableContainerFactory<K1, A1, DObj1, DArr1>,
     fK: (K) -> K1,
@@ -33,6 +41,16 @@ fun <K, K1, A, A1> DisclosableObject<K, A>.map(
 ): DisclosableObject<K1, A1> =
     map(DisclosableContainerFactory.default(), fK, fA)
 
+/**
+ * Transforms the current `DisclosableArray` into a new `DisclosableArray` using the given factory,
+ * key transformation function, and value transformation function. This operation applies the transformations
+ * recursively to both objects and arrays within the current structure.
+ *
+ * @param factory A factory to create new instances of `DisclosableObject` and `DisclosableArray` while mapping.
+ * @param fK A function to transform the keys of `DisclosableObject` elements.
+ * @param fA A function to transform the values of `DisclosableArray` or `DisclosableObject` elements.
+ * @return A new `DisclosableArray` created as a result of applying the provided transformations.
+ */
 fun <K, K1, A, A1, DObj1, DArr1> DisclosableArray<K, A>.map(
     factory: DisclosableContainerFactory<K1, A1, DObj1, DArr1>,
     fK: (K) -> K1,
