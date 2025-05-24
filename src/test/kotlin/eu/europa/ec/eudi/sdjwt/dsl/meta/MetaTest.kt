@@ -32,6 +32,10 @@ class MetaTest {
         assertEquals("PID", pidObjMetatadata.display?.first()?.label)
         val claimPaths = disclosableObjectMetadata.claimPaths()
         val expectedClaimPaths = meta.claims.map { it.path }
+        println("Expected Claim Paths:")
+        expectedClaimPaths.forEach { println(it) }
+
+        println("Actual Claim Paths:")
         claimPaths.forEach { println(it) }
         assertContentEquals(expectedClaimPaths, claimPaths)
     }
