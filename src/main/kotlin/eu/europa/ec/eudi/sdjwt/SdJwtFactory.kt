@@ -79,8 +79,10 @@ class SdJwtFactory(
      *         and the associated disclosure elements, or an exception if the operation fails
      */
     fun createSdJwt(sdJwtSpec: JsonElementDisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
-        val (jwtClaimSet, disclosures) = encodeObject(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
-        SdJwt(jwtClaimSet, disclosures)
+//        val (jwtClaimSet, disclosures) = encodeObject(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
+//        SdJwt(jwtClaimSet, disclosures)
+        val f = EnhancedSdJwtFactory(hashAlgorithm, saltProvider, decoyGen, fallbackMinimumDigests)
+        f.createSdJwt(sdJwtSpec).getOrThrow()
     }
 
     private val encodeObject: DeepRecursiveFunction<JsonElementDisclosableObject, EncodedSdElement> =
