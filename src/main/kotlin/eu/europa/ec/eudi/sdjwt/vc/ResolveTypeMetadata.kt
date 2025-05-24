@@ -89,6 +89,9 @@ data class ResolvedTypeMetadata(
     val claims: List<ClaimMetadata>,
     val schemas: List<JsonSchema>,
 ) {
+    init {
+        SdJwtVcTypeMetadata.ensureValidPaths(claims)
+    }
     companion object
 }
 

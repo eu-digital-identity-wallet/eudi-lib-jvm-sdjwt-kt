@@ -78,6 +78,22 @@ data class SdJwtVcTypeMetadata(
         ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
+        ensureValidPaths(claims.orEmpty())
+    }
+
+    companion object {
+        fun ensureValidPaths(claims: List<ClaimMetadata>) {
+            val paths = claims.map { it.path }
+            ClaimPath.ensureObjectAttributes(paths)
+            ensureNoIndexedPaths(paths)
+        }
+
+        private fun ensureNoIndexedPaths(paths: List<ClaimPath>) {
+            val indexedPaths = paths.filter { path -> path.value.any { it is ClaimPathElement.ArrayElement } }
+            require(indexedPaths.isEmpty()) {
+                "Indexed paths are not allowed. Found: $indexedPaths"
+            }
+        }
     }
 }
 
@@ -129,6 +145,10 @@ data class ClaimMetadata(
      */
     @SerialName(SdJwtVcSpec.CLAIM_SVG_ID) val svgId: SvgId? = null,
 ) {
+
+    val selectivelyDisclosableOrDefault: ClaimSelectivelyDisclosable
+        get() = selectivelyDisclosable ?: DefaultSelectivelyDisclosable
+
     companion object {
         /**
          * Default [ClaimSelectivelyDisclosable] value is [ClaimSelectivelyDisclosable.Allowed]

@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.encodeToString
+import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
 import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Test
 
