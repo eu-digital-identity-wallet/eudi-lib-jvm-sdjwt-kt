@@ -78,12 +78,21 @@ data class SdJwtVcTypeMetadata(
         ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
-        ensureObjectAttributes(claims.orEmpty())
+        ensureValidPaths(claims.orEmpty())
     }
 
     companion object {
-        fun ensureObjectAttributes(claims: List<ClaimMetadata>) {
-            ClaimPath.ensureObjectAttributes(claims.map { it.path })
+        fun ensureValidPaths(claims: List<ClaimMetadata>) {
+            val paths = claims.map { it.path }
+            ClaimPath.ensureObjectAttributes(paths)
+            ensureNoIndexedPaths(paths)
+        }
+
+        private fun ensureNoIndexedPaths(paths: List<ClaimPath>) {
+            val indexedPaths = paths.filter { path -> path.value.any { it is ClaimPathElement.ArrayElement } }
+            require(indexedPaths.isEmpty()) {
+                "Indexed paths are not allowed. Found: $indexedPaths"
+            }
         }
     }
 }
