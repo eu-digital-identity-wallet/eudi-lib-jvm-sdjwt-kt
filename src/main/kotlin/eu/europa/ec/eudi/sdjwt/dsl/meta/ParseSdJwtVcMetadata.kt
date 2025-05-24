@@ -146,9 +146,6 @@ private fun buildNestedDisclosableValue(
         return DisclosableValue.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
     }
 
-    // currentClaimPath is a container (object or array)
-    // CORRECTED: Determine if it's an array by checking the LAST element of its direct children's paths.
-    // All direct children of an array container should end with an ArrayElement or AllArrayElements.
     val isNextLevelArray = directChildrenClaims.all { childCm ->
         childCm.path.value.last() is ClaimPathElement.AllArrayElements || childCm.path.value.last() is ClaimPathElement.ArrayElement
     }

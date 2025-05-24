@@ -21,11 +21,6 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 fun DisclosableObjectMetadata.claimPaths(): Set<ClaimPath> {
     val collectedPaths = mutableSetOf<ClaimPath>()
 
-    /**
-     * Recursive helper function to traverse the Disclosable structure and collect ClaimPaths.
-     * @param currentPrefix The [ClaimPath] built up to the current level of traversal.
-     * @param disclosableElement The current element being processed.
-     */
     fun collectRecursive(
         currentPrefix: ClaimPath?,
         disclosableElement: DisclosableElementMetadata,
@@ -50,33 +45,20 @@ fun DisclosableObjectMetadata.claimPaths(): Set<ClaimPath> {
                 }
             }
             is DisclosableValue.Arr -> {
-                val arr = disclosableValue.value as DisclosableArrayMetadata // Cast back to specific type for content
+                val arr = disclosableValue.value as DisclosableArrayMetadata
 
-                // Add the path of the array container itself
                 currentPrefix?.let { collectedPaths.add(it) }
 
-                // Heuristic for array elements, now validated by SdJwtVcTypeMetadata's constraints:
-                if (arr.content.size == 1 && arr.content.first().value is DisclosableValue.Id) {
-                    // If it's a single-element array containing an ID, it MUST imply AllArrayElements (null)
-                    // currentPrefix will not be null here as arrays are always nested under an object or another array
-                    val newPrefix = currentPrefix!!.allArrayElements() // Using the instance method
-                    collectRecursive(newPrefix, arr.content.first())
-                } else {
-                    arr.content.forEachIndexed { index, childElement ->
-                        // currentPrefix will not be null here
-                        val newPrefix = currentPrefix!!.arrayElement(index)
-                        collectRecursive(newPrefix, childElement)
-                    }
+                val newPrefixForArrayContent = checkNotNull(currentPrefix).allArrayElements()
+
+                arr.content.forEach { childElement ->
+                    collectRecursive(newPrefixForArrayContent, childElement)
                 }
             }
         }
     }
-
-    // Start the recursive collection from the root object's content.
-    // The keys in the root's content map are the top-level claims (e.g., "address", "nationalities").
-    this.content.forEach { (key, disclosableElement) ->
+    content.forEach { (key, disclosableElement) ->
         val initialPath = ClaimPath.claim(key)
-        // Add the path of the top-level claim itself (e.g., [address], [nationalities])
         collectedPaths.add(initialPath)
         collectRecursive(initialPath, disclosableElement)
     }
