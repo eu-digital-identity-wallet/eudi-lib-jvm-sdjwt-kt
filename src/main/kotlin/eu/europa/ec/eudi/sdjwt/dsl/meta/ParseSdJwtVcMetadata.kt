@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2023 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package eu.europa.ec.eudi.sdjwt.dsl.meta
 
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
@@ -5,20 +20,25 @@ import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*
 
-
-private fun ClaimMetadata.toDisclosableElementMetadata(
-    allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>, // Pass this for recursive calls
+fun ResolvedTypeMetadata.toDisclosableMetadataStructure(
     selectivelyDiscloseWhenAllowed: Boolean = true,
-): DisclosableElementMetadata {
-    val (nestedDisclosableValue, isSelectivelyDisclosable) = buildNestedDisclosableValue(
-        currentClaimPath = this.path, // The claim path this metadata belongs to
-        allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
-        selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed
+): DisclosableObjectMetadata {
+    val rootAttributeMetadata = AttributeMetadata(
+        display = display.map { ClaimDisplay(it.lang, it.name, it.description) },
     )
-    return if (isSelectivelyDisclosable) +nestedDisclosableValue else !nestedDisclosableValue
+
+    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
+        claims.groupBy { it.path.parent() }
+
+    val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
+
+    return parseObj(
+        objMetadata = rootAttributeMetadata,
+        childClaimsMetadatas = topLevelClaims,
+        allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
+        selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
+    )
 }
-
-
 
 private fun parseObj(
     objMetadata: AttributeMetadata,
@@ -26,24 +46,24 @@ private fun parseObj(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): DisclosableObjectMetadata {
-    ClaimPath.ensureObjectAttributes(childClaimsMetadatas.map { it.path }) // Check invariant
+    fun element(childClaimMetadata: ClaimMetadata): Pair<String, DisclosableElementMetadata> {
+        // The last element of the child's path should be the name of the attribute in the object.
+        val lastPathElement = childClaimMetadata.path.value.last()
 
-    val contentMap = mutableMapOf<String, DisclosableElementMetadata>() // Use the alias here
+        // This is a necessary safeguard: for object attributes, the last path element MUST be a Claim.
+        check(lastPathElement is ClaimPathElement.Claim) {
+            "Expected ClaimPathElement.Claim for object attribute name, but got $lastPathElement for path ${childClaimMetadata.path}"
+        }
+        val claimName = lastPathElement.name
 
-    childClaimsMetadatas.forEach { childClaimMetadata ->
-        val claimName = childClaimMetadata.path.head().fold(
-            ifAllArrayElements = { throw IllegalStateException("Should not happen after invariant check") },
-            ifArrayElement = { throw IllegalStateException("Should not happen after invariant check") },
-            ifClaim = { it }
-        )
-
-        // Recursively build the DisclosableElementMetadata for each child
         val disclosableElement = childClaimMetadata.toDisclosableElementMetadata(
             allClaimsGroupedByParentPath,
-            selectivelyDiscloseWhenAllowed
+            selectivelyDiscloseWhenAllowed,
         )
-        contentMap[claimName] = disclosableElement
+        return claimName to disclosableElement
     }
+
+    val contentMap = childClaimsMetadatas.associate(::element)
 
     return DisclosableObjectMetadata(contentMap, objMetadata)
 }
@@ -54,30 +74,48 @@ private fun parseArr(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): DisclosableArrayMetadata {
-    ClaimPath.ensureArrayElements(childClaimsMetadatas.map { it.path }) // Check invariant
-
-    val contentList = mutableListOf<DisclosableElementMetadata>() // Use the alias here
-
-    // Group children by their head element type to handle both specific indices and wildcards
-    val distinctArrayChildHeads = childClaimsMetadatas
-        .map { it.path.head() }
+    // This correctly maps to the last path element (e.g., ArrayElement(index) or AllArrayElements)
+    // and sorts by index if available, placing AllArrayElements last.
+    val distinctArrayChildElements = childClaimsMetadatas
+        .map { it.path.value.last() }
         .distinct()
-        .sortedBy { (it as? ClaimPathElement.ArrayElement)?.index ?: Int.MAX_VALUE } // Order by index for predictability
+        .sortedBy {
+            when (it) {
+                is ClaimPathElement.ArrayElement -> it.index
+                ClaimPathElement.AllArrayElements -> Int.MAX_VALUE // Sort AllArrayElements to the end
+                else -> error(
+                    "Unexpected ClaimPathElement type for array child: $it for path ${
+                        childClaimsMetadatas.first { c ->
+                            c.path.value.last() == it
+                        }.path
+                    }",
+                )
+            }
+        }
 
-    distinctArrayChildHeads.forEach { arrayElementHead ->
-        // Find the ClaimMetadata corresponding to this specific array element head.
-        // There should be only one ClaimMetadata for a given distinct array element head at this level.
-        val elementClaimMetadata = childClaimsMetadatas.first { it.path.head() == arrayElementHead }
-
-        // Recursively build the DisclosableElementMetadata for each child element
+    fun element(currentArrayElement: ClaimPathElement): DisclosableElementMetadata {
+        val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == currentArrayElement }
         val disclosableElement = elementClaimMetadata.toDisclosableElementMetadata(
             allClaimsGroupedByParentPath,
-            selectivelyDiscloseWhenAllowed
+            selectivelyDiscloseWhenAllowed,
         )
-        contentList.add(disclosableElement)
+        return disclosableElement
     }
+    val contentList = distinctArrayChildElements.map(::element)
 
     return DisclosableArrayMetadata(contentList, arrayMetadata)
+}
+
+private fun ClaimMetadata.toDisclosableElementMetadata(
+    allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>, // Pass this for recursive calls
+    selectivelyDiscloseWhenAllowed: Boolean = true,
+): DisclosableElementMetadata {
+    val (nestedDisclosableValue, isSelectivelyDisclosable) = buildNestedDisclosableValue(
+        currentClaimPath = this.path, // The claim path this metadata belongs to
+        allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
+        selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
+    )
+    return if (isSelectivelyDisclosable) +nestedDisclosableValue else !nestedDisclosableValue
 }
 
 private fun buildNestedDisclosableValue(
@@ -85,98 +123,58 @@ private fun buildNestedDisclosableValue(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
 ): Pair<DisclosableValue<String, AttributeMetadata>, Boolean> {
-
-    // Retrieve the ClaimMetadata for the current node being processed.
     val currentClaimMetadata = allClaimsGroupedByParentPath[currentClaimPath.parent()]
         ?.firstOrNull { it.path == currentClaimPath }
-        ?: throw IllegalStateException("ClaimMetadata not found for current path: ${currentClaimPath}. All intermediate paths must have a corresponding ClaimMetadata entry.")
 
-    // Determine if the current node is selectively disclosable.
-    val isCurrentNodeSelectivelyDisclosable = when(currentClaimMetadata.selectivelyDisclosableOrDefault) {
+    checkNotNull(currentClaimMetadata) {
+        "ClaimMetadata not found for current path: $currentClaimPath. All intermediate paths must have a corresponding ClaimMetadata entry."
+    }
+    val isCurrentNodeSelectivelyDisclosable = when (currentClaimMetadata.selectivelyDisclosableOrDefault) {
         ClaimSelectivelyDisclosable.Always -> true
         ClaimSelectivelyDisclosable.Never -> false
         ClaimSelectivelyDisclosable.Allowed -> selectivelyDiscloseWhenAllowed
     }
 
-    // Find all immediate children claims of the current path.
-    val childrenClaimMetadatas = allClaimsGroupedByParentPath[currentClaimPath] ?: emptyList()
+    val directChildrenClaims = allClaimsGroupedByParentPath[currentClaimPath] ?: emptyList()
 
-    if (childrenClaimMetadatas.isEmpty()) {
-        // If no children, this is a leaf node (ID).
+    if (directChildrenClaims.isEmpty()) {
+        // currentClaimPath is a leaf (e.g., "house_number", "family_name")
         val attributeMetadata = AttributeMetadata(
             display = currentClaimMetadata.display?.toList(),
-            svgId = currentClaimMetadata.svgId
+            svgId = currentClaimMetadata.svgId,
         )
         return DisclosableValue.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
     }
 
-    // Determine if the children indicate an array or object.
-    val isNextLevelArray = childrenClaimMetadatas.any { childCm ->
-        val head = childCm.path.head()
-        head is ClaimPathElement.AllArrayElements || head is ClaimPathElement.ArrayElement
+    // currentClaimPath is a container (object or array)
+    // CORRECTED: Determine if it's an array by checking the LAST element of its direct children's paths.
+    // All direct children of an array container should end with an ArrayElement or AllArrayElements.
+    val isNextLevelArray = directChildrenClaims.all { childCm ->
+        childCm.path.value.last() is ClaimPathElement.AllArrayElements || childCm.path.value.last() is ClaimPathElement.ArrayElement
     }
 
-    // The AttributeMetadata for the container itself.
     val containerAttributeMetadata = AttributeMetadata(
         display = currentClaimMetadata.display?.toList(),
-        svgId = currentClaimMetadata.svgId
+        svgId = currentClaimMetadata.svgId,
     )
 
     val disclosableValue: DisclosableValue<String, AttributeMetadata> = if (isNextLevelArray) {
-        // Call parseArr to get DisclosableArrayMetadata (which implements DisclosableArray)
         val constructedArray = parseArr(
             arrayMetadata = containerAttributeMetadata,
-            childClaimsMetadatas = childrenClaimMetadatas,
+            childClaimsMetadatas = directChildrenClaims, // Pass the direct children
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
-            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed
+            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
         )
-        // Wrap the DisclosableArrayMetadata in DisclosableValue.Arr
         DisclosableValue.Arr(constructedArray)
     } else {
-        // Call parseObj to get DisclosableObjectMetadata (which implements DisclosableObject)
         val constructedObject = parseObj(
             objMetadata = containerAttributeMetadata,
-            childClaimsMetadatas = childrenClaimMetadatas,
+            childClaimsMetadatas = directChildrenClaims, // Pass the direct children
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
-            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed
+            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
         )
-        // Wrap the DisclosableObjectMetadata in DisclosableValue.Obj
         DisclosableValue.Obj(constructedObject)
     }
 
-    // Return the constructed DisclosableValue (which could be Id, Obj, or Arr) and its disclosure status.
     return disclosableValue to isCurrentNodeSelectivelyDisclosable
-}
-
-fun ResolvedTypeMetadata.toDisclosableMetadataStructure(
-    selectivelyDiscloseWhenAllowed: Boolean = true,
-): DisclosableObjectMetadata {
-
-    // Define a dummy root path name using the VCT value, which is guaranteed non-blank.
-    val rootDefiningPathName = this.vct.value
-    val rootDefiningPath = ClaimPath.claim(rootDefiningPathName)
-
-    // Group all claims by their parent path for efficient lookup during recursion.
-    // Claims whose parent is null (top-level claims) will be grouped under `null` key.
-    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
-        claims.groupBy { it.path.parent() }
-
-    // Derive AttributeMetadata for the root object itself.
-    val rootAttributeMetadata = AttributeMetadata(
-        display = this.display.firstOrNull()?.let { listOf(ClaimDisplay(it.lang, it.name, it.description)) }
-    )
-
-    // Get the top-level claims (those with no parent path)
-    val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
-
-    // Ensure top-level claims are object attributes
-    ClaimPath.ensureObjectAttributes(topLevelClaims.map { it.path }) // CORRECTED: pass List<ClaimPath>
-
-    // Now delegate to parseObj for the root object
-    return parseObj(
-        objMetadata = rootAttributeMetadata,
-        childClaimsMetadatas = topLevelClaims,
-        allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
-        selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed
-    )
 }

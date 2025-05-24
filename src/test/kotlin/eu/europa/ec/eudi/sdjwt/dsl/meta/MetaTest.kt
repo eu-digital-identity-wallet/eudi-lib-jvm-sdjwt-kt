@@ -1,28 +1,45 @@
+/*
+ * Copyright (c) 2023 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package eu.europa.ec.eudi.sdjwt.dsl.meta
 
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class MetaTest {
 
     @Test
     fun test() {
-
         val meta = meta(pidMeta).resolve()
         val disclosableObjectMetadata = meta.toDisclosableMetadataStructure()
         val pidObjMetatadata = disclosableObjectMetadata.metadata
         assertEquals("PID", pidObjMetatadata.display?.first()?.label)
+        val claimPaths = disclosableObjectMetadata.claimPaths()
+        val expectedClaimPaths = meta.claims.map { it.path }
+        println("Expected Claim Paths:")
+        expectedClaimPaths.forEach { println(it) }
+
+        println("Actual Claim Paths:")
+        claimPaths.forEach { println(it) }
+        assertContentEquals(expectedClaimPaths, claimPaths)
     }
-
-
-
-
-
 }
-
 
 private fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
     return ResolvedTypeMetadata(
@@ -31,7 +48,7 @@ private fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
         description = description,
         display = checkNotNull(display).value,
         claims = checkNotNull(claims),
-        schemas = schema?.let { listOf(it) }.orEmpty()
+        schemas = schema?.let { listOf(it) }.orEmpty(),
     )
 }
 private fun meta(json: String): SdJwtVcTypeMetadata {
