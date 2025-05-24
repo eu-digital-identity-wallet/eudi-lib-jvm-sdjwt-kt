@@ -78,6 +78,13 @@ data class SdJwtVcTypeMetadata(
         ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
+        ensureObjectAttributes(claims.orEmpty())
+    }
+
+    companion object {
+        fun ensureObjectAttributes(claims: List<ClaimMetadata>) {
+            ClaimPath.ensureObjectAttributes(claims.map { it.path })
+        }
     }
 }
 
@@ -129,6 +136,10 @@ data class ClaimMetadata(
      */
     @SerialName(SdJwtVcSpec.CLAIM_SVG_ID) val svgId: SvgId? = null,
 ) {
+
+    val selectivelyDisclosableOrDefault: ClaimSelectivelyDisclosable
+        get() = selectivelyDisclosable ?: DefaultSelectivelyDisclosable
+
     companion object {
         /**
          * Default [ClaimSelectivelyDisclosable] value is [ClaimSelectivelyDisclosable.Allowed]
