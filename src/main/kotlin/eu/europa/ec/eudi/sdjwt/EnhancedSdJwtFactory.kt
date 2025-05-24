@@ -68,7 +68,7 @@ private data class Disclosures(
 
 private operator fun Disclosed.plus(that: Disclosed): Disclosed {
     // Merge JSON objects
-    val mergedJson = JsonObject(this.result.jsonObjectOrEmpty() + that.result.jsonObjectOrEmpty())
+    val mergedJson = JsonObject(this.result.jsonObject + that.result.jsonObject)
     // Merge SD claims if present in both objects
     val accSdClaims = this.result.jsonObject[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList<JsonElement>())
     val currentSdClaims = that.result.jsonObject[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
@@ -116,10 +116,10 @@ class EnhancedSdJwtFactory(
      * and the associated disclosure elements, or an exception if the operation fails
      */
     fun createSdJwt(sdJwtSpec: JsonElementDisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
-        val result: Folded<String, JsonElement, Disclosures> = sdJwtSpec.fold(
+        val disclosed = sdJwtSpec.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
-            initial = Folded(
+            initial = Disclosed(
                 path = emptyList(),
                 result = JsonObject(emptyMap()),
                 metadata = Disclosures(disclosures = emptyList(), minimumDigests = sdJwtSpec.minimumDigests),
@@ -130,7 +130,7 @@ class EnhancedSdJwtFactory(
             postProcess = ::addDecoyDigests,
         )
 
-        val (jwtClaimSet, disclosures) = result.result.jsonObjectOrEmpty() to result.metadata.disclosures
+        val (jwtClaimSet, disclosures) = disclosed.result.jsonObject to disclosed.metadata.disclosures
         val finalJwtClaimSet = addHashAlgClaim(jwtClaimSet, disclosures)
 
         SdJwt(finalJwtClaimSet, disclosures)
@@ -145,7 +145,7 @@ class EnhancedSdJwtFactory(
      * @return A new context with decoy digests added to the result
      */
     private fun addDecoyDigests(folded: Disclosed): Disclosed {
-        val result = folded.result.jsonObjectOrEmpty() // Ensure it's treated as an object for post-processing
+        val result = folded.result.jsonObject // Ensure it's treated as an object for post-processing
         val sdClaims = result[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
 
         // No need to add decoys if there are no SD claims
@@ -195,9 +195,8 @@ class EnhancedSdJwtFactory(
             foldedArrayResult: Disclosed,
         ): Disclosed {
             // The array has already been processed, now we need to make the whole array selectively disclosable
-            val arrayJson = foldedArrayResult.result.jsonArrayOrEmpty() // Expect the array wrapper to return JsonArray
+            val arrayJson = foldedArrayResult.result.jsonArray
             val (disclosure, digest) = objectPropertyDisclosure(key to arrayJson)
-
             val sdClaim = JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(listOf(JsonPrimitive(digest.value)))))
 
             return Disclosed(
@@ -213,12 +212,11 @@ class EnhancedSdJwtFactory(
             foldedObjectResult: Disclosed,
         ): Disclosed {
             // The object has already been processed, now we need to make the whole object selectively disclosable
-            val objJson = foldedObjectResult.result.jsonObjectOrEmpty()
+            val objJson = foldedObjectResult.result.jsonObject
             val (disclosure, digest) = objectPropertyDisclosure(key to objJson)
-
             val sdClaim = JsonObject(mapOf(SdJwtSpec.CLAIM_SD to JsonArray(listOf(JsonPrimitive(digest.value)))))
 
-            return Folded(
+            return Disclosed(
                 path = path,
                 result = sdClaim,
                 metadata = Disclosures(foldedObjectResult.metadata.disclosures + disclosure),
@@ -246,7 +244,8 @@ class EnhancedSdJwtFactory(
             foldedArrayResult: Disclosed,
         ): Disclosed {
             // The array has already been processed, now we need to include it directly in the JWT
-            val arrayClaim = JsonObject(mapOf(key to foldedArrayResult.result.jsonArrayOrEmpty())) // Expect JsonArray
+            val jsonArray = foldedArrayResult.result.jsonArray
+            val arrayClaim = JsonObject(mapOf(key to jsonArray)) // Expect JsonArray
             return Disclosed(
                 path = path,
                 result = arrayClaim,
@@ -260,7 +259,8 @@ class EnhancedSdJwtFactory(
             foldedObjectResult: Disclosed,
         ): Disclosed {
             // The object has already been processed, now we need to include it directly in the JWT
-            val objClaim = JsonObject(mapOf(key to foldedObjectResult.result.jsonObjectOrEmpty()))
+            val jsonObject = foldedObjectResult.result.jsonObject
+            val objClaim = JsonObject(mapOf(key to jsonObject))
             return Disclosed(
                 path = path,
                 result = objClaim,
@@ -295,7 +295,7 @@ class EnhancedSdJwtFactory(
             foldedArrayResult: Disclosed,
         ): Disclosed {
             // The nested array has already been processed, now we need to make it selectively disclosable
-            val arrayJson = foldedArrayResult.result.jsonArrayOrEmpty() // Expect the array wrapper to return JsonArray
+            val arrayJson = foldedArrayResult.result.jsonArray // Expect the array wrapper to return JsonArray
             val (disclosure, digest) = arrayElementDisclosure(arrayJson)
 
             val digestObj = JsonObject(mapOf("..." to JsonPrimitive(digest.value)))
@@ -313,7 +313,7 @@ class EnhancedSdJwtFactory(
             foldedObjectResult: Disclosed,
         ): Disclosed {
             // The nested object has already been processed, now we need to make it selectively disclosable
-            val objJson = foldedObjectResult.result.jsonObjectOrEmpty()
+            val objJson = foldedObjectResult.result.jsonObject
             val (disclosure, digest) = arrayElementDisclosure(objJson)
 
             val digestObj = JsonObject(mapOf("..." to JsonPrimitive(digest.value)))
@@ -344,7 +344,7 @@ class EnhancedSdJwtFactory(
         ): Disclosed {
             return Disclosed(
                 path = path,
-                result = foldedArrayResult.result.jsonArrayOrEmpty(),
+                result = foldedArrayResult.result.jsonArray,
                 metadata = Disclosures(foldedArrayResult.metadata.disclosures),
             )
         }
@@ -357,7 +357,7 @@ class EnhancedSdJwtFactory(
             // The nested object has already been processed, now we need to include it directly
             return Disclosed(
                 path = path,
-                result = foldedObjectResult.result.jsonObjectOrEmpty(),
+                result = foldedObjectResult.result.jsonObject,
                 metadata = Disclosures(foldedObjectResult.metadata.disclosures),
             )
         }
@@ -430,7 +430,3 @@ class EnhancedSdJwtFactory(
             EnhancedSdJwtFactory(HashAlgorithm.SHA_256, SaltProvider.Default, DecoyGen.Default, null)
     }
 }
-
-// Extension functions for safe casting
-private fun JsonElement.jsonObjectOrEmpty(): JsonObject = this as? JsonObject ?: JsonObject(emptyMap())
-private fun JsonElement.jsonArrayOrEmpty(): JsonArray = this as? JsonArray ?: JsonArray(emptyList())
