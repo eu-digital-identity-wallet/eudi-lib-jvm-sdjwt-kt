@@ -80,6 +80,7 @@ private fun combineProcessed(
         metadata = SdJwtMetadata(mergedDisclosures, mergedMinimumDigests),
     )
 }
+
 /**
  * Factory for creating an unsigned JWT using the enhanced fold API.
  *
@@ -449,9 +450,6 @@ class EnhancedSdJwtFactory(
     }
 }
 
-
 // Extension functions for safe casting
 private fun JsonElement.jsonObjectOrEmpty(): JsonObject = this as? JsonObject ?: JsonObject(emptyMap())
 private fun JsonElement.jsonArrayOrEmpty(): JsonArray = this as? JsonArray ?: JsonArray(emptyList())
-
-
