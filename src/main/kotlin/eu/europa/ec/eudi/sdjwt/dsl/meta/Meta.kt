@@ -37,16 +37,12 @@ data class AttributeMetadata(
 )
 
 class DisclosableContainerMetadataFactory(private val metadata: AttributeMetadata) :
-    DisclosableContainerFactory<String, AttributeMetadata> {
+    DisclosableContainerFactory<String, AttributeMetadata, DisclosableObjectMetadata, DisclosableArrayMetadata> {
         override fun obj(
             elements: Map<String, DisclosableElement<String, AttributeMetadata>>,
-        ): DisclosableObject<String, AttributeMetadata> {
-            return DisclosableObjectMetadata(elements, metadata)
-        }
+        ): DisclosableObjectMetadata = DisclosableObjectMetadata(elements, metadata)
 
         override fun arr(
             elements: List<DisclosableElement<String, AttributeMetadata>>,
-        ): DisclosableArray<String, AttributeMetadata> {
-            return DisclosableArrayMetadata(elements, metadata)
-        }
+        ): DisclosableArrayMetadata = DisclosableArrayMetadata(elements, metadata)
     }

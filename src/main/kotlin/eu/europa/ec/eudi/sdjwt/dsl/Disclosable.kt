@@ -66,22 +66,26 @@ interface DisclosableArray<K, out A> {
     val content: List<DisclosableElement<K, A>>
 }
 
-interface DisclosableContainerFactory<K, A> {
-    fun obj(elements: Map<K, DisclosableElement<K, A>>): DisclosableObject<K, A>
-    fun arr(elements: List<DisclosableElement<K, A>>): DisclosableArray<K, A>
+interface DisclosableContainerFactory<K, A, out DObj, out DArr>
+    where DObj : DisclosableObject<K, A>, DArr : DisclosableArray<K, A> {
+    fun obj(elements: Map<K, DisclosableElement<K, A>>): DObj
+    fun arr(elements: List<DisclosableElement<K, A>>): DArr
 
     companion object {
-        fun <K, A>default(): DisclosableContainerFactory<K, A> = object : DisclosableContainerFactory<K, A> {
-            override fun obj(elements: Map<K, DisclosableElement<K, A>>): DisclosableObject<K, A> = object : DisclosableObject<K, A> {
-                override val content: Map<K, DisclosableElement<K, A>>
-                    get() = elements
-            }
+        fun <K, A> default(): DisclosableContainerFactory<K, A, DisclosableObject<K, A>, DisclosableArray<K, A>> =
+            object : DisclosableContainerFactory<K, A, DisclosableObject<K, A>, DisclosableArray<K, A>> {
+                override fun obj(elements: Map<K, DisclosableElement<K, A>>): DisclosableObject<K, A> =
+                    object : DisclosableObject<K, A> {
+                        override val content: Map<K, DisclosableElement<K, A>>
+                            get() = elements
+                    }
 
-            override fun arr(elements: List<DisclosableElement<K, A>>): DisclosableArray<K, A> = object : DisclosableArray<K, A> {
-                override val content: List<DisclosableElement<K, A>>
-                    get() = elements
+                override fun arr(elements: List<DisclosableElement<K, A>>): DisclosableArray<K, A> =
+                    object : DisclosableArray<K, A> {
+                        override val content: List<DisclosableElement<K, A>>
+                            get() = elements
+                    }
             }
-        }
     }
 }
 

@@ -31,20 +31,15 @@ data class JsonElementDisclosableArray(
     val minimumDigests: MinimumDigests?,
 ) : DisclosableArray<String, JsonElement>
 
-private fun factory(minimumDigests: Int?) = object : DisclosableContainerFactory<String, JsonElement> {
-    fun jsonObj(elements: Map<String, DisclosableElement<String, JsonElement>>): JsonElementDisclosableObject {
-        return JsonElementDisclosableObject(elements, minimumDigests.atLeastDigests())
-    }
-    override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): JsonElementDisclosableObject {
-        return jsonObj(elements)
-    }
+private fun factory(
+    minimumDigests: Int?,
+) = object : DisclosableContainerFactory<String, JsonElement, JsonElementDisclosableObject, JsonElementDisclosableArray> {
 
-    fun jsonArr(elements: List<DisclosableElement<String, JsonElement>>): JsonElementDisclosableArray {
-        return JsonElementDisclosableArray(elements, minimumDigests.atLeastDigests())
-    }
-    override fun arr(elements: List<DisclosableElement<String, JsonElement>>): JsonElementDisclosableArray {
-        return jsonArr(elements)
-    }
+    override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): JsonElementDisclosableObject =
+        JsonElementDisclosableObject(elements, minimumDigests.atLeastDigests())
+
+    override fun arr(elements: List<DisclosableElement<String, JsonElement>>): JsonElementDisclosableArray =
+        JsonElementDisclosableArray(elements, minimumDigests.atLeastDigests())
 }
 class JsonElementDisclosableArraySpecBuilder(
     elements: MutableList<JsonDisclosableElement>,
@@ -83,7 +78,7 @@ fun buildJsonElementDisclosableArray(
 ): JsonElementDisclosableArray {
     val builder = JsonElementDisclosableArraySpecBuilder(mutableListOf())
     val content = builder.apply(builderAction)
-    return factory(minimumDigests).jsonArr(content.elements)
+    return factory(minimumDigests).arr(content.elements)
 }
 
 @DisclosableElementDsl
@@ -139,7 +134,7 @@ fun buildJsonElementDisclosableObject(
 ): JsonElementDisclosableObject {
     val builder = JsonElementDisclosableObjectSpecBuilder(mutableMapOf())
     val content = builder.apply(builderAction)
-    return factory(minimumDigests).jsonObj(content.elements)
+    return factory(minimumDigests).obj(content.elements)
 }
 
 fun sdJwt(

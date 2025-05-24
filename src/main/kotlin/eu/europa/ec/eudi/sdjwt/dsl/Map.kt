@@ -15,35 +15,51 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl
 
-fun <K, K1, A, A1> DisclosableObject<K, A>.map(
-    factory: DisclosableContainerFactory<K1, A1> = DisclosableContainerFactory.default(),
+fun <K, K1, A, A1, DObj1, DArr1> DisclosableObject<K, A>.map(
+    factory: DisclosableContainerFactory<K1, A1, DObj1, DArr1>,
     fK: (K) -> K1,
     fA: (A) -> A1,
-): DisclosableObject<K1, A1> {
+): DObj1
+    where
+          DObj1 : DisclosableObject<K1, A1>,
+          DArr1 : DisclosableArray<K1, A1> {
     val context = MapFoldContext(factory, fK, fA)
     return context.mapObject(this)
 }
 
-fun <K, K1, A, A1> DisclosableArray<K, A>.map(
-    factory: DisclosableContainerFactory<K1, A1> = DisclosableContainerFactory.default(),
+fun <K, K1, A, A1> DisclosableObject<K, A>.map(
     fK: (K) -> K1,
     fA: (A) -> A1,
-): DisclosableArray<K1, A1> {
+): DisclosableObject<K1, A1> =
+    map(DisclosableContainerFactory.default(), fK, fA)
+
+fun <K, K1, A, A1, DObj1, DArr1> DisclosableArray<K, A>.map(
+    factory: DisclosableContainerFactory<K1, A1, DObj1, DArr1>,
+    fK: (K) -> K1,
+    fA: (A) -> A1,
+): DArr1
+    where
+          DObj1 : DisclosableObject<K1, A1>,
+          DArr1 : DisclosableArray<K1, A1> {
     val context = MapFoldContext(factory, fK, fA)
     return context.mapArray(this)
 }
+fun <K, K1, A, A1> DisclosableArray<K, A>.map(
+    fK: (K) -> K1,
+    fA: (A) -> A1,
+): DisclosableArray<K1, A1> = map(DisclosableContainerFactory.default(), fK, fA)
 
 //
 // Implementation
 //
 
-private class MapFoldContext<K, K1, A, A1>(
-    private val factory: DisclosableContainerFactory<K1, A1>,
+private class MapFoldContext<K, K1, A, A1, DObj1 : DisclosableObject<K1, A1>, DArr1 : DisclosableArray<K1, A1>>(
+    private val factory: DisclosableContainerFactory<K1, A1, DObj1, DArr1>,
     private val fK: (K) -> K1,
     private val fA: (A) -> A1,
 ) {
 
-    val mapObject: DeepRecursiveFunction<DisclosableObject<K, A>, DisclosableObject<K1, A1>> =
+    val mapObject: DeepRecursiveFunction<DisclosableObject<K, A>, DObj1> =
         DeepRecursiveFunction { obj ->
             val mappedEntries = obj.content.entries.associate { (key, disclosableElement) ->
                 val newKey = fK(key)
@@ -91,7 +107,7 @@ private class MapFoldContext<K, K1, A, A1>(
             factory.obj(mappedEntries)
         }
 
-    val mapArray: DeepRecursiveFunction<DisclosableArray<K, A>, DisclosableArray<K1, A1>> =
+    val mapArray: DeepRecursiveFunction<DisclosableArray<K, A>, DArr1> =
         DeepRecursiveFunction { arr ->
             val mappedElements = arr.content.map { disclosableElement ->
                 when (disclosableElement) {
