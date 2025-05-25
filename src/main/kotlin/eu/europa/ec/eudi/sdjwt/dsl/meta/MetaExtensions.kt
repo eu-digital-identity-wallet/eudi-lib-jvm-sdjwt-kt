@@ -21,6 +21,10 @@ import eu.europa.ec.eudi.sdjwt.dsl.ObjectFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.fold
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
+/**
+ * Gets the set of [ClaimPath] for the attributes described by
+ * a [DisclosableObjectMetadata]
+ */
 fun DisclosableObjectMetadata.claimPaths(): Set<ClaimPath> =
     fold(
         objectHandlers = ObjectHandlers,
@@ -38,33 +42,32 @@ fun DisclosableObjectMetadata.claimPaths(): Set<ClaimPath> =
 private fun processNode(
     parentPath: List<String?>,
     key: String,
-    childResult: Set<ClaimPath>,
+    childPaths: Set<ClaimPath>,
 ): Folded<String, Set<ClaimPath>, Unit> =
     Folded(
         parentPath,
         Unit,
-        result = setOf((parentPath + key).toClaimPath()) + childResult,
+        result = setOf((parentPath + key).toClaimPath()) + childPaths,
     )
 
 private fun processElement(
     parentPath: List<String?>,
-    childResult: Set<ClaimPath>,
+
 ): Folded<String, Set<ClaimPath>, Unit> {
     return Folded(
         parentPath,
         Unit,
-        result = if (childResult.isEmpty()) setOf(parentPath.toClaimPath()) else setOf(parentPath.toClaimPath()) + childResult,
+        result = setOf(parentPath.toClaimPath()),
     )
 }
 
 private fun List<String?>.toClaimPath(): ClaimPath {
     require(isNotEmpty()) { "Path segments cannot be empty" }
-    require(first() != null) { "First path segment must be an object key" }
-
-    return drop(1).fold(ClaimPath.claim(first()!!)) { acc, segment ->
-        when (segment) {
-            null -> acc.allArrayElements()
-            else -> acc.claim(segment)
+    val head = requireNotNull(first()) { "First path segment must be an object key" }
+    return drop(1).fold(ClaimPath.claim(head)) { path, claim ->
+        when (claim) {
+            null -> path.allArrayElements()
+            else -> path.claim(claim)
         }
     }
 }
@@ -106,32 +109,32 @@ private val ArrayHandlers = object : ArrayFoldHandlers<String, AttributeMetadata
 
     // All array handler overrides call processElement
     override fun ifAlwaysSelectivelyDisclosableId(path: List<String?>, index: Int, value: AttributeMetadata) =
-        processElement(path, emptySet())
+        processElement(path)
 
     override fun ifAlwaysSelectivelyDisclosableArr(
         path: List<String?>,
         index: Int,
         foldedArray: Folded<String, Set<ClaimPath>, Unit>,
-    ) = processElement(path, foldedArray.result)
+    ) = processElement(path)
 
     override fun ifAlwaysSelectivelyDisclosableObj(
         path: List<String?>,
         index: Int,
         foldedObject: Folded<String, Set<ClaimPath>, Unit>,
-    ) = processElement(path, foldedObject.result)
+    ) = processElement(path)
 
     override fun ifNeverSelectivelyDisclosableId(path: List<String?>, index: Int, value: AttributeMetadata) =
-        processElement(path, emptySet())
+        processElement(path)
 
     override fun ifNeverSelectivelyDisclosableArr(
         path: List<String?>,
         index: Int,
         foldedArray: Folded<String, Set<ClaimPath>, Unit>,
-    ) = processElement(path, foldedArray.result)
+    ) = processElement(path)
 
     override fun ifNeverSelectivelyDisclosableObj(
         path: List<String?>,
         index: Int,
         foldedObject: Folded<String, Set<ClaimPath>, Unit>,
-    ) = processElement(path, foldedObject.result)
+    ) = processElement(path)
 }

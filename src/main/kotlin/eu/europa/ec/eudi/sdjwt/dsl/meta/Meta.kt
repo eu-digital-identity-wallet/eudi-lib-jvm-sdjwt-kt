@@ -19,11 +19,27 @@ import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
 import eu.europa.ec.eudi.sdjwt.vc.SvgId
 
+/**
+ * Describes the attributes of a map-like data structure (like a credential)
+ * and especially their disclosure properties.
+ * In addition, contains [display information][metadata] for the container
+ *
+ * The SD-JWT-VC Type metadata, or credential configurations for SD-JWT-VC and MDoc
+ * as defined in OpenId4VCI, are fundamentally flat, suitable for serialization.
+ *
+ * On the other hand, [DisclosableObjectMetadata] is hierarchical and can represent
+ * accurately the disclosure and display properties of SD-JWT-VC or even JWT credentials.
+ */
 data class DisclosableObjectMetadata(
     override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
     val metadata: AttributeMetadata,
 ) : DisclosableObject<String, AttributeMetadata>
 
+/**
+ * Describes the elements of an array-like data structure
+ * and especially their disclosure properties.
+ * In addition, contains display information][metadata] for the container
+ */
 data class DisclosableArrayMetadata(
     override val content: List<DisclosableElement<String, AttributeMetadata>>,
     val metadata: AttributeMetadata,

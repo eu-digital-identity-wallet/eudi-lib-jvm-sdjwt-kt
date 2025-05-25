@@ -20,7 +20,19 @@ import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*
 
-fun ResolvedTypeMetadata.toDisclosableMetadataStructure(
+/**
+ * Transforms a [ResolvedTypeMetadata] into a [DisclosableObjectMetadata]
+ *
+ * A [ResolvedTypeMetadata] represents the outcome of resolving the references
+ * of a [SdJwtVcTypeMetadata], thus it is a flat set of descriptions, suitable for serialization.
+ *
+ * On the other hand, [DisclosableObjectMetadata] is a hierarchical structure for
+ * describing the disclosure and display properties of a credential
+ *
+ * @receiver the SD-JWT-VC metadata to use
+ * @param selectivelyDiscloseWhenAllowed
+ */
+fun ResolvedTypeMetadata.toDisclosableObjectMetadata(
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): DisclosableObjectMetadata {
     val rootAttributeMetadata = AttributeMetadata(
