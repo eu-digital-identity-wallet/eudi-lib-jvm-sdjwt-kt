@@ -22,7 +22,7 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import kotlinx.serialization.json.Json
 import java.util.*
 

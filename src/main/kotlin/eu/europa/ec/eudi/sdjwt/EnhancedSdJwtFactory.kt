@@ -19,7 +19,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.ArrayFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.Folded
 import eu.europa.ec.eudi.sdjwt.dsl.ObjectFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.fold
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import kotlinx.serialization.json.*
 
 private typealias Disclosed = Folded<String, JsonElement, Disclosures>
@@ -112,7 +112,7 @@ class EnhancedSdJwtFactory(
      * @return a [Result] containing the generated [SdJwt] with a [JsonObject] representing the JWT part
      * and the associated disclosure elements, or an exception if the operation fails
      */
-    fun createSdJwt(sdJwtSpec: JsonElementDisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
+    fun createSdJwt(sdJwtSpec: SdJwtObject): Result<SdJwt<JsonObject>> = runCatching {
         val disclosed = sdJwtSpec.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,

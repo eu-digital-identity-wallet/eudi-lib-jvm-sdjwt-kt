@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl
 
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
 enum class JsonType {

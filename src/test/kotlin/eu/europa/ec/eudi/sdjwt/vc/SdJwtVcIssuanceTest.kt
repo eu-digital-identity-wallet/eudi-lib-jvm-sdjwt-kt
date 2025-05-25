@@ -23,8 +23,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
@@ -57,7 +57,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
         holderPubKey: JWK,
         iat: Instant,
         exp: Instant? = null,
-    ): JsonElementDisclosableObject =
+    ): SdJwtObject =
         sdJwt {
             //
             // Never Selectively Disclosable claims

@@ -6,7 +6,7 @@ Description of the example in
 the [specification Appendix 2 - Example 3: Complex Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-3-complex-structure)
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 -->
 
 ```kotlin

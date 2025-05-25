@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.meta
+package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.ArrayFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.Folded
@@ -23,9 +23,9 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
 /**
  * Gets the set of [ClaimPath] for the attributes described by
- * a [DisclosableObjectMetadata]
+ * a [SdJwtObjectDefinition]
  */
-fun DisclosableObjectMetadata.claimPaths(): Set<ClaimPath> =
+fun SdJwtObjectDefinition.claimPaths(): Set<ClaimPath> =
     fold(
         objectHandlers = ObjectHandlers,
         arrayHandlers = ArrayHandlers,

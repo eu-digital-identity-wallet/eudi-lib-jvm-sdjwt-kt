@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.meta
+package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
 import eu.europa.ec.eudi.sdjwt.dsl.not
@@ -21,21 +21,21 @@ import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*
 
 /**
- * Transforms a [ResolvedTypeMetadata] into a [DisclosableObjectMetadata]
+ * Transforms a [ResolvedTypeMetadata] into a [SdJwtObjectDefinition]
  *
  * A [ResolvedTypeMetadata] represents the outcome of resolving the references
  * of a [SdJwtVcTypeMetadata], thus it is a flat set of descriptions, suitable for serialization.
  *
- * On the other hand, [DisclosableObjectMetadata] is a hierarchical structure for
+ * On the other hand, [SdJwtObjectDefinition] is a hierarchical structure for
  * describing the disclosure and display properties of a credential
  *
  * @param sdJwtVcMetadata the SD-JWT-VC metadata to use
  * @param selectivelyDiscloseWhenAllowed
  */
-fun DisclosableObjectMetadata.Companion.fromSdJwtVcMetadata(
+fun SdJwtObjectDefinition.Companion.fromSdJwtVcMetadata(
     sdJwtVcMetadata: ResolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed: Boolean = true,
-): DisclosableObjectMetadata {
+): SdJwtObjectDefinition {
     val rootAttributeMetadata =
         AttributeMetadata(
             display =
@@ -58,8 +58,8 @@ private fun processObjectDefinition(
     childClaimsMetadatas: List<ClaimMetadata>,
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
-): DisclosableObjectMetadata {
-    fun metaOf(childMeta: ClaimMetadata): Pair<String, DisclosableElementMetadata> {
+): SdJwtObjectDefinition {
+    fun metaOf(childMeta: ClaimMetadata): Pair<String, SdJwtElementDefinition> {
         // The last element of the child's path should be the name of the attribute in the object.
         val lastPathElement = childMeta.path.value.last()
 
@@ -78,7 +78,7 @@ private fun processObjectDefinition(
 
     val contentMap = childClaimsMetadatas.associate(::metaOf)
 
-    return DisclosableObjectMetadata(contentMap, objMetadata)
+    return SdJwtObjectDefinition(contentMap, objMetadata)
 }
 
 private fun processArrayDefinition(
@@ -86,11 +86,11 @@ private fun processArrayDefinition(
     childClaimsMetadatas: List<ClaimMetadata>,
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
-): DisclosableArrayMetadata {
+): SdJwtArrayDefinition {
     val distinctArrayChildElements =
         childClaimsMetadatas.map { it.path.value.last() }.distinct()
 
-    fun metaOf(e: ClaimPathElement): DisclosableElementMetadata {
+    fun metaOf(e: ClaimPathElement): SdJwtElementDefinition {
         val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == e }
         val disclosableElement = elementClaimMetadata.toDisclosableElementMetadata(
             allClaimsGroupedByParentPath,
@@ -101,13 +101,13 @@ private fun processArrayDefinition(
 
     val contentList = distinctArrayChildElements.map(::metaOf)
 
-    return DisclosableArrayMetadata(contentList, arrayMetadata)
+    return SdJwtArrayDefinition(contentList, arrayMetadata)
 }
 
 private fun ClaimMetadata.toDisclosableElementMetadata(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
-): DisclosableElementMetadata {
+): SdJwtElementDefinition {
     val (nestedDisclosableValue, isSelectivelyDisclosable) = buildNestedDisclosableValue(
         currentClaimPath = this.path, // The claim path this metadata belongs to
         allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,

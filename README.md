@@ -70,7 +70,7 @@ In the example below, the Issuer decides to issue an SD-JWT as follows:
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import kotlinx.coroutines.runBlocking
 -->
 
@@ -144,7 +144,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.runBlocking
 -->
@@ -245,7 +245,7 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 -->
@@ -315,7 +315,7 @@ contains more disclosure digests than the hint, no decoys will be added.
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 -->
 
 ```kotlin

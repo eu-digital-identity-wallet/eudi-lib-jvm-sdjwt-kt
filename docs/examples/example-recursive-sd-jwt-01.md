@@ -8,7 +8,7 @@ The Issuer may also decide to make the address claim contents selectively disclo
 the `address` claim is made selectively disclosable as well as its sub-claims:
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 -->
 
 ```kotlin

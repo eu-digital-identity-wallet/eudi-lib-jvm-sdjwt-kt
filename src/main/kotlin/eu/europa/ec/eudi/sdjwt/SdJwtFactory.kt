@@ -17,9 +17,9 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonDisclosableElement
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableArray
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtArray
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtElement
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
@@ -78,12 +78,12 @@ class SdJwtFactory(
      * @return a [Result] containing the generated [SdJwt] with a [JsonObject] representing the JWT part
      *         and the associated disclosure elements, or an exception if the operation fails
      */
-    fun createSdJwt(sdJwtSpec: JsonElementDisclosableObject): Result<SdJwt<JsonObject>> = runCatching {
+    fun createSdJwt(sdJwtSpec: SdJwtObject): Result<SdJwt<JsonObject>> = runCatching {
         val (jwtClaimSet, disclosures) = encodeObject(sdJwtSpec).addHashAlgClaim(hashAlgorithm)
         SdJwt(jwtClaimSet, disclosures)
     }
 
-    private val encodeObject: DeepRecursiveFunction<JsonElementDisclosableObject, EncodedSdElement> =
+    private val encodeObject: DeepRecursiveFunction<SdJwtObject, EncodedSdElement> =
         DeepRecursiveFunction { disclosableObject ->
             val disclosures = mutableListOf<Disclosure>()
             val encodedClaims = mutableMapOf<String, JsonElement>()
@@ -119,7 +119,7 @@ class SdJwtFactory(
             sdObjectClaims to disclosures
         }
 
-    private val encodeArray: DeepRecursiveFunction<JsonElementDisclosableArray, Pair<JsonArray, List<Disclosure>>> =
+    private val encodeArray: DeepRecursiveFunction<SdJwtArray, Pair<JsonArray, List<Disclosure>>> =
         DeepRecursiveFunction { array ->
             fun PlainOrDigest.toJsonElement(): JsonElement = when (this) {
                 is PlainOrDigest.Plain -> value
@@ -147,7 +147,7 @@ class SdJwtFactory(
             allElements to disclosures
         }
 
-    private val encodeClaim: DeepRecursiveFunction<Pair<String, JsonDisclosableElement>, EncodedSdElement> =
+    private val encodeClaim: DeepRecursiveFunction<Pair<String, SdJwtElement>, EncodedSdElement> =
         DeepRecursiveFunction { (claimName, disclosableElement) ->
             fun encodeAlwaysDisclosableElement(disclosable: JsonElement): EncodedSdElement {
                 val plainClaim = JsonObject(mapOf(claimName to disclosable))
@@ -162,14 +162,14 @@ class SdJwtFactory(
                 return sdClaim to listOf(disclosure)
             }
 
-            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<JsonElementDisclosableObject, EncodedSdElement> =
+            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<SdJwtObject, EncodedSdElement> =
                 DeepRecursiveFunction { disclosable ->
                     val (encodedSubClaims, disclosures) = encodeObject.callRecursive(disclosable)
                     val structuredSdClaim = JsonObject(mapOf(claimName to encodedSubClaims))
                     structuredSdClaim to disclosures
                 }
 
-            val encodeSelectivelyDisclosableObject: DeepRecursiveFunction<JsonElementDisclosableObject, EncodedSdElement> =
+            val encodeSelectivelyDisclosableObject: DeepRecursiveFunction<SdJwtObject, EncodedSdElement> =
                 DeepRecursiveFunction { disclosable ->
                     val (contentClaims, contentDisclosures) = encodeObject.callRecursive(disclosable)
                     val wrapper = contentClaims
@@ -178,14 +178,14 @@ class SdJwtFactory(
                     wrapperClaim to disclosures
                 }
 
-            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<JsonElementDisclosableArray, EncodedSdElement> =
+            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<SdJwtArray, EncodedSdElement> =
                 DeepRecursiveFunction { disclosable ->
                     val (allElements, disclosures) = encodeArray.callRecursive(disclosable)
                     val arrayClaim = JsonObject(mapOf(claimName to allElements))
                     arrayClaim to disclosures
                 }
 
-            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<JsonElementDisclosableArray, EncodedSdElement> =
+            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<SdJwtArray, EncodedSdElement> =
                 DeepRecursiveFunction { disclosable ->
                     val (contentClaims, contentDisclosures) = encodeAlwaysDisclosableArray.callRecursive(disclosable)
                     val wrapper = checkNotNull(contentClaims[claimName])
@@ -201,10 +201,10 @@ class SdJwtFactory(
                             encodeSelectivelyDisclosableElement(element.value)
                         }
                         is DisclosableValue.Arr<String, JsonElement> -> {
-                            encodeSelectivelyDisclosableArray.callRecursive(element.value as JsonElementDisclosableArray)
+                            encodeSelectivelyDisclosableArray.callRecursive(element.value as SdJwtArray)
                         }
                         is DisclosableValue.Obj<String, JsonElement> -> {
-                            encodeSelectivelyDisclosableObject.callRecursive(element.value as JsonElementDisclosableObject)
+                            encodeSelectivelyDisclosableObject.callRecursive(element.value as SdJwtObject)
                         }
                     }
                 }
@@ -214,17 +214,17 @@ class SdJwtFactory(
                             encodeAlwaysDisclosableElement(element.value)
                         }
                         is DisclosableValue.Arr<String, JsonElement> -> {
-                            encodeAlwaysDisclosableArray.callRecursive(element.value as JsonElementDisclosableArray)
+                            encodeAlwaysDisclosableArray.callRecursive(element.value as SdJwtArray)
                         }
                         is DisclosableValue.Obj<String, JsonElement> -> {
-                            encodeAlwaysDisclosableObject.callRecursive(element.value as JsonElementDisclosableObject)
+                            encodeAlwaysDisclosableObject.callRecursive(element.value as SdJwtObject)
                         }
                     }
                 }
             }
         }
 
-    private val encodeArrayElement: DeepRecursiveFunction<JsonDisclosableElement, Pair<List<Disclosure>, PlainOrDigest>> =
+    private val encodeArrayElement: DeepRecursiveFunction<SdJwtElement, Pair<List<Disclosure>, PlainOrDigest>> =
         DeepRecursiveFunction { disclosableElement ->
 
             fun encodeAlwaysDisclosableElement(disclosable: JsonElement): Pair<List<Disclosure>, PlainOrDigest> {
@@ -242,27 +242,27 @@ class SdJwtFactory(
                 return listOf(disclosure) to PlainOrDigest.Dig(digest)
             }
 
-            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<JsonElementDisclosableObject, Pair<List<Disclosure>, PlainOrDigest>> =
+            val encodeAlwaysDisclosableObject: DeepRecursiveFunction<SdJwtObject, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
                     val (json, ds) = encodeObject.callRecursive(disclosable)
                     ds to PlainOrDigest.Plain(json)
                 }
 
             val encodeSelectivelyDisclosableObject:
-                DeepRecursiveFunction<JsonElementDisclosableObject, Pair<List<Disclosure>, PlainOrDigest>> =
+                DeepRecursiveFunction<SdJwtObject, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
                     val (json, ds) = encodeObject.callRecursive(disclosable)
                     val (ds2, dig) = disclosureOf(json)
                     (ds + ds2) to PlainOrDigest.Dig(dig)
                 }
 
-            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<JsonElementDisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
+            val encodeAlwaysDisclosableArray: DeepRecursiveFunction<SdJwtArray, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
                     val (json, ds) = encodeArray.callRecursive(disclosable)
                     ds to PlainOrDigest.Plain(json)
                 }
 
-            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<JsonElementDisclosableArray, Pair<List<Disclosure>, PlainOrDigest>> =
+            val encodeSelectivelyDisclosableArray: DeepRecursiveFunction<SdJwtArray, Pair<List<Disclosure>, PlainOrDigest>> =
                 DeepRecursiveFunction { disclosable ->
                     val (json, ds) = encodeArray.callRecursive(disclosable)
                     val (ds2, dig) = disclosureOf(json)
@@ -276,11 +276,11 @@ class SdJwtFactory(
                             encodeSelectivelyDisclosableElement(element.value)
                         }
                         is DisclosableValue.Arr<String, JsonElement> -> {
-                            check(element.value is JsonElementDisclosableArray)
+                            check(element.value is SdJwtArray)
                             encodeSelectivelyDisclosableArray.callRecursive(element.value)
                         }
                         is DisclosableValue.Obj<String, JsonElement> -> {
-                            check(element.value is JsonElementDisclosableObject)
+                            check(element.value is SdJwtObject)
                             encodeSelectivelyDisclosableObject.callRecursive(element.value)
                         }
                     }
@@ -291,11 +291,11 @@ class SdJwtFactory(
                             encodeAlwaysDisclosableElement(element.value)
                         }
                         is DisclosableValue.Arr<String, JsonElement> -> {
-                            check(element.value is JsonElementDisclosableArray)
+                            check(element.value is SdJwtArray)
                             encodeAlwaysDisclosableArray.callRecursive(element.value)
                         }
                         is DisclosableValue.Obj<String, JsonElement> -> {
-                            check(element.value is JsonElementDisclosableObject)
+                            check(element.value is SdJwtObject)
                             encodeAlwaysDisclosableObject.callRecursive(element.value)
                         }
                     }

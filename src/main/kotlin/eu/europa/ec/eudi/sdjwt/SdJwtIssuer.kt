@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -41,7 +41,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
     @Deprecated("Use issue(DisclosableObject) instead", ReplaceWith("issue(sdJwtSpec.migrate())"))
     suspend fun issue(sdJwtSpec: DisclosableObject): Result<SdJwt<SIGNED_JWT>> = issue(sdJwtSpec.migrate())
 
-    suspend fun issue(sdJwtSpec: JsonElementDisclosableObject): Result<SdJwt<SIGNED_JWT>>
+    suspend fun issue(sdJwtSpec: SdJwtObject): Result<SdJwt<SIGNED_JWT>>
 
     companion object {
         /**

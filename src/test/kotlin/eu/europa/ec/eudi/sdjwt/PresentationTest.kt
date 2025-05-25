@@ -22,7 +22,7 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
 import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath

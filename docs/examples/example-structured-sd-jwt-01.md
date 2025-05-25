@@ -8,7 +8,7 @@ The example below demonstrates the usage of the library mixed with the Kotlinx S
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 -->
 
 ```kotlin

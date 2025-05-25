@@ -5,7 +5,7 @@
 Description of the example in the [specification Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-4b-w3c-verifiable-c)
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.json.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 -->
 
 ```kotlin

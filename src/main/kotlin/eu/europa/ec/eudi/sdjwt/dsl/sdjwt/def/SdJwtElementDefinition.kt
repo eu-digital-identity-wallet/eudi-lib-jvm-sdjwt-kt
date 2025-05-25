@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.meta
+package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
@@ -27,10 +27,10 @@ import eu.europa.ec.eudi.sdjwt.vc.SvgId
  * The SD-JWT-VC Type metadata, or credential configurations for SD-JWT-VC and MDoc
  * as defined in OpenId4VCI, are fundamentally flat, suitable for serialization.
  *
- * On the other hand, [DisclosableObjectMetadata] is hierarchical and can represent
+ * On the other hand, [SdJwtObjectDefinition] is hierarchical and can represent
  * accurately the disclosure and display properties of SD-JWT-VC or even JWT credentials.
  */
-data class DisclosableObjectMetadata(
+data class SdJwtObjectDefinition(
     override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
     val metadata: AttributeMetadata,
 ) : DisclosableObject<String, AttributeMetadata> {
@@ -42,12 +42,12 @@ data class DisclosableObjectMetadata(
  * and especially their disclosure properties.
  * In addition, contains display information][metadata] for the container
  */
-data class DisclosableArrayMetadata(
+data class SdJwtArrayDefinition(
     override val content: List<DisclosableElement<String, AttributeMetadata>>,
     val metadata: AttributeMetadata,
 ) : DisclosableArray<String, AttributeMetadata>
 
-typealias DisclosableElementMetadata = Disclosable<DisclosableValue<String, AttributeMetadata>>
+typealias SdJwtElementDefinition = Disclosable<DisclosableValue<String, AttributeMetadata>>
 
 data class AttributeMetadata(
     val display: List<ClaimDisplay>? = null,
@@ -55,12 +55,12 @@ data class AttributeMetadata(
 )
 
 class DisclosableContainerMetadataFactory(private val metadata: AttributeMetadata) :
-    DisclosableContainerFactory<String, AttributeMetadata, DisclosableObjectMetadata, DisclosableArrayMetadata> {
+    DisclosableContainerFactory<String, AttributeMetadata, SdJwtObjectDefinition, SdJwtArrayDefinition> {
         override fun obj(
             elements: Map<String, DisclosableElement<String, AttributeMetadata>>,
-        ): DisclosableObjectMetadata = DisclosableObjectMetadata(elements, metadata)
+        ): SdJwtObjectDefinition = SdJwtObjectDefinition(elements, metadata)
 
         override fun arr(
             elements: List<DisclosableElement<String, AttributeMetadata>>,
-        ): DisclosableArrayMetadata = DisclosableArrayMetadata(elements, metadata)
+        ): SdJwtArrayDefinition = SdJwtArrayDefinition(elements, metadata)
     }

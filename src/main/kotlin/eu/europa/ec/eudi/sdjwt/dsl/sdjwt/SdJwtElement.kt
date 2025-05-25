@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.json
+package eu.europa.ec.eudi.sdjwt.dsl.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.MinimumDigests
 import eu.europa.ec.eudi.sdjwt.atLeastDigests
@@ -21,33 +21,34 @@ import eu.europa.ec.eudi.sdjwt.dsl.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
-typealias JsonDisclosableElement = DisclosableElement<String, JsonElement>
-data class JsonElementDisclosableObject(
-    override val content: Map<String, DisclosableElement<String, JsonElement>>,
+data class SdJwtObject(
+    override val content: Map<String, SdJwtElement>,
     val minimumDigests: MinimumDigests?,
 ) : DisclosableObject<String, JsonElement>
-data class JsonElementDisclosableArray(
-    override val content: List<DisclosableElement<String, JsonElement>>,
+data class SdJwtArray(
+    override val content: List<SdJwtElement>,
     val minimumDigests: MinimumDigests?,
 ) : DisclosableArray<String, JsonElement>
 
+typealias SdJwtElement = DisclosableElement<String, JsonElement>
+
 private fun factory(
     minimumDigests: Int?,
-) = object : DisclosableContainerFactory<String, JsonElement, JsonElementDisclosableObject, JsonElementDisclosableArray> {
+) = object : DisclosableContainerFactory<String, JsonElement, SdJwtObject, SdJwtArray> {
 
-    override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): JsonElementDisclosableObject =
-        JsonElementDisclosableObject(elements, minimumDigests.atLeastDigests())
+    override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): SdJwtObject =
+        SdJwtObject(elements, minimumDigests.atLeastDigests())
 
-    override fun arr(elements: List<DisclosableElement<String, JsonElement>>): JsonElementDisclosableArray =
-        JsonElementDisclosableArray(elements, minimumDigests.atLeastDigests())
+    override fun arr(elements: List<DisclosableElement<String, JsonElement>>): SdJwtArray =
+        SdJwtArray(elements, minimumDigests.atLeastDigests())
 }
-class JsonElementDisclosableArraySpecBuilder(
-    elements: MutableList<JsonDisclosableElement>,
+class SdJwtArrayBuilder(
+    elements: MutableList<SdJwtElement>,
 ) {
 
     private val claims = DisclosableArraySpecBuilder(factory = factory(null), elements)
 
-    val elements: List<JsonDisclosableElement>
+    val elements: List<SdJwtElement>
         get() = claims.elements
 
     fun claim(value: JsonElement): Unit = claims.claim(value)
@@ -59,34 +60,34 @@ class JsonElementDisclosableArraySpecBuilder(
     fun sdClaim(value: Number): Unit = claims.sdClaim(JsonPrimitive(value))
     fun sdClaim(value: Boolean): Unit = claims.sdClaim(JsonPrimitive(value))
 
-    fun objClaim(minimumDigests: Int? = null, action: JsonElementDisclosableObjectSpecBuilder.() -> Unit): Unit =
-        claims.objClaim(buildJsonElementDisclosableObject(minimumDigests, action))
+    fun objClaim(minimumDigests: Int? = null, action: SdJwtObjectBuilder.() -> Unit): Unit =
+        claims.objClaim(buildSdJwtObject(minimumDigests, action))
 
-    fun sdObjClaim(minimumDigests: Int? = null, action: JsonElementDisclosableObjectSpecBuilder.() -> Unit): Unit =
-        claims.sdObjClaim(buildJsonElementDisclosableObject(minimumDigests, action))
+    fun sdObjClaim(minimumDigests: Int? = null, action: SdJwtObjectBuilder.() -> Unit): Unit =
+        claims.sdObjClaim(buildSdJwtObject(minimumDigests, action))
 
-    fun arrClaim(minimumDigests: Int? = null, action: JsonElementDisclosableArraySpecBuilder.() -> Unit): Unit =
-        claims.arrClaim(buildJsonElementDisclosableArray(minimumDigests, action))
+    fun arrClaim(minimumDigests: Int? = null, action: SdJwtArrayBuilder.() -> Unit): Unit =
+        claims.arrClaim(buildSdJwtArray(minimumDigests, action))
 
-    fun sdArrClaim(minimumDigests: Int? = null, action: JsonElementDisclosableArraySpecBuilder.() -> Unit): Unit =
-        claims.sdArrClaim(buildJsonElementDisclosableArray(minimumDigests, action))
+    fun sdArrClaim(minimumDigests: Int? = null, action: SdJwtArrayBuilder.() -> Unit): Unit =
+        claims.sdArrClaim(buildSdJwtArray(minimumDigests, action))
 }
 
-fun buildJsonElementDisclosableArray(
+fun buildSdJwtArray(
     minimumDigests: Int? = null,
-    builderAction: JsonElementDisclosableArraySpecBuilder.() -> Unit,
-): JsonElementDisclosableArray {
-    val builder = JsonElementDisclosableArraySpecBuilder(mutableListOf())
+    builderAction: SdJwtArrayBuilder.() -> Unit,
+): SdJwtArray {
+    val builder = SdJwtArrayBuilder(mutableListOf())
     val content = builder.apply(builderAction)
     return factory(minimumDigests).arr(content.elements)
 }
 
 @DisclosableElementDsl
-class JsonElementDisclosableObjectSpecBuilder(
-    elements: MutableMap<String, JsonDisclosableElement>,
+class SdJwtObjectBuilder(
+    elements: MutableMap<String, SdJwtElement>,
 ) {
     private val claims = DisclosableObjectSpecBuilder(factory(null), elements)
-    val elements: Map<String, JsonDisclosableElement>
+    val elements: Map<String, SdJwtElement>
         get() = claims.elements
 
     fun claim(name: String, value: JsonElement): Unit = claims.claim(name, value)
@@ -102,42 +103,42 @@ class JsonElementDisclosableObjectSpecBuilder(
     fun objClaim(
         name: String,
         minimumDigests: Int? = null,
-        action: (JsonElementDisclosableObjectSpecBuilder).() -> Unit,
+        action: (SdJwtObjectBuilder).() -> Unit,
     ): Unit =
-        claims.objClaim(name, buildJsonElementDisclosableObject(minimumDigests, action))
+        claims.objClaim(name, buildSdJwtObject(minimumDigests, action))
 
     fun sdObjClaim(
         name: String,
         minimumDigests: Int? = null,
-        action: (JsonElementDisclosableObjectSpecBuilder).() -> Unit,
+        action: (SdJwtObjectBuilder).() -> Unit,
     ): Unit =
-        claims.sdObjClaim(name, buildJsonElementDisclosableObject(minimumDigests, action))
+        claims.sdObjClaim(name, buildSdJwtObject(minimumDigests, action))
 
     fun arrClaim(
         name: String,
         minimumDigests: Int? = null,
-        action: JsonElementDisclosableArraySpecBuilder.() -> Unit,
+        action: SdJwtArrayBuilder.() -> Unit,
     ): Unit =
-        claims.arrClaim(name, buildJsonElementDisclosableArray(minimumDigests, action))
+        claims.arrClaim(name, buildSdJwtArray(minimumDigests, action))
 
     fun sdArrClaim(
         name: String,
         minimumDigests: Int? = null,
-        action: JsonElementDisclosableArraySpecBuilder.() -> Unit,
+        action: SdJwtArrayBuilder.() -> Unit,
     ): Unit =
-        claims.sdArrClaim(name, buildJsonElementDisclosableArray(minimumDigests, action))
+        claims.sdArrClaim(name, buildSdJwtArray(minimumDigests, action))
 }
 
-fun buildJsonElementDisclosableObject(
+fun buildSdJwtObject(
     minimumDigests: Int? = null,
-    builderAction: JsonElementDisclosableObjectSpecBuilder.() -> Unit,
-): JsonElementDisclosableObject {
-    val builder = JsonElementDisclosableObjectSpecBuilder(mutableMapOf())
+    builderAction: SdJwtObjectBuilder.() -> Unit,
+): SdJwtObject {
+    val builder = SdJwtObjectBuilder(mutableMapOf())
     val content = builder.apply(builderAction)
     return factory(minimumDigests).obj(content.elements)
 }
 
 fun sdJwt(
     minimumDigests: Int? = null,
-    builderAction: JsonElementDisclosableObjectSpecBuilder.() -> Unit,
-): JsonElementDisclosableObject = buildJsonElementDisclosableObject(minimumDigests, builderAction)
+    builderAction: SdJwtObjectBuilder.() -> Unit,
+): SdJwtObject = buildSdJwtObject(minimumDigests, builderAction)

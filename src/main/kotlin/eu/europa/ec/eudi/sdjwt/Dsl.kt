@@ -16,10 +16,10 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableElementDsl
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonDisclosableElement
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableArray
-import eu.europa.ec.eudi.sdjwt.dsl.json.JsonElementDisclosableObject
 import eu.europa.ec.eudi.sdjwt.dsl.not
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtArray
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtElement
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -263,25 +263,25 @@ inline fun sdJwt(
     builderAction: DisclosableObjectSpecBuilder.() -> Unit,
 ): DisclosableObject = buildDisclosableObject(minimumDigests, builderAction)
 
-fun DisclosableObject.migrate(): JsonElementDisclosableObject {
+fun DisclosableObject.migrate(): SdJwtObject {
     val newContent = mapValues { (_, value) -> value.migrate() }
-    return JsonElementDisclosableObject(
+    return SdJwtObject(
         content = newContent,
         minimumDigests = minimumDigests,
     )
 }
 
 @Deprecated("To be removed")
-private fun DisclosableArray.migrate(): JsonElementDisclosableArray {
+private fun DisclosableArray.migrate(): SdJwtArray {
     val newContent = map { it.migrate() }
-    return JsonElementDisclosableArray(
+    return SdJwtArray(
         content = newContent,
         minimumDigests = minimumDigests,
     )
 }
 
 @Deprecated("To be removed")
-private fun DisclosableElement.migrate(): JsonDisclosableElement {
+private fun DisclosableElement.migrate(): SdJwtElement {
     val newElement = element.migrate()
     return when (disclosable) {
         Disclosable.Always -> !newElement
@@ -294,11 +294,11 @@ private fun DisclosableValue.migrate(): eu.europa.ec.eudi.sdjwt.dsl.DisclosableV
     return when (this) {
         is DisclosableValue.Json -> eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue(value)
         is DisclosableValue.Arr -> {
-            val newValue: JsonElementDisclosableArray = value.migrate()
+            val newValue: SdJwtArray = value.migrate()
             eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue.arr(newValue)
         }
         is DisclosableValue.Obj -> {
-            val newValue: JsonElementDisclosableObject = value.migrate()
+            val newValue: SdJwtObject = value.migrate()
             eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue.obj(newValue)
         }
     }

@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.meta
 
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtObjectDefinition
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
@@ -27,7 +30,7 @@ class MetaTest {
     @Test
     fun test() {
         val meta = meta(pidMeta).resolve()
-        val disclosableObjectMetadata = DisclosableObjectMetadata.fromSdJwtVcMetadata(meta)
+        val disclosableObjectMetadata = SdJwtObjectDefinition.fromSdJwtVcMetadata(meta)
         val pidObjMetatadata = disclosableObjectMetadata.metadata
         assertEquals("PID", pidObjMetatadata.display?.first()?.label)
         val claimPaths = disclosableObjectMetadata.claimPaths()
