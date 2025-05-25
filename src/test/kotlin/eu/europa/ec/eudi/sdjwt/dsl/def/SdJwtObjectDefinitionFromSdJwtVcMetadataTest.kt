@@ -91,6 +91,7 @@ private fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
         schemas = schema?.let { listOf(it) }.orEmpty(),
     )
 }
+
 @Suppress("SameParameterValue")
 private fun sdJwtVcTypeMetadata(json: String): SdJwtVcTypeMetadata = Json.decodeFromString(json)
 
