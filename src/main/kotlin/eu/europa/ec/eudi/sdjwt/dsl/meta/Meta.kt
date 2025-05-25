@@ -33,7 +33,9 @@ import eu.europa.ec.eudi.sdjwt.vc.SvgId
 data class DisclosableObjectMetadata(
     override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
     val metadata: AttributeMetadata,
-) : DisclosableObject<String, AttributeMetadata>
+) : DisclosableObject<String, AttributeMetadata> {
+    companion object
+}
 
 /**
  * Describes the elements of an array-like data structure

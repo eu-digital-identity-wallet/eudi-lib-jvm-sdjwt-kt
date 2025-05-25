@@ -27,7 +27,7 @@ class MetaTest {
     @Test
     fun test() {
         val meta = meta(pidMeta).resolve()
-        val disclosableObjectMetadata = meta.toDisclosableObjectMetadata()
+        val disclosableObjectMetadata = DisclosableObjectMetadata.fromSdJwtVcMetadata(meta)
         val pidObjMetatadata = disclosableObjectMetadata.metadata
         assertEquals("PID", pidObjMetatadata.display?.first()?.label)
         val claimPaths = disclosableObjectMetadata.claimPaths()
