@@ -77,7 +77,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * - Claims `aud`, `iat` and `nonce`must be present to the JWT payload
  *
  * @param holderPubKey the public key of the holder
- * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
  * If provided, Key Binding JWT payload should contain the challenge as is.
  * @return
  */
@@ -118,7 +118,7 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  * Adds the confirmation claim (cnf) as a plain (always disclosable) which
  * contains the [jwk]
  *
- * @param jwk the key to put in confirmation claim
+ * @param jwk the key to put in the confirmation claim
  */
 fun SdJwtObjectBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
 
@@ -164,7 +164,7 @@ object NimbusSdJwtOps :
      *  @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
      * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
 
-     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
      * If provided, Key Binding JWT payload should contain the challenge as is.
      *
      * @see keyBindingJWTProcess

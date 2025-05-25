@@ -15,10 +15,20 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 /**
  * The digest of a [presentation][SdJwt].
  * It contains the base64-url encoded digest of a presentation with all padding characters removed.
  */
+@Serializable(with = SdJwtDigestSerializer::class)
 @JvmInline
 value class SdJwtDigest private constructor(val value: String) {
 
@@ -63,4 +73,20 @@ value class SdJwtDigest private constructor(val value: String) {
             SdJwtDigest(Base64UrlNoPadding.encode(digest))
         }
     }
+}
+
+object SdJwtDigestSerializer : KSerializer<SdJwtDigest> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("SdJwtDigest", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: SdJwtDigest) {
+        encoder.encodeString(value.value)
+    }
+
+    override fun deserialize(decoder: Decoder): SdJwtDigest =
+        decoder.decodeString().let {
+            SdJwtDigest.wrap(it).getOrElse { cause ->
+                throw SerializationException("Failed to deserialize SdJwtDigest", cause)
+            }
+        }
 }
