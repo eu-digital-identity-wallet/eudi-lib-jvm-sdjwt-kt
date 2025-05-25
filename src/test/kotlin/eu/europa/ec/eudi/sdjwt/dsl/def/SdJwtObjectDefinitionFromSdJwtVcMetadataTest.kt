@@ -13,34 +13,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.meta
+package eu.europa.ec.eudi.sdjwt.dsl.def
 
+import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtObjectDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
+import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
+import eu.europa.ec.eudi.sdjwt.vc.LangTag
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
-class MetaTest {
+class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
 
     @Test
     fun test() {
-        val meta = meta(pidMeta).resolve()
-        val disclosableObjectMetadata = SdJwtObjectDefinition.fromSdJwtVcMetadata(meta)
-        val pidObjMetatadata = disclosableObjectMetadata.metadata
-        assertEquals("PID", pidObjMetatadata.display?.first()?.label)
-        val claimPaths = disclosableObjectMetadata.claimPaths()
-        val expectedClaimPaths = meta.claims.map { it.path }
-        println("Expected Claim Paths:")
-        expectedClaimPaths.forEach { println(it) }
+        val pidSdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta).resolve()
+        val pidDefinition = SdJwtObjectDefinition.fromSdJwtVcMetadata(pidSdJwtVcTypeMetadata)
 
-        println("Actual Claim Paths:")
-        claimPaths.forEach { println(it) }
-        assertContentEquals(expectedClaimPaths, claimPaths)
+        assertContentEquals(
+            listOf(ClaimDisplay(LangTag("en"), "PID", "Person Identification Data")),
+            pidDefinition.metadata.display,
+        )
+
+        assertContentEquals(
+            pidSdJwtVcTypeMetadata.claims.map { it.path },
+            pidDefinition.claimPaths(),
+        )
+
+        val nationalities = pidDefinition.content["nationalities"]
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Arr<String, AttributeMetadata>>>(nationalities)
+        assertEquals(1, nationalities.value.value.content.size)
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Id<String, AttributeMetadata>>>(nationalities.value.value.content.first())
+
+        val address = pidDefinition.content["address"]
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(address)
+        listOf(
+            "street_address",
+            "locality",
+            "region",
+            "postal_code",
+            "country",
+            "formatted",
+            "house_number",
+        ).forEach { path ->
+            val attribute = address.value.value.content[path]
+            assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Id<String, AttributeMetadata>>>(attribute)
+        }
+
+        val placeOfBirth = pidDefinition.content["place_of_birth"]
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(placeOfBirth)
+        listOf(
+            "locality",
+            "region",
+            "country",
+        ).forEach { path ->
+            val attribute = placeOfBirth.value.value.content[path]
+            assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Id<String, AttributeMetadata>>>(attribute)
+        }
     }
 }
 
@@ -54,9 +91,8 @@ private fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
         schemas = schema?.let { listOf(it) }.orEmpty(),
     )
 }
-private fun meta(json: String): SdJwtVcTypeMetadata {
-    return Json.decodeFromString(json)
-}
+@Suppress("SameParameterValue")
+private fun sdJwtVcTypeMetadata(json: String): SdJwtVcTypeMetadata = Json.decodeFromString(json)
 
 private val pidMeta = """
     {
