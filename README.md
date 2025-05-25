@@ -359,6 +359,8 @@ val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
 
 ## DSL Examples
 
+For a comprehensive guide to the SD-JWT DSL, including core concepts, basic usage, advanced features, and working with metadata, see the [DSL Documentation](docs/dsl.md).
+
 All examples assume that we have the following claim set
 
 ```json
