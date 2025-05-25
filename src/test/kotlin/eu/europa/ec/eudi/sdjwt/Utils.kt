@@ -97,7 +97,9 @@ fun String.removeNewLine(): String = replace("\n", "")
 internal fun SdJwtObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
-    val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }
+    val sdJwt = assertNotNull(
+        sdJwtFactory.createSdJwt(this).map { SdJwt(it.payload, it.disclosures) }.getOrNull(),
+    ).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }

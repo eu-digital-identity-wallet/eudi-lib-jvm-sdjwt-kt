@@ -47,7 +47,7 @@ class SdJsonElementArrayElementTest {
         }
 
         val sdJwt = SdJwtFactory().createSdJwt(sdJwtElements).getOrThrow().also {
-            println(json.encodeToString(it.jwt))
+            println(json.encodeToString(it.payload))
         }
 
         with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {

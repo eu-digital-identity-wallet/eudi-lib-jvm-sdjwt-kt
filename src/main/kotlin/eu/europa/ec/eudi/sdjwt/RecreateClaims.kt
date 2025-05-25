@@ -68,6 +68,9 @@ fun interface SdJwtRecreateClaimsOps<in JWT> {
     }
 }
 
+fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor?): JsonObject =
+    RecreateClaims(visitor).recreateClaims(payload, disclosures)
+
 /**
  * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
  */

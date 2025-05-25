@@ -120,8 +120,6 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  *
  * @param jwk the key to put in confirmation claim
  */
-@Deprecated("To be removed")
-fun DisclosableObjectSpecBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
 fun SdJwtObjectBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
 
 private object NimbusSdJwtIssuerFactory {
