@@ -35,6 +35,13 @@ fun <K, K1, A, A1, DObj1, DArr1> DisclosableObject<K, A>.map(
     return context.mapObject(this)
 }
 
+/**
+ * Transforms the keys and values of the current `DisclosableObject` using the provided mapping functions.
+ *
+ * @param fK A function that maps the keys of the current `DisclosableObject` to keys of a new type.
+ * @param fA A function that maps the values of the current `DisclosableObject` to values of a new type.
+ * @return A new `DisclosableObject` with transformed keys and values.
+ */
 fun <K, K1, A, A1> DisclosableObject<K, A>.map(
     fK: (K) -> K1,
     fA: (A) -> A1,
@@ -62,6 +69,16 @@ fun <K, K1, A, A1, DObj1, DArr1> DisclosableArray<K, A>.map(
     val context = MapFoldContext(factory, fK, fA)
     return context.mapArray(this)
 }
+
+/**
+ * Transforms the current [DisclosableArray] into a new [DisclosableArray] by applying the provided
+ * key transformation function and value transformation function. The default `DisclosableContainerFactory`
+ * is used to create the transformed container.
+ *
+ * @param fK A function to transform the keys of [DisclosableObject] elements.
+ * @param fA A function to transform the values of [DisclosableArray] or [DisclosableObject] elements.
+ * @return A new [DisclosableArray] resulting from the application of the provided transformations.
+ */
 fun <K, K1, A, A1> DisclosableArray<K, A>.map(
     fK: (K) -> K1,
     fA: (A) -> A1,
