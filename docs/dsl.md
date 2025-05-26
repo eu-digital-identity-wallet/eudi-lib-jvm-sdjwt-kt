@@ -320,4 +320,4 @@ val sdJwtSpec = sdJwt {
 }
 ```
 
-For more detailed examples, refer to the example files in the [docs/examples](docs/examples) directory.
+For more detailed examples, refer to the example files in the [examples](examples) directory.
