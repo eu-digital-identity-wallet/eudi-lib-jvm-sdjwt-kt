@@ -33,7 +33,7 @@ value class MinimumDigests(val value: Int) {
 
 fun Int?.atLeastDigests(): MinimumDigests? = this?.let { MinimumDigests(it) }
 
-private typealias Disclosed = Folded<String, JsonElement, Disclosures>
+private typealias Disclosed = Folded<String, Disclosures, JsonElement>
 
 /**
  * Metadata class to track disclosures during fold operation.
@@ -130,7 +130,7 @@ class SdJwtFactory(
         val disclosed = sdJwtObject.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
-            initial = Disclosed(
+            initial = _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = emptyList(),
                 result = JsonObject(emptyMap()),
                 metadata = Disclosures(disclosures = emptyList(), minimumDigests = sdJwtObject.minimumDigests),
@@ -179,7 +179,7 @@ class SdJwtFactory(
         return folded.copy(result = foldedObjWithDecoys)
     }
 
-    private val objectHandlers = object : ObjectFoldHandlers<String, JsonElement, JsonElement, Disclosures> {
+    private val objectHandlers = object : ObjectFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { putJsonArray(SdJwtSpec.CLAIM_SD) { add(digest.value) } }
 
@@ -191,7 +191,7 @@ class SdJwtFactory(
             // Generate disclosure for selectively disclosed primitive
             val (disclosure, digest) = objectPropertyDisclosure(key to value)
 
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(listOf(disclosure)),
                 result = disclosureDigestObj(digest),
@@ -207,7 +207,7 @@ class SdJwtFactory(
             val arrayJson = foldedArray.result.jsonArray
             val (disclosure, digest) = objectPropertyDisclosure(key to arrayJson)
 
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
                 result = disclosureDigestObj(digest),
@@ -224,7 +224,7 @@ class SdJwtFactory(
                 objectPropertyDisclosure(key to objJson)
             }
 
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedObject.metadata.disclosures + disclosure),
                 result = disclosureDigestObj(digest),
@@ -236,7 +236,7 @@ class SdJwtFactory(
             key: String,
             value: JsonElement,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(),
                 result = buildJsonObject { put(key, value) },
@@ -247,7 +247,7 @@ class SdJwtFactory(
             key: String,
             foldedArray: Disclosed,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedArray.metadata.disclosures),
                 result = buildJsonObject { put(key, foldedArray.result.jsonArray) },
@@ -258,7 +258,7 @@ class SdJwtFactory(
             key: String,
             foldedObject: Disclosed,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 result = buildJsonObject { put(key, foldedObject.result.jsonObject) },
                 metadata = Disclosures(foldedObject.metadata.disclosures),
@@ -267,7 +267,7 @@ class SdJwtFactory(
 
     // Array handlers for the fold operation
     // K is String, A is JsonElement, R is JsonElement, M is SdJwtMetadata
-    private val arrayHandlers = object : ArrayFoldHandlers<String, JsonElement, JsonElement, Disclosures> {
+    private val arrayHandlers = object : ArrayFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { put("...", digest.value) }
 
@@ -278,7 +278,7 @@ class SdJwtFactory(
         ): Disclosed {
             // Generate disclosure for selectively disclosed array element
             val (disclosure, digest) = arrayElementDisclosure(value)
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(listOf(disclosure)),
                 result = disclosureDigestObj(digest),
@@ -296,7 +296,7 @@ class SdJwtFactory(
                 arrayElementDisclosure(arrayJson)
             }
 
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
                 result = disclosureDigestObj(digest),
@@ -313,7 +313,7 @@ class SdJwtFactory(
                 val objJson = foldedObject.result.jsonObject
                 arrayElementDisclosure(objJson)
             }
-            return Disclosed(
+            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedObject.metadata.disclosures + disclosure), // Add the new disclosure
                 result = disclosureDigestObj(digest),
@@ -325,7 +325,7 @@ class SdJwtFactory(
             index: Int,
             value: JsonElement,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(emptyList()),
                 result = value,
@@ -336,7 +336,7 @@ class SdJwtFactory(
             index: Int,
             foldedArray: Disclosed,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedArray.metadata.disclosures),
                 result = foldedArray.result.jsonArray,
@@ -347,7 +347,7 @@ class SdJwtFactory(
             index: Int,
             foldedObject: Disclosed,
         ): Disclosed =
-            Disclosed(
+            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
                 path = path,
                 metadata = Disclosures(foldedObject.metadata.disclosures),
                 result = foldedObject.result.jsonObject,
