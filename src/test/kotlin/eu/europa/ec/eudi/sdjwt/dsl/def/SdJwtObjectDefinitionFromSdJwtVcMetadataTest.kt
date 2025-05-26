@@ -17,12 +17,7 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtObjectDefinition
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
-import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
-import eu.europa.ec.eudi.sdjwt.vc.LangTag
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.*
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
@@ -38,10 +33,11 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
         val pidSdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta).resolve()
         val pidDefinition = SdJwtObjectDefinition.fromSdJwtVcMetadata(pidSdJwtVcTypeMetadata)
 
-        assertContentEquals(
-            listOf(ClaimDisplay(LangTag("en"), "PID", "Person Identification Data")),
-            pidDefinition.metadata.display,
-        )
+        val vctMetadata = assertIs<VctOrAttrMetadata.Vct>(pidDefinition.vctOrAttributeMetadata).value
+        assertEquals(pidSdJwtVcTypeMetadata.vct, vctMetadata.vct)
+        assertEquals(pidSdJwtVcTypeMetadata.name, vctMetadata.name)
+        assertEquals(pidSdJwtVcTypeMetadata.description, vctMetadata.description)
+        assertEquals(pidSdJwtVcTypeMetadata.display, vctMetadata.display)
 
         assertContentEquals(
             pidSdJwtVcTypeMetadata.claims.map { it.path },

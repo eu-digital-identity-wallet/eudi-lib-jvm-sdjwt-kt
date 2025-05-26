@@ -17,24 +17,42 @@ package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
+import eu.europa.ec.eudi.sdjwt.vc.DisplayMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SvgId
+import eu.europa.ec.eudi.sdjwt.vc.Vct
 
 /**
  * Describes the attributes of a map-like data structure (like a credential)
  * and especially their disclosure properties.
- * In addition, contains [display information][metadata] for the container
+ * In addition, it contains display information for the container
+ *
+ * Depending on the [vctOrAttributeMetadata] the definition describes either
+ * the top-level container (that is the SD-JWT-VC credential) or a nested attribute
  *
  * The SD-JWT-VC Type metadata, or credential configurations for SD-JWT-VC and MDoc
  * as defined in OpenId4VCI, are fundamentally flat, suitable for serialization.
  *
  * On the other hand, [SdJwtObjectDefinition] is hierarchical and can represent
  * accurately the disclosure and display properties of SD-JWT-VC or even JWT credentials.
+ *
  */
 data class SdJwtObjectDefinition(
     override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
-    val metadata: AttributeMetadata,
+    val vctOrAttributeMetadata: VctOrAttrMetadata,
 ) : DisclosableObject<String, AttributeMetadata> {
-    companion object
+
+    @Suppress("unused")
+    companion object {
+        fun sdJwtDefinition(
+            content: Map<String, DisclosableElement<String, AttributeMetadata>>,
+            vctMetadata: VctMetadata,
+        ): SdJwtObjectDefinition = SdJwtObjectDefinition(content, VctOrAttrMetadata.Vct(vctMetadata))
+
+        fun attribute(
+            content: Map<String, DisclosableElement<String, AttributeMetadata>>,
+            attributeMetadata: AttributeMetadata,
+        ):SdJwtObjectDefinition = SdJwtObjectDefinition(content, VctOrAttrMetadata.Attr(attributeMetadata))
+    }
 }
 
 /**
@@ -49,18 +67,22 @@ data class SdJwtArrayDefinition(
 
 typealias SdJwtElementDefinition = Disclosable<DisclosableValue<String, AttributeMetadata>>
 
+sealed interface VctOrAttrMetadata {
+    @JvmInline
+    value class Vct(val value: VctMetadata) : VctOrAttrMetadata
+
+    @JvmInline
+    value class Attr(val value: AttributeMetadata) : VctOrAttrMetadata
+}
+
+data class VctMetadata(
+    val vct: Vct,
+    val name: String?,
+    val description: String?,
+    val display: List<DisplayMetadata>,
+)
+
 data class AttributeMetadata(
     val display: List<ClaimDisplay>? = null,
     val svgId: SvgId? = null,
 )
-
-class DisclosableContainerMetadataFactory(private val metadata: AttributeMetadata) :
-    DisclosableContainerFactory<String, AttributeMetadata, SdJwtObjectDefinition, SdJwtArrayDefinition> {
-        override fun obj(
-            elements: Map<String, DisclosableElement<String, AttributeMetadata>>,
-        ): SdJwtObjectDefinition = SdJwtObjectDefinition(elements, metadata)
-
-        override fun arr(
-            elements: List<DisclosableElement<String, AttributeMetadata>>,
-        ): SdJwtArrayDefinition = SdJwtArrayDefinition(elements, metadata)
-    }

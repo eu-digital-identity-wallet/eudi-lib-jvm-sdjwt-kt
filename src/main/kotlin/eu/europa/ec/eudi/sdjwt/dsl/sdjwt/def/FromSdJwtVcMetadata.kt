@@ -37,16 +37,17 @@ fun SdJwtObjectDefinition.Companion.fromSdJwtVcMetadata(
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): SdJwtObjectDefinition {
     val rootAttributeMetadata =
-        AttributeMetadata(
-            display =
-                sdJwtVcMetadata.display
-                    .map { ClaimDisplay(it.lang, it.name, it.description) },
+        VctMetadata(
+            vct = sdJwtVcMetadata.vct,
+            name = sdJwtVcMetadata.name,
+            description = sdJwtVcMetadata.description,
+            display = sdJwtVcMetadata.display,
         )
     val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
         sdJwtVcMetadata.claims.groupBy { it.path.parent() }
     val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
     return processObjectDefinition(
-        objMetadata = rootAttributeMetadata,
+        objMetadata = VctOrAttrMetadata.Vct(rootAttributeMetadata),
         childClaimsMetadatas = topLevelClaims,
         allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
         selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
@@ -54,7 +55,7 @@ fun SdJwtObjectDefinition.Companion.fromSdJwtVcMetadata(
 }
 
 private fun processObjectDefinition(
-    objMetadata: AttributeMetadata,
+    objMetadata: VctOrAttrMetadata,
     childClaimsMetadatas: List<ClaimMetadata>,
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
@@ -162,7 +163,7 @@ private fun buildNestedDisclosableValue(
         DisclosableValue.Arr(arrayDefinition)
     } else {
         val objectDefinition = processObjectDefinition(
-            objMetadata = containerAttributeMetadata,
+            objMetadata = VctOrAttrMetadata.Attr(containerAttributeMetadata),
             childClaimsMetadatas = directChildrenClaims, // Pass the direct children
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
             selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
