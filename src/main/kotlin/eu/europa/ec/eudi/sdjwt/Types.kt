@@ -111,5 +111,5 @@ inline fun <JWT, JWT1> SdJwtAndKbJwt<JWT>.map(f: (JWT) -> JWT1): SdJwtAndKbJwt<J
     contract {
         callsInPlace(f, InvocationKind.UNKNOWN)
     }
-    return SdJwtAndKbJwt<JWT1>(sdJwt.map(f), keyBindingJwt.let(f))
+    return SdJwtAndKbJwt(sdJwt.map(f), keyBindingJwt.let(f))
 }

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -35,7 +36,7 @@ import kotlin.contracts.contract
  */
 @Serializable(with = ClaimPathSerializer::class)
 @JvmInline
-value class ClaimPath(val value: List<ClaimPathElement>) {
+value class ClaimPath private constructor(val value: List<ClaimPathElement>) {
 
     init {
         require(value.isNotEmpty())
@@ -97,7 +98,17 @@ value class ClaimPath(val value: List<ClaimPathElement>) {
     operator fun component2(): ClaimPath? = tail()
 
     companion object {
+
+        operator fun invoke(head: ClaimPathElement, vararg tail: ClaimPathElement): ClaimPath =
+            ClaimPath(listOf(head, *tail))
         fun claim(name: String): ClaimPath = ClaimPath(listOf(ClaimPathElement.Claim(name)))
+        fun ensureObjectAttributes(claims: List<ClaimPath>) {
+            val objAttributePaths = claims.filter { it.head() is ClaimPathElement.Claim }
+            val notObjAttributePaths = claims - objAttributePaths.toSet()
+            require(notObjAttributePaths.isEmpty()) {
+                "Some paths do not point to object attributes: $notObjAttributePaths"
+            }
+        }
     }
 }
 
@@ -192,11 +203,16 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
         }
 
     private fun claimPath(array: JsonArray): ClaimPath {
-        val elements = array.map {
-            require(it is JsonPrimitive)
-            claimPathElement(it)
+        return try {
+            val elements = array.map {
+                require(it is JsonPrimitive)
+                claimPathElement(it)
+            }
+            require(elements.isNotEmpty()) { "ClaimPath must not be empty" }
+            ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
+        } catch (e: IllegalArgumentException) {
+            throw SerializationException("Failed to deserialize ClaimPath", e)
         }
-        return ClaimPath(elements)
     }
 
     private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
