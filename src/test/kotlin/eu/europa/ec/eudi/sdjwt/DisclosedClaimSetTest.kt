@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertContainsPlainClaims
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertDigestNumberGreaterOrEqualToDisclosures
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertHashFunctionClaimIsPresentIfDisclosures
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import kotlin.test.Test
@@ -165,7 +166,7 @@ class FlatDisclosure {
     private fun testFlatDisclosure(
         plainClaims: Map<String, JsonElement>,
         claimsToBeDisclosed: Map<String, JsonElement>,
-    ): SdJwt<JsonObject> {
+    ): UnsignedSdJwt {
         val hashAlgorithm = HashAlgorithm.SHA_256
         val sdJwtElements = sdJwt {
             plainClaims.forEach { claim(it.key, it.value) }

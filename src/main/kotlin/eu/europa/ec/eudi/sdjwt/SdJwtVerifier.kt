@@ -36,7 +36,7 @@ sealed interface VerificationError {
     data object ParsingError : VerificationError
 
     /**
-     * SD-JWT contains in invalid JWT
+     * SD-JWT contains an invalid JWT
      */
     data class InvalidJwt(val message: String? = null, val cause: Throwable? = null) : VerificationError {
         constructor(cause: Throwable) : this(null, cause)
@@ -145,12 +145,12 @@ sealed interface KeyBindingError {
     data object MissingHolderPublicKey : KeyBindingError
 
     /**
-     * Indicates that the public key of the holder located in SD-JWT claims, is not supported
+     * Indicates that the public key of the holder, located in SD-JWT claims, is not supported
      */
     data object UnsupportedHolderPublicKey : KeyBindingError
 
     /**
-     * SD-JWT contains in invalid Key Binding JWT
+     * SD-JWT contains an invalid Key Binding JWT
      */
     data class InvalidKeyBindingJwt(val message: String? = null, val cause: Throwable? = null) : KeyBindingError {
         constructor(message: String) : this(message = message, cause = null)
@@ -547,10 +547,10 @@ private fun collectDigests(jwtClaims: JsonObject, disclosures: List<Disclosure>)
 }
 
 /**
- * Extracts all the [digests][DisclosureDigest] from the given [claims],
+ * Extracts all the [digests][DisclosureDigest] from the given claims
  * including also subclaims
  *
- * @return the digests found in the given [claims]
+ * @return the digests found in the given claims
  */
 internal val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDigest>> =
     DeepRecursiveFunction { claims ->
