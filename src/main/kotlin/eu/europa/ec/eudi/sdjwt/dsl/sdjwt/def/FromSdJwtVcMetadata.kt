@@ -32,34 +32,35 @@ import eu.europa.ec.eudi.sdjwt.vc.*
  * @param sdJwtVcMetadata the SD-JWT-VC metadata to use
  * @param selectivelyDiscloseWhenAllowed
  */
-fun SdJwtObjectDefinition.Companion.fromSdJwtVcMetadata(
+fun SdJwtDefinition.Companion.fromSdJwtVcMetadata(
     sdJwtVcMetadata: ResolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed: Boolean = true,
-): SdJwtObjectDefinition {
-    val rootAttributeMetadata =
-        VctMetadata(
-            vct = sdJwtVcMetadata.vct,
-            name = sdJwtVcMetadata.name,
-            description = sdJwtVcMetadata.description,
-            display = sdJwtVcMetadata.display,
-        )
+): SdJwtDefinition {
     val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
         sdJwtVcMetadata.claims.groupBy { it.path.parent() }
     val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
-    return processObjectDefinition(
-        objMetadata = VctOrAttrMetadata.Vct(rootAttributeMetadata),
+    return processObjectDefinitionAndThen(
         childClaimsMetadatas = topLevelClaims,
         allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
         selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
-    )
+    ) { content ->
+        val vctMetadata =
+            VctMetadata(
+                vct = sdJwtVcMetadata.vct,
+                name = sdJwtVcMetadata.name,
+                description = sdJwtVcMetadata.description,
+                display = sdJwtVcMetadata.display,
+            )
+        SdJwtDefinition(content, vctMetadata)
+    }
 }
 
-private fun processObjectDefinition(
-    objMetadata: VctOrAttrMetadata,
+private fun <DO> processObjectDefinitionAndThen(
     childClaimsMetadatas: List<ClaimMetadata>,
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
-): SdJwtObjectDefinition {
+    constructor: (Map<String, SdJwtElementDefinition>) -> DO,
+): DO {
     fun metaOf(childMeta: ClaimMetadata): Pair<String, SdJwtElementDefinition> {
         // The last element of the child's path should be the name of the attribute in the object.
         val lastPathElement = childMeta.path.value.last()
@@ -78,8 +79,20 @@ private fun processObjectDefinition(
     }
 
     val contentMap = childClaimsMetadatas.associate(::metaOf)
+    return constructor(contentMap)
+}
 
-    return SdJwtObjectDefinition(contentMap, objMetadata)
+private fun processObjectDefinition(
+    objMetadata: AttributeMetadata,
+    childClaimsMetadatas: List<ClaimMetadata>,
+    allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
+    selectivelyDiscloseWhenAllowed: Boolean,
+): SdJwtObjectDefinition = processObjectDefinitionAndThen(
+    childClaimsMetadatas,
+    allClaimsGroupedByParentPath,
+    selectivelyDiscloseWhenAllowed,
+) { content ->
+    SdJwtObjectDefinition(content, objMetadata)
 }
 
 private fun processArrayDefinition(
@@ -163,7 +176,7 @@ private fun buildNestedDisclosableValue(
         DisclosableValue.Arr(arrayDefinition)
     } else {
         val objectDefinition = processObjectDefinition(
-            objMetadata = VctOrAttrMetadata.Attr(containerAttributeMetadata),
+            objMetadata = containerAttributeMetadata,
             childClaimsMetadatas = directChildrenClaims, // Pass the direct children
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
             selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,

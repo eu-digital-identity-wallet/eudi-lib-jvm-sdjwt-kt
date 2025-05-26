@@ -31,9 +31,9 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
     @Test
     fun test() {
         val pidSdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta).resolve()
-        val pidDefinition = SdJwtObjectDefinition.fromSdJwtVcMetadata(pidSdJwtVcTypeMetadata)
+        val pidDefinition = SdJwtDefinition.fromSdJwtVcMetadata(pidSdJwtVcTypeMetadata)
 
-        val vctMetadata = assertIs<VctOrAttrMetadata.Vct>(pidDefinition.vctOrAttributeMetadata).value
+        val vctMetadata = pidDefinition.metadata
         assertEquals(pidSdJwtVcTypeMetadata.vct, vctMetadata.vct)
         assertEquals(pidSdJwtVcTypeMetadata.name, vctMetadata.name)
         assertEquals(pidSdJwtVcTypeMetadata.description, vctMetadata.description)

@@ -15,10 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
-import eu.europa.ec.eudi.sdjwt.dsl.ArrayFoldHandlers
-import eu.europa.ec.eudi.sdjwt.dsl.Folded
-import eu.europa.ec.eudi.sdjwt.dsl.ObjectFoldHandlers
-import eu.europa.ec.eudi.sdjwt.dsl.fold
+import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
 private typealias ClaimPaths = Folded<String, Unit, Set<ClaimPath>>
@@ -27,9 +24,9 @@ private fun claimPaths(path: List<String?>, result: Set<ClaimPath>): ClaimPaths 
 
 /**
  * Gets the set of [ClaimPath] for the attributes described by
- * a [SdJwtObjectDefinition]
+ * a [SdJwtObjectDefinition] or [SdJwtDefinition]
  */
-fun SdJwtObjectDefinition.claimPaths(): Set<ClaimPath> =
+fun DisclosableObject<String, AttributeMetadata>.claimPaths(): Set<ClaimPath> =
     fold(
         objectHandlers = ObjectHandlers,
         arrayHandlers = ArrayHandlers,
