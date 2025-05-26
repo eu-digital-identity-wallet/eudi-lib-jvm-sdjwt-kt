@@ -16,10 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
-import eu.europa.ec.eudi.sdjwt.vc.ClaimDisplay
-import eu.europa.ec.eudi.sdjwt.vc.DisplayMetadata
-import eu.europa.ec.eudi.sdjwt.vc.SvgId
-import eu.europa.ec.eudi.sdjwt.vc.Vct
+import eu.europa.ec.eudi.sdjwt.vc.*
 
 /**
  * The definition of a SD-JWT-VC credential
@@ -64,6 +61,7 @@ data class VctMetadata(
     val name: String?,
     val description: String?,
     val display: List<DisplayMetadata>,
+    val schemas: List<JsonSchema>,
 )
 
 data class AttributeMetadata(
