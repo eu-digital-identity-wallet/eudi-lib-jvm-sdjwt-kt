@@ -109,13 +109,6 @@ value class ClaimPath private constructor(val value: List<ClaimPathElement>) {
                 "Some paths do not point to object attributes: $notObjAttributePaths"
             }
         }
-        fun ensureArrayElements(claims: List<ClaimPath>) {
-            val arrayElementPaths = claims.filter { it.head() is ClaimPathElement.ArrayElement }
-            val notArrayElementPaths = claims - arrayElementPaths.toSet()
-            require(notArrayElementPaths.isEmpty()) {
-                "Some paths do not point to array elements: $notArrayElementPaths"
-            }
-        }
     }
 }
 
