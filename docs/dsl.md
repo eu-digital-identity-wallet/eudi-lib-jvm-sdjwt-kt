@@ -168,7 +168,7 @@ You can create an SD-JWT object definition from SD-JWT VC metadata:
 
 ```kotlin
 // Create an SD-JWT object definition from SD-JWT VC metadata
-val objectDefinition = SdJwtObjectDefinition.fromSdJwtVcMetadata(
+val sdJwtDefinition = SdJwtDefinition.fromSdJwtVcMetadata(
     sdJwtVcMetadata = resolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed = true
 )
@@ -182,7 +182,7 @@ You can extract claim paths from an object definition:
 
 ```kotlin
 // Extract claim paths from the definition
-val claimPaths = objectDefinition.claimPaths()
+val claimPaths = sdJwtDefinition.claimPaths()
 ```
 
 These claim paths can be used for presentation requests or for navigating the credential structure.
