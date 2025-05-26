@@ -71,7 +71,7 @@ private fun <K, A, B> processValue(
             is DisclosableValue.Arr<K, A> -> {
                 val nextPath = currentPath
                     ?.allArrayElements()
-                    ?: ClaimPath(listOf(ClaimPathElement.AllArrayElements))
+                    ?: ClaimPath(ClaimPathElement.AllArrayElements)
 
                 disclosableValue.value.content.forEachIndexed { index, element ->
                     processElement.callRecursive(element to nextPath)
