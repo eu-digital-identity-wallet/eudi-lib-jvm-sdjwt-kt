@@ -25,7 +25,7 @@ inline fun <A, B, C> ((A) -> B).map(
 }
 
 /**
- * Converts [this] to a suspending function from [C] to [B] given a mapping function from [A] to [C].
+ * Converts [this] to a function from [C] to [B] given a mapping function from [A] to [C].
  */
 inline fun <A, B, C> ((A) -> B).contraMap(
     crossinline f: (C) -> A,
