@@ -146,11 +146,8 @@ private fun findUnknownAttributes(
 ) {
     val knownAttributeNames = currentDefinition.content.keys
 
-    // Process attributes in a specific order to match test expectations
-    // First, collect all attribute names
+    // Get all attribute names
     val attributeNames = currentData.keys.toList()
-
-    // Process them in a specific order
     for (attributeName in attributeNames) {
         val attributeValue = currentData[attributeName]
 
