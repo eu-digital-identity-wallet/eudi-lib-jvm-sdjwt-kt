@@ -17,7 +17,10 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.*
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
@@ -77,6 +80,11 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
     }
 }
 
+internal val PidDefinition: SdJwtDefinition by lazy {
+    val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta)
+    val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
+    SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
+}
 private fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
     return ResolvedTypeMetadata(
         vct = vct,
