@@ -15,24 +15,23 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import eu.europa.ec.eudi.sdjwt.FirstNotNullOfOrNull
+import eu.europa.ec.eudi.sdjwt.map
 import io.ktor.http.*
 
 /**
  * Lookup the Type Metadata of a VCT.
  */
-fun interface LookupTypeMetadata {
-
-    suspend operator fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?>
+fun interface LookupTypeMetadata : suspend (Vct) -> Result<SdJwtVcTypeMetadata?> {
 
     companion object {
-        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
-            val lookups = listOf(first, *remaining)
-            return LookupTypeMetadata { vct ->
-                runCatching {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(vct).getOrNull() }
-                }
-            }
-        }
+
+        operator fun invoke(
+            lookup: suspend (Vct) -> SdJwtVcTypeMetadata?,
+        ): LookupTypeMetadata = LookupTypeMetadata { vct -> runCatching { lookup(vct) } }
+
+        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata =
+            LookupTypeMetadata(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
     }
 }
 
@@ -52,19 +51,15 @@ class LookupTypeMetadataUsingKtor(
 /**
  * Lookup a [JsonSchema] from a Uri.
  */
-fun interface LookupJsonSchema {
-
-    suspend operator fun invoke(uri: String): Result<JsonSchema?>
+fun interface LookupJsonSchema : suspend (String) -> Result<JsonSchema?> {
 
     companion object {
-        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
-            val lookups = listOf(first, *remaining)
-            return LookupJsonSchema { uri ->
-                runCatching {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri).getOrNull() }
-                }
-            }
-        }
+        operator fun invoke(
+            lookup: suspend (String) -> JsonSchema?,
+        ): LookupJsonSchema = LookupJsonSchema { runCatching { lookup(it) } }
+
+        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema =
+            LookupJsonSchema(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
     }
 }
 
@@ -92,6 +87,7 @@ data class ResolvedTypeMetadata(
     init {
         SdJwtVcTypeMetadata.ensureValidPaths(claims)
     }
+
     companion object
 }
 
