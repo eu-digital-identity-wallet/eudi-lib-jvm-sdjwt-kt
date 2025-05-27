@@ -30,8 +30,10 @@ fun interface LookupTypeMetadata : suspend (Vct) -> Result<SdJwtVcTypeMetadata?>
             lookup: suspend (Vct) -> SdJwtVcTypeMetadata?,
         ): LookupTypeMetadata = LookupTypeMetadata { vct -> runCatching { lookup(vct) } }
 
-        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata =
-            LookupTypeMetadata(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
+        fun firstNotNullOfOrNull(
+            first: suspend (Vct) -> Result<SdJwtVcTypeMetadata?>,
+            vararg remaining: suspend (Vct) -> Result<SdJwtVcTypeMetadata?>,
+        ): LookupTypeMetadata = LookupTypeMetadata(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
     }
 }
 
@@ -58,8 +60,10 @@ fun interface LookupJsonSchema : suspend (String) -> Result<JsonSchema?> {
             lookup: suspend (String) -> JsonSchema?,
         ): LookupJsonSchema = LookupJsonSchema { runCatching { lookup(it) } }
 
-        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema =
-            LookupJsonSchema(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
+        fun firstNotNullOfOrNull(
+            first: suspend (String) -> Result<JsonSchema?>,
+            vararg remaining: suspend (String) -> Result<JsonSchema?>,
+        ): LookupJsonSchema = LookupJsonSchema(FirstNotNullOfOrNull(listOf(first, *remaining).map { f -> f.map { it.getOrNull() } }))
     }
 }
 
