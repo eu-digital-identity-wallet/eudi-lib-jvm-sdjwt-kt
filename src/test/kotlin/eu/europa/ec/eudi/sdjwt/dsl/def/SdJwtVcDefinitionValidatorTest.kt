@@ -136,6 +136,49 @@ class SdJwtVcDefinitionValidatorTest {
         assertEquals(expectedError, errors.first())
     }
 
+    @Test
+    fun test07() {
+        val sdJwt = sdJwt {
+            sdClaim("nationalities", "GR") // nationalities  is defined as array
+            sdClaim("place_of_birth", "foo") // place_of_birth is defined as an obj
+        }
+        val (_, addressDefinition) = run {
+            val de = PidDefinition.content["address"]
+            checkNotNull(de)
+            val dv = de.value
+            check(dv is DisclosableValue.Obj<String, AttributeMetadata>)
+            val sd = de is Disclosable.AlwaysSelectively<*>
+            sd to dv.value
+        }
+        val expectedErrors = listOf(
+            SdJwtDefinitionCredentialValidationError.WrongAttributeType(PidDefinition, "nationalities"),
+            SdJwtDefinitionCredentialValidationError.WrongAttributeType(PidDefinition, "place_of_birth"),
+        )
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        errors.forEach { expectedError -> println(expectedError) }
+
+        assertEquals(expectedErrors.size, errors.size)
+        expectedErrors.forEach { expectedError ->
+            assertEquals(expectedError, errors.firstOrNull { it == expectedError })
+        }
+    }
+
+    /**
+     * Although the SD-JWT contains some obvious errors, [SdJwtDefinition] cannot detect them.
+     * That's actually a limitation of SD-JWT-VC type metadata, which uses JsonSchema
+     * for such validations
+     */
+    @Test
+    fun limitationsOfTypeMetadata() = PidDefinition.shouldConsiderValid {
+        sdJwt {
+            sdArrClaim("family_name") { sdClaim("foo") } // family_name is defined a claim not an array
+            sdObjClaim("address") {
+                sdArrClaim("locality") {} // not an array
+                sdObjClaim("country") {} // not an object
+            }
+        }
+    }
+
     private fun SdJwtDefinition.shouldConsiderInvalid(sdJwtObject: SdJwtObject): List<SdJwtDefinitionCredentialValidationError> {
         val result = createAndValidate(this, sdJwtObject)
         return assertIs<SdJwtDefinitionValidationResult.Invalid>(result).errors

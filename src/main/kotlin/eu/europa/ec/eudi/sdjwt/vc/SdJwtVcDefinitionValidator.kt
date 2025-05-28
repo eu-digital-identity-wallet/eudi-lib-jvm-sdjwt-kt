@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.Disclosure
+import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.SdJwtSpec
 import eu.europa.ec.eudi.sdjwt.UnsignedSdJwt
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
@@ -24,6 +25,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.recreateClaims
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
@@ -48,6 +50,12 @@ sealed interface SdJwtDefinitionCredentialValidationError {
     data class UnknownObjectAttribute(
         val containerDefinition: DisclosableObject<String, AttributeMetadata>,
         val attributeName: String,
+    ) : SdJwtDefinitionCredentialValidationError
+
+    data class WrongAttributeType(
+        val containerDefinition: DisclosableObject<String, AttributeMetadata>,
+        val attributeName: String,
+
     ) : SdJwtDefinitionCredentialValidationError
 
     /**
@@ -96,10 +104,11 @@ fun SdJwtDefinition.validateCredential(
     jwtPayload: JsonObject,
     disclosures: List<Disclosure>,
 ): SdJwtDefinitionValidationResult {
-    val reconstructedCredential: JsonObject = try {
-        UnsignedSdJwt(jwtPayload, disclosures).recreateClaims(null)
+    val (reconstructedCredential, disclosuresPerClaim) = try {
+        val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
+        val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
+        UnsignedSdJwt(jwtPayload, disclosures).recreateClaims(visitor) to disclosuresPerClaim.toMap()
     } catch (e: Exception) {
-        // Early exit if claim reconstruction fails due to disclosure inconsistencies
         return SdJwtDefinitionValidationResult.Invalid(
             listOf(
                 SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(
@@ -108,12 +117,11 @@ fun SdJwtDefinition.validateCredential(
             ),
         )
     }
-    return validateCredential(jwtPayload, disclosures, reconstructedCredential)
+    return validateCredential(jwtPayload, reconstructedCredential)
 }
 
 private fun SdJwtDefinition.validateCredential(
     jwtPayload: JsonObject,
-    disclosures: List<Disclosure>,
     reconstructedCredential: JsonObject,
 ): SdJwtDefinitionValidationResult {
     val allErrors = mutableListOf<SdJwtDefinitionCredentialValidationError>()
@@ -157,11 +165,9 @@ private fun findUnknownAttributes(
         }
 
         // Construct the ClaimPath for the current attribute
-        val fullClaimPathForAttribute = if (currentClaimPathPrefix == null) {
-            ClaimPath.claim(attributeName)
-        } else {
-            currentClaimPathPrefix.claim(attributeName)
-        }
+        val fullClaimPathForAttribute = currentClaimPathPrefix
+            ?.claim(attributeName)
+            ?: ClaimPath.claim(attributeName)
 
         // If the attribute is not in the definition, it's unknown
         if (attributeName !in knownAttributeNames) {
@@ -174,26 +180,32 @@ private fun findUnknownAttributes(
         } else if (attributeValue != null) {
             // If it's a known attribute and it's an object, recurse
             val definitionElement = currentDefinition.content[attributeName]
-            if (definitionElement != null) {
-                when (val dv = definitionElement.value) {
-                    is DisclosableValue.Obj -> {
-                        if (attributeValue is JsonObject) {
-                            findUnknownAttributes(
-                                attributeValue,
-                                dv.value,
-                                fullClaimPathForAttribute,
-                                errors,
-                            )
-                        }
-                    }
-                    is DisclosableValue.Arr -> {
-                        // Handle arrays if needed
-                        // This is a simplified implementation
-                    }
-                    is DisclosableValue.Id -> {
-                        // Leaf node, no further recursion needed
+            checkNotNull(definitionElement)
+            when (val dv = definitionElement.value) {
+                is DisclosableValue.Obj -> {
+                    if (attributeValue is JsonObject) {
+                        findUnknownAttributes(
+                            attributeValue,
+                            dv.value,
+                            fullClaimPathForAttribute,
+                            errors,
+                        )
+                    } else {
+                        errors.add(
+                            SdJwtDefinitionCredentialValidationError.WrongAttributeType(currentDefinition, attributeName),
+                        )
                     }
                 }
+                is DisclosableValue.Arr -> {
+                    if (attributeValue is JsonArray) {
+                        // Handle arrays
+                    } else {
+                        errors.add(
+                            SdJwtDefinitionCredentialValidationError.WrongAttributeType(currentDefinition, attributeName),
+                        )
+                    }
+                }
+                is DisclosableValue.Id -> Unit // Leaf node, no further recursion needed
             }
         }
     }
