@@ -46,6 +46,13 @@ sealed interface SdJwtDefinitionCredentialValidationError {
         val claimPath: ClaimPath,
     ) : SdJwtDefinitionCredentialValidationError
 
+    /**
+     * The SD-JWT contains in the payload or in the given disclosures,
+     * an attribute that is defined as an object, yet it was presented as an array
+     * and vice versa
+     *
+     * @param claimPath The claim path of the unknown attribute
+     */
     data class WrongAttributeType(
         val claimPath: ClaimPath,
     ) : SdJwtDefinitionCredentialValidationError
@@ -74,6 +81,14 @@ sealed interface SdJwtDefinitionValidationResult {
             require(errors.isNotEmpty()) { "errors must not be empty" }
         }
     }
+
+    companion object {
+        operator fun invoke(errors: List<SdJwtDefinitionCredentialValidationError>): SdJwtDefinitionValidationResult =
+            when (errors.size) {
+                0 -> Valid
+                else -> Invalid(errors)
+            }
+    }
 }
 
 /**
@@ -93,53 +108,78 @@ sealed interface SdJwtDefinitionValidationResult {
 fun SdJwtDefinition.validateCredential(
     jwtPayload: JsonObject,
     disclosures: List<Disclosure>,
-): SdJwtDefinitionValidationResult {
-    val (reconstructedCredential, disclosuresPerClaim) = try {
-        val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
-        val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
-        UnsignedSdJwt(jwtPayload, disclosures).recreateClaims(visitor) to disclosuresPerClaim.toMap()
-    } catch (e: Exception) {
-        return SdJwtDefinitionValidationResult.Invalid(
-            listOf(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(e)),
-        )
-    }
-    return validateCredential(reconstructedCredential, disclosuresPerClaim)
+): SdJwtDefinitionValidationResult =
+    credential(jwtPayload, disclosures).fold(
+        onSuccess = { (reconstructedCredential, disclosuresPerClaim) ->
+            val errors = validateCredential(reconstructedCredential, disclosuresPerClaim)
+            SdJwtDefinitionValidationResult(errors)
+        },
+        onFailure = { disclosureError ->
+            SdJwtDefinitionValidationResult(
+                listOf(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(disclosureError)),
+            )
+        },
+    )
+
+private fun credential(
+    jwtPayload: JsonObject,
+    disclosures: List<Disclosure>,
+): Result<Pair<JsonObject, Map<ClaimPath, List<Disclosure>>>> = runCatching {
+    val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
+    val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
+    UnsignedSdJwt(jwtPayload, disclosures).recreateClaims(visitor) to disclosuresPerClaim.toMap()
 }
 
-private data class ValidationContext(
-    val reconstructedCredential: JsonObject,
-    val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-)
-private typealias Validated = Folded<String, Unit, List<SdJwtDefinitionCredentialValidationError>>
+/**
+ * K: The attribute key
+ * M: The set of defined claims
+ * R: List of errors
+ */
+private typealias Validated = Folded<String, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>>
+
+private val Valid: Validated get() = Validated(emptyList(), emptySet(), emptyList())
+
+/**
+ * Add two Validated
+ * This is called to combine the validation of two attribute definitions that belong
+ * to the same object definition
+ */
+private operator fun Validated.plus(that: Validated): Validated =
+    this.copy(result = this.result + that.result, metadata = this.metadata + that.metadata)
+
+/**
+ * Helper function.
+ */
+private fun JsonObject.unknownKeys(definedKeys: Set<String>) = keys - definedKeys
 
 private fun DisclosableObject<String, *>.validateCredential(
     reconstructedCredential: JsonObject,
     disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-): SdJwtDefinitionValidationResult {
-    val ctx = ValidationContext(reconstructedCredential, disclosuresPerClaim)
-    val initialValidated = Validated(
-        path = emptyList(),
-        metadata = Unit,
-        result = emptyList(),
-    )
-    val validated: Validated = fold(
-        objectHandlers = ObjectDefinitionHandler(ctx),
-        arrayHandlers = ArrayDefinitionHandler,
-        initial = initialValidated,
-        combine = { acc, current -> acc.copy(result = acc.result + current.result) },
+): List<SdJwtDefinitionCredentialValidationError> {
+    // Traverse the definition of attributes
+    // and identify errors of the presented credential
+    val definedAttributesErrors = fold(
+        objectHandlers = ObjectDefinitionHandler(reconstructedCredential, disclosuresPerClaim),
+        arrayHandlers = ArrayDefinitionHandler(reconstructedCredential, disclosuresPerClaim),
+        initial = Valid,
+        combine = { v1, v2 -> v1 + v2 },
         arrayResultWrapper = { it.flatten() },
         arrayMetadataCombiner = { it.first() },
-    )
-    val (_, _, errors) = validated
-    return when (errors.size) {
-        0 -> SdJwtDefinitionValidationResult.Valid
-        else -> SdJwtDefinitionValidationResult.Invalid(errors)
-    }
+    ).result
+
+    // Check if there are attributes  that do not have a definition
+    val unknownAttributes =
+        reconstructedCredential.unknownKeys(definedKeys = content.keys).map {
+            SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(ClaimPath.claim(it))
+        }
+
+    return definedAttributesErrors + unknownAttributes
 }
 
 private class ObjectDefinitionHandler(
-    private val ctx: ValidationContext,
-) : ObjectFoldHandlers<String, Any?, Unit, List<SdJwtDefinitionCredentialValidationError>> {
+    private val reconstructedCredential: JsonObject,
+    private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
+) : ObjectFoldHandlers<String, Any?, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>> {
 
     /**
      * Calculates the claim path of an attribute
@@ -155,15 +195,13 @@ private class ObjectDefinitionHandler(
         }
 
     private fun presented(path: ClaimPath): Result<JsonElement?> =
-        with(SelectPath.Default) {
-            ctx.reconstructedCredential.select(path)
-        }
+        with(SelectPath.Default) { reconstructedCredential.select(path) }
 
     private fun checkIncorrectlyDisclosedAttribute(
         attributeClaimPath: ClaimPath,
         expectedAlwaysSD: Boolean,
     ): SdJwtDefinitionCredentialValidationError? =
-        ctx.disclosuresPerClaim[attributeClaimPath]?.let { attributeDisclosures ->
+        disclosuresPerClaim[attributeClaimPath]?.let { attributeDisclosures ->
             // attribute has been presented
             val isSelectivelyDisclosed =
                 attributeDisclosures.lastOrNull()?.claim()?.first == attributeClaimPath.attributeClaim
@@ -179,17 +217,35 @@ private class ObjectDefinitionHandler(
             ?.takeIf { it !is T }
             ?.let { SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath) }
 
+    private fun checkIsObject(
+        attributeClaimPath: ClaimPath,
+        definedAttributes: Set<ClaimPath>,
+    ): List<SdJwtDefinitionCredentialValidationError> =
+        presented(attributeClaimPath).getOrThrow()?.let { json ->
+            when (json) {
+                is JsonObject -> {
+                    val presentedAttributes = json.keys.map { attributeClaimPath + ClaimPathElement.Claim(it) }
+                    val unknownAttributes = presentedAttributes - definedAttributes
+                    unknownAttributes.map { SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(it) }
+                }
+
+                else -> {
+                    listOf(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
+                }
+            }
+        }.orEmpty()
+
     private fun ifDisclosedId(
         path: List<String?>,
         key: String,
         expectedAlwaysSD: Boolean,
     ): Validated {
-        val attributeClaimPath = attributeClaimPath(path, key)
+        val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors =
             buildList {
                 checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             }
-        return Validated(path, Unit, errors)
+        return Validated(path, setOf(attributeClaimPath), errors)
     }
 
     private fun ifDisclosableArr(
@@ -198,13 +254,13 @@ private class ObjectDefinitionHandler(
         foldedArray: Validated,
         expectedAlwaysSD: Boolean,
     ): Validated {
-        val attributeClaimPath = attributeClaimPath(path, key)
+        val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
             checkIs<JsonArray>(attributeClaimPath)?.let(::add)
             checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             addAll(foldedArray.result)
         }
-        return Validated(path, Unit, errors)
+        return Validated(path, setOf(attributeClaimPath), errors)
     }
 
     private fun ifDisclosableObj(
@@ -213,13 +269,13 @@ private class ObjectDefinitionHandler(
         foldedObject: Validated,
         expectedAlwaysSD: Boolean,
     ): Validated {
-        val attributeClaimPath = attributeClaimPath(path, key)
+        val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
-            checkIs<JsonObject>(attributeClaimPath)?.let(::add)
+            addAll(checkIsObject(attributeClaimPath, foldedObject.metadata))
             checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             addAll(foldedObject.result)
         }
-        return Validated(path, Unit, errors)
+        return Validated(path, setOf(attributeClaimPath), errors)
     }
 
     override fun ifAlwaysSelectivelyDisclosableId(
@@ -259,70 +315,79 @@ private class ObjectDefinitionHandler(
     ): Validated = ifDisclosableObj(path, key, foldedObject, expectedAlwaysSD = false)
 }
 
-private object ArrayDefinitionHandler :
-    ArrayFoldHandlers<String, Any?, Unit, List<SdJwtDefinitionCredentialValidationError>> {
+private class ArrayDefinitionHandler(
+    private val reconstructedCredential: JsonObject,
+    private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
+) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>> {
 
     private fun claimPath(parentPath: List<String?>): ClaimPath = parentPath.toClaimPath()
+
+    private fun ifDisclosableId(
+        path: List<String?>,
+        index: Int,
+        expectedAlwaysSD: Boolean,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        return Validated(path, emptySet(), emptyList())
+    }
+
+    private fun ifDisclosableArr(
+        path: List<String?>,
+        index: Int,
+        foldedArray: Validated,
+        expectedAlwaysSD: Boolean,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        println("$parentPath ")
+        return Validated(path, emptySet(), emptyList())
+    }
+
+    private fun ifDisclosableObj(
+        path: List<String?>,
+        index: Int,
+        foldedObject: Validated,
+        expectedAlwaysSD: Boolean,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        println("$parentPath ")
+        return Validated(path, emptySet(), emptyList())
+    }
 
     override fun ifAlwaysSelectivelyDisclosableId(
         path: List<String?>,
         index: Int,
         value: Any?,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath  $value")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableId(path, index, expectedAlwaysSD = true)
 
     override fun ifAlwaysSelectivelyDisclosableArr(
         path: List<String?>,
         index: Int,
         foldedArray: Validated,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableArr(path, index, foldedArray, expectedAlwaysSD = true)
 
     override fun ifAlwaysSelectivelyDisclosableObj(
         path: List<String?>,
         index: Int,
         foldedObject: Validated,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableObj(path, index, foldedObject, expectedAlwaysSD = true)
 
     override fun ifNeverSelectivelyDisclosableId(
         path: List<String?>,
         index: Int,
         value: Any?,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath  $value")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableId(path, index, expectedAlwaysSD = false)
 
     override fun ifNeverSelectivelyDisclosableArr(
         path: List<String?>,
         index: Int,
         foldedArray: Validated,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath  ")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableArr(path, index, foldedArray, expectedAlwaysSD = false)
 
     override fun ifNeverSelectivelyDisclosableObj(
         path: List<String?>,
         index: Int,
         foldedObject: Validated,
-    ): Validated {
-        val parentPath = claimPath(path)
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
-    }
+    ): Validated = ifDisclosableObj(path, index, foldedObject, expectedAlwaysSD = false)
 }
 
 private fun List<String?>.toClaimPath(): ClaimPath {

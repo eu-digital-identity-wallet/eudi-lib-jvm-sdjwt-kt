@@ -17,17 +17,13 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.SdJwtFactory
 import eu.europa.ec.eudi.sdjwt.UnsignedSdJwt
-import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionCredentialValidationError
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionValidationResult
 import eu.europa.ec.eudi.sdjwt.vc.validateCredential
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -77,7 +73,7 @@ class SdJwtVcDefinitionValidatorTest {
         assertEquals(expectedErrors, errors)
     }
 
-    @Test @Ignore
+    @Test
     fun detectUnknownObjectAttributes() {
         // Here we are created a SD-JWT which contains an attribute which is not part
         // of the definition
@@ -114,7 +110,7 @@ class SdJwtVcDefinitionValidatorTest {
         }
     }
 
-    @Test @Ignore
+    @Test
     fun detectUnknownObjectAttributeNested() {
         // Here we are created a SD-JWT which contains
         // an object attribute `address`
@@ -137,18 +133,12 @@ class SdJwtVcDefinitionValidatorTest {
             sdClaim("nationalities", "GR") // nationalities  is defined as array
             sdClaim("place_of_birth", "foo") // place_of_birth is defined as an obj
         }
-        val (_, addressDefinition) = run {
-            val de = PidDefinition.content["address"]
-            checkNotNull(de)
-            val dv = de.value
-            check(dv is DisclosableValue.Obj<String, AttributeMetadata>)
-            val sd = de is Disclosable.AlwaysSelectively<*>
-            sd to dv.value
-        }
+
         val expectedErrors = listOf(
-            SdJwtDefinitionCredentialValidationError.WrongAttributeType(ClaimPath.claim("nationalities")),
-            SdJwtDefinitionCredentialValidationError.WrongAttributeType(ClaimPath.claim("place_of_birth")),
-        )
+            ClaimPath.claim("nationalities"),
+            ClaimPath.claim("place_of_birth"),
+        ).map { SdJwtDefinitionCredentialValidationError.WrongAttributeType(it) }
+
         val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
         errors.forEach { expectedError -> println(expectedError) }
 
