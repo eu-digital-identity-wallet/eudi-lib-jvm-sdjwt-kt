@@ -38,10 +38,9 @@ sealed interface SdJwtDefinitionCredentialValidationError {
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which is not included in the [containerDefinition].
+     * an attribute which is not included in the container definition
      *
-     * @param containerDefinition the definition of the object where the unknown attribute was found
-     * @param attributeName The name of the unknown attribute
+     * @param claimPath The claim path of the unknown attribute
      */
     data class UnknownObjectAttribute(
         val claimPath: ClaimPath,
@@ -53,14 +52,13 @@ sealed interface SdJwtDefinitionCredentialValidationError {
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which according to the [containerDefinition] is not
+     * an attribute which according to the container definition is not
      * correctly disclosed.
      *
      * For instance, an attribute is expected to be always selectively disclosable,
      * yet it was found to be disclosed as never selectively disclosed, or vise versa
      *
-     * @param containerDefinition the definition of the object where the attribute was found
-     * @param attributeName The name of the attribute
+     * @param claimPath The claim path of the unknown attribute
      */
     data class IncorrectlyDisclosedAttribute(
         val claimPath: ClaimPath,
@@ -102,31 +100,23 @@ fun SdJwtDefinition.validateCredential(
         UnsignedSdJwt(jwtPayload, disclosures).recreateClaims(visitor) to disclosuresPerClaim.toMap()
     } catch (e: Exception) {
         return SdJwtDefinitionValidationResult.Invalid(
-            listOf(
-                SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(
-                    e,
-                ),
-            ),
+            listOf(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(e)),
         )
     }
-    return validateCredential2(jwtPayload, disclosures, reconstructedCredential, disclosuresPerClaim)
+    return validateCredential(reconstructedCredential, disclosuresPerClaim)
 }
 
 private data class ValidationContext(
-    val jwtPayload: JsonObject,
-    val disclosures: List<Disclosure>,
     val reconstructedCredential: JsonObject,
     val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
 )
 private typealias Validated = Folded<String, Unit, List<SdJwtDefinitionCredentialValidationError>>
 
-private fun DisclosableObject<String, *>.validateCredential2(
-    jwtPayload: JsonObject,
-    disclosures: List<Disclosure>,
+private fun DisclosableObject<String, *>.validateCredential(
     reconstructedCredential: JsonObject,
     disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
 ): SdJwtDefinitionValidationResult {
-    val ctx = ValidationContext(jwtPayload, disclosures, reconstructedCredential, disclosuresPerClaim)
+    val ctx = ValidationContext(reconstructedCredential, disclosuresPerClaim)
     val initialValidated = Validated(
         path = emptyList(),
         metadata = Unit,
@@ -140,7 +130,7 @@ private fun DisclosableObject<String, *>.validateCredential2(
         arrayResultWrapper = { it.flatten() },
         arrayMetadataCombiner = { it.first() },
     )
-    val errors = validated.result
+    val (_, _, errors) = validated
     return when (errors.size) {
         0 -> SdJwtDefinitionValidationResult.Valid
         else -> SdJwtDefinitionValidationResult.Invalid(errors)
@@ -192,7 +182,6 @@ private class ObjectDefinitionHandler(
     private fun ifDisclosedId(
         path: List<String?>,
         key: String,
-        value: Any?,
         expectedAlwaysSD: Boolean,
     ): Validated {
         val attributeClaimPath = attributeClaimPath(path, key)
@@ -237,7 +226,7 @@ private class ObjectDefinitionHandler(
         path: List<String?>,
         key: String,
         value: Any?,
-    ): Validated = ifDisclosedId(path, key, value, expectedAlwaysSD = true)
+    ): Validated = ifDisclosedId(path, key, expectedAlwaysSD = true)
 
     override fun ifAlwaysSelectivelyDisclosableArr(
         path: List<String?>,
@@ -255,7 +244,7 @@ private class ObjectDefinitionHandler(
         path: List<String?>,
         key: String,
         value: Any?,
-    ): Validated = ifDisclosedId(path, key, value, expectedAlwaysSD = false)
+    ): Validated = ifDisclosedId(path, key, expectedAlwaysSD = false)
 
     override fun ifNeverSelectivelyDisclosableArr(
         path: List<String?>,
@@ -346,159 +335,3 @@ private fun List<String?>.toClaimPath(): ClaimPath {
         }
     }
 }
-//
-// private fun SdJwtDefinition.validateCredential(
-//    jwtPayload: JsonObject,
-//    reconstructedCredential: JsonObject,
-// ): SdJwtDefinitionValidationResult {
-//    val allErrors = mutableListOf<SdJwtDefinitionCredentialValidationError>()
-//
-//    // Check for unknown attributes in the reconstructed credential
-//    findUnknownAttributes(reconstructedCredential, this, null, allErrors)
-//
-//    // Check for incorrectly disclosed attributes
-//    checkDisclosureConsistency(jwtPayload, this, allErrors)
-//
-//    return when {
-//        allErrors.isEmpty() -> SdJwtDefinitionValidationResult.Valid
-//        else -> SdJwtDefinitionValidationResult.Invalid(allErrors)
-//    }
-// }
-//
-// /**
-// * Recursively finds unknown attributes in the reconstructed credential.
-// *
-// * @param currentData The current JSON object being checked
-// * @param currentDefinition The definition of the current object
-// * @param currentClaimPathPrefix The ClaimPath prefix to the current object
-// * @param errors The list to add errors to
-// */
-// private fun findUnknownAttributes(
-//    currentData: JsonObject,
-//    currentDefinition: DisclosableObject<String, AttributeMetadata>,
-//    currentClaimPathPrefix: ClaimPath?,
-//    errors: MutableList<SdJwtDefinitionCredentialValidationError>,
-// ) {
-//    val knownAttributeNames = currentDefinition.content.keys
-//
-//    // Get all attribute names
-//    val attributeNames = currentData.keys.toList()
-//    for (attributeName in attributeNames) {
-//        val attributeValue = currentData[attributeName]
-//
-//        // Skip SD-JWT internal claims
-//        if (attributeName == SdJwtSpec.CLAIM_SD_ALG || attributeName == SdJwtSpec.CLAIM_SD) {
-//            continue
-//        }
-//
-//        // Construct the ClaimPath for the current attribute
-//        val fullClaimPathForAttribute = currentClaimPathPrefix
-//            ?.claim(attributeName)
-//            ?: ClaimPath.claim(attributeName)
-//
-//        // If the attribute is not in the definition, it's unknown
-//        if (attributeName !in knownAttributeNames) {
-//            errors.add(
-//                SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(
-//                    currentDefinition,
-//                    attributeName,
-//                ),
-//            )
-//        } else if (attributeValue != null) {
-//            // If it's a known attribute and it's an object, recurse
-//            val definitionElement = currentDefinition.content[attributeName]
-//            checkNotNull(definitionElement)
-//            when (val dv = definitionElement.value) {
-//                is DisclosableValue.Obj -> {
-//                    if (attributeValue is JsonObject) {
-//                        findUnknownAttributes(
-//                            attributeValue,
-//                            dv.value,
-//                            fullClaimPathForAttribute,
-//                            errors,
-//                        )
-//                    } else {
-//                        errors.add(
-//                            SdJwtDefinitionCredentialValidationError.WrongAttributeType(currentDefinition, attributeName),
-//                        )
-//                    }
-//                }
-//                is DisclosableValue.Arr -> {
-//                    if (attributeValue is JsonArray) {
-//                        // Handle arrays
-//                    } else {
-//                        errors.add(
-//                            SdJwtDefinitionCredentialValidationError.WrongAttributeType(currentDefinition, attributeName),
-//                        )
-//                    }
-//                }
-//                is DisclosableValue.Id -> Unit // Leaf node, no further recursion needed
-//            }
-//        }
-//    }
-// }
-//
-// /**
-// * Checks if attributes are correctly disclosed according to the definition.
-// *
-// * @param jwtPayload The original JWT payload
-// * @param definition The definition to check against
-// * @param errors The list to add errors to
-// */
-// private fun checkDisclosureConsistency(
-//    jwtPayload: JsonObject,
-//    definition: DisclosableObject<String, AttributeMetadata>,
-//    errors: MutableList<SdJwtDefinitionCredentialValidationError>,
-// ) {
-//    for ((key, disclosable) in definition.content) {
-//        val isAlwaysSelectively = disclosable is Disclosable.AlwaysSelectively<*>
-//        val isNeverSelectively = disclosable is Disclosable.NeverSelectively<*>
-//
-//        // Check if the attribute is present in the JWT payload
-//        val isInPayload = key in jwtPayload
-//        val payloadValue = jwtPayload[key]
-//        val isDigestInPayload = isInPayload &&
-//            (payloadValue is JsonObject && payloadValue.get(SdJwtSpec.CLAIM_SD) != null)
-//
-//        if (isAlwaysSelectively) {
-//            // If always selectively disclosable, it should not be directly in the payload
-//            // or it should be a digest
-//            if (isInPayload && !isDigestInPayload) {
-//                errors.add(
-//                    SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(
-//                        definition,
-//                        key,
-//                    ),
-//                )
-//            }
-//        } else if (isNeverSelectively) {
-//            // If never selectively disclosable, it should be directly in the payload
-//            // and not a digest
-//            if (!isInPayload || isDigestInPayload) {
-//                errors.add(
-//                    SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(
-//                        definition,
-//                        key,
-//                    ),
-//                )
-//            }
-//        }
-//
-//        // Recurse into nested objects
-//        when (val value = disclosable.value) {
-//            is DisclosableValue.Obj -> {
-//                if (isInPayload && !isDigestInPayload && payloadValue != null) {
-//                    val nestedObject = payloadValue.jsonObject
-//                    checkDisclosureConsistency(nestedObject, value.value, errors)
-//                }
-//            }
-//            is DisclosableValue.Arr -> {
-//                // Handle arrays if needed
-//                // This is a simplified implementation
-//            }
-//            is DisclosableValue.Id -> {
-//                // Leaf node, no further recursion needed
-//            }
-//        }
-//    }
-// }
