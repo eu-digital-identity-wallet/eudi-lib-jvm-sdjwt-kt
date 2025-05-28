@@ -35,7 +35,7 @@ class SdJwtVcDefinitionValidatorTest {
         sdJwt {
             // Here we are testing an empty SD-JWT.
             // It should pass the validation, because
-            // PidDefinition doesn't contain an top-level
+            // PidDefinition doesn't contain a top-level
             // Never Selectively Disclosable attribute
             // This means that an empty payload is ok.
 
@@ -50,6 +50,16 @@ class SdJwtVcDefinitionValidatorTest {
         sdJwt {
             sdClaim("family_name", "Foo")
         }
+    }
+
+    @Test
+    fun happyPathNoDisclosure() {
+        val sdJwt = sdJwt {
+            sdClaim("family_name", "Foo")
+        }
+        val (jwtPayload, _) = createSdJwt(sdJwt)
+        val result = PidDefinition.validateCredential(jwtPayload, disclosures = emptyList())
+        assertIs<SdJwtDefinitionValidationResult.Valid>(result)
     }
 
     @Test
@@ -70,6 +80,30 @@ class SdJwtVcDefinitionValidatorTest {
             ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
 
         val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        assertEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun detectIncorrectlyDisclosedAttributesNoDisclosures() {
+        // [family] is wrongly declared as never selectively disclosed
+        // [address] is correctly declared
+        // [address][country] is wrongly declared as never selectively disclosed
+        val sdJwt = sdJwt {
+            claim("family_name", "Foo")
+            sdObjClaim("address") {
+                claim("country", "Foo")
+            }
+        }
+        val (jwtPayload, _) = createSdJwt(sdJwt)
+        val result = PidDefinition.validateCredential(jwtPayload, disclosures = emptyList())
+        // Since we removed all disclosures
+        // when can detect only errors related to Never Selectively Disclosable attributes
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("family_name"),
+            ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
+
+        val errors = assertIs<SdJwtDefinitionValidationResult.Invalid>(result).errors
         assertEquals(expectedErrors, errors)
     }
 
