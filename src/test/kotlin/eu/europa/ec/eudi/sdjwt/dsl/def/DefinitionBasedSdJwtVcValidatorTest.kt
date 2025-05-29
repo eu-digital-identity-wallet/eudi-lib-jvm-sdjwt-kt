@@ -23,13 +23,13 @@ import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionCredentialValidationError
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionValidationResult
+import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedValidationResult
+import eu.europa.ec.eudi.sdjwt.vc.DefinitionViolation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class SdJwtVcDefinitionValidatorTest {
+class DefinitionBasedSdJwtVcValidatorTest {
 
     @Test
     fun testCredentialWithNoClaims() = PidDefinition.shouldConsiderValid(
@@ -77,7 +77,7 @@ class SdJwtVcDefinitionValidatorTest {
             listOf(
                 ClaimPath.claim("family_name"),
                 ClaimPath.claim("address").claim("country"),
-            ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
+            ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) }
 
         val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         assertEquals(expectedErrors, errors)
@@ -100,7 +100,7 @@ class SdJwtVcDefinitionValidatorTest {
         val expectedErrors =
             listOf(
                 ClaimPath.claim("family_name"),
-            ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
+            ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) }
 
         val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, disclosureFilter = { _ -> false })
         assertEquals(expectedErrors, errors)
@@ -135,7 +135,7 @@ class SdJwtVcDefinitionValidatorTest {
             "unknownAlwaysSelectivelyDisclosedArr",
             "unknownNeverSelectivelyDisclosedObj",
             "unknownAlwaysSelectivelyDisclosedObj",
-        ).map { SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(ClaimPath.claim(it)) }
+        ).map { DefinitionViolation.UnknownClaim(ClaimPath.claim(it)) }
 
         assertEquals(expectedErrors.size, errors.size)
         expectedErrors.forEach { expectedError ->
@@ -154,7 +154,7 @@ class SdJwtVcDefinitionValidatorTest {
             }
         }
         val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
-        val expectedError = SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(
+        val expectedError = DefinitionViolation.UnknownClaim(
             ClaimPath.claim("address").claim("foo"),
         )
         assertEquals(expectedError, errors.first())
@@ -170,7 +170,7 @@ class SdJwtVcDefinitionValidatorTest {
         val expectedErrors = listOf(
             ClaimPath.claim("nationalities"),
             ClaimPath.claim("place_of_birth"),
-        ).map { SdJwtDefinitionCredentialValidationError.WrongAttributeType(it) }
+        ).map { DefinitionViolation.WrongClaimType(it) }
 
         val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         errors.forEach { expectedError -> println(expectedError) }
@@ -204,9 +204,9 @@ class SdJwtVcDefinitionValidatorTest {
         definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
         sdJwtObject: SdJwtObject,
         disclosureFilter: (Disclosure) -> Boolean = { true },
-    ): List<SdJwtDefinitionCredentialValidationError> {
+    ): List<DefinitionViolation> {
         val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
-        return assertIs<SdJwtDefinitionValidationResult.Invalid>(result).errors
+        return assertIs<DefinitionBasedValidationResult.Invalid>(result).errors
     }
 
     private fun SdJwtDefinition.shouldConsiderValid(
@@ -215,7 +215,7 @@ class SdJwtVcDefinitionValidatorTest {
         disclosureFilter: (Disclosure) -> Boolean = { true },
     ) {
         val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
-        assertIs<SdJwtDefinitionValidationResult.Valid>(result)
+        assertIs<DefinitionBasedValidationResult.Valid>(result)
     }
 
     private fun createAndValidate(
@@ -223,7 +223,7 @@ class SdJwtVcDefinitionValidatorTest {
         sdJwtDefinition: SdJwtDefinition,
         sdJwtObject: SdJwtObject,
         disclosureFilter: (Disclosure) -> Boolean,
-    ): SdJwtDefinitionValidationResult {
+    ): DefinitionBasedValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
         return with(definitionBasedSdJwtVcValidator) {
             sdJwtDefinition.validate(payload, disclosures.filter(disclosureFilter))

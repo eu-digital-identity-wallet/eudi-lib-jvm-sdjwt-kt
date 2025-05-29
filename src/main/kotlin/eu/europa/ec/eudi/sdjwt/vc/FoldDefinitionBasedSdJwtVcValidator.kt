@@ -25,97 +25,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-// TODO Rename to DefintionViolation
-sealed interface SdJwtDefinitionCredentialValidationError {
-
-    /**
-     * Represents inconsistencies found in the provided disclosures that prevent
-     * the successful reconstruction of claims. This includes issues like
-     * non-unique disclosures, disclosures without matching digests, etc.
-     *
-     * @param cause The underlying exception that occurred during claim reconstruction.
-     */
-    data class DisclosureInconsistencies(val cause: Throwable) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which is not included in the container definition
-     *
-     * @param claimPath The claim path of the unknown attribute
-     */
-    data class UnknownObjectAttribute(
-        val claimPath: ClaimPath,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute that is defined as an object, yet it was presented as an array
-     * and vice versa
-     *
-     * @param claimPath The claim path of the unknown attribute
-     */
-    data class WrongAttributeType(
-        val claimPath: ClaimPath,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    data class WrongArrayElementType(
-        val claimPath: ClaimPath,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    /**
-     * The SD-JWT contains in the payload or in the given disclosures,
-     * an attribute which according to the container definition is not
-     * correctly disclosed.
-     *
-     * For instance, an attribute is expected to be always selectively disclosable,
-     * yet it was found to be disclosed as never selectively disclosed, or vise versa
-     *
-     * @param claimPath The claim path of the unknown attribute
-     */
-    data class IncorrectlyDisclosedAttribute(
-        val claimPath: ClaimPath,
-    ) : SdJwtDefinitionCredentialValidationError
-
-    data class IncorrectlyDisclosedArrayElement(
-        val claimPath: ClaimPath,
-    ) : SdJwtDefinitionCredentialValidationError
-}
-
-// TODO Change the name DefinitionBasedValidatioResult or similar
-sealed interface SdJwtDefinitionValidationResult {
-    data object Valid : SdJwtDefinitionValidationResult
-
-    @JvmInline
-    value class Invalid(val errors: List<SdJwtDefinitionCredentialValidationError>) : SdJwtDefinitionValidationResult {
-        init {
-            require(errors.isNotEmpty()) { "errors must not be empty" }
-        }
-    }
-
-    companion object {
-        operator fun invoke(errors: List<SdJwtDefinitionCredentialValidationError>): SdJwtDefinitionValidationResult =
-            when (errors.size) {
-                0 -> Valid
-                else -> Invalid(errors)
-            }
-    }
-}
-
-// TODO Rename file to DefinitionBasedSdJwtVcValidator
-fun interface DefinitionBasedSdJwtVcValidator {
-    fun SdJwtDefinition.validate(
+internal object FoldDefinitionBasedSdJwtVcValidator : DefinitionBasedSdJwtVcValidator {
+    override fun SdJwtDefinition.validate(
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,
-    ): SdJwtDefinitionValidationResult
-
-    companion object {
-        val FoldBased: DefinitionBasedSdJwtVcValidator =
-            DefinitionBasedSdJwtVcValidator { jwtPayload, disclosure ->
-                validateCredential(jwtPayload, disclosure)
-            }
-
-        // TODO Dimitri add here your implementation
-    }
+    ): DefinitionBasedValidationResult = validateCredential(jwtPayload, disclosures)
 }
 
 /**
@@ -135,15 +49,15 @@ fun interface DefinitionBasedSdJwtVcValidator {
 private fun SdJwtDefinition.validateCredential(
     jwtPayload: JsonObject,
     disclosures: List<Disclosure>,
-): SdJwtDefinitionValidationResult =
+): DefinitionBasedValidationResult =
     credential(jwtPayload, disclosures).fold(
         onSuccess = { (reconstructedCredential, disclosuresPerClaim) ->
             val errors = validateCredential(reconstructedCredential, disclosuresPerClaim)
-            SdJwtDefinitionValidationResult(errors)
+            DefinitionBasedValidationResult(errors)
         },
         onFailure = { disclosureError ->
-            SdJwtDefinitionValidationResult(
-                listOf(SdJwtDefinitionCredentialValidationError.DisclosureInconsistencies(disclosureError)),
+            DefinitionBasedValidationResult(
+                listOf(DefinitionViolation.DisclosureInconsistencies(disclosureError)),
             )
         },
     )
@@ -162,7 +76,7 @@ private fun credential(
  * M: The set of defined claims
  * R: List of errors
  */
-private typealias Validated = Folded<String, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>>
+private typealias Validated = Folded<String, Set<ClaimPath>, List<DefinitionViolation>>
 
 private val Valid: Validated get() = Validated(emptyList(), emptySet(), emptyList())
 
@@ -182,11 +96,11 @@ private fun JsonObject.unknownKeys(definedKeys: Set<String>) = keys - definedKey
 private fun DisclosableObject<String, *>.validateCredential(
     reconstructedCredential: JsonObject,
     disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-): List<SdJwtDefinitionCredentialValidationError> {
+): List<DefinitionViolation> {
     // Check if there are attributes  that do not have a definition
     val unknownAttributes =
         reconstructedCredential.unknownKeys(definedKeys = content.keys).map {
-            SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(ClaimPath.claim(it))
+            DefinitionViolation.UnknownClaim(ClaimPath.claim(it))
         }
 
     // Traverse the definition of attributes
@@ -206,7 +120,7 @@ private fun DisclosableObject<String, *>.validateCredential(
 private class ObjectDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ObjectFoldHandlers<String, Any?, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>> {
+) : ObjectFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
 
     /**
      * Calculates the claim path of an attribute
@@ -227,7 +141,7 @@ private class ObjectDefinitionHandler(
     private fun checkIncorrectlyDisclosedAttribute(
         attributeClaimPath: ClaimPath,
         expectedAlwaysSD: Boolean,
-    ): SdJwtDefinitionCredentialValidationError? =
+    ): DefinitionViolation? =
         disclosuresPerClaim[attributeClaimPath]?.let { attributeDisclosures ->
             // attribute has been presented
             val isSelectivelyDisclosed =
@@ -235,29 +149,29 @@ private class ObjectDefinitionHandler(
             val incorrectlyDisclosed =
                 (expectedAlwaysSD && !isSelectivelyDisclosed) || (!expectedAlwaysSD && isSelectivelyDisclosed)
             if (incorrectlyDisclosed) {
-                SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(attributeClaimPath)
+                DefinitionViolation.IncorrectlyDisclosedClaim(attributeClaimPath)
             } else null
         }
 
-    private inline fun <reified T> checkIs(attributeClaimPath: ClaimPath): SdJwtDefinitionCredentialValidationError.WrongAttributeType? =
+    private inline fun <reified T> checkIs(attributeClaimPath: ClaimPath): DefinitionViolation.WrongClaimType? =
         presented(attributeClaimPath).getOrThrow()
             ?.takeIf { it !is T }
-            ?.let { SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath) }
+            ?.let { DefinitionViolation.WrongClaimType(attributeClaimPath) }
 
     private fun checkIsObject(
         attributeClaimPath: ClaimPath,
         definedAttributes: Set<ClaimPath>,
-    ): List<SdJwtDefinitionCredentialValidationError> =
+    ): List<DefinitionViolation> =
         presented(attributeClaimPath).getOrThrow()?.let { json ->
             when (json) {
                 is JsonObject -> {
                     val presentedAttributes = json.keys.map { attributeClaimPath + ClaimPathElement.Claim(it) }
                     val unknownAttributes = presentedAttributes - definedAttributes
-                    unknownAttributes.map { SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(it) }
+                    unknownAttributes.map { DefinitionViolation.UnknownClaim(it) }
                 }
 
                 else -> {
-                    listOf(SdJwtDefinitionCredentialValidationError.WrongAttributeType(attributeClaimPath))
+                    listOf(DefinitionViolation.WrongClaimType(attributeClaimPath))
                 }
             }
         }.orEmpty()
@@ -345,7 +259,7 @@ private class ObjectDefinitionHandler(
 private class ArrayDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<SdJwtDefinitionCredentialValidationError>> {
+) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
 
     private fun claimPath(parentPath: List<String?>): ClaimPath = parentPath.toClaimPath()
 
