@@ -58,18 +58,7 @@ private class SdJwtVcDefinitionValidator private constructor(
             current.filterKeys { it !in unknownClaims }.forEach { (claimName, claimValue) ->
                 val claimPath = parent?.claim(claimName) ?: ClaimPath.claim(claimName)
                 val claimDefinition = checkNotNull(definition.content[claimName]) { "can find definition for $claimPath" }
-
-                // check disclosability
-                if (!claimDefinition.isProperlyDisclosed(claimPath)) {
-                    allErrors.add(DefinitionViolation.IncorrectlyDisclosedClaim(claimPath))
-                }
-
-                // check type and recurse as needed
-                if (!claimDefinition.isOfCorrectType(claimValue)) {
-                    allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
-                } else {
-                    validate(claimPath, claimValue, claimDefinition)
-                }
+                validate(claimPath, claimValue, claimDefinition)
             }
         }
 
@@ -78,24 +67,36 @@ private class SdJwtVcDefinitionValidator private constructor(
             // proceed only when array is uniform
             if (definition.content.size == 1) {
                 val elementDefinition = definition.content.first()
-
                 current.withIndex().forEach { (claimIndex, claimValue) ->
                     val claimPath = parent.arrayElement(claimIndex)
-
-                    // check disclosability
-                    if (!elementDefinition.isProperlyDisclosed(claimPath)) {
-                        allErrors.add(DefinitionViolation.IncorrectlyDisclosedClaim(claimPath))
-                    }
-
-                    // check type and recurse as needed
-                    if (!elementDefinition.isOfCorrectType(claimValue)) {
-                        allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
-                    } else {
-                        validate(claimPath, claimValue, elementDefinition)
-                    }
+                    validate(claimPath, claimValue, elementDefinition)
                 }
             }
         }
+
+    private suspend fun DeepRecursiveScope<*, *>.validate(
+        claimPath: ClaimPath,
+        claimValue: JsonElement,
+        definition: DisclosableElement<String, AttributeMetadata>,
+    ) {
+        // check disclosability
+        if (!definition.isProperlyDisclosed(claimPath)) {
+            allErrors.add(DefinitionViolation.IncorrectlyDisclosedClaim(claimPath))
+        }
+
+        // check type and recurse as needed
+        if (!definition.isOfCorrectType(claimValue)) {
+            allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
+        } else {
+            when (val disclosableValue = definition.value) {
+                is DisclosableValue.Obj -> validateObject.callRecursive(Triple(claimPath, claimValue.jsonObject, disclosableValue.value))
+                is DisclosableValue.Arr -> validateArray.callRecursive(Triple(claimPath, claimValue.jsonArray, disclosableValue.value))
+                is DisclosableValue.Id -> {
+                    // nothing more to do
+                }
+            }
+        }
+    }
 
     private fun DisclosableElement<*, *>.isProperlyDisclosed(claim: ClaimPath): Boolean {
         val requiresDisclosures = run {
@@ -120,20 +121,6 @@ private class SdJwtVcDefinitionValidator private constructor(
             is DisclosableValue.Arr -> claimValue is JsonArray
             is DisclosableValue.Id -> true
         }
-
-    private suspend fun DeepRecursiveScope<*, *>.validate(
-        claimPath: ClaimPath,
-        claimValue: JsonElement,
-        definition: DisclosableElement<String, AttributeMetadata>,
-    ) {
-        when (val disclosableValue = definition.value) {
-            is DisclosableValue.Obj -> validateObject.callRecursive(Triple(claimPath, claimValue.jsonObject, disclosableValue.value))
-            is DisclosableValue.Arr -> validateArray.callRecursive(Triple(claimPath, claimValue.jsonArray, disclosableValue.value))
-            is DisclosableValue.Id -> {
-                // nothing more to do
-            }
-        }
-    }
 
     private fun validate(processedPayload: JsonObject): List<DefinitionViolation> {
         val processedPayloadWithoutWellKnown = JsonObject(processedPayload - wellKnownClaims)
