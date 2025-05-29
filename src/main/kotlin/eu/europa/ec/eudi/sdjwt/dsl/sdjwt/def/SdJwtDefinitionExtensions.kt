@@ -19,16 +19,11 @@ import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 
-private typealias ClaimPaths = Folded<String, Unit, Set<ClaimPath>>
-
-private fun claimPaths(path: List<String?>, result: Set<ClaimPath>): ClaimPaths =
-    Folded(path, Unit, result)
-
 /**
  * Gets the set of [ClaimPath] for the attributes described by
  * a [SdJwtObjectDefinition] or [SdJwtDefinition]
  */
-fun DisclosableObject<String, AttributeMetadata>.claimPaths(): Set<ClaimPath> =
+fun DisclosableObject<String, *>.claimPaths(): Set<ClaimPath> =
     fold(
         objectHandlers = ObjectHandlers,
         arrayHandlers = ArrayHandlers,
@@ -43,6 +38,15 @@ fun DisclosableObject<String, AttributeMetadata>.claimPaths(): Set<ClaimPath> =
     ).result
 
 abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<String, A, M, R> {
+
+    protected val ClaimPath.attributeClaim: String
+        get() {
+            val lastClaim = value.last()
+            check(lastClaim is ClaimPathElement.Claim) {
+                "Not an attribute claim path: $this"
+            }
+            return lastClaim.name
+        }
 
     protected fun attributeClaimPath(
         path: List<String?>,
@@ -153,41 +157,41 @@ private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandl
     }
 }
 
-private object ObjectHandlers : ClaimPathAwareObjectFoldHandlers<AttributeMetadata, Unit, Set<ClaimPath>>() {
+private object ObjectHandlers : ClaimPathAwareObjectFoldHandlers<Any?, Unit, Set<ClaimPath>>() {
     override fun ifId(
         path: ClaimPath,
-        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+        id: Disclosable<DisclosableValue.Id<String, Any?>>,
     ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(path)
 
     override fun ifArray(
         path: ClaimPath,
-        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Folded<String, Unit, Set<ClaimPath>>,
     ): Pair<Unit, Set<ClaimPath>> = foldedArray.metadata to setOf(path) + foldedArray.result
 
     override fun ifObject(
         path: ClaimPath,
-        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Folded<String, Unit, Set<ClaimPath>>,
     ): Pair<Unit, Set<ClaimPath>> = foldedObject.metadata to setOf(path) + foldedObject.result
 }
 
-private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<AttributeMetadata, Unit, Set<ClaimPath>>() {
+private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<Any?, Unit, Set<ClaimPath>>() {
 
     override fun ifId(
         path: ClaimPath,
-        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+        id: Disclosable<DisclosableValue.Id<String, Any?>>,
     ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
 
     override fun ifArray(
         path: ClaimPath,
-        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Folded<String, Unit, Set<ClaimPath>>,
     ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
 
     override fun ifObject(
         path: ClaimPath,
-        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Folded<String, Unit, Set<ClaimPath>>,
     ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
 }
