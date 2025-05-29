@@ -19,6 +19,7 @@ import eu.europa.ec.eudi.sdjwt.Disclosure
 import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.UnsignedSdJwt
 import eu.europa.ec.eudi.sdjwt.dsl.*
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.ClaimPathAwareArrayFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.ClaimPathAwareObjectFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.recreateClaims
@@ -195,61 +196,26 @@ private class ObjectDefinitionHandler(
 private class ArrayDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ArrayFoldHandlers<String, Any?, Unit, List<DefinitionViolation>> {
-
-    private fun List<String?>.toClaimPath(): ClaimPath? {
-        if (isEmpty()) return null
-        val head = requireNotNull(first()) { "First path segment must be an object key" }
-        return drop(1).fold(ClaimPath.claim(head)) { path, claim ->
-            when (claim) {
-                null -> path.allArrayElements()
-                else -> path.claim(claim)
-            }
-        }
-    }
-
-    private fun claimPath(parentPath: List<String?>): ClaimPath =
-        checkNotNull(parentPath.toClaimPath())
-
-    private fun ifDisclosableObj(
-        path: List<String?>,
-        index: Int,
-        foldedObject: Validated,
-        expectedAlwaysSD: Boolean,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
-    }
+) : ClaimPathAwareArrayFoldHandlers<Any?, Unit, List<DefinitionViolation>>() {
 
     override fun ifId(
-        path: List<String?>,
-        index: Int,
+        path: ClaimPath,
         id: Disclosable<DisclosableValue.Id<String, Any?>>,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        return Validated(path, Unit, emptyList())
-    }
+    ): Pair<Unit, List<DefinitionViolation>> = Unit to emptyList()
 
     override fun ifArray(
-        path: List<String?>,
-        index: Int,
+        path: ClaimPath,
         array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Validated,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
+    ): Pair<Unit, List<DefinitionViolation>> {
+        return Unit to emptyList()
     }
 
     override fun ifObject(
-        path: List<String?>,
-        index: Int,
+        path: ClaimPath,
         obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Validated,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        println("$parentPath ")
-        return Validated(path, Unit, emptyList())
+    ): Pair<Unit, List<DefinitionViolation>> {
+        return Unit to emptyList()
     }
 }

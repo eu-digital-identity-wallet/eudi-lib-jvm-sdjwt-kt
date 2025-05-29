@@ -72,7 +72,7 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         foldedObject: Folded<String, M, R>,
     ): Pair<M, R>
 
-    override fun ifId(
+    final override fun ifId(
         path: List<String?>,
         key: String,
         id: Disclosable<DisclosableValue.Id<String, A>>,
@@ -81,7 +81,7 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         return Folded(path, m, r)
     }
 
-    override fun ifArray(
+    final override fun ifArray(
         path: List<String?>,
         key: String,
         array: Disclosable<DisclosableValue.Arr<String, A>>,
@@ -91,7 +91,7 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         return Folded(path, m, r)
     }
 
-    override fun ifObject(
+    final override fun ifObject(
         path: List<String?>,
         key: String,
         obj: Disclosable<DisclosableValue.Obj<String, A>>,
@@ -101,7 +101,7 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         return Folded(path, m, r)
     }
 }
-private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<String, A, M, R> {
+abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<String, A, M, R> {
 
     private fun elementClaimPath(path: List<String?>, index: Int): ClaimPath {
         val indexElement = ClaimPathElement.ArrayElement(index)
@@ -127,7 +127,7 @@ private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandl
         foldedObject: Folded<String, M, R>,
     ): Pair<M, R>
 
-    override fun ifId(
+    final override fun ifId(
         path: List<String?>,
         index: Int,
         id: Disclosable<DisclosableValue.Id<String, A>>,
@@ -136,7 +136,7 @@ private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandl
         return Folded(path, m, r)
     }
 
-    override fun ifArray(
+    final override fun ifArray(
         path: List<String?>,
         index: Int,
         array: Disclosable<DisclosableValue.Arr<String, A>>,
@@ -146,7 +146,7 @@ private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandl
         return Folded(path, m, r)
     }
 
-    override fun ifObject(
+    final override fun ifObject(
         path: List<String?>,
         index: Int,
         obj: Disclosable<DisclosableValue.Obj<String, A>>,
