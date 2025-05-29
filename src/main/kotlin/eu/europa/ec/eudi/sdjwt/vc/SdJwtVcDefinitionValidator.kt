@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+// TODO Rename to DefintionViolation
 sealed interface SdJwtDefinitionCredentialValidationError {
 
     /**
@@ -57,6 +58,10 @@ sealed interface SdJwtDefinitionCredentialValidationError {
         val claimPath: ClaimPath,
     ) : SdJwtDefinitionCredentialValidationError
 
+    data class WrongArrayElementType(
+        val claimPath: ClaimPath,
+    ) : SdJwtDefinitionCredentialValidationError
+
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
      * an attribute which according to the container definition is not
@@ -70,8 +75,13 @@ sealed interface SdJwtDefinitionCredentialValidationError {
     data class IncorrectlyDisclosedAttribute(
         val claimPath: ClaimPath,
     ) : SdJwtDefinitionCredentialValidationError
+
+    data class IncorrectlyDisclosedArrayElement(
+        val claimPath: ClaimPath,
+    ) : SdJwtDefinitionCredentialValidationError
 }
 
+// TODO Change the name DefinitionBasedValidatioResult or similar
 sealed interface SdJwtDefinitionValidationResult {
     data object Valid : SdJwtDefinitionValidationResult
 
@@ -91,6 +101,23 @@ sealed interface SdJwtDefinitionValidationResult {
     }
 }
 
+// TODO Rename file to DefinitionBasedSdJwtVcValidator
+fun interface DefinitionBasedSdJwtVcValidator {
+    fun SdJwtDefinition.validate(
+        jwtPayload: JsonObject,
+        disclosures: List<Disclosure>,
+    ): SdJwtDefinitionValidationResult
+
+    companion object {
+        val FoldBased: DefinitionBasedSdJwtVcValidator =
+            DefinitionBasedSdJwtVcValidator { jwtPayload, disclosure ->
+                validateCredential(jwtPayload, disclosure)
+            }
+
+        // TODO Dimitri add here your implementation
+    }
+}
+
 /**
  * Validates a SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
  *
@@ -105,7 +132,7 @@ sealed interface SdJwtDefinitionValidationResult {
  * @receiver The definition of the SD-JWT-VC credential against which the given [jwtPayload] and [disclosures]
  * will be validated
  */
-fun SdJwtDefinition.validateCredential(
+private fun SdJwtDefinition.validateCredential(
     jwtPayload: JsonObject,
     disclosures: List<Disclosure>,
 ): SdJwtDefinitionValidationResult =
@@ -156,6 +183,12 @@ private fun DisclosableObject<String, *>.validateCredential(
     reconstructedCredential: JsonObject,
     disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
 ): List<SdJwtDefinitionCredentialValidationError> {
+    // Check if there are attributes  that do not have a definition
+    val unknownAttributes =
+        reconstructedCredential.unknownKeys(definedKeys = content.keys).map {
+            SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(ClaimPath.claim(it))
+        }
+
     // Traverse the definition of attributes
     // and identify errors of the presented credential
     val definedAttributesErrors = fold(
@@ -166,12 +199,6 @@ private fun DisclosableObject<String, *>.validateCredential(
         arrayResultWrapper = { it.flatten() },
         arrayMetadataCombiner = { it.first() },
     ).result
-
-    // Check if there are attributes  that do not have a definition
-    val unknownAttributes =
-        reconstructedCredential.unknownKeys(definedKeys = content.keys).map {
-            SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(ClaimPath.claim(it))
-        }
 
     return definedAttributesErrors + unknownAttributes
 }

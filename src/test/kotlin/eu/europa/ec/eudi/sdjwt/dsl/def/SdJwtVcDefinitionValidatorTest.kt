@@ -15,15 +15,16 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
+import eu.europa.ec.eudi.sdjwt.Disclosure
 import eu.europa.ec.eudi.sdjwt.SdJwtFactory
 import eu.europa.ec.eudi.sdjwt.UnsignedSdJwt
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionCredentialValidationError
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtDefinitionValidationResult
-import eu.europa.ec.eudi.sdjwt.vc.validateCredential
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -31,8 +32,8 @@ import kotlin.test.assertIs
 class SdJwtVcDefinitionValidatorTest {
 
     @Test
-    fun testCredentialWithNoClaims() = PidDefinition.shouldConsiderValid {
-        sdJwt {
+    fun testCredentialWithNoClaims() = PidDefinition.shouldConsiderValid(
+        sdJwtObject = sdJwt {
             // Here we are testing an empty SD-JWT.
             // It should pass the validation, because
             // PidDefinition doesn't contain a top-level
@@ -42,25 +43,24 @@ class SdJwtVcDefinitionValidatorTest {
             // Of course, this is not according to SD-JWT-VC
             // that requires some claims such as vct to be never selectively disclosable
             // Yet current PidDefinition doesn't have this rule
-        }
-    }
+        },
+    )
 
     @Test
-    fun happyPath() = PidDefinition.shouldConsiderValid {
-        sdJwt {
-            sdClaim("family_name", "Foo")
-        }
-    }
+    fun happyPath() = PidDefinition.shouldConsiderValid(
+        sdJwtObject =
+            sdJwt {
+                sdClaim("family_name", "Foo")
+            },
+    )
 
     @Test
-    fun happyPathNoDisclosure() {
-        val sdJwt = sdJwt {
+    fun happyPathNoDisclosure() = PidDefinition.shouldConsiderValid(
+        sdJwtObject = sdJwt {
             sdClaim("family_name", "Foo")
-        }
-        val (jwtPayload, _) = createSdJwt(sdJwt)
-        val result = PidDefinition.validateCredential(jwtPayload, disclosures = emptyList())
-        assertIs<SdJwtDefinitionValidationResult.Valid>(result)
-    }
+        },
+        disclosureFilter = { _ -> false },
+    )
 
     @Test
     fun detectIncorrectlyDisclosedAttributes() {
@@ -79,7 +79,7 @@ class SdJwtVcDefinitionValidatorTest {
                 ClaimPath.claim("address").claim("country"),
             ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
 
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         assertEquals(expectedErrors, errors)
     }
 
@@ -94,8 +94,7 @@ class SdJwtVcDefinitionValidatorTest {
                 claim("country", "Foo")
             }
         }
-        val (jwtPayload, _) = createSdJwt(sdJwt)
-        val result = PidDefinition.validateCredential(jwtPayload, disclosures = emptyList())
+
         // Since we removed all disclosures
         // when can detect only errors related to Never Selectively Disclosable attributes
         val expectedErrors =
@@ -103,7 +102,7 @@ class SdJwtVcDefinitionValidatorTest {
                 ClaimPath.claim("family_name"),
             ).map { SdJwtDefinitionCredentialValidationError.IncorrectlyDisclosedAttribute(it) }
 
-        val errors = assertIs<SdJwtDefinitionValidationResult.Invalid>(result).errors
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, disclosureFilter = { _ -> false })
         assertEquals(expectedErrors, errors)
     }
 
@@ -128,7 +127,7 @@ class SdJwtVcDefinitionValidatorTest {
                 sdClaim("i_am_ok", true)
             }
         }
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         val expectedErrors = listOf(
             "unknownNeverSelectivelyDisclosed",
             "unknownAlwaysSelectivelyDisclosed",
@@ -154,7 +153,7 @@ class SdJwtVcDefinitionValidatorTest {
                 claim("foo", "bar")
             }
         }
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         val expectedError = SdJwtDefinitionCredentialValidationError.UnknownObjectAttribute(
             ClaimPath.claim("address").claim("foo"),
         )
@@ -173,7 +172,7 @@ class SdJwtVcDefinitionValidatorTest {
             ClaimPath.claim("place_of_birth"),
         ).map { SdJwtDefinitionCredentialValidationError.WrongAttributeType(it) }
 
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
         errors.forEach { expectedError -> println(expectedError) }
 
         assertEquals(expectedErrors.size, errors.size)
@@ -188,32 +187,47 @@ class SdJwtVcDefinitionValidatorTest {
      * for such validations
      */
     @Test
-    fun limitationsOfTypeMetadata() = PidDefinition.shouldConsiderValid {
-        sdJwt {
-            sdArrClaim("family_name") { sdClaim("foo") } // family_name is defined a claim not an array
-            sdObjClaim("address") {
-                sdArrClaim("locality") {} // not an array
-                sdObjClaim("country") {} // not an object
-            }
-        }
-    }
+    fun limitationsOfTypeMetadata() = PidDefinition.shouldConsiderValid(
+        sdJwtObject =
+            sdJwt {
+                sdArrClaim("family_name") { sdClaim("foo") } // family_name is defined a claim not an array
+                sdObjClaim("address") {
+                    sdArrClaim("locality") {} // not an array
+                    sdObjClaim("country") {} // not an object
+                }
+            },
+    )
 
-    private fun SdJwtDefinition.shouldConsiderInvalid(sdJwtObject: SdJwtObject): List<SdJwtDefinitionCredentialValidationError> {
-        val result = createAndValidate(this, sdJwtObject)
+    private val default: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidator.FoldBased
+
+    private fun SdJwtDefinition.shouldConsiderInvalid(
+        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
+        sdJwtObject: SdJwtObject,
+        disclosureFilter: (Disclosure) -> Boolean = { true },
+    ): List<SdJwtDefinitionCredentialValidationError> {
+        val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
         return assertIs<SdJwtDefinitionValidationResult.Invalid>(result).errors
     }
 
-    private fun SdJwtDefinition.shouldConsiderValid(sdJwtObject: () -> SdJwtObject) {
-        val result = createAndValidate(this, sdJwtObject())
+    private fun SdJwtDefinition.shouldConsiderValid(
+        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
+        sdJwtObject: SdJwtObject,
+        disclosureFilter: (Disclosure) -> Boolean = { true },
+    ) {
+        val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
         assertIs<SdJwtDefinitionValidationResult.Valid>(result)
     }
 
     private fun createAndValidate(
+        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
         sdJwtDefinition: SdJwtDefinition,
         sdJwtObject: SdJwtObject,
+        disclosureFilter: (Disclosure) -> Boolean,
     ): SdJwtDefinitionValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
-        return sdJwtDefinition.validateCredential(payload, disclosures)
+        return with(definitionBasedSdJwtVcValidator) {
+            sdJwtDefinition.validate(payload, disclosures.filter(disclosureFilter))
+        }
     }
 
     private fun createSdJwt(sdJwtObject: SdJwtObject): UnsignedSdJwt {
