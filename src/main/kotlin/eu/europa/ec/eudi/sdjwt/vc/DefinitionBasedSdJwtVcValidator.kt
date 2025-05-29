@@ -176,9 +176,9 @@ private fun credential(
  * M: The set of defined claims
  * R: List of errors
  */
-private typealias Validated = Folded<String, Set<ClaimPath>, List<DefinitionViolation>>
+private typealias Validated = Folded<String, Unit, List<DefinitionViolation>>
 
-private val Valid: Validated get() = Validated(emptyList(), emptySet(), emptyList())
+private val Valid: Validated get() = Validated(emptyList(), Unit, emptyList())
 
 /**
  * Add two Validated
@@ -186,12 +186,26 @@ private val Valid: Validated get() = Validated(emptyList(), emptySet(), emptyLis
  * to the same object definition
  */
 private operator fun Validated.plus(that: Validated): Validated =
-    this.copy(result = this.result + that.result, metadata = this.metadata + that.metadata)
+    this.copy(result = this.result + that.result)
 
 /**
  * Helper function.
  */
-private fun JsonObject.unknownKeys(definedKeys: Set<String>) = keys - definedKeys
+private fun checkUnknownAttributes(
+    attributeClaimPath: ClaimPath?,
+    json: JsonObject,
+    definition: DisclosableObject<String, Any?>,
+): List<DefinitionViolation.UnknownClaim> {
+    val unknownAttributeKeys = json.keys - definition.content.keys
+    return unknownAttributeKeys.map { unknownAttribute ->
+        val unknownAttributeRelativePath = ClaimPath.claim(unknownAttribute)
+        val unknownAttributeClaimPath = attributeClaimPath
+            ?.let { attributeClaimPath + unknownAttributeRelativePath }
+            ?: unknownAttributeRelativePath
+
+        DefinitionViolation.UnknownClaim(unknownAttributeClaimPath)
+    }
+}
 
 private fun DisclosableObject<String, *>.validateCredential(
     reconstructedCredential: JsonObject,
@@ -199,9 +213,7 @@ private fun DisclosableObject<String, *>.validateCredential(
 ): List<DefinitionViolation> {
     // Check if there are attributes  that do not have a definition
     val unknownAttributes =
-        reconstructedCredential.unknownKeys(definedKeys = content.keys).map {
-            DefinitionViolation.UnknownClaim(ClaimPath.claim(it))
-        }
+        checkUnknownAttributes(null, reconstructedCredential, this)
 
     // Traverse the definition of attributes
     // and identify errors of the presented credential
@@ -220,7 +232,7 @@ private fun DisclosableObject<String, *>.validateCredential(
 private class ObjectDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ObjectFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
+) : ObjectFoldHandlers<String, Any?, Unit, List<DefinitionViolation>> {
 
     /**
      * Calculates the claim path of an attribute
@@ -258,24 +270,6 @@ private class ObjectDefinitionHandler(
             ?.takeIf { it !is T }
             ?.let { DefinitionViolation.WrongClaimType(attributeClaimPath) }
 
-    private fun checkIsObject(
-        attributeClaimPath: ClaimPath,
-        definedAttributes: Set<ClaimPath>,
-    ): List<DefinitionViolation> =
-        presented(attributeClaimPath).getOrThrow()?.let { json ->
-            when (json) {
-                is JsonObject -> {
-                    val presentedAttributes = json.keys.map { attributeClaimPath + ClaimPathElement.Claim(it) }
-                    val unknownAttributes = presentedAttributes - definedAttributes
-                    unknownAttributes.map { DefinitionViolation.UnknownClaim(it) }
-                }
-
-                else -> {
-                    listOf(DefinitionViolation.WrongClaimType(attributeClaimPath))
-                }
-            }
-        }.orEmpty()
-
     override fun ifId(
         path: List<String?>,
         key: String,
@@ -287,7 +281,7 @@ private class ObjectDefinitionHandler(
             buildList {
                 checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             }
-        return Validated(path, setOf(attributeClaimPath), errors)
+        return Validated(path, Unit, errors)
     }
 
     override fun ifArray(
@@ -303,7 +297,7 @@ private class ObjectDefinitionHandler(
             checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             addAll(foldedArray.result)
         }
-        return Validated(path, setOf(attributeClaimPath), errors)
+        return Validated(path, Unit, errors)
     }
 
     override fun ifObject(
@@ -315,18 +309,23 @@ private class ObjectDefinitionHandler(
         val expectedAlwaysSD = obj is Disclosable.AlwaysSelectively
         val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
-            addAll(checkIsObject(attributeClaimPath, foldedObject.metadata))
+            presented(attributeClaimPath).getOrThrow()?.let { json ->
+                when (json) {
+                    is JsonObject -> addAll(checkUnknownAttributes(attributeClaimPath, json, obj.value.value))
+                    else -> add(DefinitionViolation.WrongClaimType(attributeClaimPath))
+                }
+            }
             checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
             addAll(foldedObject.result)
         }
-        return Validated(path, setOf(attributeClaimPath), errors)
+        return Validated(path, Unit, errors)
     }
 }
 
 private class ArrayDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
+) : ArrayFoldHandlers<String, Any?, Unit, List<DefinitionViolation>> {
 
     private fun claimPath(parentPath: List<String?>): ClaimPath = parentPath.toClaimPath()
 
@@ -338,7 +337,7 @@ private class ArrayDefinitionHandler(
     ): Validated {
         val parentPath = claimPath(path).also { println(it) }
         println("$parentPath ")
-        return Validated(path, emptySet(), emptyList())
+        return Validated(path, Unit, emptyList())
     }
 
     override fun ifId(
@@ -347,29 +346,29 @@ private class ArrayDefinitionHandler(
         id: Disclosable<DisclosableValue.Id<String, Any?>>,
     ): Validated {
         val parentPath = claimPath(path).also { println(it) }
-        return Validated(path, emptySet(), emptyList())
+        return Validated(path, Unit, emptyList())
     }
 
     override fun ifArray(
         path: List<String?>,
         index: Int,
         array: Disclosable<DisclosableValue.Arr<String, Any?>>,
-        foldedArray: Folded<String, Set<ClaimPath>, List<DefinitionViolation>>,
+        foldedArray: Validated,
     ): Validated {
         val parentPath = claimPath(path).also { println(it) }
         println("$parentPath ")
-        return Validated(path, emptySet(), emptyList())
+        return Validated(path, Unit, emptyList())
     }
 
     override fun ifObject(
         path: List<String?>,
         index: Int,
         obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
-        foldedObject: Folded<String, Set<ClaimPath>, List<DefinitionViolation>>,
+        foldedObject: Validated,
     ): Validated {
         val parentPath = claimPath(path).also { println(it) }
         println("$parentPath ")
-        return Validated(path, emptySet(), emptyList())
+        return Validated(path, Unit, emptyList())
     }
 }
 
