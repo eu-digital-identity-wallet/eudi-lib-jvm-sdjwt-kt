@@ -326,7 +326,7 @@ private class ObjectDefinitionHandler(
 private class ArrayDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : SimpleArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
+) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
 
     private fun claimPath(parentPath: List<String?>): ClaimPath = parentPath.toClaimPath()
 

@@ -88,7 +88,7 @@ private val ObjectHandlers = object : ObjectFoldHandlers<String, AttributeMetada
     }
 }
 
-private val ArrayHandlers = object : SimpleArrayFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
+private val ArrayHandlers = object : ArrayFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
 
     private fun processElement(path: List<String?>): ClaimPaths =
         claimPaths(path, setOf(path.toClaimPath()))

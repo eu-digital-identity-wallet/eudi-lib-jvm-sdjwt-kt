@@ -85,7 +85,7 @@ interface ObjectFoldHandlers<K, in A, M, R> {
     ): Folded<K, M, R>
 }
 
-interface SimpleArrayFoldHandlers<K, in A, M, R> {
+interface ArrayFoldHandlers<K, in A, M, R> {
     /**
      * Handles a selectively disclosable primitive value
      *
@@ -143,7 +143,7 @@ interface SimpleArrayFoldHandlers<K, in A, M, R> {
  */
 fun <K, A, R, M> DisclosableObject<K, A>.fold(
     objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
+    arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
     initial: Folded<K, M, R>,
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     arrayResultWrapper: (List<R>) -> R,
@@ -176,7 +176,7 @@ fun <K, A, R, M> DisclosableObject<K, A>.fold(
  */
 fun <K, A, R, M> DisclosableArray<K, A>.fold(
     objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
+    arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
     initial: Folded<K, M, R>,
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     arrayResultWrapper: (List<R>) -> R,
@@ -214,7 +214,7 @@ fun <K, A, R, M> DisclosableArray<K, A>.fold(
  */
 private class Fold<K, A, R, M>(
     private val objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    private val arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
+    private val arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
     private val initial: Folded<K, M, R>,
     private val combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     private val arrayResultWrapper: (List<R>) -> R,
