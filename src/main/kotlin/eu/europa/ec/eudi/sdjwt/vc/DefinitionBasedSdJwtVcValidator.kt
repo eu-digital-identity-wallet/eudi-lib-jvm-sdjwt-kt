@@ -19,6 +19,7 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.ClaimPathAwareObjectFoldHandlers
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
 import kotlinx.serialization.json.*
 
@@ -194,25 +195,28 @@ private operator fun ClaimPath?.plus(key: String): ClaimPath =
 
 private fun checkIsObjectWithKnownAttributes(
     attributeClaimPath: ClaimPath?,
-    jsonCtx: JsonElement,
+    jsonCtx: JsonObject,
     definition: DisclosableObject<String, Any?>,
 ): List<DefinitionViolation> {
-    fun checkUnknownAttributes(json: JsonObject): List<DefinitionViolation.UnknownClaim> {
-        val unknownAttributeKeys = json.keys - definition.content.keys
+    fun JsonObject.checkUnknownAttributes(): List<DefinitionViolation.UnknownClaim> {
+        val unknownAttributeKeys = keys - definition.content.keys
         return unknownAttributeKeys.map {
             DefinitionViolation.UnknownClaim(attributeClaimPath + it)
         }
     }
 
-    val json =
-        attributeClaimPath
-            ?.let { with(SelectPath) { jsonCtx.select(it) }.getOrThrow() }
-            ?: jsonCtx
-
-    return when (json) {
-        is JsonObject -> checkUnknownAttributes(json)
-        else -> listOf(DefinitionViolation.WrongClaimType(attributeClaimPath))
+    val errors = if (attributeClaimPath != null) {
+        val json = with(SelectPath) { jsonCtx.select(attributeClaimPath) }.getOrThrow()
+        when (json) {
+            null -> emptyList()
+            is JsonObject -> json.checkUnknownAttributes()
+            else -> listOf(DefinitionViolation.WrongClaimType(attributeClaimPath))
+        }
+    } else {
+        jsonCtx.checkUnknownAttributes()
     }
+
+    return errors
 }
 
 private fun DisclosableObject<String, *>.validateCredential(
@@ -240,12 +244,7 @@ private fun DisclosableObject<String, *>.validateCredential(
 private class ObjectDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ObjectFoldHandlers<String, Any?, Unit, List<DefinitionViolation>> {
-
-    /**
-     * Calculates the claim path of an attribute
-     */
-    private fun attributeClaimPath(path: List<String?>, key: String): ClaimPath = path.toClaimPath() + key
+) : ClaimPathAwareObjectFoldHandlers<Any?, Unit, List<DefinitionViolation>>() {
 
     private val ClaimPath.attributeClaim: String
         get() {
@@ -280,49 +279,43 @@ private class ObjectDefinitionHandler(
             ?.let { DefinitionViolation.WrongClaimType(attributeClaimPath) }
 
     override fun ifId(
-        path: List<String?>,
-        key: String,
+        path: ClaimPath,
         id: Disclosable<DisclosableValue.Id<String, Any?>>,
-    ): Validated {
+    ): Pair<Unit, List<DefinitionViolation>> {
         val expectedAlwaysSD = id is Disclosable.AlwaysSelectively
-        val attributeClaimPath = attributeClaimPath(path, key)
         val errors =
             buildList {
-                checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
+                checkIncorrectlyDisclosedAttribute(path, expectedAlwaysSD)?.let(::add)
             }
-        return Validated(path, Unit, errors)
+        return Unit to errors
     }
 
     override fun ifArray(
-        path: List<String?>,
-        key: String,
+        path: ClaimPath,
         array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Validated,
-    ): Validated {
+    ): Pair<Unit, List<DefinitionViolation>> {
         val expectedAlwaysSD = array is Disclosable.AlwaysSelectively
-        val attributeClaimPath = attributeClaimPath(path, key)
         val errors = buildList {
-            checkIs<JsonArray>(attributeClaimPath)?.let(::add)
-            checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
+            checkIs<JsonArray>(path)?.let(::add)
+            checkIncorrectlyDisclosedAttribute(path, expectedAlwaysSD)?.let(::add)
             addAll(foldedArray.result)
         }
-        return Validated(path, Unit, errors)
+        return Unit to errors
     }
 
     override fun ifObject(
-        path: List<String?>,
-        key: String,
+        path: ClaimPath,
         obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Validated,
-    ): Validated {
+    ): Pair<Unit, List<DefinitionViolation>> {
         val expectedAlwaysSD = obj is Disclosable.AlwaysSelectively
-        val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
-            addAll(checkIsObjectWithKnownAttributes(attributeClaimPath, reconstructedCredential, obj.value.value))
-            checkIncorrectlyDisclosedAttribute(attributeClaimPath, expectedAlwaysSD)?.let(::add)
+            addAll(checkIsObjectWithKnownAttributes(path, reconstructedCredential, obj.value.value))
+            checkIncorrectlyDisclosedAttribute(path, expectedAlwaysSD)?.let(::add)
             addAll(foldedObject.result)
         }
-        return Validated(path, Unit, errors)
+        return Unit to errors
     }
 }
 
