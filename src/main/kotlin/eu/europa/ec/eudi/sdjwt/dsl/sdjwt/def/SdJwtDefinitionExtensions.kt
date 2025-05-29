@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 
 private typealias ClaimPaths = Folded<String, Unit, Set<ClaimPath>>
 
@@ -41,8 +42,158 @@ fun DisclosableObject<String, AttributeMetadata>.claimPaths(): Set<ClaimPath> =
         arrayMetadataCombiner = { },
     ).result
 
-private fun List<String?>.toClaimPath(): ClaimPath {
-    require(isNotEmpty()) { "Path segments cannot be empty" }
+abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<String, A, M, R> {
+
+    protected fun attributeClaimPath(
+        path: List<String?>,
+        key: String,
+    ): ClaimPath = path.toClaimPath()
+        ?.let { it + ClaimPathElement.Claim(key) }
+        ?: ClaimPath.claim(key)
+
+    abstract fun ifId(
+        path: ClaimPath,
+        id: Disclosable<DisclosableValue.Id<String, A>>,
+    ): Pair<M, R>
+
+    abstract fun ifArray(
+        path: ClaimPath,
+        array: Disclosable<DisclosableValue.Arr<String, A>>,
+        foldedArray: Folded<String, M, R>,
+    ): Pair<M, R>
+
+    abstract fun ifObject(
+        path: ClaimPath,
+        obj: Disclosable<DisclosableValue.Obj<String, A>>,
+        foldedObject: Folded<String, M, R>,
+    ): Pair<M, R>
+
+    override fun ifId(
+        path: List<String?>,
+        key: String,
+        id: Disclosable<DisclosableValue.Id<String, A>>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifId(attributeClaimPath(path, key), id)
+        return Folded(path, m, r)
+    }
+
+    override fun ifArray(
+        path: List<String?>,
+        key: String,
+        array: Disclosable<DisclosableValue.Arr<String, A>>,
+        foldedArray: Folded<String, M, R>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifArray(attributeClaimPath(path, key), array, foldedArray)
+        return Folded(path, m, r)
+    }
+
+    override fun ifObject(
+        path: List<String?>,
+        key: String,
+        obj: Disclosable<DisclosableValue.Obj<String, A>>,
+        foldedObject: Folded<String, M, R>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifObject(attributeClaimPath(path, key), obj, foldedObject)
+        return Folded(path, m, r)
+    }
+}
+private abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<String, A, M, R> {
+
+    private fun elementClaimPath(path: List<String?>, index: Int): ClaimPath {
+        val indexElement = ClaimPathElement.ArrayElement(index)
+        return path.toClaimPath()
+            ?.let { it -> it + indexElement }
+            ?: ClaimPath(indexElement)
+    }
+
+    abstract fun ifId(
+        path: ClaimPath,
+        id: Disclosable<DisclosableValue.Id<String, A>>,
+    ): Pair<M, R>
+
+    abstract fun ifArray(
+        path: ClaimPath,
+        array: Disclosable<DisclosableValue.Arr<String, A>>,
+        foldedArray: Folded<String, M, R>,
+    ): Pair<M, R>
+
+    abstract fun ifObject(
+        path: ClaimPath,
+        obj: Disclosable<DisclosableValue.Obj<String, A>>,
+        foldedObject: Folded<String, M, R>,
+    ): Pair<M, R>
+
+    override fun ifId(
+        path: List<String?>,
+        index: Int,
+        id: Disclosable<DisclosableValue.Id<String, A>>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifId(elementClaimPath(path, index), id)
+        return Folded(path, m, r)
+    }
+
+    override fun ifArray(
+        path: List<String?>,
+        index: Int,
+        array: Disclosable<DisclosableValue.Arr<String, A>>,
+        foldedArray: Folded<String, M, R>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifArray(elementClaimPath(path, index), array, foldedArray)
+        return Folded(path, m, r)
+    }
+
+    override fun ifObject(
+        path: List<String?>,
+        index: Int,
+        obj: Disclosable<DisclosableValue.Obj<String, A>>,
+        foldedObject: Folded<String, M, R>,
+    ): Folded<String, M, R> {
+        val (m, r) = ifObject(elementClaimPath(path, index), obj, foldedObject)
+        return Folded(path, m, r)
+    }
+}
+
+private object ObjectHandlers : ClaimPathAwareObjectFoldHandlers<AttributeMetadata, Unit, Set<ClaimPath>>() {
+    override fun ifId(
+        path: ClaimPath,
+        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(path)
+
+    override fun ifArray(
+        path: ClaimPath,
+        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
+    ): Pair<Unit, Set<ClaimPath>> = foldedArray.metadata to setOf(path) + foldedArray.result
+
+    override fun ifObject(
+        path: ClaimPath,
+        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
+    ): Pair<Unit, Set<ClaimPath>> = foldedObject.metadata to setOf(path) + foldedObject.result
+}
+
+private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<AttributeMetadata, Unit, Set<ClaimPath>>() {
+
+    override fun ifId(
+        path: ClaimPath,
+        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
+
+    override fun ifArray(
+        path: ClaimPath,
+        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
+
+    override fun ifObject(
+        path: ClaimPath,
+        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
+}
+
+private fun List<String?>.toClaimPath(): ClaimPath? {
+    if (isEmpty()) return null
     val head = requireNotNull(first()) { "First path segment must be an object key" }
     return drop(1).fold(ClaimPath.claim(head)) { path, claim ->
         when (claim) {
@@ -50,66 +201,4 @@ private fun List<String?>.toClaimPath(): ClaimPath {
             else -> path.claim(claim)
         }
     }
-}
-
-private val ObjectHandlers = object : ObjectFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
-
-    private fun processNode(
-        parentPath: List<String?>,
-        key: String,
-        childPaths: Set<ClaimPath>,
-    ): ClaimPaths =
-        claimPaths(parentPath, setOf((parentPath + key).toClaimPath()) + childPaths)
-
-    override fun ifId(
-        path: List<String?>,
-        key: String,
-        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
-    ): Folded<String, Unit, Set<ClaimPath>> {
-        return processNode(path, key, emptySet())
-    }
-
-    override fun ifArray(
-        path: List<String?>,
-        key: String,
-        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
-        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
-    ): Folded<String, Unit, Set<ClaimPath>> {
-        return processNode(path, key, foldedArray.result)
-    }
-
-    override fun ifObject(
-        path: List<String?>,
-        key: String,
-        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
-        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
-    ): Folded<String, Unit, Set<ClaimPath>> {
-        return processNode(path, key, foldedObject.result)
-    }
-}
-
-private val ArrayHandlers = object : ArrayFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
-
-    private fun processElement(path: List<String?>): ClaimPaths =
-        claimPaths(path, setOf(path.toClaimPath()))
-
-    override fun ifId(
-        path: List<String?>,
-        index: Int,
-        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
-    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
-
-    override fun ifArray(
-        path: List<String?>,
-        index: Int,
-        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
-        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
-    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
-
-    override fun ifObject(
-        path: List<String?>,
-        index: Int,
-        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
-        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
-    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
 }
