@@ -36,19 +36,7 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
      */
     fun SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> {
         val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
-        val visitor = ClaimVisitor { path, disclosure ->
-            if (disclosure != null) {
-                require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
-            }
-            val claimDisclosures = run {
-                val containerPath = path.parent()
-                val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
-                disclosure
-                    ?.let { containerDisclosures + it }
-                    ?: containerDisclosures
-            }
-            disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
-        }
+        val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
         val claims = recreateClaims(visitor)
         return claims to disclosuresPerClaim
     }
@@ -84,5 +72,19 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
     companion object {
         operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtPresentationOps<JWT> =
             object : SdJwtPresentationOps<JWT>, SdJwtRecreateClaimsOps<JWT> by SdJwtRecreateClaimsOps(claimsOf) {}
+
+        fun disclosuresPerClaimVisitor(disclosuresPerClaim: MutableMap<ClaimPath, List<Disclosure>>) = ClaimVisitor { path, disclosure ->
+            if (disclosure != null) {
+                require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
+            }
+            val claimDisclosures = run {
+                val containerPath = path.parent()
+                val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
+                disclosure
+                    ?.let { containerDisclosures + it }
+                    ?: containerDisclosures
+            }
+            disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
+        }
     }
 }

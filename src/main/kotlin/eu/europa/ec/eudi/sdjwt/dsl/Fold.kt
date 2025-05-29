@@ -39,7 +39,7 @@ data class Folded<out K, out M, out R>(
  * @param R The result type of the fold operation
  * @param M The type of metadata stored in the context
  */
-interface ObjectFoldHandlers<K, A, M, R> {
+interface ObjectFoldHandlers<K, in A, M, R> {
     /**
      * Handles a selectively disclosable primitive value
      *
@@ -126,7 +126,7 @@ interface ObjectFoldHandlers<K, A, M, R> {
  * @param R The result type of the fold operation
  * @param M The type of metadata stored in the context
  */
-interface ArrayFoldHandlers<K, A, M, R> {
+interface ArrayFoldHandlers<K, in A, M, R> {
     /**
      * Handles a selectively disclosable primitive value in an array.
      *
