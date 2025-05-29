@@ -45,10 +45,14 @@ interface ObjectFoldHandlers<K, in A, M, R> {
      *
      * @param path The current path in the structure
      * @param key The key of the current element
-     * @param value The primitive value
+     * @param id The primitive value
      * @return The fold context with the result and metadata
      */
-    fun ifAlwaysSelectivelyDisclosableId(path: List<K?>, key: K, value: A): Folded<K, M, R>
+    fun ifId(
+        path: List<K?>,
+        key: K,
+        id: Disclosable<DisclosableValue.Id<K, A>>,
+    ): Folded<K, M, R>
 
     /**
      * Handles a selectively disclosable array
@@ -58,9 +62,10 @@ interface ObjectFoldHandlers<K, in A, M, R> {
      * @param foldedArray The result of folding the array
      * @return The fold context with the result and metadata
      */
-    fun ifAlwaysSelectivelyDisclosableArr(
+    fun ifArray(
         path: List<K?>,
         key: K,
+        array: Disclosable<DisclosableValue.Arr<K, A>>,
         foldedArray: Folded<K, M, R>,
     ): Folded<K, M, R>
 
@@ -72,134 +77,56 @@ interface ObjectFoldHandlers<K, in A, M, R> {
      * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
-    fun ifAlwaysSelectivelyDisclosableObj(
+    fun ifObject(
         path: List<K?>,
         key: K,
-        foldedObject: Folded<K, M, R>,
-    ): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable primitive value
-     *
-     * @param path The current path in the structure
-     * @param key The key of the current element
-     * @param value The primitive value
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableId(path: List<K?>, key: K, value: A): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable array
-     *
-     * @param path The current path in the structure
-     * @param key The key of the current element
-     * @param foldedArray The result of folding the array
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableArr(
-        path: List<K?>,
-        key: K,
-        foldedArray: Folded<K, M, R>,
-    ): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable object in an object.
-     *
-     * @param path The current path in the structure
-     * @param key The key of the current element
-     * @param foldedObject The result of folding the object
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableObj(
-        path: List<K?>,
-        key: K,
+        obj: Disclosable<DisclosableValue.Obj<K, A>>,
         foldedObject: Folded<K, M, R>,
     ): Folded<K, M, R>
 }
 
-/**
- * Interface defining path-aware handlers for folding a DisclosableArray.
- * Each function receives the current path and returns an EnhancedFoldContext.
- *
- * @param K The type of keys in the disclosable object (used for path tracking)
- * @param A The type of values in the disclosable array
- * @param R The result type of the fold operation
- * @param M The type of metadata stored in the context
- */
-interface ArrayFoldHandlers<K, in A, M, R> {
+interface SimpleArrayFoldHandlers<K, in A, M, R> {
     /**
-     * Handles a selectively disclosable primitive value in an array.
+     * Handles a selectively disclosable primitive value
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
-     * @param value The primitive value
+     * @param id The primitive value
      * @return The fold context with the result and metadata
      */
-    fun ifAlwaysSelectivelyDisclosableId(path: List<K?>, index: Int, value: A): Folded<K, M, R>
-
-    /**
-     * Handles a selectively disclosable array within an array.
-     *
-     * @param path The current path in the structure
-     * @param index The index of the current element in the array
-     * @param foldedArray The result of folding the nested array
-     * @return The fold context with the result and metadata
-     */
-    fun ifAlwaysSelectivelyDisclosableArr(
+    fun ifId(
         path: List<K?>,
         index: Int,
+        id: Disclosable<DisclosableValue.Id<K, A>>,
+    ): Folded<K, M, R>
+
+    /**
+     * Handles a selectively disclosable array
+     *
+     * @param path The current path in the structure
+     * @param index The index of the current element in the array
+     * @param foldedArray The result of folding the array
+     * @return The fold context with the result and metadata
+     */
+    fun ifArray(
+        path: List<K?>,
+        index: Int,
+        array: Disclosable<DisclosableValue.Arr<K, A>>,
         foldedArray: Folded<K, M, R>,
     ): Folded<K, M, R>
 
     /**
-     * Handles a selectively disclosable object within an array.
+     * Handles a selectively disclosable object
      *
      * @param path The current path in the structure
      * @param index The index of the current element in the array
      * @param foldedObject The result of folding the object
      * @return The fold context with the result and metadata
      */
-    fun ifAlwaysSelectivelyDisclosableObj(
+    fun ifObject(
         path: List<K?>,
         index: Int,
-        foldedObject: Folded<K, M, R>,
-    ): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable primitive value in an array.
-     *
-     * @param path The current path in the structure
-     * @param index The index of the current element in the array
-     * @param value The primitive value
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableId(path: List<K?>, index: Int, value: A): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable array within an array.
-     *
-     * @param path The current path in the structure
-     * @param index The index of the current element in the array
-     * @param foldedArray The result of folding the nested array
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableArr(
-        path: List<K?>,
-        index: Int,
-        foldedArray: Folded<K, M, R>,
-    ): Folded<K, M, R>
-
-    /**
-     * Handles a non-selectively disclosable object within an array.
-     *
-     * @param path The current path in the structure
-     * @param index The index of the current element in the array
-     * @param foldedObject The result of folding the object
-     * @return The fold context with the result and metadata
-     */
-    fun ifNeverSelectivelyDisclosableObj(
-        path: List<K?>,
-        index: Int,
+        obj: Disclosable<DisclosableValue.Obj<K, A>>,
         foldedObject: Folded<K, M, R>,
     ): Folded<K, M, R>
 }
@@ -216,7 +143,7 @@ interface ArrayFoldHandlers<K, in A, M, R> {
  */
 fun <K, A, R, M> DisclosableObject<K, A>.fold(
     objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
+    arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
     initial: Folded<K, M, R>,
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     arrayResultWrapper: (List<R>) -> R,
@@ -249,7 +176,7 @@ fun <K, A, R, M> DisclosableObject<K, A>.fold(
  */
 fun <K, A, R, M> DisclosableArray<K, A>.fold(
     objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
+    arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
     initial: Folded<K, M, R>,
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     arrayResultWrapper: (List<R>) -> R,
@@ -287,7 +214,7 @@ fun <K, A, R, M> DisclosableArray<K, A>.fold(
  */
 private class Fold<K, A, R, M>(
     private val objectHandlers: ObjectFoldHandlers<K, A, M, R>,
-    private val arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
+    private val arrayHandlers: SimpleArrayFoldHandlers<K, A, M, R>,
     private val initial: Folded<K, M, R>,
     private val combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     private val arrayResultWrapper: (List<R>) -> R,
@@ -298,34 +225,24 @@ private class Fold<K, A, R, M>(
         DeepRecursiveFunction { (obj, currentPath) ->
             obj.content.entries.fold(initial) { acc, (key, disclosableElement) ->
                 val keyPath = currentPath + key
-                val folded = when (disclosableElement) {
-                    is Disclosable.AlwaysSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id ->
-                                objectHandlers.ifAlwaysSelectivelyDisclosableId(currentPath, key, disclosableValue.value)
-                            is DisclosableValue.Arr -> {
-                                val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifAlwaysSelectivelyDisclosableArr(currentPath, key, foldedArray)
-                            }
-                            is DisclosableValue.Obj -> {
-                                val foldedObj = callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifAlwaysSelectivelyDisclosableObj(currentPath, key, foldedObj)
-                            }
-                        }
+                val disclosableValue = disclosableElement.value
+                val folded = when (disclosableValue) {
+                    is DisclosableValue.Id<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
+                        objectHandlers.ifId(currentPath, key, id)
                     }
-                    is Disclosable.NeverSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id ->
-                                objectHandlers.ifNeverSelectivelyDisclosableId(currentPath, key, disclosableValue.value)
-                            is DisclosableValue.Arr -> {
-                                val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifNeverSelectivelyDisclosableArr(currentPath, key, foldedArray)
-                            }
-                            is DisclosableValue.Obj -> {
-                                val foldedObj = callRecursive(disclosableValue.value to keyPath)
-                                objectHandlers.ifNeverSelectivelyDisclosableObj(currentPath, key, foldedObj)
-                            }
-                        }
+                    is DisclosableValue.Arr<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
+                        val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
+                        objectHandlers.ifArray(currentPath, key, array, foldedArray)
+                    }
+                    is DisclosableValue.Obj<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
+                        val foldedObj = callRecursive(disclosableValue.value to keyPath)
+                        objectHandlers.ifObject(currentPath, key, obj, foldedObj)
                     }
                 }
                 combine(acc, folded)
@@ -341,38 +258,28 @@ private class Fold<K, A, R, M>(
             val elementMetadata = mutableListOf<M>()
 
             arr.content.forEachIndexed { index, disclosableElement ->
-                val elementContext = when (disclosableElement) {
-                    is Disclosable.AlwaysSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id ->
-                                arrayHandlers.ifAlwaysSelectivelyDisclosableId(arrayContentPathPrefix, index, disclosableValue.value)
-                            is DisclosableValue.Arr -> {
-                                val foldedInnerArrayResult = callRecursive(disclosableValue.value to (arrayContentPathPrefix + null))
-                                arrayHandlers.ifAlwaysSelectivelyDisclosableArr(arrayContentPathPrefix, index, foldedInnerArrayResult)
-                            }
-                            is DisclosableValue.Obj -> {
-                                val foldedInnerObjectResult = foldObject.callRecursive(disclosableValue.value to arrayContentPathPrefix)
-                                arrayHandlers.ifAlwaysSelectivelyDisclosableObj(arrayContentPathPrefix, index, foldedInnerObjectResult)
-                            }
-                        }
+                val disclosableValue = disclosableElement.value
+                val folded = when (disclosableValue) {
+                    is DisclosableValue.Id<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
+                        arrayHandlers.ifId(arrayContentPathPrefix, index, id)
                     }
-                    is Disclosable.NeverSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id ->
-                                arrayHandlers.ifNeverSelectivelyDisclosableId(arrayContentPathPrefix, index, disclosableValue.value)
-                            is DisclosableValue.Arr -> {
-                                val foldedInnerArrayResult = callRecursive(disclosableValue.value to (arrayContentPathPrefix + null))
-                                arrayHandlers.ifNeverSelectivelyDisclosableArr(arrayContentPathPrefix, index, foldedInnerArrayResult)
-                            }
-                            is DisclosableValue.Obj -> {
-                                val foldedInnerObjectResult = foldObject.callRecursive(disclosableValue.value to arrayContentPathPrefix)
-                                arrayHandlers.ifNeverSelectivelyDisclosableObj(arrayContentPathPrefix, index, foldedInnerObjectResult)
-                            }
-                        }
+                    is DisclosableValue.Arr<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
+                        val foldedArray = callRecursive(disclosableValue.value to (arrayContentPathPrefix + null))
+                        arrayHandlers.ifArray(arrayContentPathPrefix, index, array, foldedArray)
+                    }
+                    is DisclosableValue.Obj<K, A> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
+                        val foldedObj = foldObject.callRecursive(disclosableValue.value to arrayContentPathPrefix)
+                        arrayHandlers.ifObject(arrayContentPathPrefix, index, obj, foldedObj)
                     }
                 }
-                elementResults.add(elementContext.result)
-                elementMetadata.add(elementContext.metadata)
+                elementResults.add(folded.result)
+                elementMetadata.add(folded.metadata)
             }
 
             // Use the provided wrappers to construct the final array result and combine metadata

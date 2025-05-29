@@ -276,11 +276,12 @@ private class ObjectDefinitionHandler(
             }
         }.orEmpty()
 
-    private fun ifDisclosedId(
+    override fun ifId(
         path: List<String?>,
         key: String,
-        expectedAlwaysSD: Boolean,
+        id: Disclosable<DisclosableValue.Id<String, Any?>>,
     ): Validated {
+        val expectedAlwaysSD = id is Disclosable.AlwaysSelectively
         val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors =
             buildList {
@@ -289,12 +290,13 @@ private class ObjectDefinitionHandler(
         return Validated(path, setOf(attributeClaimPath), errors)
     }
 
-    private fun ifDisclosableArr(
+    override fun ifArray(
         path: List<String?>,
         key: String,
+        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Validated,
-        expectedAlwaysSD: Boolean,
     ): Validated {
+        val expectedAlwaysSD = array is Disclosable.AlwaysSelectively
         val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
             checkIs<JsonArray>(attributeClaimPath)?.let(::add)
@@ -304,12 +306,13 @@ private class ObjectDefinitionHandler(
         return Validated(path, setOf(attributeClaimPath), errors)
     }
 
-    private fun ifDisclosableObj(
+    override fun ifObject(
         path: List<String?>,
         key: String,
+        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Validated,
-        expectedAlwaysSD: Boolean,
     ): Validated {
+        val expectedAlwaysSD = obj is Disclosable.AlwaysSelectively
         val attributeClaimPath = attributeClaimPath(path, key).also { println(it) }
         val errors = buildList {
             addAll(checkIsObject(attributeClaimPath, foldedObject.metadata))
@@ -318,70 +321,14 @@ private class ObjectDefinitionHandler(
         }
         return Validated(path, setOf(attributeClaimPath), errors)
     }
-
-    override fun ifAlwaysSelectivelyDisclosableId(
-        path: List<String?>,
-        key: String,
-        value: Any?,
-    ): Validated = ifDisclosedId(path, key, expectedAlwaysSD = true)
-
-    override fun ifAlwaysSelectivelyDisclosableArr(
-        path: List<String?>,
-        key: String,
-        foldedArray: Validated,
-    ): Validated = ifDisclosableArr(path, key, foldedArray, expectedAlwaysSD = true)
-
-    override fun ifAlwaysSelectivelyDisclosableObj(
-        path: List<String?>,
-        key: String,
-        foldedObject: Validated,
-    ): Validated = ifDisclosableObj(path, key, foldedObject, true)
-
-    override fun ifNeverSelectivelyDisclosableId(
-        path: List<String?>,
-        key: String,
-        value: Any?,
-    ): Validated = ifDisclosedId(path, key, expectedAlwaysSD = false)
-
-    override fun ifNeverSelectivelyDisclosableArr(
-        path: List<String?>,
-        key: String,
-        foldedArray: Validated,
-    ): Validated = ifDisclosableArr(path, key, foldedArray, expectedAlwaysSD = false)
-
-    override fun ifNeverSelectivelyDisclosableObj(
-        path: List<String?>,
-        key: String,
-        foldedObject: Validated,
-    ): Validated = ifDisclosableObj(path, key, foldedObject, expectedAlwaysSD = false)
 }
 
 private class ArrayDefinitionHandler(
     private val reconstructedCredential: JsonObject,
     private val disclosuresPerClaim: Map<ClaimPath, List<Disclosure>>,
-) : ArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
+) : SimpleArrayFoldHandlers<String, Any?, Set<ClaimPath>, List<DefinitionViolation>> {
 
     private fun claimPath(parentPath: List<String?>): ClaimPath = parentPath.toClaimPath()
-
-    private fun ifDisclosableId(
-        path: List<String?>,
-        index: Int,
-        expectedAlwaysSD: Boolean,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        return Validated(path, emptySet(), emptyList())
-    }
-
-    private fun ifDisclosableArr(
-        path: List<String?>,
-        index: Int,
-        foldedArray: Validated,
-        expectedAlwaysSD: Boolean,
-    ): Validated {
-        val parentPath = claimPath(path).also { println(it) }
-        println("$parentPath ")
-        return Validated(path, emptySet(), emptyList())
-    }
 
     private fun ifDisclosableObj(
         path: List<String?>,
@@ -394,41 +341,36 @@ private class ArrayDefinitionHandler(
         return Validated(path, emptySet(), emptyList())
     }
 
-    override fun ifAlwaysSelectivelyDisclosableId(
+    override fun ifId(
         path: List<String?>,
         index: Int,
-        value: Any?,
-    ): Validated = ifDisclosableId(path, index, expectedAlwaysSD = true)
+        id: Disclosable<DisclosableValue.Id<String, Any?>>,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        return Validated(path, emptySet(), emptyList())
+    }
 
-    override fun ifAlwaysSelectivelyDisclosableArr(
+    override fun ifArray(
         path: List<String?>,
         index: Int,
-        foldedArray: Validated,
-    ): Validated = ifDisclosableArr(path, index, foldedArray, expectedAlwaysSD = true)
+        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
+        foldedArray: Folded<String, Set<ClaimPath>, List<DefinitionViolation>>,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        println("$parentPath ")
+        return Validated(path, emptySet(), emptyList())
+    }
 
-    override fun ifAlwaysSelectivelyDisclosableObj(
+    override fun ifObject(
         path: List<String?>,
         index: Int,
-        foldedObject: Validated,
-    ): Validated = ifDisclosableObj(path, index, foldedObject, expectedAlwaysSD = true)
-
-    override fun ifNeverSelectivelyDisclosableId(
-        path: List<String?>,
-        index: Int,
-        value: Any?,
-    ): Validated = ifDisclosableId(path, index, expectedAlwaysSD = false)
-
-    override fun ifNeverSelectivelyDisclosableArr(
-        path: List<String?>,
-        index: Int,
-        foldedArray: Validated,
-    ): Validated = ifDisclosableArr(path, index, foldedArray, expectedAlwaysSD = false)
-
-    override fun ifNeverSelectivelyDisclosableObj(
-        path: List<String?>,
-        index: Int,
-        foldedObject: Validated,
-    ): Validated = ifDisclosableObj(path, index, foldedObject, expectedAlwaysSD = false)
+        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
+        foldedObject: Folded<String, Set<ClaimPath>, List<DefinitionViolation>>,
+    ): Validated {
+        val parentPath = claimPath(path).also { println(it) }
+        println("$parentPath ")
+        return Validated(path, emptySet(), emptyList())
+    }
 }
 
 private fun List<String?>.toClaimPath(): ClaimPath {
@@ -470,7 +412,8 @@ private class SdJwtVcDefinitionValidator private constructor(
             // iterate through the known claims and validate them
             current.filterKeys { it !in unknownClaims }.forEach { (claimName, claimValue) ->
                 val claimPath = parent?.claim(claimName) ?: ClaimPath.claim(claimName)
-                val claimDefinition = checkNotNull(definition.content[claimName]) { "can find definition for $claimPath" }
+                val claimDefinition =
+                    checkNotNull(definition.content[claimName]) { "can find definition for $claimPath" }
                 validate(claimPath, claimValue, claimDefinition)
             }
         }
@@ -502,8 +445,22 @@ private class SdJwtVcDefinitionValidator private constructor(
             allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
         } else {
             when (val disclosableValue = definition.value) {
-                is DisclosableValue.Obj -> validateObject.callRecursive(Triple(claimPath, claimValue.jsonObject, disclosableValue.value))
-                is DisclosableValue.Arr -> validateArray.callRecursive(Triple(claimPath, claimValue.jsonArray, disclosableValue.value))
+                is DisclosableValue.Obj -> validateObject.callRecursive(
+                    Triple(
+                        claimPath,
+                        claimValue.jsonObject,
+                        disclosableValue.value,
+                    ),
+                )
+
+                is DisclosableValue.Arr -> validateArray.callRecursive(
+                    Triple(
+                        claimPath,
+                        claimValue.jsonArray,
+                        disclosableValue.value,
+                    ),
+                )
+
                 is DisclosableValue.Id -> {
                     // nothing more to do
                 }
@@ -558,7 +515,11 @@ private class SdJwtVcDefinitionValidator private constructor(
             SdJwtVcSpec.VCT_INTEGRITY,
         )
 
-        fun validate(jwtPayload: JsonObject, disclosures: List<Disclosure>, definition: SdJwtDefinition): DefinitionBasedValidationResult =
+        fun validate(
+            jwtPayload: JsonObject,
+            disclosures: List<Disclosure>,
+            definition: SdJwtDefinition,
+        ): DefinitionBasedValidationResult =
             validate(UnsignedSdJwt(jwtPayload, disclosures), definition)
 
         fun validate(sdJwt: UnsignedSdJwt, definition: SdJwtDefinition): DefinitionBasedValidationResult {

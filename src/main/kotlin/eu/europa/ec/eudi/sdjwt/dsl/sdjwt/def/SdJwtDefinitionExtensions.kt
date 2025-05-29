@@ -19,6 +19,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 
 private typealias ClaimPaths = Folded<String, Unit, Set<ClaimPath>>
+
 private fun claimPaths(path: List<String?>, result: Set<ClaimPath>): ClaimPaths =
     Folded(path, Unit, result)
 
@@ -40,16 +41,6 @@ fun DisclosableObject<String, AttributeMetadata>.claimPaths(): Set<ClaimPath> =
         arrayMetadataCombiner = { },
     ).result
 
-private fun processNode(
-    parentPath: List<String?>,
-    key: String,
-    childPaths: Set<ClaimPath>,
-): ClaimPaths =
-    claimPaths(parentPath, setOf((parentPath + key).toClaimPath()) + childPaths)
-
-private fun processElement(parentPath: List<String?>): ClaimPaths =
-    claimPaths(parentPath, setOf(parentPath.toClaimPath()))
-
 private fun List<String?>.toClaimPath(): ClaimPath {
     require(isNotEmpty()) { "Path segments cannot be empty" }
     val head = requireNotNull(first()) { "First path segment must be an object key" }
@@ -63,67 +54,62 @@ private fun List<String?>.toClaimPath(): ClaimPath {
 
 private val ObjectHandlers = object : ObjectFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
 
-    override fun ifAlwaysSelectivelyDisclosableId(path: List<String?>, key: String, value: AttributeMetadata) =
-        processNode(path, key, emptySet())
+    private fun processNode(
+        parentPath: List<String?>,
+        key: String,
+        childPaths: Set<ClaimPath>,
+    ): ClaimPaths =
+        claimPaths(parentPath, setOf((parentPath + key).toClaimPath()) + childPaths)
 
-    override fun ifAlwaysSelectivelyDisclosableArr(
+    override fun ifId(
         path: List<String?>,
         key: String,
-        foldedArray: ClaimPaths,
-    ) = processNode(path, key, foldedArray.result)
+        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+    ): Folded<String, Unit, Set<ClaimPath>> {
+        return processNode(path, key, emptySet())
+    }
 
-    override fun ifAlwaysSelectivelyDisclosableObj(
+    override fun ifArray(
         path: List<String?>,
         key: String,
-        foldedObject: ClaimPaths,
-    ) = processNode(path, key, foldedObject.result)
+        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
+    ): Folded<String, Unit, Set<ClaimPath>> {
+        return processNode(path, key, foldedArray.result)
+    }
 
-    override fun ifNeverSelectivelyDisclosableId(path: List<String?>, key: String, value: AttributeMetadata) =
-        processNode(path, key, emptySet())
-
-    override fun ifNeverSelectivelyDisclosableArr(
+    override fun ifObject(
         path: List<String?>,
         key: String,
-        foldedArray: ClaimPaths,
-    ) = processNode(path, key, foldedArray.result)
-
-    override fun ifNeverSelectivelyDisclosableObj(
-        path: List<String?>,
-        key: String,
-        foldedObject: ClaimPaths,
-    ) = processNode(path, key, foldedObject.result)
+        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
+    ): Folded<String, Unit, Set<ClaimPath>> {
+        return processNode(path, key, foldedObject.result)
+    }
 }
 
-private val ArrayHandlers = object : ArrayFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
+private val ArrayHandlers = object : SimpleArrayFoldHandlers<String, AttributeMetadata, Unit, Set<ClaimPath>> {
 
-    // All array handler overrides call processElement
-    override fun ifAlwaysSelectivelyDisclosableId(path: List<String?>, index: Int, value: AttributeMetadata) =
-        processElement(path)
+    private fun processElement(path: List<String?>): ClaimPaths =
+        claimPaths(path, setOf(path.toClaimPath()))
 
-    override fun ifAlwaysSelectivelyDisclosableArr(
+    override fun ifId(
         path: List<String?>,
         index: Int,
-        foldedArray: ClaimPaths,
-    ) = processElement(path)
+        id: Disclosable<DisclosableValue.Id<String, AttributeMetadata>>,
+    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
 
-    override fun ifAlwaysSelectivelyDisclosableObj(
+    override fun ifArray(
         path: List<String?>,
         index: Int,
-        foldedObject: ClaimPaths,
-    ) = processElement(path)
+        array: Disclosable<DisclosableValue.Arr<String, AttributeMetadata>>,
+        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
+    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
 
-    override fun ifNeverSelectivelyDisclosableId(path: List<String?>, index: Int, value: AttributeMetadata) =
-        processElement(path)
-
-    override fun ifNeverSelectivelyDisclosableArr(
+    override fun ifObject(
         path: List<String?>,
         index: Int,
-        foldedArray: ClaimPaths,
-    ) = processElement(path)
-
-    override fun ifNeverSelectivelyDisclosableObj(
-        path: List<String?>,
-        index: Int,
-        foldedObject: ClaimPaths,
-    ) = processElement(path)
+        obj: Disclosable<DisclosableValue.Obj<String, AttributeMetadata>>,
+        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
+    ): Folded<String, Unit, Set<ClaimPath>> = processElement(path)
 }
