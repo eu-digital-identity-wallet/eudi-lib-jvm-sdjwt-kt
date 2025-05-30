@@ -187,7 +187,7 @@ private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<Any?, Unit, Set<C
         path: ClaimPath,
         array: Disclosable<DisclosableValue.Arr<String, Any?>>,
         foldedArray: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent())) + foldedArray.result
 
     override fun ifObject(
         path: ClaimPath,
