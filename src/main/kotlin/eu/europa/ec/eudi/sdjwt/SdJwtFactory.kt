@@ -15,10 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.dsl.ArrayFoldHandlers
-import eu.europa.ec.eudi.sdjwt.dsl.Folded
-import eu.europa.ec.eudi.sdjwt.dsl.ObjectFoldHandlers
-import eu.europa.ec.eudi.sdjwt.dsl.fold
+import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import kotlinx.serialization.json.*
 
@@ -130,7 +127,7 @@ class SdJwtFactory(
         val disclosed = sdJwtObject.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
-            initial = _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
+            initial = Disclosed(
                 path = emptyList(),
                 result = JsonObject(emptyMap()),
                 metadata = Disclosures(disclosures = emptyList(), minimumDigests = sdJwtObject.minimumDigests),
@@ -183,175 +180,178 @@ class SdJwtFactory(
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { putJsonArray(SdJwtSpec.CLAIM_SD) { add(digest.value) } }
 
-        override fun ifAlwaysSelectivelyDisclosableId(
+        override fun ifId(
             path: List<String?>,
             key: String,
-            value: JsonElement,
+            id: Disclosable<DisclosableValue.Id<String, JsonElement>>,
         ): Disclosed {
-            // Generate disclosure for selectively disclosed primitive
-            val (disclosure, digest) = objectPropertyDisclosure(key to value)
+            val value = id.value.value
+            return when (id) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Id<String, JsonElement>> -> {
+                    // Generate disclosure for selectively disclosed primitive
+                    val (disclosure, digest) = objectPropertyDisclosure(key to value)
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(listOf(disclosure)),
+                        result = disclosureDigestObj(digest),
+                    )
+                }
 
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(listOf(disclosure)),
-                result = disclosureDigestObj(digest),
-            )
-        }
-
-        override fun ifAlwaysSelectivelyDisclosableArr(
-            path: List<String?>,
-            key: String,
-            foldedArray: Disclosed,
-        ): Disclosed {
-            // The array has already been processed, now we need to make the whole array selectively disclosable
-            val arrayJson = foldedArray.result.jsonArray
-            val (disclosure, digest) = objectPropertyDisclosure(key to arrayJson)
-
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
-                result = disclosureDigestObj(digest),
-            )
-        }
-
-        override fun ifAlwaysSelectivelyDisclosableObj(
-            path: List<String?>,
-            key: String,
-            foldedObject: Disclosed,
-        ): Disclosed {
-            val (disclosure, digest) = run {
-                val objJson = foldedObject.result.jsonObject
-                objectPropertyDisclosure(key to objJson)
+                is Disclosable.NeverSelectively<DisclosableValue.Id<String, JsonElement>> -> {
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(),
+                        result = buildJsonObject { put(key, value) },
+                    )
+                }
             }
-
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedObject.metadata.disclosures + disclosure),
-                result = disclosureDigestObj(digest),
-            )
         }
 
-        override fun ifNeverSelectivelyDisclosableId(
+        override fun ifArray(
             path: List<String?>,
             key: String,
-            value: JsonElement,
-        ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(),
-                result = buildJsonObject { put(key, value) },
-            )
-
-        override fun ifNeverSelectivelyDisclosableArr(
-            path: List<String?>,
-            key: String,
+            array: Disclosable<DisclosableValue.Arr<String, JsonElement>>,
             foldedArray: Disclosed,
-        ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedArray.metadata.disclosures),
-                result = buildJsonObject { put(key, foldedArray.result.jsonArray) },
-            )
+        ): Disclosed {
+            return when (array) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Arr<String, JsonElement>> -> {
+                    // The array has already been processed, now we need to make the whole array selectively disclosable
+                    val arrayJson = foldedArray.result.jsonArray
+                    val (disclosure, digest) = objectPropertyDisclosure(key to arrayJson)
 
-        override fun ifNeverSelectivelyDisclosableObj(
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
+                        result = disclosureDigestObj(digest),
+                    )
+                }
+
+                is Disclosable.NeverSelectively<DisclosableValue.Arr<String, JsonElement>> -> {
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedArray.metadata.disclosures),
+                        result = buildJsonObject { put(key, foldedArray.result.jsonArray) },
+                    )
+                }
+            }
+        }
+
+        override fun ifObject(
             path: List<String?>,
             key: String,
+            obj: Disclosable<DisclosableValue.Obj<String, JsonElement>>,
             foldedObject: Disclosed,
-        ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                result = buildJsonObject { put(key, foldedObject.result.jsonObject) },
-                metadata = Disclosures(foldedObject.metadata.disclosures),
-            )
+        ): Disclosed {
+            return when (obj) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, JsonElement>> -> {
+                    val (disclosure, digest) = run {
+                        val objJson = foldedObject.result.jsonObject
+                        objectPropertyDisclosure(key to objJson)
+                    }
+
+                    return Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedObject.metadata.disclosures + disclosure),
+                        result = disclosureDigestObj(digest),
+                    )
+                }
+
+                is Disclosable.NeverSelectively<DisclosableValue.Obj<String, JsonElement>> -> {
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedObject.metadata.disclosures),
+                        result = buildJsonObject { put(key, foldedObject.result.jsonObject) },
+                    )
+                }
+            }
+        }
     }
 
-    // Array handlers for the fold operation
-    // K is String, A is JsonElement, R is JsonElement, M is SdJwtMetadata
     private val arrayHandlers = object : ArrayFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { put("...", digest.value) }
 
-        override fun ifAlwaysSelectivelyDisclosableId(
+        override fun ifId(
             path: List<String?>,
             index: Int,
-            value: JsonElement,
+            id: Disclosable<DisclosableValue.Id<String, JsonElement>>,
         ): Disclosed {
-            // Generate disclosure for selectively disclosed array element
-            val (disclosure, digest) = arrayElementDisclosure(value)
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(listOf(disclosure)),
-                result = disclosureDigestObj(digest),
-            )
-        }
+            val value = id.value.value
+            return when (id) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Id<String, JsonElement>> -> {
+                    // Generate disclosure for selectively disclosed array element
+                    val (disclosure, digest) = arrayElementDisclosure(value)
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(listOf(disclosure)),
+                        result = disclosureDigestObj(digest),
+                    )
+                }
 
-        override fun ifAlwaysSelectivelyDisclosableArr(
-            path: List<String?>,
-            index: Int,
-            foldedArray: Disclosed,
-        ): Disclosed {
-            // The nested array has already been processed, now we need to make it selectively disclosable
-            val (disclosure, digest) = run {
-                val arrayJson = foldedArray.result.jsonArray
-                arrayElementDisclosure(arrayJson)
+                is Disclosable.NeverSelectively<DisclosableValue.Id<String, JsonElement>> ->
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(emptyList()),
+                        result = value,
+                    )
             }
-
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
-                result = disclosureDigestObj(digest),
-            )
         }
 
-        override fun ifAlwaysSelectivelyDisclosableObj(
+        override fun ifArray(
             path: List<String?>,
             index: Int,
-            foldedObject: Disclosed,
-        ): Disclosed {
-            // The nested object has already been processed, now we need to make it selectively disclosable
-            val (disclosure, digest) = run {
-                val objJson = foldedObject.result.jsonObject
-                arrayElementDisclosure(objJson)
-            }
-            return _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedObject.metadata.disclosures + disclosure), // Add the new disclosure
-                result = disclosureDigestObj(digest),
-            )
-        }
-
-        override fun ifNeverSelectivelyDisclosableId(
-            path: List<String?>,
-            index: Int,
-            value: JsonElement,
-        ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(emptyList()),
-                result = value,
-            )
-
-        override fun ifNeverSelectivelyDisclosableArr(
-            path: List<String?>,
-            index: Int,
+            array: Disclosable<DisclosableValue.Arr<String, JsonElement>>,
             foldedArray: Disclosed,
         ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedArray.metadata.disclosures),
-                result = foldedArray.result.jsonArray,
-            )
+            when (array) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Arr<String, JsonElement>> -> {
+                    // The nested array has already been processed, now we need to make it selectively disclosable
+                    val (disclosure, digest) = this.run {
+                        val arrayJson = foldedArray.result.jsonArray
+                        arrayElementDisclosure(arrayJson)
+                    }
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedArray.metadata.disclosures + disclosure),
+                        result = disclosureDigestObj(digest),
+                    )
+                }
 
-        override fun ifNeverSelectivelyDisclosableObj(
+                is Disclosable.NeverSelectively<DisclosableValue.Arr<String, JsonElement>> ->
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedArray.metadata.disclosures),
+                        result = foldedArray.result.jsonArray,
+                    )
+            }
+
+        override fun ifObject(
             path: List<String?>,
             index: Int,
+            obj: Disclosable<DisclosableValue.Obj<String, JsonElement>>,
             foldedObject: Disclosed,
         ): Disclosed =
-            _root_ide_package_.eu.europa.ec.eudi.sdjwt.Disclosed(
-                path = path,
-                metadata = Disclosures(foldedObject.metadata.disclosures),
-                result = foldedObject.result.jsonObject,
-            )
+            when (obj) {
+                is Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, JsonElement>> -> {
+                    // The nested object has already been processed, now we need to make it selectively disclosable
+                    val (disclosure, digest) = this.run {
+                        val objJson = foldedObject.result.jsonObject
+                        arrayElementDisclosure(objJson)
+                    }
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedObject.metadata.disclosures + disclosure), // Add the new disclosure
+                        result = disclosureDigestObj(digest),
+                    )
+                }
+
+                is Disclosable.NeverSelectively<DisclosableValue.Obj<String, JsonElement>> ->
+                    Disclosed(
+                        path = path,
+                        metadata = Disclosures(foldedObject.metadata.disclosures),
+                        result = foldedObject.result.jsonObject,
+                    )
+            }
     }
 
     // Helper functions

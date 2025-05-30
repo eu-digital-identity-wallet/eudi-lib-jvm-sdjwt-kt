@@ -25,7 +25,9 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedValidationResult
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionViolation
+import kotlinx.serialization.json.JsonNull
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
@@ -60,6 +62,17 @@ class DefinitionBasedSdJwtVcValidatorTest {
             sdClaim("family_name", "Foo")
         },
         disclosureFilter = { _ -> false },
+    )
+
+    @Test
+    fun shouldConsiderNullValuesValid() = PidDefinition.shouldConsiderValid(
+        sdJwtObject = sdJwt {
+            sdClaim("family_name", JsonNull)
+            sdClaim("address", JsonNull)
+            sdObjClaim("place_of_birth") {
+                sdClaim("country", JsonNull)
+            }
+        },
     )
 
     @Test
@@ -197,6 +210,110 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 }
             },
     )
+
+    @Test
+    fun arrayTestHappyPath() = AddressDefinition.shouldConsiderValid(
+        sdJwtObject = sdJwt {
+            sdArrClaim("addresses") {
+                sdObjClaim {
+                    sdClaim("country", "country0")
+                }
+                sdObjClaim {
+                    sdClaim("country", "country1")
+                }
+                sdObjClaim {
+                    sdClaim("country", "country2")
+                }
+            }
+        },
+    )
+
+    @Test
+    fun arrayShouldConsiderNullValuesValid() = AddressDefinition.shouldConsiderValid(
+        sdJwtObject = sdJwt {
+            sdArrClaim("addresses") {
+                sdClaim(JsonNull)
+                sdClaim(JsonNull)
+                sdClaim(JsonNull)
+            }
+        },
+    )
+
+    @Test
+    fun detectIncorrectlyDisclosedClaimInsideArray() {
+        val sdJwt = sdJwt {
+            sdArrClaim("addresses") {
+                objClaim {
+                    sdClaim("country", "country0")
+                }
+                sdObjClaim {
+                    sdClaim("country", "country1")
+                }
+                objClaim {
+                    sdClaim("country", "country2")
+                }
+            }
+        }
+
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("addresses").arrayElement(0),
+                ClaimPath.claim("addresses").arrayElement(2),
+            ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun detectUnknownClaimsInArray() {
+        val sdJwt = sdJwt {
+            sdArrClaim("addresses") {
+                sdObjClaim {
+                    sdClaim("county", "county1")
+                }
+                sdObjClaim {
+                    sdClaim("locale", "locale1")
+                }
+            }
+        }
+
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("addresses").arrayElement(0).claim("county"),
+                ClaimPath.claim("addresses").arrayElement(1).claim("locale"),
+            ).map { DefinitionViolation.UnknownClaim(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun detectIncorrectTypeInsideArray() {
+        val sdJwt = sdJwt {
+            sdArrClaim("addresses") {
+                sdArrClaim {
+                    sdClaim("country0")
+                }
+                sdObjClaim {
+                    sdClaim("country", "country1")
+                }
+                sdObjClaim {
+                    // dsl limitation. won't be detected because country is Id
+                    sdObjClaim("country") {
+                        sdClaim("country", "country2")
+                    }
+                }
+                sdClaim("country3")
+            }
+        }
+
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("addresses").arrayElement(0),
+                ClaimPath.claim("addresses").arrayElement(3),
+            ).map { DefinitionViolation.WrongClaimType(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
 
     private val default: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidator.Default
 
