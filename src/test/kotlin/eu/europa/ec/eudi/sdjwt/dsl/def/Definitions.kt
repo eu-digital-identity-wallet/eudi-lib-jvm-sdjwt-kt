@@ -47,6 +47,7 @@ val addressMeta = """
       ],
       "claims": [
         { "path": [ "addresses" ], "sd": "always" },
+        { "path": [ "addresses", null ], "sd": "always" },
         { "path": [ "addresses", null, "house_number" ], "sd": "always" },
         { "path": [ "addresses", null, "street_address" ], "sd": "always" },
         { "path": [ "addresses", null, "locality" ], "sd": "always" },

@@ -241,7 +241,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
         assertContentEquals(expectedErrors, errors)
     }
 
-    private val default: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidator.UsingFold
+    private val default: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidator.Default
 
     private fun SdJwtDefinition.shouldConsiderInvalid(
         definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,

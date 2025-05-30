@@ -193,7 +193,7 @@ private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<Any?, Unit, Set<C
         path: ClaimPath,
         obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
         foldedObject: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
+    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent())) + foldedObject.result
 }
 
 private fun List<String?>.toClaimPath(): ClaimPath? {
