@@ -185,28 +185,30 @@ private class SdJwtVcDefinitionValidator private constructor(
         }
 
         // check type and recurse as needed
-        if (!definition.isOfCorrectType(claimValue)) {
-            allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
-        } else {
-            when (val disclosableValue = definition.value) {
-                is DisclosableValue.Obj -> validateObject.callRecursive(
-                    Triple(
-                        claimPath,
-                        claimValue.jsonObject,
-                        disclosableValue.value,
-                    ),
-                )
+        if (claimValue != JsonNull) {
+            if (!definition.isOfCorrectType(claimValue)) {
+                allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
+            } else {
+                when (val disclosableValue = definition.value) {
+                    is DisclosableValue.Obj -> validateObject.callRecursive(
+                        Triple(
+                            claimPath,
+                            claimValue.jsonObject,
+                            disclosableValue.value,
+                        ),
+                    )
 
-                is DisclosableValue.Arr -> validateArray.callRecursive(
-                    Triple(
-                        claimPath,
-                        claimValue.jsonArray,
-                        disclosableValue.value,
-                    ),
-                )
+                    is DisclosableValue.Arr -> validateArray.callRecursive(
+                        Triple(
+                            claimPath,
+                            claimValue.jsonArray,
+                            disclosableValue.value,
+                        ),
+                    )
 
-                is DisclosableValue.Id -> {
-                    // nothing more to do
+                    is DisclosableValue.Id -> {
+                        // nothing more to do
+                    }
                 }
             }
         }
@@ -229,12 +231,14 @@ private class SdJwtVcDefinitionValidator private constructor(
             (this is Disclosable.NeverSelectively<*> && !requiresDisclosures)
     }
 
-    private fun DisclosableElement<*, *>.isOfCorrectType(claimValue: JsonElement): Boolean =
-        when (value) {
+    private fun DisclosableElement<*, *>.isOfCorrectType(claimValue: JsonElement): Boolean {
+        require(claimValue != JsonNull) { "not applicable to JsonNull" }
+        return when (value) {
             is DisclosableValue.Obj -> claimValue is JsonObject
             is DisclosableValue.Arr -> claimValue is JsonArray
             is DisclosableValue.Id -> true
         }
+    }
 
     private fun validate(processedPayload: JsonObject): List<DefinitionViolation> {
         val processedPayloadWithoutWellKnown = JsonObject(processedPayload - wellKnownClaims)
