@@ -82,7 +82,7 @@ private fun checkIsObjectWithKnownAttributes(
     definition: DisclosableObject<String, Any?>,
 ): List<DefinitionViolation> {
     fun JsonObject.checkUnknownAttributes(): List<DefinitionViolation.UnknownClaim> {
-        val unknownAttributeKeys = keys - definition.content.keys
+        val unknownAttributeKeys = keys - definition.content.keys - DefinitionViolation.UnknownClaim.WellKnownClaims
         return unknownAttributeKeys.map {
             DefinitionViolation.UnknownClaim(attributeClaimPath + it)
         }
