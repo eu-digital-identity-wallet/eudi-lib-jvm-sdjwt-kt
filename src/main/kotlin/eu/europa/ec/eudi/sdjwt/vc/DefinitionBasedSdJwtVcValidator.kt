@@ -123,7 +123,6 @@ fun interface DefinitionBasedSdJwtVcValidator {
 
     companion object {
         val Default: DefinitionBasedSdJwtVcValidator = SdJwtVcDefinitionValidator
-
         val UsingFold: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidatorUsingFold
     }
 }
@@ -148,8 +147,8 @@ private class SdJwtVcDefinitionValidator private constructor(
             val unknownClaims = current.keys - definition.content.keys
             allErrors.addAll(
                 unknownClaims.map {
-                    val unknownAttributeClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
-                    DefinitionViolation.UnknownClaim(unknownAttributeClaimPath)
+                    val unknownClaimPaths = parent?.claim(it) ?: ClaimPath.claim(it)
+                    DefinitionViolation.UnknownClaim(unknownClaimPaths)
                 },
             )
 
@@ -157,7 +156,7 @@ private class SdJwtVcDefinitionValidator private constructor(
             current.filterKeys { it !in unknownClaims }.forEach { (claimName, claimValue) ->
                 val claimPath = parent?.claim(claimName) ?: ClaimPath.claim(claimName)
                 val claimDefinition =
-                    checkNotNull(definition.content[claimName]) { "can find definition for $claimPath" }
+                    checkNotNull(definition.content[claimName]) { "cannot find definition for $claimPath" }
                 validate(claimPath, claimValue, claimDefinition)
             }
         }
@@ -185,7 +184,7 @@ private class SdJwtVcDefinitionValidator private constructor(
         }
 
         // check type and recurse as needed
-        if (claimValue != JsonNull) {
+        if (JsonNull != claimValue) {
             if (!definition.isOfCorrectType(claimValue)) {
                 allErrors.add(DefinitionViolation.WrongClaimType(claimPath))
             } else {
@@ -217,10 +216,10 @@ private class SdJwtVcDefinitionValidator private constructor(
     private fun DisclosableElement<*, *>.isProperlyDisclosed(claim: ClaimPath): Boolean {
         val requiresDisclosures = run {
             val parentDisclosures = claim.parent()?.let {
-                checkNotNull(disclosuresPerClaimPath[it]) { "can find disclosures for $it" }
+                checkNotNull(disclosuresPerClaimPath[it]) { "cannot find disclosures for $it" }
             }.orEmpty()
             val claimDisclosures = checkNotNull(disclosuresPerClaimPath[claim]) {
-                "can find disclosures for $claim"
+                "cannot find disclosures for $claim"
             }
 
             // if claim requires more disclosures than its parent, it is selectively disclosed
@@ -232,7 +231,7 @@ private class SdJwtVcDefinitionValidator private constructor(
     }
 
     private fun DisclosableElement<*, *>.isOfCorrectType(claimValue: JsonElement): Boolean {
-        require(claimValue != JsonNull) { "not applicable to JsonNull" }
+        require(JsonNull != claimValue) { "not applicable to JsonNull" }
         return when (value) {
             is DisclosableValue.Obj -> claimValue is JsonObject
             is DisclosableValue.Arr -> claimValue is JsonArray
