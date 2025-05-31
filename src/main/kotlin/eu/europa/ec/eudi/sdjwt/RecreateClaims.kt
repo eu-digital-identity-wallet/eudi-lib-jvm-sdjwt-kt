@@ -15,6 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.VerificationError.InvalidJwt
+import eu.europa.ec.eudi.sdjwt.VerificationError.UnsupportedHashingAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.*
 
@@ -77,7 +79,7 @@ fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor?): JsonObject =
 private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
     fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): JsonObject {
-        val hashAlgorithm = jwtClaims.hashAlgorithm() ?: HashAlgorithm.SHA_256
+        val hashAlgorithm = jwtClaims.hashAlgorithm()
         return discloseJwt(
             hashAlgorithm,
             JsonObject(jwtClaims - SdJwtSpec.CLAIM_SD_ALG),
@@ -103,17 +105,25 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         disclosures: List<Disclosure>,
     ): JsonObject {
         // Recalculate digests, using the hash algorithm
-        val disclosuresPerDigest = disclosures.associateBy {
+        val disclosuresByDigest = disclosures.groupBy {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
-        }.toMutableMap()
+        }
 
+        // Verify we have unique disclosures
+        val nonUniqueDisclosures = disclosuresByDigest.filterValues { it.size > 1 }.values.map { it.first() }
+        if (nonUniqueDisclosures.isNotEmpty()) {
+            throw VerificationError.NonUniqueDisclosures(nonUniqueDisclosures.map { it.value }).asException()
+        }
+
+        val disclosuresPerDigest = disclosuresByDigest.mapValues { it.value.first() }.toMutableMap()
         val discloseObject = DiscloseObject(visitor, disclosuresPerDigest)
         val disclosedClaims = discloseObject(currentPath = null, jsonObject = jwtClaims)
 
         // Make sure, all disclosures have been embedded
-        require(disclosuresPerDigest.isEmpty()) {
-            "Could not find digests for disclosures ${disclosuresPerDigest.values.map { it.value }}"
+        if (disclosuresPerDigest.isNotEmpty()) {
+            throw VerificationError.MissingDigests(disclosuresPerDigest.values.toList()).asException()
         }
+
         return disclosedClaims
     }
 }
@@ -122,6 +132,7 @@ private class DiscloseObject(
     private val visitor: ClaimVisitor?,
     private val disclosuresPerDigest: DisclosurePerDigest,
 ) {
+    private val digestsInPayload = mutableSetOf<DisclosureDigest>()
 
     /**
      * Embed disclosures into [jsonObject]
@@ -194,6 +205,8 @@ private class DiscloseObject(
         val resultingClaims = jsonObject.toMutableMap()
 
         fun replace(digest: DisclosureDigest) {
+            ensureUnique(digest)
+
             disclosuresPerDigest.remove(digest)?.let { disclosure ->
                 check(disclosure is Disclosure.ObjectProperty) {
                     "Found array element disclosure ${disclosure.value} within ${SdJwtSpec.CLAIM_SD} claim"
@@ -258,14 +271,24 @@ private class DiscloseObject(
     private fun replaceArrayDigest(
         current: ClaimPath,
         digest: DisclosureDigest,
-    ): JsonElement? =
-        disclosuresPerDigest.remove(digest)?.let { disclosure ->
+    ): JsonElement? {
+        ensureUnique(digest)
+
+        return disclosuresPerDigest.remove(digest)?.let { disclosure ->
             check(disclosure is Disclosure.ArrayElement) {
                 "Found an $disclosure within an selectively disclosed array element"
             }
             visited(current, disclosure)
             disclosure.claim().value()
         }
+    }
+
+    private fun ensureUnique(digest: DisclosureDigest) {
+        if (digestsInPayload.contains(digest)) {
+            throw VerificationError.NonUniqueDisclosureDigests.asException()
+        }
+        digestsInPayload.add(digest)
+    }
 
     private fun visited(path: ClaimPath, disclosure: Disclosure?) {
         visitor?.invoke(path, disclosure)
@@ -315,9 +338,16 @@ internal fun JsonObject.directDigests(): Set<DisclosureDigest> =
         ?: emptySet()
 
 /**
- * Gets from the claims the hash algorithm claim ("_sd_alg")
- * @receiver the claims to check
- * @return The [HashAlgorithm] if found
+ * Looks in the provided claims for the hashing algorithm
+ *
+ * @return the hashing algorithm, if a hashing algorithm is present and contains a string
+ * representing a supported [HashAlgorithm]. Otherwise, raises [InvalidJwt] if hash algorithm is present but does not contain a string,
+ * or [UnsupportedHashingAlgorithm] if hash algorithm is present and contains a string but is not supported.
+ * @receiver the claims in the JWT part of the SD-jWT
  */
-internal fun JsonObject.hashAlgorithm(): HashAlgorithm? =
-    this[SdJwtSpec.CLAIM_SD_ALG]?.let { HashAlgorithm.fromString(it.jsonPrimitive.content) }
+internal fun JsonObject.hashAlgorithm(): HashAlgorithm {
+    val element = get(SdJwtSpec.CLAIM_SD_ALG) ?: JsonPrimitive(SdJwtSpec.DEFAULT_SD_ALG)
+    return if (element is JsonPrimitive && element.isString) {
+        HashAlgorithm.fromString(element.content) ?: throw UnsupportedHashingAlgorithm(element.content).asException()
+    } else throw InvalidJwt("'${SdJwtSpec.CLAIM_SD_ALG}' claim is not a string").asException()
+}
