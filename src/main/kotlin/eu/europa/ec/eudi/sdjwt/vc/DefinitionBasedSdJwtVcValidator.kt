@@ -39,27 +39,7 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of the unknown claim
      */
-    data class UnknownClaim(
-        val claimPath: ClaimPath,
-    ) : DefinitionViolation {
-        companion object {
-            // SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_SD_ALG, are not included because we work with processed payloads
-            // TODO: check whether other well known claims must be added
-            // TODO: verify that when present, the well known claims are never selectively disclosed
-            val WellKnownClaims: Set<String>
-                get() = setOf(
-                    RFC7519.ISSUER,
-                    RFC7519.SUBJECT,
-                    RFC7519.AUDIENCE,
-                    RFC7519.EXPIRATION_TIME,
-                    RFC7519.NOT_BEFORE,
-                    RFC7519.ISSUED_AT,
-                    RFC7519.JWT_ID,
-                    SdJwtVcSpec.VCT,
-                    SdJwtVcSpec.VCT_INTEGRITY,
-                )
-        }
-    }
+    data class UnknownClaim(val claimPath: ClaimPath) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -68,9 +48,7 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of the claim that has incorrect type
      */
-    data class WrongClaimType(
-        val claimPath: ClaimPath?,
-    ) : DefinitionViolation
+    data class WrongClaimType(val claimPath: ClaimPath) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -82,9 +60,7 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of incorrectly disclosed claim
      */
-    data class IncorrectlyDisclosedClaim(
-        val claimPath: ClaimPath,
-    ) : DefinitionViolation
+    data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
 }
 
 sealed interface DefinitionBasedValidationResult {
@@ -139,10 +115,7 @@ fun interface DefinitionBasedSdJwtVcValidator {
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult
 
-    companion object {
-        val Default: DefinitionBasedSdJwtVcValidator = SdJwtVcDefinitionValidator
-        val UsingFold: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidatorUsingFold
-    }
+    companion object : DefinitionBasedSdJwtVcValidator by SdJwtVcDefinitionValidator
 }
 
 /**
@@ -265,7 +238,21 @@ private class SdJwtVcDefinitionValidator private constructor(
 
     companion object : DefinitionBasedSdJwtVcValidator {
 
-        private val wellKnownClaims = DefinitionViolation.UnknownClaim.WellKnownClaims
+        // SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_SD_ALG, are not included because we work with processed payloads
+        // TODO: check whether other well known claims must be added
+        // TODO: verify that when present, the well known claims are never selectively disclosed
+        private val wellKnownClaims: Set<String>
+            get() = setOf(
+                RFC7519.ISSUER,
+                RFC7519.SUBJECT,
+                RFC7519.AUDIENCE,
+                RFC7519.EXPIRATION_TIME,
+                RFC7519.NOT_BEFORE,
+                RFC7519.ISSUED_AT,
+                RFC7519.JWT_ID,
+                SdJwtVcSpec.VCT,
+                SdJwtVcSpec.VCT_INTEGRITY,
+            )
         private fun validate(
             jwtPayload: JsonObject,
             disclosures: List<Disclosure>,
