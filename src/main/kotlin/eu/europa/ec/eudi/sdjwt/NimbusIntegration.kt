@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObjectBuilder
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +77,7 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * - Claims `aud`, `iat` and `nonce`must be present to the JWT payload
  *
  * @param holderPubKey the public key of the holder
- * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
  * If provided, Key Binding JWT payload should contain the challenge as is.
  * @return
  */
@@ -117,9 +118,9 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
  * Adds the confirmation claim (cnf) as a plain (always disclosable) which
  * contains the [jwk]
  *
- * @param jwk the key to put in confirmation claim
+ * @param jwk the key to put in the confirmation claim
  */
-fun DisclosableObjectSpecBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
+fun SdJwtObjectBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
 
 private object NimbusSdJwtIssuerFactory {
 
@@ -163,7 +164,7 @@ object NimbusSdJwtOps :
      *  @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
      * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
 
-     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key binding JWT.
+     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
      * If provided, Key Binding JWT payload should contain the challenge as is.
      *
      * @see keyBindingJWTProcess

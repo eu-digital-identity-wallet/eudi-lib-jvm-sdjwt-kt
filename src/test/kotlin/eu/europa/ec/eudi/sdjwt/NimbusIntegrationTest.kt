@@ -24,11 +24,11 @@ import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.*
-import kotlin.onFailure
 import kotlin.test.Test
 import kotlin.test.fail
 

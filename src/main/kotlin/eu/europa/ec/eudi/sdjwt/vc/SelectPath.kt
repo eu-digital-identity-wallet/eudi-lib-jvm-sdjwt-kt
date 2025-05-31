@@ -19,6 +19,43 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+sealed interface Selection {
+    /**
+     * Represents a successfully found value (terminal path segment)
+     * @property value The found JSON element (null if explicitly null in JSON)
+     */
+    @JvmInline
+    value class SingleMatch(val value: JsonElement?) : Selection
+
+    /**
+     * Represents multiple matches from wildcard navigation
+     * @property matches List of successful matches (empty if no matches)
+     * @property path The complete claim path used
+     */
+    data class WildcardMatches(
+        val matches: List<Match>,
+        val path: ClaimPath,
+    ) : Selection {
+
+        /**
+         * Individual wildcard match with context
+         * @property index Source array index
+         * @property value Found value (null if explicit JSON null)
+         * @property concretePath Actual path taken including indices
+         */
+        data class Match(
+            val index: Int,
+            val value: JsonElement?,
+            val concretePath: ClaimPath,
+        )
+    }
+
+    fun toJsonElement(): JsonElement? = when (this) {
+        is SingleMatch -> value
+        is WildcardMatches -> matches.mapNotNull { it.value }.takeIf { it.isNotEmpty() }?.let(::JsonArray)
+    }
+}
+
 /**
  * Matches a [ClaimPath] to a [JsonElement]
  */
@@ -29,56 +66,182 @@ fun interface SelectPath {
      *
      * @receiver the JSON to match against
      * @param path the path to match
-     * @return a [JsonElement] if present. In case the structure of the given [this@select]
-     * doesn't comply with the [path] a [Result.Failure] is being returned
+     * @return a [Selection]
      */
-    fun JsonElement.select(path: ClaimPath): Result<JsonElement?>
+    fun JsonElement.query(path: ClaimPath): Result<Selection>
+
+    @Deprecated(
+        message = "Will be removed",
+        replaceWith = ReplaceWith("query(path).map { it.toJsonElement() }"),
+    )
+    fun JsonElement.select(path: ClaimPath): Result<JsonElement?> =
+        query(path).map { it.toJsonElement() }
 
     /**
      * Default implementation
      */
-    companion object Default : SelectPath by default()
+    companion object Default : SelectPath by default
 }
 
 //
 // Implementation
 //
+private val default: SelectPath = SelectPath { path ->
 
-private fun default(): SelectPath = SelectPath { path ->
-    try {
-        Result.success(selectPath(this to path))
-    } catch (e: IllegalStateException) {
-        Result.failure(e)
-    }
+    val initialParams = SelectionParams(
+        currentElement = this,
+        remainingPathElements = path.value,
+        accumulatedWildcardScopePathElements = emptyList(),
+        accumulatedConcretePathElements = emptyList(),
+    )
+    runCatching { deepRecursiveSelector(initialParams) }
 }
 
-private val selectPath: DeepRecursiveFunction<Pair<JsonElement, ClaimPath>, JsonElement?> =
-    DeepRecursiveFunction { (element, path) ->
-        val (head, tail) = path
-        head.fold(
-            ifClaim = { name ->
-                check(element is JsonObject) {
-                    "Path element is $head. Was expecting a JSON object, found $element"
-                }
-                val selectedElement = element[name]
-                if (tail == null) selectedElement
-                else selectedElement?.let { callRecursive(it to tail) }
-            },
-            ifArrayElement = { index ->
-                check(element is JsonArray) {
-                    "Path element is $head. Was expecting a JSON array, found $element"
-                }
-                val selectedElement = element.getOrNull(index)
-                if (tail == null) selectedElement
-                else selectedElement?.let { callRecursive(it to tail) }
-            },
-            ifAllArrayElements = {
-                check(element is JsonArray) {
-                    "Path element is $head. Was expecting a JSON array, found $element"
-                }
-                val selectedElement = element
-                if (tail == null) selectedElement
-                else selectedElement.mapNotNull { element -> callRecursive(element to tail) }.let(::JsonArray)
-            },
-        )
+private val deepRecursiveSelector = DeepRecursiveFunction<SelectionParams, Selection> { params ->
+
+    val (currentElement, remainingPathElements, accumulatedWildcardScopePathElements, accumulatedConcretePathElements) = params
+
+    if (remainingPathElements.isEmpty()) {
+        return@DeepRecursiveFunction Selection.SingleMatch(currentElement)
     }
+
+    val head = remainingPathElements.first()
+    val tailElements = remainingPathElements.drop(1)
+
+    // This path is used if 'head' is AllArrayElements to report which path caused the wildcard match.
+    val newWildcardScopePath = accumulatedWildcardScopePathElements + head
+
+    head.fold(
+        ifClaim = { name ->
+            check(currentElement is JsonObject) {
+                "Path segment '$name' expects an object, found ${currentElement::class.simpleName} at ${params.pathForError()}"
+            }
+            val nextElement = currentElement[name]
+            if (nextElement == null || tailElements.isEmpty()) {
+                Selection.SingleMatch(nextElement)
+            } else {
+                val newConcretePathElements = accumulatedConcretePathElements + head
+                val nextParams =
+                    SelectionParams(
+                        currentElement = nextElement,
+                        remainingPathElements = tailElements,
+                        accumulatedWildcardScopePathElements = newWildcardScopePath,
+                        accumulatedConcretePathElements = newConcretePathElements,
+                    )
+                callRecursive(nextParams)
+            }
+        },
+        ifArrayElement = { index ->
+            val newConcretePathElements = accumulatedConcretePathElements + head
+            check(currentElement is JsonArray) {
+                "Path segment for index $index expects an array, found ${currentElement::class.simpleName} at ${params.pathForError()}"
+            }
+            val nextElement = currentElement.getOrNull(index)
+            if (nextElement == null || tailElements.isEmpty()) {
+                Selection.SingleMatch(nextElement)
+            } else {
+                val nextParams =
+                    SelectionParams(
+                        currentElement = nextElement,
+                        remainingPathElements = tailElements,
+                        accumulatedWildcardScopePathElements = newWildcardScopePath,
+                        accumulatedConcretePathElements = newConcretePathElements,
+                    )
+                callRecursive(nextParams)
+            }
+        },
+        ifAllArrayElements = {
+            check(currentElement is JsonArray) {
+                "Path segment 'all array elements' expects an array, found ${currentElement::class.simpleName} at ${params.pathForError()}"
+            }
+
+            val matches = mutableListOf<Selection.WildcardMatches.Match>()
+            val wildcardExpansionPath = buildClaimPathOrFail(newWildcardScopePath, "wildcard expansion path")
+
+            for ((index, arrayItem) in currentElement.withIndex()) {
+                val concretePathToCurrentArrayItemElements =
+                    accumulatedConcretePathElements + ClaimPathElement.ArrayElement(index)
+
+                if (tailElements.isEmpty()) { // Wildcard is the last element in the path
+                    matches.add(
+                        Selection.WildcardMatches.Match(
+                            index = index,
+                            value = arrayItem,
+                            concretePath = buildClaimPathOrFail(
+                                concretePathToCurrentArrayItemElements,
+                                "match concrete path",
+                            ),
+                        ),
+                    )
+                } else { // Path continues after wildcard
+                    // For the sub-selection, its WildcardMatches.path should be relative to its part of the path.
+                    // So, accumulatedWildcardScopePathElements starts fresh from tailElements for the sub-problem.
+                    val subSelectionParams = SelectionParams(
+                        currentElement = arrayItem,
+                        remainingPathElements = tailElements,
+                        accumulatedWildcardScopePathElements = emptyList(), // Reset for sub-problem's own wildcard scope
+                        accumulatedConcretePathElements = concretePathToCurrentArrayItemElements,
+                    )
+
+                    try {
+                        val subSelection = callRecursive(subSelectionParams)
+                        val finalConcretePathForThisMatch = buildClaimPathOrFail(
+                            concretePathToCurrentArrayItemElements + tailElements,
+                            "final match concrete path",
+                        )
+                        matches.add(subSelection.toWildcardMatch(index, finalConcretePathForThisMatch))
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            Selection.WildcardMatches(matches, wildcardExpansionPath)
+        },
+    )
+}
+
+// Data class to hold the parameters for the deep recursive function
+private data class SelectionParams(
+    val currentElement: JsonElement,
+    val remainingPathElements: List<ClaimPathElement>,
+    val accumulatedWildcardScopePathElements: List<ClaimPathElement>,
+    val accumulatedConcretePathElements: List<ClaimPathElement>,
+)
+
+private fun Selection.toWildcardMatch(
+    index: Int,
+    finalConcretePathForThisMatch: ClaimPath,
+): Selection.WildcardMatches.Match {
+    val json = when (this) {
+        is Selection.SingleMatch -> value
+        is Selection.WildcardMatches -> JsonArray(matches.mapNotNull { it.value })
+    }
+    return Selection.WildcardMatches.Match(index, json, finalConcretePathForThisMatch)
+}
+
+private fun SelectionParams.pathForError() =
+    formatPathForError(accumulatedConcretePathElements)
+
+private fun buildClaimPathOrFail(
+    elements: List<ClaimPathElement>,
+    context: String,
+): ClaimPath {
+    require(elements.isNotEmpty()) {
+        "Cannot build ClaimPath for $context from empty elements list. This indicates a logic error."
+    }
+    return ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
+}
+
+private fun formatPathForError(elements: List<ClaimPathElement>): String {
+    return if (elements.isEmpty()) "[root]"
+    else try {
+        buildClaimPathOrFail(elements, "error formatting").toString()
+    } catch (_: IllegalArgumentException) {
+        elements.joinToString(prefix = "[", separator = ", ", postfix = "]") {
+            when (it) {
+                is ClaimPathElement.Claim -> "\"${it.name}\""
+                is ClaimPathElement.ArrayElement -> it.index.toString()
+                is ClaimPathElement.AllArrayElements -> "null" // As per its toString()
+            }
+        }
+    }
+}

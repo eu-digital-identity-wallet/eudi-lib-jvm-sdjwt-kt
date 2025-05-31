@@ -19,6 +19,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.runBlocking
 

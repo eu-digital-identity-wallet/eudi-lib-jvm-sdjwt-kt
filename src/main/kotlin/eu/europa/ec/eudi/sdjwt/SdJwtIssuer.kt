@@ -15,14 +15,14 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlinx.serialization.json.JsonObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 
 /**
  * Signs an SD-JWT
  *
  * @param SIGNED_JWT the type representing the JWT part of the SD-JWT, signed
  **/
-typealias SignSdJwt<SIGNED_JWT> = suspend (SdJwt<JsonObject>) -> SdJwt<SIGNED_JWT>
+typealias SignSdJwt<SIGNED_JWT> = suspend (UnsignedSdJwt) -> SdJwt<SIGNED_JWT>
 
 /**
  * Representation of a function capable of producing an [issuance SD-JWT][SdJwt]
@@ -37,7 +37,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
      * @param sdJwtSpec the contents of the SD-JWT
      * @return the issuance SD-JWT
      */
-    suspend fun issue(sdJwtSpec: DisclosableObject): Result<SdJwt<SIGNED_JWT>>
+    suspend fun issue(sdJwtSpec: SdJwtObject): Result<SdJwt<SIGNED_JWT>>
 
     companion object {
         /**
@@ -48,9 +48,9 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
         operator fun <SIGNED_JWT> invoke(
             sdJwtFactory: SdJwtFactory,
             signSdJwt: SignSdJwt<SIGNED_JWT>,
-        ): SdJwtIssuer<SIGNED_JWT> = SdJwtIssuer { sdElements ->
+        ): SdJwtIssuer<SIGNED_JWT> = SdJwtIssuer { sdJwtObject ->
             runCatching {
-                val unsignedSdJwt = sdJwtFactory.createSdJwt(sdElements).getOrThrow()
+                val unsignedSdJwt = sdJwtFactory.createSdJwt(sdJwtObject).getOrThrow()
                 signSdJwt(unsignedSdJwt)
             }
         }

@@ -45,16 +45,16 @@ sealed interface Disclosure {
 
         /**
          * Directly wraps a string representing into a [Disclosure]
-         * Validates the given string is a base64-url encoded json array that contains
-         * a json string (salt)
-         * a json string (claim name)
-         * a json element (claim value)
+         * Validates the given string is a base64-url encoded JSON array that contains
+         * a JSON string (salt)
+         * a JSON string (claim name)
+         * a JSON element (claim value)
          * for [ObjectProperty]
          *
          * or
          *
-         * a json string (salt)
-         * a json element (claim value)
+         * A JSON string (salt)
+         * a JSON element (claim value)
          * for [ArrayElement]
          */
         internal fun wrap(s: String): Result<Disclosure> =
@@ -118,7 +118,7 @@ sealed interface Disclosure {
             }
 
             return runCatching {
-                // Make sure that claim name is valid
+                // Make sure that the claim name is valid
                 claim.ensureValidAttributeName()
 
                 // Create a Json Array [salt, claimName, claimValue]
