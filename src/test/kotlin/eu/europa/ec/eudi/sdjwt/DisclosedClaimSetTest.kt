@@ -257,3 +257,37 @@ private object DisclosedClaimSetTest {
         }
     }
 }
+
+/**
+ * Extracts all the [digests][DisclosureDigest] from the given claims
+ * including also subclaims
+ *
+ * @return the digests found in the given claims
+ */
+private val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDigest>> =
+    DeepRecursiveFunction { claims ->
+        claims.flatMap { (attribute, json) ->
+            when {
+                attribute == SdJwtSpec.CLAIM_SD && json is JsonArray ->
+                    json.mapNotNull { element ->
+                        if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
+                        else null
+                    }
+
+                attribute == SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
+                    DisclosureDigest.wrap(json.content).getOrNull()
+                        ?.let { listOf(it) }
+                        ?: emptyList()
+
+                json is JsonObject -> callRecursive(json)
+
+                json is JsonArray ->
+                    json.flatMap {
+                        if (it is JsonObject) callRecursive(it)
+                        else emptyList()
+                    }
+
+                else -> emptyList()
+            }
+        }
+    }
