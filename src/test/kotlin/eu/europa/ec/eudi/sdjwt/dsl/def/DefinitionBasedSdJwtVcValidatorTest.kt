@@ -315,34 +315,30 @@ class DefinitionBasedSdJwtVcValidatorTest {
         assertContentEquals(expectedErrors, errors)
     }
 
-    private val default: DefinitionBasedSdJwtVcValidator = DefinitionBasedSdJwtVcValidator.Default
-
     private fun SdJwtDefinition.shouldConsiderInvalid(
-        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
         sdJwtObject: SdJwtObject,
         disclosureFilter: (Disclosure) -> Boolean = { true },
     ): List<DefinitionViolation> {
-        val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
+        val result = createAndValidate(this, sdJwtObject, disclosureFilter)
         return assertIs<DefinitionBasedValidationResult.Invalid>(result).errors
     }
 
     private fun SdJwtDefinition.shouldConsiderValid(
-        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
         sdJwtObject: SdJwtObject,
         disclosureFilter: (Disclosure) -> Boolean = { true },
     ) {
-        val result = createAndValidate(definitionBasedSdJwtVcValidator, this, sdJwtObject, disclosureFilter)
+        val result = createAndValidate(this, sdJwtObject, disclosureFilter)
         assertIs<DefinitionBasedValidationResult.Valid>(result)
     }
 
     private fun createAndValidate(
-        definitionBasedSdJwtVcValidator: DefinitionBasedSdJwtVcValidator = default,
+
         sdJwtDefinition: SdJwtDefinition,
         sdJwtObject: SdJwtObject,
         disclosureFilter: (Disclosure) -> Boolean,
     ): DefinitionBasedValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
-        return with(definitionBasedSdJwtVcValidator) {
+        return with(DefinitionBasedSdJwtVcValidator) {
             sdJwtDefinition.validate(payload, disclosures.filter(disclosureFilter))
         }
     }

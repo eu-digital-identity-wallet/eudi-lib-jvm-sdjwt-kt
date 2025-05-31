@@ -15,9 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import kotlinx.serialization.json.*
+import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class SelectPathTest {
     val jsonSupport = Json { ignoreUnknownKeys = false }
@@ -47,52 +51,97 @@ class SelectPathTest {
     }
 
     @Test
-    fun matchTopLevel() {
-        sampleJson.forEach { (attributeName, attribute) ->
-            assetSelectionEquals(expected = attribute, path = ClaimPath.claim(attributeName))
+    fun matchSingleEmpty() {
+        listOf(
+            ClaimPath.claim("foo"),
+            ClaimPath.claim("foo").claim("bar"),
+            ClaimPath.claim("address").claim("foo"),
+            ClaimPath.claim("nationalities").arrayElement(100),
+
+        ).forEach {
+            assertSelectionEquals(Selection.SingleMatch(null), it)
         }
     }
 
-    private fun assetSelectionEquals(expected: JsonElement, path: ClaimPath) {
-        val actual = with(SelectPath) { sampleJson.select(path) }.getOrThrow()
+    @Test
+    fun detectArrayPathOverObject() {
+        listOf(
+            ClaimPath.claim("address").arrayElement(100),
+            ClaimPath.claim("address").allArrayElements().claim("foo"),
+        ).forEach {
+            assertIs<IllegalStateException>(sampleJson.query(it).exceptionOrNull())
+        }
+    }
+
+    @Test
+    fun matchWildcardEmpty() = assertSelectionEquals(
+        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+        ClaimPath.claim("nationalities").allArrayElements().allArrayElements().claim("foo"),
+    )
+
+    @Test
+    fun detectStoppingOnKnownPaths() = assertSelectionEquals(
+        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+        ClaimPath.claim("nationalities").allArrayElements().claim("foo"),
+    )
+
+    @Test
+    fun matchTopLevel() {
+        sampleJson.forEach { (attributeName, attribute) ->
+            assertSelectionEquals(expected = Selection.SingleMatch(attribute), path = ClaimPath.claim(attributeName))
+        }
+    }
+
+    private fun assertSelectionEquals(expected: Selection, path: ClaimPath) {
+        val actual = with(SelectPath) { sampleJson.query(path) }.getOrThrow()
         assertEquals(expected, actual)
     }
 
     @Test
-    fun matchNestedAttribute() = assetSelectionEquals(
-        expected = checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"]),
+    fun matchNestedAttribute() = assertSelectionEquals(
+        expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"])),
         path = ClaimPath.claim("address").claim("street_address"),
     )
 
     @Test
-    fun matchArray() = assetSelectionEquals(
-        expected = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray),
+    fun matchArray() = assertSelectionEquals(
+        expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)),
         path = ClaimPath.claim("degrees"),
     )
 
     @Test
-    fun matchAll() = assetSelectionEquals(
-        expected = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray),
+    fun matchAll() = assertSelectionEquals(
+        expected = run {
+            val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
+            Selection.WildcardMatches(
+                path = ClaimPath.claim("degrees").allArrayElements(),
+                matches = degrees.mapIndexed { i, degree ->
+                    Selection.WildcardMatches.Match(
+                        index = i,
+                        value = degree,
+                        concretePath = ClaimPath.claim("degrees").arrayElement(i),
+                    )
+                },
+
+            )
+        },
         path = ClaimPath.claim("degrees").allArrayElements(),
     )
 
     @Test
-    fun matchArrayElement() {
-        val degreesPath = ClaimPath.claim("degrees")
-        val degrees = checkNotNull(sampleJson["degrees"]).jsonArray
-        degrees.forEachIndexed { index, degree ->
-            assetSelectionEquals(expected = degree, path = degreesPath.arrayElement(index))
-        }
-    }
-
-    @Test
-    fun matchNestedOfArrayElement() = assetSelectionEquals(
+    fun matchNestedOfArrayElement() = assertSelectionEquals(
         expected = run {
-            val degrees = checkNotNull(sampleJson["degrees"]).jsonArray
-            degrees.map { element ->
-                check(element is JsonObject)
-                checkNotNull(element["type"])
-            }.let(::JsonArray)
+            val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
+            Selection.WildcardMatches(
+                path = ClaimPath.claim("degrees").allArrayElements(),
+                matches = degrees.mapIndexed { i, degree ->
+                    Selection.WildcardMatches.Match(
+                        index = i,
+                        value = degree.jsonObject["type"],
+                        concretePath = ClaimPath.claim("degrees").arrayElement(i).claim("type"),
+                    )
+                },
+            )
         },
         path = ClaimPath.claim("degrees").allArrayElements().claim("type"),
     )
