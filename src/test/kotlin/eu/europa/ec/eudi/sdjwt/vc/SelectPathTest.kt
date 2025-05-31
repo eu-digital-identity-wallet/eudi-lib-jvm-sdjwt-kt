@@ -15,11 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class SelectPathTest {
     val jsonSupport = Json { ignoreUnknownKeys = false }
@@ -49,31 +51,66 @@ class SelectPathTest {
     }
 
     @Test
-    fun matchTopLevel() {
-        sampleJson.forEach { (attributeName, attribute) ->
-            assetSelectionEquals(expected = Selection.SingleMatch(attribute), path = ClaimPath.claim(attributeName))
+    fun matchSingleEmpty() {
+        listOf(
+            ClaimPath.claim("foo"),
+            ClaimPath.claim("foo").claim("bar"),
+            ClaimPath.claim("address").claim("foo"),
+            ClaimPath.claim("nationalities").arrayElement(100),
+
+        ).forEach {
+            assertSelectionEquals(Selection.SingleMatch(null), it)
         }
     }
 
-    private fun assetSelectionEquals(expected: Selection, path: ClaimPath) {
+    @Test
+    fun detectArrayPathOverObject() {
+        listOf(
+            ClaimPath.claim("address").arrayElement(100),
+            ClaimPath.claim("address").allArrayElements().claim("foo"),
+        ).forEach {
+            assertIs<IllegalStateException>(sampleJson.query(it).exceptionOrNull())
+        }
+    }
+
+    @Test
+    fun matchWildcardEmpty() = assertSelectionEquals(
+        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+        ClaimPath.claim("nationalities").allArrayElements().allArrayElements().claim("foo"),
+    )
+
+    @Test
+    fun detectStoppingOnKnownPaths() = assertSelectionEquals(
+        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+        ClaimPath.claim("nationalities").allArrayElements().claim("foo"),
+    )
+
+    @Test
+    fun matchTopLevel() {
+        sampleJson.forEach { (attributeName, attribute) ->
+            assertSelectionEquals(expected = Selection.SingleMatch(attribute), path = ClaimPath.claim(attributeName))
+        }
+    }
+
+    private fun assertSelectionEquals(expected: Selection, path: ClaimPath) {
         val actual = with(SelectPath) { sampleJson.query(path) }.getOrThrow()
         assertEquals(expected, actual)
     }
 
     @Test
-    fun matchNestedAttribute() = assetSelectionEquals(
+    fun matchNestedAttribute() = assertSelectionEquals(
         expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"])),
         path = ClaimPath.claim("address").claim("street_address"),
     )
 
     @Test
-    fun matchArray() = assetSelectionEquals(
+    fun matchArray() = assertSelectionEquals(
         expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)),
         path = ClaimPath.claim("degrees"),
     )
 
     @Test
-    fun matchAll() = assetSelectionEquals(
+    fun matchAll() = assertSelectionEquals(
         expected = run {
             val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
             Selection.WildcardMatches(
@@ -92,7 +129,7 @@ class SelectPathTest {
     )
 
     @Test
-    fun matchNestedOfArrayElement() = assetSelectionEquals(
+    fun matchNestedOfArrayElement() = assertSelectionEquals(
         expected = run {
             val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
             Selection.WildcardMatches(
