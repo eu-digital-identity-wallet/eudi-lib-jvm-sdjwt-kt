@@ -37,8 +37,24 @@ fun DisclosableObject<String, *>.claimPaths(): Set<ClaimPath> =
         arrayMetadataCombiner = { },
     ).result
 
+/**
+ * An abstract base class for handlers used in a folding operation over a [DisclosableObject]
+ * that need to generate [ClaimPath]s for each attribute.
+ *
+ * This class ensures that the [ClaimPath] passed to the abstract `ifId`, `ifArray`, and `ifObject`
+ * methods **always terminates with a named attribute element** (e.g., `parent.attributeName`).
+ * It will not generate paths ending in array indices (`[0]`) or wildcards (`[*]` or `null`).
+ *
+ * Subclasses should implement the abstract methods to define how each type of disclosable element
+ * (ID, array, object) contributes to the fold result, given its corresponding [ClaimPath].
+ */
 abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<String, A, M, R> {
 
+    /**
+     * Extracts the name of the attribute from the last element of the [ClaimPath].
+     *
+     * @throws IllegalStateException if the last element of the [ClaimPath] is not a named attribute.
+     */
     protected val ClaimPath.attributeClaim: String
         get() {
             val lastClaim = value.last()
@@ -48,6 +64,13 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
             return lastClaim.name
         }
 
+    /**
+     * Constructs a [ClaimPath] by appending a new named attribute element to the given parent path.
+     *
+     * @param path The list of string segments representing the parent path (can include `null` for wildcards).
+     * @param key The name of the new attribute to append.
+     * @return A [ClaimPath] representing the full path to the new attribute.
+     */
     protected fun attributeClaimPath(
         path: List<String?>,
         key: String,
@@ -55,17 +78,40 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         ?.let { it + ClaimPathElement.Claim(key) }
         ?: ClaimPath.claim(key)
 
+    /**
+     * Handles a disclosable ID (primitive) value at the given [path].
+     *
+     * @param path The [ClaimPath] to the ID element. This path will end with a named attribute element.
+     * @param id The disclosable ID element.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifId(
         path: ClaimPath,
         id: Disclosable<DisclosableValue.Id<String, A>>,
     ): Pair<M, R>
 
+    /**
+     * Handles a disclosable array at the given [path].
+     *
+     * @param path The [ClaimPath] to the array element. This path will end with a named attribute element.
+     * @param array The disclosable array element.
+     * @param foldedArray The result of folding the contents of the array.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifArray(
         path: ClaimPath,
         array: Disclosable<DisclosableValue.Arr<String, A>>,
         foldedArray: Folded<String, M, R>,
     ): Pair<M, R>
 
+    /**
+     * Handles a disclosable object at the given [path].
+     *
+     * @param path The [ClaimPath] to the object element. This path will end with a named attribute element.
+     * @param obj The disclosable object element.
+     * @param foldedObject The result of folding the contents of the object.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifObject(
         path: ClaimPath,
         obj: Disclosable<DisclosableValue.Obj<String, A>>,
@@ -101,8 +147,27 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
         return Folded(path, m, r)
     }
 }
+
+/**
+ * An abstract base class for handlers used in a folding operation over a [DisclosableArray]
+ * that need to generate [ClaimPath]s for each element within the array.
+ *
+ * This class ensures that the [ClaimPath] passed to the abstract `ifId`, `ifArray`, and `ifObject`
+ * methods **always terminates with a specific array index element** (e.g., `parentArray.[0]`).
+ * It will not generate paths ending in named attributes or wildcards (`[*]` or `null`).
+ *
+ * Subclasses should implement the abstract methods to define how each type of disclosable element
+ * (ID, array, object) within the array contributes to the fold result, given its corresponding [ClaimPath].
+ */
 abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<String, A, M, R> {
 
+    /**
+     * Constructs a [ClaimPath] by appending a new array index element to the given parent path.
+     *
+     * @param path The list of string segments representing the parent path (can include `null` for wildcards).
+     * @param index The integer index of the new array element to append.
+     * @return A [ClaimPath] representing the full path to the new array element.
+     */
     private fun elementClaimPath(path: List<String?>, index: Int): ClaimPath {
         val indexElement = ClaimPathElement.ArrayElement(index)
         return path.toClaimPath()
@@ -110,17 +175,40 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
             ?: ClaimPath(indexElement)
     }
 
+    /**
+     * Handles a disclosable ID (primitive) value at the given [path].
+     *
+     * @param path The [ClaimPath] to the ID element. This path will end with an array index element.
+     * @param id The disclosable ID element.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifId(
         path: ClaimPath,
         id: Disclosable<DisclosableValue.Id<String, A>>,
     ): Pair<M, R>
 
+    /**
+     * Handles a disclosable array at the given [path].
+     *
+     * @param path The [ClaimPath] to the array element. This path will end with an array index element.
+     * @param array The disclosable array element.
+     * @param foldedArray The result of folding the contents of the array.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifArray(
         path: ClaimPath,
         array: Disclosable<DisclosableValue.Arr<String, A>>,
         foldedArray: Folded<String, M, R>,
     ): Pair<M, R>
 
+    /**
+     * Handles a disclosable object at the given [path].
+     *
+     * @param path The [ClaimPath] to the object element. This path will end with an array index element.
+     * @param obj The disclosable object element.
+     * @param foldedObject The result of folding the contents of the object.
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
     abstract fun ifObject(
         path: ClaimPath,
         obj: Disclosable<DisclosableValue.Obj<String, A>>,
