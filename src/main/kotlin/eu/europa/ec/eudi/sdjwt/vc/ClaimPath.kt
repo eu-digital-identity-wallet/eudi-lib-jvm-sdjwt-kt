@@ -36,7 +36,7 @@ import kotlin.contracts.contract
  */
 @Serializable(with = ClaimPathSerializer::class)
 @JvmInline
-value class ClaimPath private constructor(val value: List<ClaimPathElement>) {
+value class ClaimPath internal constructor(val value: List<ClaimPathElement>) {
 
     init {
         require(value.isNotEmpty())
@@ -86,6 +86,7 @@ value class ClaimPath private constructor(val value: List<ClaimPathElement>) {
         return if (tailElements.isEmpty()) return null
         else ClaimPath(tailElements)
     }
+    fun last(): ClaimPathElement = value.last()
 
     /**
      * Gets the [head]
