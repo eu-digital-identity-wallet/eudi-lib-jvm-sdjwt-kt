@@ -18,9 +18,9 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 import eu.europa.ec.eudi.sdjwt.Disclosure
 import eu.europa.ec.eudi.sdjwt.SdJwtFactory
 import eu.europa.ec.eudi.sdjwt.UnsignedSdJwt
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
 import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedValidationResult
