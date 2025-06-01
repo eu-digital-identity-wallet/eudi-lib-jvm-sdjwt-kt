@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObject
 import kotlinx.serialization.json.*
 
 @JvmInline

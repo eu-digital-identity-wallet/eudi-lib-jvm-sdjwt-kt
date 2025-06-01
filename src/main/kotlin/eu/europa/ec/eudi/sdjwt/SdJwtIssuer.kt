@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObject
 
 /**
  * Signs an SD-JWT

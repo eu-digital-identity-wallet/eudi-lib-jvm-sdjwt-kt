@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Test
 

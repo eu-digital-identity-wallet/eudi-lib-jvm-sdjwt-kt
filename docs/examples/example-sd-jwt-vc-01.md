@@ -5,7 +5,7 @@
 Description of the example in the [specification Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-4a-sd-jwt-based-ver)
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 -->
 
 ```kotlin

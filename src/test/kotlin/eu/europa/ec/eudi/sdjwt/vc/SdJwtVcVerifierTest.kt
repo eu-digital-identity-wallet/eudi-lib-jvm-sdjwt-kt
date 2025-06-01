@@ -30,7 +30,7 @@ import com.nimbusds.jose.proc.BadJOSEException
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock

@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 
 val sdJwtVcDataV2 =
     sdJwt {

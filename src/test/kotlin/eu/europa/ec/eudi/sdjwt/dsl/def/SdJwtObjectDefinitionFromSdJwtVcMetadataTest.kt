@@ -17,9 +17,9 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.claimPaths
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import kotlin.test.Test

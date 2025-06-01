@@ -13,29 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
+package eu.europa.ec.eudi.sdjwt.dsl.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.dsl.*
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
-
-/**
- * Gets the set of [ClaimPath] for the attributes described by
- * a [SdJwtObjectDefinition] or [SdJwtDefinition]
- */
-fun DisclosableObject<String, *>.claimPaths(): Set<ClaimPath> =
-    fold(
-        objectHandlers = ObjectHandlers,
-        arrayHandlers = ArrayHandlers,
-        initial = Folded(
-            path = emptyList(),
-            metadata = Unit,
-            result = emptySet(),
-        ),
-        combine = { acc, current -> Folded(acc.path, Unit, acc.result + current.result) },
-        arrayResultWrapper = { elementResults -> elementResults.flatten().toSet() },
-        arrayMetadataCombiner = { },
-    ).result
 
 /**
  * An abstract base class for handlers used in a folding operation over a [DisclosableObject]
@@ -49,20 +31,6 @@ fun DisclosableObject<String, *>.claimPaths(): Set<ClaimPath> =
  * (ID, array, object) contributes to the fold result, given its corresponding [ClaimPath].
  */
 abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<String, A, M, R> {
-
-    /**
-     * Extracts the name of the attribute from the last element of the [ClaimPath].
-     *
-     * @throws IllegalStateException if the last element of the [ClaimPath] is not a named attribute.
-     */
-    protected val ClaimPath.attributeClaim: String
-        get() {
-            val lastClaim = value.last()
-            check(lastClaim is ClaimPathElement.Claim) {
-                "Not an attribute claim path: $this"
-            }
-            return lastClaim.name
-        }
 
     /**
      * Constructs a [ClaimPath] by appending a new named attribute element to the given parent path.
@@ -243,45 +211,6 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
         val (m, r) = ifObject(elementClaimPath(path, index), obj, foldedObject)
         return Folded(path, m, r)
     }
-}
-
-private object ObjectHandlers : ClaimPathAwareObjectFoldHandlers<Any?, Unit, Set<ClaimPath>>() {
-    override fun ifId(
-        path: ClaimPath,
-        id: Disclosable<DisclosableValue.Id<String, Any?>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(path)
-
-    override fun ifArray(
-        path: ClaimPath,
-        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
-        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = foldedArray.metadata to setOf(path) + foldedArray.result
-
-    override fun ifObject(
-        path: ClaimPath,
-        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
-        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = foldedObject.metadata to setOf(path) + foldedObject.result
-}
-
-private object ArrayHandlers : ClaimPathAwareArrayFoldHandlers<Any?, Unit, Set<ClaimPath>>() {
-
-    override fun ifId(
-        path: ClaimPath,
-        id: Disclosable<DisclosableValue.Id<String, Any?>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent()))
-
-    override fun ifArray(
-        path: ClaimPath,
-        array: Disclosable<DisclosableValue.Arr<String, Any?>>,
-        foldedArray: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent())) + foldedArray.result
-
-    override fun ifObject(
-        path: ClaimPath,
-        obj: Disclosable<DisclosableValue.Obj<String, Any?>>,
-        foldedObject: Folded<String, Unit, Set<ClaimPath>>,
-    ): Pair<Unit, Set<ClaimPath>> = Unit to setOf(checkNotNull(path.parent())) + foldedObject.result
 }
 
 private fun List<String?>.toClaimPath(): ClaimPath? {

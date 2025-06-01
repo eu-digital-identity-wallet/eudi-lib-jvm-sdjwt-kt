@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
