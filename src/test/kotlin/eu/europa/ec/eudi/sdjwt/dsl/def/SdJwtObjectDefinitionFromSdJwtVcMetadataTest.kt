@@ -92,10 +92,9 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
         val addressArrayDef = sdJwtVcDefinition.content["addresses"]
         assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Arr<String, AttributeMetadata>>>(addressArrayDef)
         assertEquals(1, addressArrayDef.value.value.content.size)
-        val addressDef =
-            assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(
-                addressArrayDef.value.value.content.first(),
-            )
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(
+            addressArrayDef.value.value.content.first(),
+        )
 
         commonChecks(sdJwtVcTypeMetadata, sdJwtVcDefinition)
     }

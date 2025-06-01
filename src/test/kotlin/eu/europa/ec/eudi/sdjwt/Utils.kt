@@ -108,8 +108,6 @@ internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
 
 internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
 
-internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()
-
 internal object HttpMock {
 
     fun clientReturning(issuerMeta: SdJwtVcIssuerMetadata): HttpClient =
