@@ -26,7 +26,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
 import kotlinx.coroutines.test.runTest

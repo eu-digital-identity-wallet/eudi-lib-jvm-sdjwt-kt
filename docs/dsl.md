@@ -187,6 +187,48 @@ val claimPaths = sdJwtDefinition.claimPaths()
 
 These claim paths can be used for presentation requests or for navigating the credential structure.
 
+
+### Validating SD-JWTs Against Definitions
+
+The `DefinitionBasedSdJwtVcValidator` provides a mechanism to validate an SD-JWT 
+(its payload and provided disclosures) against its `SdJwtDefinition`. 
+This ensures the presented credential conforms to the expected structure and disclosure rules
+
+The validation process can identify the following types of errors, reported as `DefinitionViolation` instances:
+
+- `DisclosureInconsistencies`: Indicates issues with the disclosures themselves, 
+such as non-unique disclosures or disclosures without matching digests, 
+preventing the successful reconstruction of claims.
+- `UnknownClaim`: Occurs when a claim in the SD-JWT payload or disclosures is not present in the `SdJwtDefinition`.
+- `WrongClaimType`: Reported when a claim's type (e.g., object, array, or primitive) 
+in the presented SD-JWT does not match its type as defined in the SdJwtDefinition.
+- `IncorrectlyDisclosedClaim`: Signifies that a claim's selective disclosure status 
+(always disclosed vs. selectively disclosed) in the SD-JWT contradicts its definition. 
+For instance, a claim defined as "always selectively disclosable" is found directly in the payload, or vice-versa.
+
+```kotlin
+import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
+import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedValidationResult
+
+// Assuming you have your sdJwtDefinition, jwtPayload, and disclosures
+val sdJwtDefinition = TODO()
+val validationResult = with(DefinitionBasedSdJwtVcValidator){
+    sdJwtDefinition.validate(
+        jwtPayload = yourJwtPayload,
+        disclosures = yourDisclosures,
+    )
+}
+
+when (validationResult) {
+    DefinitionBasedValidationResult.Valid -> println("SD-JWT is valid against the definition.")
+    is DefinitionBasedValidationResult.Invalid -> {
+        println("SD-JWT validation failed:")
+        validationResult.errors.forEach { error ->
+            println("- $error")
+        }
+    }
+}
+```
 ### Working with Display Information
 
 The metadata includes display information for claims, which can be used for UI rendering:
@@ -239,17 +281,7 @@ val mdlCredential = sdJwtCredential.transformWithMetadata(
 )
 ```
 
-4. **Validation Rules from Metadata**: Generate validation rules based on metadata.
-
-```kotlin
-// Generate validation rules from metadata
-val validationRules = generateValidationRules(sdJwtVcMetadata)
-
-// Validate a credential against the rules
-val validationResult = validationRules.validate(credential)
-```
-
-5. **UI Generation**: Automatically generate UI components based on metadata.
+4. **UI Generation**: Automatically generate UI components based on metadata.
 
 ```kotlin
 // Generate UI components for displaying a credential

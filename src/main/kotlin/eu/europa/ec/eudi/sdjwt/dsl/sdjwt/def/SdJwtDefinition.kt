@@ -47,6 +47,12 @@ data class SdJwtObjectDefinition(
 /**
  * Describes the elements of an array-like data structure
  * and especially their disclosure properties.
+ *
+ * The [content] list defines the characteristics and disclosure properties
+ *  of the elements that may appear within instances of this array type.
+ *  If the list contains a single [DisclosableElement], it describes homogeneous array elements.
+ *  If the list contains multiple [DisclosableElement]s, it implies a union of possible element types.
+ *
  * In addition, contains display information][metadata] for the container
  */
 data class SdJwtArrayDefinition(

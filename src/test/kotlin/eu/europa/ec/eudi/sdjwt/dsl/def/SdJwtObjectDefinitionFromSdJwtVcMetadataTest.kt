@@ -17,9 +17,9 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
+import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.claimPaths
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.claimPaths
 import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import kotlin.test.Test
@@ -92,10 +92,9 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
         val addressArrayDef = sdJwtVcDefinition.content["addresses"]
         assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Arr<String, AttributeMetadata>>>(addressArrayDef)
         assertEquals(1, addressArrayDef.value.value.content.size)
-        val addressDef =
-            assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(
-                addressArrayDef.value.value.content.first(),
-            )
+        assertIs<Disclosable.AlwaysSelectively<DisclosableValue.Obj<String, AttributeMetadata>>>(
+            addressArrayDef.value.value.content.first(),
+        )
 
         commonChecks(sdJwtVcTypeMetadata, sdJwtVcDefinition)
     }
