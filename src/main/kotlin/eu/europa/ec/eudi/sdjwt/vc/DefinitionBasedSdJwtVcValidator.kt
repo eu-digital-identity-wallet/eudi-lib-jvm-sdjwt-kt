@@ -63,6 +63,8 @@ sealed interface DefinitionViolation {
      * @param claimPath the claim path of incorrectly disclosed claim
      */
     data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
+
+    data class NoneMatched(val claimPath: ClaimPath, val violationPerAlternative: Map<Int, List<DefinitionViolation>>) : DefinitionViolation
 }
 
 sealed interface DefinitionBasedValidationResult {
@@ -208,15 +210,17 @@ private class SdJwtVcDefinitionValidator private constructor(
                     }
 
                     is DisclosableDef.Alt<String, *> -> {
-                        val altErrors = mutableListOf<DefinitionViolation>()
+                        val violationPerAlternative = mutableMapOf<Int, List<DefinitionViolation>>()
+                        var altNo = 0
                         var correct = false
                         for (altDef in def.value) {
                             val es = callRecursive(Triple(claimPath, claimValue, altDef))
                             correct = es.isEmpty()
                             if (correct) break
-                            altErrors.addAll(es)
+                            violationPerAlternative.put(altNo, es)
                         }
-                        if (correct) emptyList() else altErrors.toList()
+                        if (correct) emptyList()
+                        else listOf(DefinitionViolation.NoneMatched(claimPath, violationPerAlternative))
                     }
                 }
                 allErrors.addAll(es)
