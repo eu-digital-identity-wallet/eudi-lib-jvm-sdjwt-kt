@@ -36,8 +36,7 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadata(
     sdJwtVcMetadata: ResolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): SdJwtDefinition {
-    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
-        sdJwtVcMetadata.claims.groupBy { it.path.parent() }
+    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> = sdJwtVcMetadata.claims.groupBy { it.path.parent() }
     val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
     return processObjectDefinitionAndThen(
         childClaimsMetadatas = topLevelClaims,
