@@ -58,7 +58,6 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadataStrict(
 
     // 3. Process the top-level object definition
     return processObjectDefinitionAndThenStrict(
-        parentPath = null, // Top-level has no parent path (consistent with ClaimPath.parent())
         childPaths = topLevelChildrenPaths,
         existingClaimsByPath = existingClaimsByPath,
         allNodesChildrenMap = allNodesChildrenMap,
@@ -77,7 +76,6 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadataStrict(
 
 /**
  * Processes an object definition recursively.
- * @param parentPath The path of the parent object.
  * @param childPaths The paths of the direct children of the current object being processed.
  * @param existingClaimsByPath A map of all explicitly defined [ClaimMetadata] by their full path.
  * @param allNodesChildrenMap A comprehensive map of all inferred and explicit nodes in the hierarchy,
@@ -86,7 +84,6 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadataStrict(
  * @param constructor A function to construct the final object definition type.
  */
 private fun <DO> processObjectDefinitionAndThenStrict(
-    parentPath: ClaimPath?,
     childPaths: List<ClaimPath>,
     existingClaimsByPath: Map<ClaimPath, ClaimMetadata>,
     allNodesChildrenMap: Map<ClaimPath?, List<ClaimPath>>,
@@ -103,7 +100,6 @@ private fun <DO> processObjectDefinitionAndThenStrict(
         // Recursively build the nested element definition
         val disclosableElement = buildNestedDisclosableElementStrict(
             currentClaimPath = childPath,
-            parentPath = parentPath,
             existingClaimsByPath = existingClaimsByPath,
             allNodesChildrenMap = allNodesChildrenMap,
             selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
@@ -115,13 +111,11 @@ private fun <DO> processObjectDefinitionAndThenStrict(
 
 private fun processObjectDefinitionStrict(
     objMetadata: AttributeMetadata,
-    parentPath: ClaimPath?,
     childPaths: List<ClaimPath>,
     existingClaimsByPath: Map<ClaimPath, ClaimMetadata>,
     allNodesChildrenMap: Map<ClaimPath?, List<ClaimPath>>,
     selectivelyDiscloseWhenAllowed: Boolean,
 ): SdJwtObjectDefinition = processObjectDefinitionAndThenStrict(
-    parentPath,
     childPaths,
     existingClaimsByPath,
     allNodesChildrenMap,
@@ -169,7 +163,6 @@ private fun processArrayDefinitionStrict(
         arrayElementsChildrenPaths.forEach { childPath ->
             val disclosableElement = buildNestedDisclosableElementStrict(
                 currentClaimPath = childPath,
-                parentPath = arrayElementsClaimPath,
                 existingClaimsByPath = existingClaimsByPath,
                 allNodesChildrenMap = allNodesChildrenMap,
                 selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
@@ -194,7 +187,6 @@ private fun processArrayDefinitionStrict(
  */
 private fun buildNestedDisclosableElementStrict(
     currentClaimPath: ClaimPath,
-    parentPath: ClaimPath?,
     existingClaimsByPath: Map<ClaimPath, ClaimMetadata>,
     allNodesChildrenMap: Map<ClaimPath?, List<ClaimPath>>,
     selectivelyDiscloseWhenAllowed: Boolean,
@@ -217,13 +209,13 @@ private fun buildNestedDisclosableElementStrict(
     // Get direct children paths for the current path
     val directChildrenPaths = allNodesChildrenMap[currentClaimPath] ?: emptyList()
 
-    val disclosableDef: DisclosableDef<String, AttributeMetadata> = if (directChildrenPaths.isEmpty()) {
+    val disclosableDef = if (directChildrenPaths.isEmpty()) {
         // This is a leaf node (primitive value)
         val attributeMetadata = AttributeMetadata(
             display = currentClaimMetadata?.display?.toList(),
             svgId = currentClaimMetadata?.svgId,
         )
-        DisclosableDef.Id<String, AttributeMetadata>(attributeMetadata)
+        DisclosableDef.Id(attributeMetadata)
     } else {
         // This is a container (object or array)
         val containerAttributeMetadata = AttributeMetadata(
@@ -256,7 +248,6 @@ private fun buildNestedDisclosableElementStrict(
             // Children indicate an object
             val objectDefinition = processObjectDefinitionStrict(
                 objMetadata = containerAttributeMetadata,
-                parentPath = currentClaimPath,
                 childPaths = directChildrenPaths,
                 existingClaimsByPath = existingClaimsByPath,
                 allNodesChildrenMap = allNodesChildrenMap,
