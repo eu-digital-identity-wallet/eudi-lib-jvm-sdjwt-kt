@@ -78,7 +78,7 @@ class DisclosableArraySpecBuilder<K, A, DObj, DArr>(
     ): Unit = sdArrClaim(buildDisclosableArray(factory, action))
 }
 
-fun <K, A, DObj, DArr> buildDisclosableArray(
+inline fun <K, A, DObj, DArr> buildDisclosableArray(
     factory: DisclosableContainerFactory<K, A, DObj, DArr>,
     builderAction: DisclosableArraySpecBuilder<K, A, DObj, DArr>.() -> Unit,
 ): DArr
@@ -88,7 +88,7 @@ fun <K, A, DObj, DArr> buildDisclosableArray(
     return factory.arr(content.elements)
 }
 
-fun <K, P> buildDisclosableArray(
+inline fun <K, P> buildDisclosableArray(
     builderAction: DisclosableArraySpecBuilder<K, P, DisclosableObject<K, P>, DisclosableArray<K, P>>.() -> Unit,
 ) = buildDisclosableArray(DisclosableContainerFactory.default(), builderAction)
 
@@ -179,7 +179,7 @@ class DisclosableObjectSpecBuilder<K, P, DObj, DArr>(
     }
 }
 
-fun <K, P, DObj, DArr> buildDisclosableObject(
+inline fun <K, P, DObj, DArr> buildDisclosableObject(
     factory: DisclosableContainerFactory<K, P, DObj, DArr>,
     action: DisclosableObjectSpecBuilder<K, P, DObj, DArr>.() -> Unit,
 ): DObj
@@ -188,6 +188,6 @@ fun <K, P, DObj, DArr> buildDisclosableObject(
     return factory.obj(content.elements)
 }
 
-fun <K, P> buildDisclosableObject(
+inline fun <K, P> buildDisclosableObject(
     action: DisclosableObjectSpecBuilder<K, P, DisclosableObject<K, P>, DisclosableArray<K, P>>.() -> Unit,
 ): DisclosableObject<K, P> = buildDisclosableObject(DisclosableContainerFactory.default(), action)
