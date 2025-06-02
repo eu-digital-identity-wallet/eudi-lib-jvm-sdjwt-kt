@@ -15,7 +15,10 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
 
-import eu.europa.ec.eudi.sdjwt.dsl.*
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableDefArray
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableDefObject
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableElement
+import eu.europa.ec.eudi.sdjwt.dsl.DisclosableElementDefinition
 import eu.europa.ec.eudi.sdjwt.vc.*
 
 /**
@@ -28,9 +31,9 @@ import eu.europa.ec.eudi.sdjwt.vc.*
  * accurately the disclosure and display properties of SD-JWT-VC or even JWT credentials.
  */
 data class SdJwtDefinition(
-    override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
+    override val content: Map<String, SdJwtElementDefinition>,
     val metadata: VctMetadata,
-) : DisclosableObject<String, AttributeMetadata> {
+) : DisclosableDefObject<String, AttributeMetadata> {
     companion object
 }
 
@@ -40,9 +43,9 @@ data class SdJwtDefinition(
  * In addition, it contains display information for the container
  */
 data class SdJwtObjectDefinition(
-    override val content: Map<String, DisclosableElement<String, AttributeMetadata>>,
+    override val content: Map<String, SdJwtElementDefinition>,
     val metadata: AttributeMetadata,
-) : DisclosableObject<String, AttributeMetadata>
+) : DisclosableDefObject<String, AttributeMetadata>
 
 /**
  * Describes the elements of an array-like data structure
@@ -56,11 +59,11 @@ data class SdJwtObjectDefinition(
  * In addition, contains display information][metadata] for the container
  */
 data class SdJwtArrayDefinition(
-    override val content: List<DisclosableElement<String, AttributeMetadata>>,
+    override val content: SdJwtElementDefinition,
     val metadata: AttributeMetadata,
-) : DisclosableArray<String, AttributeMetadata>
+) : DisclosableDefArray<String, AttributeMetadata>
 
-typealias SdJwtElementDefinition = Disclosable<DisclosableValue<String, AttributeMetadata>>
+typealias SdJwtElementDefinition = DisclosableElementDefinition<String, AttributeMetadata>
 
 data class VctMetadata(
     val vct: Vct,
