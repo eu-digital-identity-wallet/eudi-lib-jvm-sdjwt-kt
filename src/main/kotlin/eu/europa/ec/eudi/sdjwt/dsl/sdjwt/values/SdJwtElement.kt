@@ -66,7 +66,8 @@ data class SdJwtArray(
  */
 typealias SdJwtElement = DisclosableElement<String, JsonElement>
 
-private fun factory(
+@PublishedApi
+internal fun factory(
     minimumDigests: Int?,
 ) = object : DisclosableContainerFactory<String, JsonElement, SdJwtObject, SdJwtArray> {
 
@@ -86,6 +87,7 @@ private fun factory(
  *
  * @property elements The list of [SdJwtElement]s built by this builder.
  */
+@DisclosableElementDsl
 class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
 
     private val claims = DisclosableArraySpecBuilder(factory = factory(null), elements)
@@ -192,7 +194,7 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
  * used to define the array's elements.
  * @return An [SdJwtArray] representing the defined array structure.
  */
-fun buildSdJwtArray(
+inline fun buildSdJwtArray(
     minimumDigests: Int? = null,
     builderAction: SdJwtArrayBuilder.() -> Unit,
 ): SdJwtArray {
@@ -344,7 +346,7 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
  * used to define the object's claims.
  * @return An [SdJwtObject] representing the defined object structure.
  */
-fun buildSdJwtObject(
+inline fun buildSdJwtObject(
     minimumDigests: Int? = null,
     builderAction: SdJwtObjectBuilder.() -> Unit,
 ): SdJwtObject {
@@ -363,7 +365,7 @@ fun buildSdJwtObject(
  * used to define the object's claims.
  * @return An [SdJwtObject] representing the defined object structure.
  */
-fun sdJwt(
+inline fun sdJwt(
     minimumDigests: Int? = null,
     builderAction: SdJwtObjectBuilder.() -> Unit,
 ): SdJwtObject = buildSdJwtObject(minimumDigests, builderAction)
