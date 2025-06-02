@@ -16,10 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableDef
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.AttributeMetadata
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals

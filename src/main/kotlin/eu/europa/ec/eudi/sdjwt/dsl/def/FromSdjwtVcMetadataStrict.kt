@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
+package eu.europa.ec.eudi.sdjwt.dsl.def
 
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableDef
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableElementDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*
@@ -140,7 +138,8 @@ private fun processArrayDefinitionStrict(
     allNodesChildrenMap: Map<ClaimPath?, List<ClaimPath>>,
     selectivelyDiscloseWhenAllowed: Boolean,
 ): SdJwtArrayDefinition {
-    val elementDefinitions = mutableSetOf<DisclosableElementDefinition<String, AttributeMetadata>>()
+    val elementDefinitions =
+        mutableSetOf<DisclosableElementDefinition<String, AttributeMetadata>>()
 
     // Get direct children of the array elements path (e.g., `degrees[*].type`, `degrees[*].university`)
     val arrayElementsChildrenPaths = allNodesChildrenMap[arrayElementsClaimPath] ?: emptyList()
@@ -234,7 +233,8 @@ private fun buildNestedDisclosableElementStrict(
 
         // Determine if the children indicate an array or an object
         val isNextLevelArray = directChildrenPaths.any { childPath ->
-            childPath.value.last() is ClaimPathElement.AllArrayElements || childPath.value.last() is ClaimPathElement.ArrayElement
+            childPath.value.last() is ClaimPathElement.AllArrayElements ||
+                childPath.value.last() is ClaimPathElement.ArrayElement
         }
 
         if (isNextLevelArray) {

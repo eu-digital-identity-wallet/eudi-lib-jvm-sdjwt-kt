@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 
 val recursiveSdJwt =
     sdJwt {

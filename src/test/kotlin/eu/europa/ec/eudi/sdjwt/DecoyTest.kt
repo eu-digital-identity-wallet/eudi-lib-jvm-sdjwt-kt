@@ -22,8 +22,8 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObject
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

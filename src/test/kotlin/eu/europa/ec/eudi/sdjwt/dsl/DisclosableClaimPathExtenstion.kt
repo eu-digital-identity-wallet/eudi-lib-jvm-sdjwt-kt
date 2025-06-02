@@ -18,9 +18,9 @@ package eu.europa.ec.eudi.sdjwt.dsl
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 
-fun <K, A, B> DisclosableObject<K, A>.calculateSelectiveDisclosureMap(
+fun <K, A, B> eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableObject<K, A>.calculateSelectiveDisclosureMap(
     claimPathOf: (K) -> ClaimPath,
-    valueTransformer: (DisclosableValue.Id<K, A>) -> B,
+    valueTransformer: (eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A>) -> B,
 ): Map<ClaimPath, B> {
     val fn = calculateSelectiveDisclosureMapFn(claimPathOf, valueTransformer)
     return fn(this)
@@ -28,8 +28,9 @@ fun <K, A, B> DisclosableObject<K, A>.calculateSelectiveDisclosureMap(
 
 private fun <K, A, B> calculateSelectiveDisclosureMapFn(
     claimPathOf: (K) -> ClaimPath,
-    valueTransformer: (DisclosableValue.Id<K, A>) -> B,
-): DeepRecursiveFunction<DisclosableObject<K, A>, Map<ClaimPath, B>> = DeepRecursiveFunction { disclosableObject ->
+    valueTransformer: (eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A>) -> B,
+): DeepRecursiveFunction<eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableObject<K, A>, Map<ClaimPath, B>> = DeepRecursiveFunction {
+        disclosableObject ->
     val pathsMap: MutableMap<ClaimPath, B> = mutableMapOf()
     val processElement = processElement(claimPathOf, valueTransformer, pathsMap)
 
@@ -44,19 +45,20 @@ private fun <K, A, B> calculateSelectiveDisclosureMapFn(
 
 private fun <K, A, B> processValue(
     claimPathOf: (K) -> ClaimPath,
-    valueTransformer: (DisclosableValue.Id<K, A>) -> B,
+    valueTransformer: (eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A>) -> B,
     pathsMap: MutableMap<ClaimPath, B>,
 ) =
-    DeepRecursiveFunction<Pair<DisclosableValue<K, A>, ClaimPath?>, Unit> { (disclosableValue, currentPath) ->
+    DeepRecursiveFunction<Pair<eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue<K, A>, ClaimPath?>, Unit> {
+            (disclosableValue, currentPath) ->
         val processElement = processElement(claimPathOf, valueTransformer, pathsMap)
         when (disclosableValue) {
-            is DisclosableValue.Id<K, A> -> {
+            is eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A> -> {
                 requireNotNull(currentPath) { "Selective disclosable element must have a defined ClaimPath." }
                 val newValue = valueTransformer(disclosableValue)
                 pathsMap[currentPath] = newValue
             }
 
-            is DisclosableValue.Obj<K, A> -> {
+            is eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Obj<K, A> -> {
                 // Recursively process each element in the object
                 disclosableValue.value.content.forEach { (key, element) ->
                     val keyPath = claimPathOf(key)
@@ -68,7 +70,7 @@ private fun <K, A, B> processValue(
                 }
             }
 
-            is DisclosableValue.Arr<K, A> -> {
+            is eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Arr<K, A> -> {
                 val nextPath = currentPath
                     ?.allArrayElements()
                     ?: ClaimPath(ClaimPathElement.AllArrayElements)
@@ -82,19 +84,19 @@ private fun <K, A, B> processValue(
 
 private fun <K, A, B> processElement(
     claimPathOf: (K) -> ClaimPath,
-    valueTransformer: (DisclosableValue.Id<K, A>) -> B,
+    valueTransformer: (eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A>) -> B,
     pathsMap: MutableMap<ClaimPath, B>,
-): DeepRecursiveFunction<Pair<DisclosableElement<K, A>, ClaimPath?>, Unit> =
+): DeepRecursiveFunction<Pair<eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableElement<K, A>, ClaimPath?>, Unit> =
     DeepRecursiveFunction { (disclosableElement, currentPath) ->
         val processValue = processValue(claimPathOf, valueTransformer, pathsMap)
         when (disclosableElement) {
-            is Disclosable.AlwaysSelectively<DisclosableValue<K, A>> -> {
+            is Disclosable.AlwaysSelectively<eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue<K, A>> -> {
                 // This element itself is selectively disclosable.
                 requireNotNull(currentPath) { "Selective disclosable element must have a defined ClaimPath." }
 
                 val dv = disclosableElement.value
                 when (dv) {
-                    is DisclosableValue.Id<K, A> -> {
+                    is eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue.Id<K, A> -> {
                         val newValue = valueTransformer(dv)
                         pathsMap[currentPath] = newValue
                     }
@@ -103,7 +105,7 @@ private fun <K, A, B> processElement(
                 }
             }
 
-            is Disclosable.NeverSelectively<DisclosableValue<K, A>> -> {
+            is Disclosable.NeverSelectively<eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue<K, A>> -> {
                 // This element is not selectively disclosable itself,
                 // but it might contain nested selectively disclosable items. Recurse into its value.
                 processValue.callRecursive(disclosableElement.value to currentPath)

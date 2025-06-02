@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl
+package eu.europa.ec.eudi.sdjwt.dsl.def
+
+import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 
 /**
  * Represents the **definition (schema)** of a map-like structure for selectively disclosable data.

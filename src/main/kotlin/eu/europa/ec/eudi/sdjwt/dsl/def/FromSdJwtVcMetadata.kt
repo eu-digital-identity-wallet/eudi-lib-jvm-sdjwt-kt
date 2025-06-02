@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
+package eu.europa.ec.eudi.sdjwt.dsl.def
 
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableDef
 import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*

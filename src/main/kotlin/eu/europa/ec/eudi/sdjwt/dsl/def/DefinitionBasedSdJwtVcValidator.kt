@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.vc
+package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
-import eu.europa.ec.eudi.sdjwt.dsl.*
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def.SdJwtDefinition
+import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -149,14 +149,14 @@ private class SdJwtVcDefinitionValidator private constructor(
             val unknownClaims = current.keys - definition.content.keys
             objErrors.addAll(
                 unknownClaims.map {
-                    val unknownClaimPaths = parent?.claim(it) ?: ClaimPath.claim(it)
+                    val unknownClaimPaths = parent?.claim(it) ?: ClaimPath.Companion.claim(it)
                     DefinitionViolation.UnknownClaim(unknownClaimPaths)
                 },
             )
 
             // iterate through the known claims and validate them
             current.filterKeys { it !in unknownClaims }.forEach { (claimName, claimValue) ->
-                val claimPath = parent?.claim(claimName) ?: ClaimPath.claim(claimName)
+                val claimPath = parent?.claim(claimName) ?: ClaimPath.Companion.claim(claimName)
                 val claimDefinition =
                     checkNotNull(definition.content[claimName]) { "cannot find definition for $claimPath" }
                 objErrors.addAll(validateDef.callRecursive(Triple(claimPath, claimValue, claimDefinition)))

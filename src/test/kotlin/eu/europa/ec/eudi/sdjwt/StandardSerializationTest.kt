@@ -19,7 +19,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

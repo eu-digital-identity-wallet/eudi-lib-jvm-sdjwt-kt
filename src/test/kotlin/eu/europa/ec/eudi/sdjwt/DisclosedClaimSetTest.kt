@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertContainsPlainClaims
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertDigestNumberGreaterOrEqualToDisclosures
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertHashFunctionClaimIsPresentIfDisclosures
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import kotlin.test.Test
