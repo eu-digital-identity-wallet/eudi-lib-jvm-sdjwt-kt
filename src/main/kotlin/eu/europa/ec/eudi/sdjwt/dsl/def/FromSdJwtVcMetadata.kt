@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def
+package eu.europa.ec.eudi.sdjwt.dsl.def
 
-import eu.europa.ec.eudi.sdjwt.dsl.DisclosableValue
 import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 import eu.europa.ec.eudi.sdjwt.vc.*
@@ -36,8 +35,7 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadata(
     sdJwtVcMetadata: ResolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed: Boolean = true,
 ): SdJwtDefinition {
-    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> =
-        sdJwtVcMetadata.claims.groupBy { it.path.parent() }
+    val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> = sdJwtVcMetadata.claims.groupBy { it.path.parent() }
     val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
     return processObjectDefinitionAndThen(
         childClaimsMetadatas = topLevelClaims,
@@ -114,9 +112,13 @@ private fun processArrayDefinition(
         return disclosableElement
     }
 
-    val contentList = distinctArrayChildElements.map(::metaOf)
-
-    return SdJwtArrayDefinition(contentList, arrayMetadata)
+    val contentList = distinctArrayChildElements.map(::metaOf).toSet()
+    val content: SdJwtElementDefinition = when (contentList.size) {
+        0 -> error("No content for array definition: $arrayMetadata")
+        1 -> contentList.first()
+        else -> +DisclosableDef.Alt(contentList)
+    }
+    return SdJwtArrayDefinition(content, arrayMetadata)
 }
 
 private fun ClaimMetadata.toDisclosableElementMetadata(
@@ -135,7 +137,7 @@ private fun buildNestedDisclosableValue(
     currentClaimPath: ClaimPath,
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
-): Pair<DisclosableValue<String, AttributeMetadata>, Boolean> {
+): Pair<DisclosableDef<String, AttributeMetadata>, Boolean> {
     val currentClaimMetadata = allClaimsGroupedByParentPath[currentClaimPath.parent()]
         ?.firstOrNull { it.path == currentClaimPath }
 
@@ -155,7 +157,7 @@ private fun buildNestedDisclosableValue(
             display = currentClaimMetadata.display?.toList(),
             svgId = currentClaimMetadata.svgId,
         )
-        return DisclosableValue.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
+        return DisclosableDef.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
     }
 
     val isNextLevelArray = directChildrenClaims.all { childCm ->
@@ -167,14 +169,14 @@ private fun buildNestedDisclosableValue(
         svgId = currentClaimMetadata.svgId,
     )
 
-    val disclosableValue: DisclosableValue<String, AttributeMetadata> = if (isNextLevelArray) {
+    val disclosableValue: DisclosableDef<String, AttributeMetadata> = if (isNextLevelArray) {
         val arrayDefinition = processArrayDefinition(
             arrayMetadata = containerAttributeMetadata,
             childClaimsMetadatas = directChildrenClaims, // Pass the direct children
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
             selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
         )
-        DisclosableValue.Arr(arrayDefinition)
+        DisclosableDef.Arr(arrayDefinition)
     } else {
         val objectDefinition = processObjectDefinition(
             objMetadata = containerAttributeMetadata,
@@ -182,7 +184,7 @@ private fun buildNestedDisclosableValue(
             allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
             selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
         )
-        DisclosableValue.Obj(objectDefinition)
+        DisclosableDef.Obj(objectDefinition)
     }
 
     return disclosableValue to isCurrentNodeSelectivelyDisclosable

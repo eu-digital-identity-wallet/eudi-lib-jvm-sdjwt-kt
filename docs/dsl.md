@@ -13,7 +13,7 @@ This document provides a comprehensive guide to the Domain-Specific Language (DS
 
 ## Overview
 
-The `eu.europa.ec.eudi.sdjwt.dsl` package and its sub-packages provide a type-safe, Kotlin-based DSL for creating and manipulating Selective Disclosure JWTs (SD-JWTs). The DSL allows developers to define complex structures with precise control over which parts are selectively disclosable, making it suitable for privacy-preserving credential systems like the European Digital Identity Wallet.
+The `eu.europa.ec.eudi.sdjwt.dsl.values` package and its sub-packages provide a type-safe, Kotlin-based DSL for creating and manipulating Selective Disclosure JWTs (SD-JWTs). The DSL allows developers to define complex structures with precise control over which parts are selectively disclosable, making it suitable for privacy-preserving credential systems like the European Digital Identity Wallet.
 
 The DSL approach makes the code more readable and maintainable compared to directly manipulating JSON or other data structures, while still providing the flexibility needed for complex credential scenarios.
 
@@ -160,7 +160,7 @@ val disclosedClaimNames = sdJwtSpec.fold(
 
 ## Working with Metadata
 
-The `eu.europa.ec.eudi.sdjwt.dsl.sdjwt.def` package provides support for working with metadata for SD-JWT Verifiable Credentials:
+The `eu.europa.ec.eudi.sdjwt.dsl.def` package provides support for working with metadata for SD-JWT Verifiable Credentials:
 
 ### Creating Object Definitions from Metadata
 
@@ -168,25 +168,13 @@ You can create an SD-JWT object definition from SD-JWT VC metadata:
 
 ```kotlin
 // Create an SD-JWT object definition from SD-JWT VC metadata
-val sdJwtDefinition = SdJwtDefinition.fromSdJwtVcMetadata(
+val sdJwtDefinition = SdJwtDefinition.fromSdJwtVcMetadataStrict(
     sdJwtVcMetadata = resolvedTypeMetadata,
     selectivelyDiscloseWhenAllowed = true
 )
 ```
 
 This converts the flat metadata structure into a hierarchical disclosable structure that accurately represents the disclosure and display properties of the credential.
-
-### Extracting Claim Paths
-
-You can extract claim paths from an object definition:
-
-```kotlin
-// Extract claim paths from the definition
-val claimPaths = sdJwtDefinition.claimPaths()
-```
-
-These claim paths can be used for presentation requests or for navigating the credential structure.
-
 
 ### Validating SD-JWTs Against Definitions
 
@@ -205,15 +193,17 @@ in the presented SD-JWT does not match its type as defined in the SdJwtDefinitio
 - `IncorrectlyDisclosedClaim`: Signifies that a claim's selective disclosure status 
 (always disclosed vs. selectively disclosed) in the SD-JWT contradicts its definition. 
 For instance, a claim defined as "always selectively disclosable" is found directly in the payload, or vice-versa.
-
+- `MissingRequiredClaim` According to SD-JWT-VC `iss` and `vct` claims are required and must be never selectively disclosable
+- `InvalidVct` Signifies that the credential has a `vct` claim that is not equal to the one found in the type metadata
+ 
 ```kotlin
-import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedSdJwtVcValidator
-import eu.europa.ec.eudi.sdjwt.vc.DefinitionBasedValidationResult
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedSdJwtVcValidator
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedValidationResult
 
 // Assuming you have your sdJwtDefinition, jwtPayload, and disclosures
 val sdJwtDefinition = TODO()
 val validationResult = with(DefinitionBasedSdJwtVcValidator){
-    sdJwtDefinition.validate(
+    sdJwtDefinition.validateSdJwtVc(
         jwtPayload = yourJwtPayload,
         disclosures = yourDisclosures,
     )

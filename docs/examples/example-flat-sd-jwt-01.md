@@ -11,7 +11,7 @@ The Issuer in this case made the following decisions:
 * For `address`, the Issuer is using a flat structure, i.e., all of the claims in the address claim can only be disclosed in full.
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 -->
 
 ```kotlin
