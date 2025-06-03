@@ -21,9 +21,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class FromSdJwtVcMetadataStrictTest {
+
     @Test
-    fun test() {
-        val resolvedMetadata = sdJwtVcTypeMetadata(metadata).resolve()
+    fun testWithSimpleArray() {
+        val resolvedMetadata = sdJwtVcTypeMetadata(metadataWithSimpleArray).resolve()
         val definition = SdJwtDefinition.fromSdJwtVcMetadataStrict(resolvedMetadata)
         assertEquals(3, definition.content.size)
         val nameDef = definition.content["name"]
@@ -35,7 +36,7 @@ class FromSdJwtVcMetadataStrictTest {
         assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, *>>>(degreesDef.value.value.content)
     }
 
-    private val metadata = """
+    private val metadataWithSimpleArray = """
         {
           "vct": "https://betelgeuse.example.com/education_credential",
           "name": "Betelgeuse Education Credential - Preliminary Version",
@@ -165,6 +166,42 @@ class FromSdJwtVcMetadataStrictTest {
           "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
           "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
         }
+    """.trimIndent()
 
+    @Test
+    fun testWithComplexArray() {
+        val resolvedMetadata = sdJwtVcTypeMetadata(metadataWithComplexArray).resolve()
+        val definition = SdJwtDefinition.fromSdJwtVcMetadataStrict(resolvedMetadata)
+        assertEquals(1, definition.content.size)
+        val residencesDef = assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, *>>>(definition.content["residences"])
+        val residenceDef = assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Obj<String, *>>>(residencesDef.value.value.content)
+        assertEquals(2, residenceDef.value.value.content.size)
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, *>>>(residenceDef.value.value.content["postal_code"])
+        val countryDef = assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Obj<String, *>>>(residenceDef.value.value.content["country"])
+        assertEquals(2, countryDef.value.value.content.size)
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, *>>>(countryDef.value.value.content["code"])
+        val countryNamesDef =
+            assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, *>>>(countryDef.value.value.content["names"])
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, *>>>(countryNamesDef.value.value.content)
+    }
+
+    private val metadataWithComplexArray = """
+        {
+          "vct": "https://example.com/residences",
+          "name": "Residences",
+          "display": [
+            {
+              "lang": "en",
+              "name": "Residences"
+            }
+          ],
+          "claims": [
+            { "path": [ "residences", null ], "sd": "always" },
+            { "path": [ "residences", null, "postal_code" ], "sd": "always" },
+            { "path": [ "residences", null, "country" ], "sd": "always" },
+            { "path": [ "residences", null, "country", "code" ], "sd": "always" },
+            { "path": [ "residences", null, "country", "names", null ], "sd": "always" }
+          ]
+        }
     """.trimIndent()
 }

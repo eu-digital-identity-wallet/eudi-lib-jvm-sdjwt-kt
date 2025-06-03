@@ -159,16 +159,13 @@ private fun processArrayDefinitionStrict(
         elementDefinitions.add(if (isElementSd) +elementDef else !elementDef)
     } else {
         // Case: Nested paths exist (e.g., `degrees[*].type`, implying elements are objects/arrays)
-        // Each child path of `arrayElementsClaimPath` represents a distinct potential structure for array elements
-        arrayElementsChildrenPaths.forEach { childPath ->
-            val disclosableElement = buildNestedDisclosableElementStrict(
-                currentClaimPath = childPath,
-                existingClaimsByPath = existingClaimsByPath,
-                allNodesChildrenMap = allNodesChildrenMap,
-                selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
-            )
-            elementDefinitions.add(disclosableElement)
-        }
+        val disclosableElement = buildNestedDisclosableElementStrict(
+            currentClaimPath = arrayElementsClaimPath,
+            existingClaimsByPath = existingClaimsByPath,
+            allNodesChildrenMap = allNodesChildrenMap,
+            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
+        )
+        elementDefinitions.add(disclosableElement)
     }
 
     val content: DisclosableElementDefinition<String, AttributeMetadata> = when (elementDefinitions.size) {
