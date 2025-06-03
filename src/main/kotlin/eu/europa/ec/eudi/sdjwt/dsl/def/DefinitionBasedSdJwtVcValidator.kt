@@ -33,8 +33,21 @@ sealed interface DefinitionViolation {
      */
     data class DisclosureInconsistencies(val cause: Throwable) : DefinitionViolation
 
-    data class InvalidVct(val expectedVct: Vct, val actual: Vct?) : DefinitionViolation
-    data class MissingRequiredAttribute(val attributeName: String) : DefinitionViolation
+    /**
+     * The SD-JWT contains in the payload a 'vct' that does not correspond to the 'vct' of the definition it is being
+     * validated against.
+     *
+     * @param expected the expected 'vct', i.e. the 'vct' in of the definition
+     * @param actual the 'vct' contained in the SD-JWT payload, if any
+     */
+    data class InvalidVct(val expected: Vct, val actual: String) : DefinitionViolation
+
+    /**
+     * The SD-JWT is missing from its payload a required claim.
+     *
+     * @param claimPath the claim path of the missing claim
+     */
+    data class MissingRequiredClaim(val claimPath: ClaimPath) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -61,11 +74,21 @@ sealed interface DefinitionViolation {
      * For instance, a claim is expected to be always selectively disclosable,
      * yet it was found to be disclosed as never selectively disclosed, or vise versa
      *
-     * @param claimPath the claim path of incorrectly disclosed claim
+     * @param claimPath the claim path of the incorrectly disclosed claim
      */
     data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
 
-    data class NoneMatched(val claimPath: ClaimPath, val violationPerAlternative: Map<Int, List<DefinitionViolation>>) : DefinitionViolation
+    /**
+     * The SD-JWT contains in the payload a claim that did not match any of the alternatives
+     * defined in the definition against which it was being validated.
+     *
+     * @param claimPath the claim path of the claim that failed to validate
+     * @param violationsPerAlternative the violations  per alternative definition that were found
+     */
+    data class NoAlternativesMatched(
+        val claimPath: ClaimPath,
+        val violationsPerAlternative: Map<Int, List<DefinitionViolation>>,
+    ) : DefinitionViolation
 }
 
 sealed interface DefinitionBasedValidationResult {
@@ -124,15 +147,29 @@ fun interface DefinitionBasedSdJwtVcValidator {
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult {
         val sdJwtVcViolations = buildList {
-            val vct: Vct? = jwtPayload[SdJwtVcSpec.VCT]?.let { Json.decodeFromJsonElement(it) }
-            if (vct == null) {
-                add(DefinitionViolation.MissingRequiredAttribute(SdJwtVcSpec.VCT))
-            } else if (vct != metadata.vct) {
-                add(DefinitionViolation.InvalidVct(metadata.vct, vct))
+            fun requiredStringClaimAndThen(claimName: String, andThen: (String) -> Unit) {
+                when (val claimValue = jwtPayload[claimName]) {
+                    null, JsonNull -> add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(claimName)))
+                    else -> {
+                        if (claimValue !is JsonPrimitive || !claimValue.isString) {
+                            add(DefinitionViolation.WrongClaimType(ClaimPath.claim(claimName)))
+                        } else {
+                            andThen(claimValue.content)
+                        }
+                    }
+                }
             }
-            val issuer = jwtPayload[SdJwtVcSpec.ISSUER]?.jsonPrimitive?.contentOrNull
-            if (issuer.isNullOrBlank()) {
-                add(DefinitionViolation.MissingRequiredAttribute(SdJwtVcSpec.ISSUER))
+
+            requiredStringClaimAndThen(SdJwtVcSpec.VCT) {
+                if (it != metadata.vct.value) {
+                    add(DefinitionViolation.InvalidVct(metadata.vct, it))
+                }
+            }
+
+            requiredStringClaimAndThen(SdJwtVcSpec.ISSUER) {
+                if (it.isBlank()) {
+                    add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(SdJwtVcSpec.ISSUER)))
+                }
             }
         }
 
@@ -248,7 +285,7 @@ private class SdJwtVcDefinitionValidator private constructor(
                             violationPerAlternative.put(altNo, es)
                         }
                         if (correct) emptyList()
-                        else listOf(DefinitionViolation.NoneMatched(claimPath, violationPerAlternative))
+                        else listOf(DefinitionViolation.NoAlternativesMatched(claimPath, violationPerAlternative))
                     }
                 }
                 allErrors.addAll(es)
