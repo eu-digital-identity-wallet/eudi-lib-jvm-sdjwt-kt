@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl
+package eu.europa.ec.eudi.sdjwt.dsl.values
+
+import eu.europa.ec.eudi.sdjwt.dsl.not
+import eu.europa.ec.eudi.sdjwt.dsl.unaryPlus
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)

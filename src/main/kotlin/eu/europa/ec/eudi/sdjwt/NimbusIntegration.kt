@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.SdJwtObjectBuilder
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers

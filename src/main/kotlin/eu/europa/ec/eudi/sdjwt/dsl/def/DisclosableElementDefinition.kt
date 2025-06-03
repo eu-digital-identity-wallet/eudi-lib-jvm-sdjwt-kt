@@ -1,0 +1,121 @@
+/*
+ * Copyright (c) 2023 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package eu.europa.ec.eudi.sdjwt.dsl.def
+
+import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
+
+/**
+ * Represents the **definition (schema)** of a map-like structure for selectively disclosable data.
+ *
+ * This interface defines the expected claims and their nested structures
+ * at the schema level, focusing on how data types and disclosure properties are defined.
+ *
+ * @param K The type of the keys used in the object
+ * @param A The type of **metadata** associated with individual claims or their definition.
+ * This allows attaching additional schema-level information (e.g., display hints, validation rules).
+ */
+interface DisclosableDefObject<K, out A> {
+    val content: Map<K, DisclosableElementDefinition<K, A>>
+}
+
+/**
+ * Represents the **definition (schema)** of a array-like structure for selectively disclosable data.
+ *
+ * This interface defines the expected structure and disclosure properties for elements within an array.
+ * While its `content` property holds a single [DisclosableElementDefinition], that definition can itself
+ * be a [DisclosableDef.Alt], allowing for arrays that contain elements of various types
+ * (i.e., heterogeneous arrays) at the instance level.
+ *
+ * @param K The type of the keys used in the array (typically unused for array elements, but kept for consistency).
+ * @param A The type of **metadata** associated with individual array elements or their definition.
+ * This allows attaching additional schema-level information (e.g., display hints, validation rules).
+ */
+interface DisclosableDefArray<K, out A> {
+    val content: DisclosableElementDefinition<K, A>
+}
+
+typealias DisclosableElementDefinition<K, A> = Disclosable<DisclosableDef<K, A>>
+
+/**
+ * A sealed interface representing the **type** of a defined element within a selectively disclosable schema.
+ *
+ * This distinguishes between primitive values, nested objects, nested arrays,
+ * or a set of alternative definitions that a data element could conform to.
+ *
+ * @param K The type of keys used in nested objects
+ * @param A The type of **metadata** associated with the element's definition.
+ */
+sealed interface DisclosableDef<K, out A> {
+
+    /**
+     * Represents a **primitive value** in the schema definition.
+     *
+     * This indicates that the element is expected to be a simple, non-structured value
+     * (e.g., string, number, boolean).
+     * [A] typically represents metadata about this primitive type,
+     * such as format or display hints.
+     *
+     * @param value The metadata associated with this primitive definition.
+     */
+    @JvmInline
+    value class Id<K, out A>(
+        val value: A,
+    ) : DisclosableDef<K, A>
+
+    /**
+     * Represents a **nested object** in the schema definition.
+     *
+     * This indicates that the element is expected to be a JSON object,
+     * defined by its corresponding [DisclosableDefObject].
+     *
+     * @param value The [DisclosableDefObject] that defines the structure and properties of this nested object.
+     */
+    @JvmInline
+    value class Obj<K, out A>(
+        val value: DisclosableDefObject<K, A>,
+    ) : DisclosableDef<K, A>
+
+    /**
+     * Represents a **nested array** in the schema definition.
+     *
+     * This indicates that the element is expected to be an array,
+     * defined by its corresponding [DisclosableDefArray].
+     *
+     * @param value The [DisclosableDefArray] that defines the structure and elements of this nested array.
+     */
+    @JvmInline
+    value class Arr<K, out A>(
+        val value: DisclosableDefArray<K, A>,
+    ) : DisclosableDef<K, A>
+
+    /**
+     * Represents a set of **alternative definitions** that a data element could conform to.
+     *
+     * This is useful for "oneOf" or "anyOf" scenarios in schema definitions, where
+     * the element's value must match at least one of the provided [DisclosableElementDefinition]s.
+     *
+     * @param value A [Set] of [DisclosableElementDefinition]s, where the data element must satisfy at least one.
+     */
+    @JvmInline
+    value class Alt<K, out A>(
+        val value: Set<DisclosableElementDefinition<K, A>>,
+    ) : DisclosableDef<K, A> {
+        init {
+            require(value.size >= 2) { "At least 2 values must be provided" }
+            require(value.all { it.value !is Alt }) { "An alternatives definition cannot contain other alternatives definitions" }
+        }
+    }
+}

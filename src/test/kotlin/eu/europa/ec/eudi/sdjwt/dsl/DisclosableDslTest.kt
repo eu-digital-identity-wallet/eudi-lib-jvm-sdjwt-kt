@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl
 
+import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue
+import eu.europa.ec.eudi.sdjwt.dsl.values.buildDisclosableArray
+import eu.europa.ec.eudi.sdjwt.dsl.values.buildDisclosableObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

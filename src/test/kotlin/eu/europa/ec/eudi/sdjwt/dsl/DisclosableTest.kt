@@ -15,6 +15,10 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl
 
+import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableContainerFactory
+import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableElement
+import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableValue
+import eu.europa.ec.eudi.sdjwt.dsl.values.map
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

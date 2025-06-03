@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.sdjwt.dsl
+package eu.europa.ec.eudi.sdjwt.dsl.values
+
+import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 
 /**
  * Transforms the keys and values of the current `DisclosableObject` using the provided factory and mapping functions.

@@ -8,7 +8,7 @@ In this example, the Issuer decided to create a structured object for the `addre
 disclose individual members of the claim.
 
 <!--- INCLUDE
-import eu.europa.ec.eudi.sdjwt.dsl.sdjwt.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 -->
 
 ```kotlin
