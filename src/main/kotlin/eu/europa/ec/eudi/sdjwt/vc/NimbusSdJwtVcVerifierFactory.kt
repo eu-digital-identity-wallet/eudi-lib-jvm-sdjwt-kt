@@ -16,21 +16,14 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
-import eu.europa.ec.eudi.sdjwt.map
+import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
-interface SdJwtVcVerifierFactory<JWT> {
-    fun create(
-        jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+/**
+ * Nimbus implementations of [SdJwtVcVerifierFactory].
+ */
+internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
+    override fun create(
+        jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
         resolveTypeMetadata: ResolveTypeMetadata?,
-    ): SdJwtVcVerifier<JWT>
-
-    fun <JWT1> transform(
-        f1: (JWT1) -> JWT,
-        f2: (JWT) -> JWT1,
-    ): SdJwtVcVerifierFactory<JWT1> = object : SdJwtVcVerifierFactory<JWT1> {
-        override fun create(
-            jwtSignatureVerifier: JwtSignatureVerifier<JWT1>,
-            resolveTypeMetadata: ResolveTypeMetadata?,
-        ): SdJwtVcVerifier<JWT1> = this@SdJwtVcVerifierFactory.create(jwtSignatureVerifier.map(f1), resolveTypeMetadata).map(f2)
-    }
+    ): SdJwtVcVerifier<NimbusSignedJWT> = NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata)
 }

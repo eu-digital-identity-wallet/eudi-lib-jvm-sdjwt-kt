@@ -15,23 +15,27 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
-import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
-import eu.europa.ec.eudi.sdjwt.vc.X509CertificateTrust
+import eu.europa.ec.eudi.sdjwt.vc.*
 import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
-val DefaultSdJwtOps.SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims, NimbusJWK, List<X509Certificate>>
-    get() = NimbusSdJwtVcFactory.transform(
+val DefaultSdJwtOps.SdJwtVcSignatureVerifier: SdJwtVcSignatureVerifierFactory<JwtAndClaims, NimbusJWK, List<X509Certificate>>
+    get() = NimbusSdJwtVcSignatureVerifierFactory.transform(
         convertJwt = ::nimbusToJwtAndClaims,
         convertJwk = { it },
         convertX509Chain = { it },
     )
 
+val DefaultSdJwtOps.SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims>
+    get() = NimbusSdJwtVcVerifierFactory.transform(::jwtAndClaimsToNimbus, ::nimbusToJwtAndClaims)
+
 internal fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims =
     checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()
+
+internal fun jwtAndClaimsToNimbus(jwtAndClaims: JwtAndClaims): NimbusSignedJWT =
+    NimbusSignedJWT.parse(jwtAndClaims.first)
 
 operator fun X509CertificateTrust.Companion.invoke(
     trust: suspend (List<X509Certificate>, JsonObject) -> Boolean,

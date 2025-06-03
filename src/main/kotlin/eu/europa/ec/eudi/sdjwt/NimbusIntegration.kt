@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
-import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcFactory
+import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcSignatureVerifierFactory
+import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcVerifierFactory
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcSignatureVerifierFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -290,7 +292,9 @@ object NimbusSdJwtOps :
         }
     }
 
-    val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> = NimbusSdJwtVcFactory
+    @Suppress("ktlint:standard:max-line-length")
+    val SdJwtVcSignatureVerifier: SdJwtVcSignatureVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> = NimbusSdJwtVcSignatureVerifierFactory
+    val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT> = NimbusSdJwtVcVerifierFactory
 }
 
 private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =

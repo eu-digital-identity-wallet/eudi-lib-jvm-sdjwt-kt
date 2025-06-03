@@ -149,14 +149,16 @@ private val IssuerSampleCfg = IssuerConfig(
 class SdJwtVcIssuanceTest {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
-
-    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata {
-        val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
-        val issuerMetadata = SdJwtVcIssuerMetadata(
-            issuer = issuingService.config.issuer.toString(),
-            jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
-        )
-        HttpMock.clientReturning(issuerMetadata)
+    private val sdJwtVcVerifier = with(DefaultSdJwtOps) {
+        val jwtSignatureVerifier = SdJwtVcSignatureVerifier.usingIssuerMetadata {
+            val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
+            val issuerMetadata = SdJwtVcIssuerMetadata(
+                issuer = issuingService.config.issuer.toString(),
+                jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
+            )
+            HttpMock.clientReturning(issuerMetadata)
+        }
+        SdJwtVcVerifier.create(jwtSignatureVerifier, null)
     }
 
     @Test

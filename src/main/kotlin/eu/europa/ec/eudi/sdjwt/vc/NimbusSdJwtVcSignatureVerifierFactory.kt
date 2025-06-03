@@ -20,11 +20,9 @@ import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -36,63 +34,24 @@ import com.nimbusds.jose.proc.SecurityContext as NimbusSecurityContext
 import com.nimbusds.jose.util.X509CertUtils as NimbusX509CertUtils
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
-internal object NimbusSdJwtVcFactory : SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> {
-    override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<NimbusSignedJWT> =
-        NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory)
+internal object NimbusSdJwtVcSignatureVerifierFactory : SdJwtVcSignatureVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> {
 
-    override fun usingX5c(x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>): SdJwtVcVerifier<NimbusSignedJWT> =
-        NimbusSdJwtVcVerifier(trust = x509CertificateTrust)
+    override fun usingIssuerMetadata(
+        httpClientFactory: KtorHttpClientFactory,
+    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(httpClientFactory = httpClientFactory)
 
-    override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<NimbusJWK>): SdJwtVcVerifier<NimbusSignedJWT> =
-        NimbusSdJwtVcVerifier(lookup = didLookup)
+    override fun usingX5c(
+        x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>,
+    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(trust = x509CertificateTrust)
+
+    override fun usingDID(
+        didLookup: LookupPublicKeysFromDIDDocument<NimbusJWK>,
+    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(lookup = didLookup)
 
     override fun usingX5cOrIssuerMetadata(
         x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>,
         httpClientFactory: KtorHttpClientFactory,
-    ): SdJwtVcVerifier<NimbusSignedJWT> =
-        NimbusSdJwtVcVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
-}
-
-private class NimbusSdJwtVcVerifier(
-    httpClientFactory: KtorHttpClientFactory? = null,
-    trust: X509CertificateTrust<List<X509Certificate>>? = null,
-    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
-) : SdJwtVcVerifier<NimbusSignedJWT> {
-    init {
-        require(httpClientFactory != null || trust != null || lookup != null) {
-            "at least one of httpClientFactory, trust, or lookup must be provided"
-        }
-    }
-
-    private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT> =
-        sdJwtVcSignatureVerifier(httpClientFactory, trust, lookup)
-
-    private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
-        with(NimbusSdJwtOps) {
-            KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
-        }
-
-    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
-
-    override suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
-
-    override suspend fun verify(
-        unverifiedSdJwt: String,
-        challenge: JsonObject?,
-    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
-    }
-
-    override suspend fun verify(
-        unverifiedSdJwt: JsonObject,
-        challenge: JsonObject?,
-    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
-    }
+    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
 }
 
 /**
@@ -116,7 +75,7 @@ private class NimbusSdJwtVcVerifier(
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
-internal fun sdJwtVcSignatureVerifier(
+private fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
     trust: X509CertificateTrust<List<X509Certificate>>? = null,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
