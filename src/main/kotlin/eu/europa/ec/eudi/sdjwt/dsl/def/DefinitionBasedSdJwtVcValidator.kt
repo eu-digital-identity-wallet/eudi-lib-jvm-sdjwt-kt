@@ -142,6 +142,18 @@ fun interface DefinitionBasedSdJwtVcValidator {
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult
 
+    /**
+     * Validates an SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
+     *
+     * The method performs validation by verifying the required claims in the JWT payload and
+     * ensuring that they conform to the definition. It also validates against the list of disclosures.
+     *
+     * @param jwtPayload The JSON object representing the JWT payload of the SD-JWT-VC credential to validate.
+     * @param disclosures A list of disclosures associated with the SD-JWT-VC credential. The list may vary depending
+     * on whether the validation is performed by a wallet or a verifier.
+     * @return A [DefinitionBasedValidationResult] object representing the result of the validation. It specifies
+     * whether the validation was successful or not, and if not, includes a list of violations.
+     */
     fun SdJwtDefinition.validateSdJwtVc(
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,

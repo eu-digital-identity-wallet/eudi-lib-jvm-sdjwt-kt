@@ -36,6 +36,15 @@ data class SdJwtDefinition(
     override val content: Map<String, SdJwtElementDefinition>,
     val metadata: VctMetadata,
 ) : DisclosableDefObject<String, AttributeMetadata> {
+
+    /**
+     * Returns a new [SdJwtDefinition] with updates to ensure that specific claims are marked
+     * as "Never Selectively Disclosable". The claims targeted for this update are predefined
+     * by the SD-JWT-VC specification [`iss`, `nbf`, `exp`, `cnf`, `vct`, `vct_integrity`, `status`]
+     *
+     * @return A new instance of [SdJwtDefinition] where the targeted claims have been updated
+     *         to be "Never Selectively Disclosable".
+     */
     fun plusSdJwtVcNeverSelectivelyDisclosableClaims(): SdJwtDefinition {
         val newContents = content.toMutableMap()
         SdJwtVcNeverSelectivelyDisclosableClaims.forEach { claim ->
