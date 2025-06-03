@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import eu.europa.ec.eudi.sdjwt.SdJwtVerificationException
 import eu.europa.ec.eudi.sdjwt.VerificationError
 import eu.europa.ec.eudi.sdjwt.asException
 import eu.europa.ec.eudi.sdjwt.jsonObject
@@ -106,8 +105,6 @@ private fun sdJwtVcSignatureVerifier(
         }
     }
 }
-
-private fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))
 
 private suspend fun issuerJwkSource(
     httpClientFactory: KtorHttpClientFactory?,

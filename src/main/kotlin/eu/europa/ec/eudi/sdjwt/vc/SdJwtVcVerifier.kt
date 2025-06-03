@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionViolation
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -140,7 +141,29 @@ sealed interface SdJwtVcVerificationError {
          */
         data object CannotDetermineIssuerVerificationMethod : IssuerKeyVerificationError
     }
+
+    /**
+     * Verification errors regarding the resolution of Type Metadata and validation against it.
+     */
+    sealed interface TypeMetadataVerificationError : SdJwtVcVerificationError {
+
+        /**
+         * Indicates that Type Metadata could not be resolved.
+         */
+        data class TypeMetadataResolutionFailure(val cause: Throwable? = null) : TypeMetadataVerificationError
+
+        /**
+         * Indicates violations were found when trying to validation an SD-JWT VC against its Type Metadata.
+         */
+        data class TypeMetadataValidationFailure(val errors: List<DefinitionViolation>) : TypeMetadataVerificationError {
+            init {
+                require(errors.isNotEmpty()) { "errors must not be empty" }
+            }
+        }
+    }
 }
+
+internal fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))
 
 interface SdJwtVcVerifierFactory<JWT> {
     fun create(

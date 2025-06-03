@@ -16,6 +16,10 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedSdJwtVcValidator
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedValidationResult
+import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
+import eu.europa.ec.eudi.sdjwt.dsl.def.fromSdJwtVcMetadata
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
@@ -26,7 +30,6 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
  * @param jwtSignatureVerifier the [SdJwtVcJwtSignatureVerifier] to use for verification
  * @param resolveTypeMetadata optional resolver for the [Type Metadata][ResolvedTypeMetadata] of a given vct
  */
-// TODO: Add resolution of TypeMetadata and verification
 internal class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: SdJwtVcJwtSignatureVerifier<NimbusSignedJWT>,
     private val resolveTypeMetadata: ResolveTypeMetadata?,
@@ -38,9 +41,13 @@ internal class NimbusSdJwtVcVerifier(
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
+            .alsoCatching {
+                val typeMetadata = resolveTypeMetadata?.resolve(it)
+                typeMetadata?.validate(it)
+            }
 
     override suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     override suspend fun verify(
         unverifiedSdJwt: String,
@@ -48,16 +55,43 @@ internal class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
         val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
         NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+            .alsoCatching {
+                val typeMetadata = resolveTypeMetadata?.resolve(it.sdJwt)
+                typeMetadata?.validate(it.sdJwt)
+            }
     }
 
     override suspend fun verify(
         unverifiedSdJwt: JsonObject,
         challenge: JsonObject?,
-    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> = coroutineScope {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
+
+    private suspend fun ResolveTypeMetadata.resolve(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
+        try {
+            val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
+            this(vct).getOrThrow()
+        } catch (error: Exception) {
+            raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
+        }
+}
+
+private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+    val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
+    val validationResult =
+        with(DefinitionBasedSdJwtVcValidator) {
+            definition.validateSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
+        }
+    if (validationResult is DefinitionBasedValidationResult.Invalid) {
+        raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors))
     }
 }
+
+private suspend fun <T> Result<T>.alsoCatching(action: suspend (T) -> Unit): Result<T> =
+    mapCatching {
+        action(it)
+        it
+    }
 
 /**
  * Nimbus implementations of [SdJwtVcVerifierFactory].
