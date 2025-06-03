@@ -15,7 +15,10 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.SdJwtVerificationException
+import eu.europa.ec.eudi.sdjwt.VerificationError
+import eu.europa.ec.eudi.sdjwt.asException
+import eu.europa.ec.eudi.sdjwt.jsonObject
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
 import io.ktor.http.*
@@ -38,20 +41,23 @@ internal object NimbusSdJwtVcSignatureVerifierFactory : SdJwtVcSignatureVerifier
 
     override fun usingIssuerMetadata(
         httpClientFactory: KtorHttpClientFactory,
-    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(httpClientFactory = httpClientFactory)
+    ): SdJwtVcJwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(httpClientFactory = httpClientFactory)
 
     override fun usingX5c(
         x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>,
-    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(trust = x509CertificateTrust)
+    ): SdJwtVcJwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(trust = x509CertificateTrust)
 
     override fun usingDID(
         didLookup: LookupPublicKeysFromDIDDocument<NimbusJWK>,
-    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(lookup = didLookup)
+    ): SdJwtVcJwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(lookup = didLookup)
 
     override fun usingX5cOrIssuerMetadata(
         x509CertificateTrust: X509CertificateTrust<List<X509Certificate>>,
         httpClientFactory: KtorHttpClientFactory,
-    ): JwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(httpClientFactory = httpClientFactory, trust = x509CertificateTrust)
+    ): SdJwtVcJwtSignatureVerifier<NimbusSignedJWT> = sdJwtVcSignatureVerifier(
+        httpClientFactory = httpClientFactory,
+        trust = x509CertificateTrust,
+    )
 }
 
 /**
@@ -79,7 +85,7 @@ private fun sdJwtVcSignatureVerifier(
     httpClientFactory: KtorHttpClientFactory? = null,
     trust: X509CertificateTrust<List<X509Certificate>>? = null,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
-): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
+): SdJwtVcJwtSignatureVerifier<NimbusSignedJWT> = SdJwtVcJwtSignatureVerifier { unverifiedJwt ->
     withContext(Dispatchers.IO) {
         val signedJwt = try {
             NimbusSignedJWT.parse(unverifiedJwt)

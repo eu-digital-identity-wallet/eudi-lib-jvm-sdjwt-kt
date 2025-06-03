@@ -141,3 +141,20 @@ sealed interface SdJwtVcVerificationError {
         data object CannotDetermineIssuerVerificationMethod : IssuerKeyVerificationError
     }
 }
+
+interface SdJwtVcVerifierFactory<JWT> {
+    fun create(
+        jwtSignatureVerifier: SdJwtVcJwtSignatureVerifier<JWT>,
+        resolveTypeMetadata: ResolveTypeMetadata?,
+    ): SdJwtVcVerifier<JWT>
+
+    fun <JWT1> transform(
+        f1: (JWT1) -> JWT,
+        f2: (JWT) -> JWT1,
+    ): SdJwtVcVerifierFactory<JWT1> = object : SdJwtVcVerifierFactory<JWT1> {
+        override fun create(
+            jwtSignatureVerifier: SdJwtVcJwtSignatureVerifier<JWT1>,
+            resolveTypeMetadata: ResolveTypeMetadata?,
+        ): SdJwtVcVerifier<JWT1> = this@SdJwtVcVerifierFactory.create(jwtSignatureVerifier.map(f1), resolveTypeMetadata).map(f2)
+    }
+}

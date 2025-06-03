@@ -23,12 +23,12 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 /**
  * Nimbus implementation of [SdJwtVcVerifier].
  *
- * @param jwtSignatureVerifier the [JwtSignatureVerifier] to use for verification
+ * @param jwtSignatureVerifier the [SdJwtVcJwtSignatureVerifier] to use for verification
  * @param resolveTypeMetadata optional resolver for the [Type Metadata][ResolvedTypeMetadata] of a given vct
  */
 // TODO: Add resolution of TypeMetadata and verification
 internal class NimbusSdJwtVcVerifier(
-    private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
+    private val jwtSignatureVerifier: SdJwtVcJwtSignatureVerifier<NimbusSignedJWT>,
     private val resolveTypeMetadata: ResolveTypeMetadata?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
@@ -57,4 +57,14 @@ internal class NimbusSdJwtVcVerifier(
         val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
         NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
     }
+}
+
+/**
+ * Nimbus implementations of [SdJwtVcVerifierFactory].
+ */
+internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSignedJWT> {
+    override fun create(
+        jwtSignatureVerifier: SdJwtVcJwtSignatureVerifier<NimbusSignedJWT>,
+        resolveTypeMetadata: ResolveTypeMetadata?,
+    ): SdJwtVcVerifier<NimbusSignedJWT> = NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata)
 }

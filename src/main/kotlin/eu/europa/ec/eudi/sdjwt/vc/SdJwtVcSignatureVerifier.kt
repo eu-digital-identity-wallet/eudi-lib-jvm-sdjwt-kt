@@ -17,9 +17,16 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.map
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+/**
+ * JWT signature verifier for the issuer-signed JWT of an SD-JWT VC.
+ */
+fun interface SdJwtVcJwtSignatureVerifier<out JWT> : JwtSignatureVerifier<JWT>
+
+fun <JWT, JWT1> SdJwtVcJwtSignatureVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcJwtSignatureVerifier<JWT1> =
+    SdJwtVcJwtSignatureVerifier { jwt -> checkSignature(jwt)?.let { f(it) } }
 
 fun interface X509CertificateTrust<in X509Chain> {
     suspend fun isTrusted(chain: X509Chain, claimSet: JsonObject): Boolean
@@ -63,17 +70,17 @@ interface SdJwtVcSignatureVerifierFactory<out JWT, in JWK, out X509Chain> {
     /**
      * Creates a new [JwtSignatureVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
      */
-    fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): JwtSignatureVerifier<JWT>
+    fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcJwtSignatureVerifier<JWT>
 
     /**
      * Creates a new [JwtSignatureVerifier] with X509 Certificate trust enabled.
      */
-    fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain>): JwtSignatureVerifier<JWT>
+    fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain>): SdJwtVcJwtSignatureVerifier<JWT>
 
     /**
      * Creates a new [JwtSignatureVerifier] with DID resolution enabled.
      */
-    fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): JwtSignatureVerifier<JWT>
+    fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): SdJwtVcJwtSignatureVerifier<JWT>
 
     /**
      * Creates a new [JwtSignatureVerifier] with X509 Certificate trust, and SD-JWT-VC Issuer Metadata resolution enabled.
@@ -81,7 +88,7 @@ interface SdJwtVcSignatureVerifierFactory<out JWT, in JWK, out X509Chain> {
     fun usingX5cOrIssuerMetadata(
         x509CertificateTrust: X509CertificateTrust<X509Chain>,
         httpClientFactory: KtorHttpClientFactory,
-    ): JwtSignatureVerifier<JWT>
+    ): SdJwtVcJwtSignatureVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
         convertJwt: (JWT) -> JWT1,
@@ -89,19 +96,19 @@ interface SdJwtVcSignatureVerifierFactory<out JWT, in JWK, out X509Chain> {
         convertX509Chain: (X509Chain) -> X509Chain1,
     ): SdJwtVcSignatureVerifierFactory<JWT1, JWK1, X509Chain1> =
         object : SdJwtVcSignatureVerifierFactory<JWT1, JWK1, X509Chain1> {
-            override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): JwtSignatureVerifier<JWT1> =
+            override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcJwtSignatureVerifier<JWT1> =
                 this@SdJwtVcSignatureVerifierFactory.usingIssuerMetadata(httpClientFactory).map(convertJwt)
 
-            override fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain1>): JwtSignatureVerifier<JWT1> =
+            override fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain1>): SdJwtVcJwtSignatureVerifier<JWT1> =
                 this@SdJwtVcSignatureVerifierFactory.usingX5c(x509CertificateTrust.contraMap(convertX509Chain)).map(convertJwt)
 
-            override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK1>): JwtSignatureVerifier<JWT1> =
+            override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK1>): SdJwtVcJwtSignatureVerifier<JWT1> =
                 this@SdJwtVcSignatureVerifierFactory.usingDID(didLookup.map(convertJwk)).map(convertJwt)
 
             override fun usingX5cOrIssuerMetadata(
                 x509CertificateTrust: X509CertificateTrust<X509Chain1>,
                 httpClientFactory: KtorHttpClientFactory,
-            ): JwtSignatureVerifier<JWT1> =
+            ): SdJwtVcJwtSignatureVerifier<JWT1> =
                 this@SdJwtVcSignatureVerifierFactory.usingX5cOrIssuerMetadata(
                     httpClientFactory = httpClientFactory,
                     x509CertificateTrust = x509CertificateTrust.contraMap(convertX509Chain),
