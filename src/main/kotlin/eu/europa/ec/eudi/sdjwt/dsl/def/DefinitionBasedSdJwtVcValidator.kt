@@ -173,7 +173,7 @@ fun interface DefinitionBasedSdJwtVcValidator {
             }
         }
 
-        val result = plusSdJwtVcNeverSelectivelyDisclosableAttributes().validate(jwtPayload, disclosures)
+        val result = plusSdJwtVcNeverSelectivelyDisclosableClaims().validate(jwtPayload, disclosures)
         return if (sdJwtVcViolations.isNotEmpty()) {
             when (result) {
                 is DefinitionBasedValidationResult.Invalid -> result.copy(errors = sdJwtVcViolations + result.errors)

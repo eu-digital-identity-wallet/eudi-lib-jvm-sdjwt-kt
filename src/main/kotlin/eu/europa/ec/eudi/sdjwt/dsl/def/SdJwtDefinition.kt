@@ -16,7 +16,9 @@
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.RFC7519
+import eu.europa.ec.eudi.sdjwt.RFC7800
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.TokenStatusListSpec
 import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableElement
 import eu.europa.ec.eudi.sdjwt.vc.*
@@ -34,29 +36,25 @@ data class SdJwtDefinition(
     override val content: Map<String, SdJwtElementDefinition>,
     val metadata: VctMetadata,
 ) : DisclosableDefObject<String, AttributeMetadata> {
-
-    fun plusSdJwtVcNeverSelectivelyDisclosableAttributes(): SdJwtDefinition {
+    fun plusSdJwtVcNeverSelectivelyDisclosableClaims(): SdJwtDefinition {
         val newContents = content.toMutableMap()
-        fun addIfNotPresent(s: String) {
-            val def = newContents[s]
-            if (def == null) {
-                newContents[s] = !DisclosableDef.Id<String, AttributeMetadata>(AttributeMetadata())
-            }
+        SdJwtVcNeverSelectivelyDisclosableClaims.forEach { claim ->
+            val definition = newContents[claim]?.value ?: DisclosableDef.Id(AttributeMetadata())
+            newContents[claim] = !definition
         }
-        SdJwtVcNeverSelectivelyDisclosableAttributes.forEach(::addIfNotPresent)
         return SdJwtDefinition(newContents, metadata)
     }
 
     companion object {
-        private val SdJwtVcNeverSelectivelyDisclosableAttributes: Set<String>
+        private val SdJwtVcNeverSelectivelyDisclosableClaims: Set<String>
             get() = setOf(
                 RFC7519.ISSUER,
                 RFC7519.NOT_BEFORE,
                 RFC7519.EXPIRATION_TIME,
+                RFC7800.CNF,
                 SdJwtVcSpec.VCT,
                 SdJwtVcSpec.VCT_INTEGRITY,
-                "cnf",
-                "status",
+                TokenStatusListSpec.STATUS,
             )
     }
 }
