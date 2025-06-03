@@ -15,6 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
+import eu.europa.ec.eudi.sdjwt.RFC7519
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableElement
 import eu.europa.ec.eudi.sdjwt.vc.*
 
@@ -31,7 +34,31 @@ data class SdJwtDefinition(
     override val content: Map<String, SdJwtElementDefinition>,
     val metadata: VctMetadata,
 ) : DisclosableDefObject<String, AttributeMetadata> {
-    companion object
+
+    fun plusSdJwtVcNeverSelectivelyDisclosableAttributes(): SdJwtDefinition {
+        val newContents = content.toMutableMap()
+        fun addIfNotPresent(s: String) {
+            val def = newContents[s]
+            if (def == null) {
+                newContents[s] = !DisclosableDef.Id<String, AttributeMetadata>(AttributeMetadata())
+            }
+        }
+        SdJwtVcNeverSelectivelyDisclosableAttributes.forEach(::addIfNotPresent)
+        return SdJwtDefinition(newContents, metadata)
+    }
+
+    companion object {
+        private val SdJwtVcNeverSelectivelyDisclosableAttributes: Set<String>
+            get() = setOf(
+                RFC7519.ISSUER,
+                RFC7519.NOT_BEFORE,
+                RFC7519.EXPIRATION_TIME,
+                SdJwtVcSpec.VCT,
+                SdJwtVcSpec.VCT_INTEGRITY,
+                "cnf",
+                "status",
+            )
+    }
 }
 
 /**

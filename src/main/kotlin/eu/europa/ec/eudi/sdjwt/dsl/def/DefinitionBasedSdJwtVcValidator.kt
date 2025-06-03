@@ -19,10 +19,8 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
+import eu.europa.ec.eudi.sdjwt.vc.Vct
+import kotlinx.serialization.json.*
 
 sealed interface DefinitionViolation {
 
@@ -34,6 +32,9 @@ sealed interface DefinitionViolation {
      * @param cause the underlying exception that occurred during claim reconstruction.
      */
     data class DisclosureInconsistencies(val cause: Throwable) : DefinitionViolation
+
+    data class InvalidVct(val expectedVct: Vct, val actual: Vct?) : DefinitionViolation
+    data class MissingRequiredAttribute(val attributeName: String) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -70,8 +71,7 @@ sealed interface DefinitionViolation {
 sealed interface DefinitionBasedValidationResult {
     data object Valid : DefinitionBasedValidationResult
 
-    @JvmInline
-    value class Invalid(val errors: List<DefinitionViolation>) : DefinitionBasedValidationResult {
+    data class Invalid(val errors: List<DefinitionViolation>) : DefinitionBasedValidationResult {
         constructor(
             head: DefinitionViolation,
             vararg tail: DefinitionViolation,
@@ -118,6 +118,34 @@ fun interface DefinitionBasedSdJwtVcValidator {
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult
+
+    fun SdJwtDefinition.validateSdJwtVc(
+        jwtPayload: JsonObject,
+        disclosures: List<Disclosure>,
+    ): DefinitionBasedValidationResult {
+        val sdJwtVcViolations = buildList {
+            val vct: Vct? = jwtPayload[SdJwtVcSpec.VCT]?.let { Json.decodeFromJsonElement(it) }
+            if (vct == null) {
+                add(DefinitionViolation.MissingRequiredAttribute(SdJwtVcSpec.VCT))
+            } else if (vct != metadata.vct) {
+                add(DefinitionViolation.InvalidVct(metadata.vct, vct))
+            }
+            val issuer = jwtPayload[SdJwtVcSpec.ISSUER]?.jsonPrimitive?.contentOrNull
+            if (issuer.isNullOrBlank()) {
+                add(DefinitionViolation.MissingRequiredAttribute(SdJwtVcSpec.ISSUER))
+            }
+        }
+
+        val result = plusSdJwtVcNeverSelectivelyDisclosableAttributes().validate(jwtPayload, disclosures)
+        return if (sdJwtVcViolations.isNotEmpty()) {
+            when (result) {
+                is DefinitionBasedValidationResult.Invalid -> result.copy(errors = sdJwtVcViolations + result.errors)
+                DefinitionBasedValidationResult.Valid -> DefinitionBasedValidationResult.Invalid(sdJwtVcViolations)
+            }
+        } else {
+            result
+        }
+    }
 
     companion object : DefinitionBasedSdJwtVcValidator by SdJwtVcDefinitionValidator
 }
@@ -229,7 +257,7 @@ private class SdJwtVcDefinitionValidator private constructor(
         }
 
     private fun validate(processedPayload: JsonObject): List<DefinitionViolation> {
-        val processedPayloadWithoutWellKnown = JsonObject(processedPayload - wellKnownClaims)
+        val processedPayloadWithoutWellKnown = JsonObject(processedPayload)
         return validateObject(Triple(null, processedPayloadWithoutWellKnown, definition))
     }
 
@@ -251,22 +279,6 @@ private class SdJwtVcDefinitionValidator private constructor(
     }
 
     companion object : DefinitionBasedSdJwtVcValidator {
-
-        // SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_SD_ALG, are not included because we work with processed payloads
-        // TODO: check whether other well known claims must be added
-        // TODO: verify that when present, the well known claims are never selectively disclosed
-        private val wellKnownClaims: Set<String>
-            get() = setOf(
-                RFC7519.ISSUER,
-                RFC7519.SUBJECT,
-                RFC7519.AUDIENCE,
-                RFC7519.EXPIRATION_TIME,
-                RFC7519.NOT_BEFORE,
-                RFC7519.ISSUED_AT,
-                RFC7519.JWT_ID,
-                SdJwtVcSpec.VCT,
-                SdJwtVcSpec.VCT_INTEGRITY,
-            )
 
         private fun validate(
             jwtPayload: JsonObject,

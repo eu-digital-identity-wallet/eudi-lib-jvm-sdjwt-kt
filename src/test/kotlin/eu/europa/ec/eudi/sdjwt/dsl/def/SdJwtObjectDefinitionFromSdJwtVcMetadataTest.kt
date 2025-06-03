@@ -32,11 +32,6 @@ class SdJwtObjectDefinitionFromSdJwtVcMetadataTest {
         assertEquals(resolvedTypeMetadata.name, vctMetadata.name)
         assertEquals(resolvedTypeMetadata.description, vctMetadata.description)
         assertEquals(resolvedTypeMetadata.display, vctMetadata.display)
-
-//        val expectedClaimPaths =
-//            resolvedTypeMetadata.claims.map { it.path }
-//        val claimPaths = sdJwtDefinition.claimPaths()
-//        assertContentEquals(expectedClaimPaths, claimPaths)
     }
 
     @Test
