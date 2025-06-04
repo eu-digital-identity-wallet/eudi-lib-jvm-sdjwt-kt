@@ -150,14 +150,17 @@ class SdJwtVcIssuanceTest {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
 
-    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata {
-        val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
-        val issuerMetadata = SdJwtVcIssuerMetadata(
-            issuer = issuingService.config.issuer.toString(),
-            jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
-        )
-        HttpMock.clientReturning(issuerMetadata)
-    }
+    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier(
+        IssuerVerificationMethod.usingIssuerMetadata {
+            val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
+            val issuerMetadata = SdJwtVcIssuerMetadata(
+                issuer = issuingService.config.issuer.toString(),
+                jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
+            )
+            HttpMock.clientReturning(issuerMetadata)
+        },
+        null,
+    )
 
     @Test
     fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() = runTest {

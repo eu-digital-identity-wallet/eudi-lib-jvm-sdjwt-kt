@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.SdJwtVcVerifier
+import eu.europa.ec.eudi.sdjwt.map
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -57,53 +58,89 @@ fun interface LookupPublicKeysFromDIDDocument<out JWK> {
         LookupPublicKeysFromDIDDocument { did, didUrl -> lookup(did, didUrl)?.map(convert) }
 }
 
-interface SdJwtVcVerifierFactory<out JWT, in JWK, out X509Chain> {
+/**
+ * How the Issuer of the Issuer-signed JWT of an SD-JWT VC will be verified.
+ */
+sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
 
     /**
-     * Creates a new [SdJwtVcVerifier] with SD-JWT-VC Issuer Metadata resolution enabled.
+     * Using SD-JWT VC Issuer Metadata
      */
-    fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JWT>
+    data class UsingIssuerMetadata(val httpClientFactory: KtorHttpClientFactory) : IssuerVerificationMethod<Nothing, Nothing, Any?>
 
     /**
-     * Creates a new [SdJwtVcVerifier] with X509 Certificate trust enabled.
+     * Using X509 Certificate trust
      */
-    fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain>): SdJwtVcVerifier<JWT>
+    data class UsingX5c<X509Chain>(
+        val x509CertificateTrust: X509CertificateTrust<X509Chain>,
+    ) : IssuerVerificationMethod<Nothing, Nothing, X509Chain>
 
     /**
-     * Creates a new [SdJwtVcVerifier] with DID resolution enabled.
+     * Using DID resolution
      */
-    fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): SdJwtVcVerifier<JWT>
+    data class UsingDID<JWK>(val didLookup: LookupPublicKeysFromDIDDocument<JWK>) : IssuerVerificationMethod<Nothing, JWK, Any?>
 
     /**
-     * Creates a new [SdJwtVcVerifier] with X509 Certificate trust, and SD-JWT-VC Issuer Metadata resolution enabled.
+     * Using X509 Certificate trust or SD-JWT VC Issuer Metadata
      */
-    fun usingX5cOrIssuerMetadata(
-        x509CertificateTrust: X509CertificateTrust<X509Chain>,
-        httpClientFactory: KtorHttpClientFactory,
+    data class UsingX5cOrIssuerMetadata<X509Chain>(
+        val x509CertificateTrust: X509CertificateTrust<X509Chain>,
+        val httpClientFactory: KtorHttpClientFactory,
+    ) : IssuerVerificationMethod<Nothing, Nothing, X509Chain>
+
+    /**
+     * Using a custom [JwtSignatureVerifier]
+     */
+    data class Custom<JWT>(val jwtSignatureVerifier: JwtSignatureVerifier<JWT>) : IssuerVerificationMethod<JWT, Nothing, Any?>
+
+    fun <JWT1, JWK1, X509Chain1> transform(
+        convertToJwt: (JWT) -> JWT1,
+        convertToJwk: (JWK) -> JWK1,
+        convertFromX509Chain: (X509Chain1) -> X509Chain,
+    ): IssuerVerificationMethod<JWT1, JWK1, X509Chain1> =
+        when (this) {
+            is UsingIssuerMetadata -> UsingIssuerMetadata(httpClientFactory)
+            is UsingX5c -> UsingX5c(x509CertificateTrust.contraMap(convertFromX509Chain))
+            is UsingDID -> UsingDID(didLookup.map(convertToJwk))
+            is UsingX5cOrIssuerMetadata -> UsingX5cOrIssuerMetadata(x509CertificateTrust.contraMap(convertFromX509Chain), httpClientFactory)
+            is Custom -> Custom(jwtSignatureVerifier.map(convertToJwt))
+        }
+
+    companion object {
+        fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): UsingIssuerMetadata = UsingIssuerMetadata(httpClientFactory)
+        fun <X509Chain> usingX5c(
+            x509CertificateTrust: X509CertificateTrust<X509Chain>,
+        ): UsingX5c<X509Chain> = UsingX5c(x509CertificateTrust)
+        fun <JWK> usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
+        fun <X509Chain> usingX5cOrIssuerMetadata(
+            x509CertificateTrust: X509CertificateTrust<X509Chain>,
+            httpClientFactory: KtorHttpClientFactory,
+        ): UsingX5cOrIssuerMetadata<X509Chain> = UsingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory)
+        fun <JWT> usingCustom(jwtSignatureVerifier: JwtSignatureVerifier<JWT>): Custom<JWT> = Custom(jwtSignatureVerifier)
+    }
+}
+
+interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
+
+    operator fun invoke(
+        issuerVerificationMethod: IssuerVerificationMethod<JWT, JWK, X509Chain>,
+        resolveTypeMetadata: ResolveTypeMetadata?,
     ): SdJwtVcVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
-        convertJwt: (JWT) -> JWT1,
-        convertJwk: (JWK1) -> JWK,
-        convertX509Chain: (X509Chain) -> X509Chain1,
+        convertFromJwt: (JWT1) -> JWT,
+        convertToJwt: (JWT) -> JWT1,
+        convertFromJwk: (JWK1) -> JWK,
+        convertToX509Chain: (X509Chain) -> X509Chain1,
     ): SdJwtVcVerifierFactory<JWT1, JWK1, X509Chain1> =
         object : SdJwtVcVerifierFactory<JWT1, JWK1, X509Chain1> {
-            override fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): SdJwtVcVerifier<JWT1> =
-                this@SdJwtVcVerifierFactory.usingIssuerMetadata(httpClientFactory).map(convertJwt)
-
-            override fun usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain1>): SdJwtVcVerifier<JWT1> =
-                this@SdJwtVcVerifierFactory.usingX5c(x509CertificateTrust.contraMap(convertX509Chain)).map(convertJwt)
-
-            override fun usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK1>): SdJwtVcVerifier<JWT1> =
-                this@SdJwtVcVerifierFactory.usingDID(didLookup.map(convertJwk)).map(convertJwt)
-
-            override fun usingX5cOrIssuerMetadata(
-                x509CertificateTrust: X509CertificateTrust<X509Chain1>,
-                httpClientFactory: KtorHttpClientFactory,
+            override fun invoke(
+                issuerVerificationMethod: IssuerVerificationMethod<JWT1, JWK1, X509Chain1>,
+                resolveTypeMetadata: ResolveTypeMetadata?,
             ): SdJwtVcVerifier<JWT1> =
-                this@SdJwtVcVerifierFactory.usingX5cOrIssuerMetadata(
-                    httpClientFactory = httpClientFactory,
-                    x509CertificateTrust = x509CertificateTrust.contraMap(convertX509Chain),
-                ).map(convertJwt)
+                this@SdJwtVcVerifierFactory.invoke(
+                    issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
+                    resolveTypeMetadata,
+                ).map(convertToJwt)
         }
 }
