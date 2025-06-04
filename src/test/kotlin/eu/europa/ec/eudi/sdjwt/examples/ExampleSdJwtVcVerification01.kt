@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -37,6 +38,7 @@ import org.bouncycastle.asn1.x509.GeneralNames
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
+import java.security.cert.X509Certificate
 import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.time.Duration.Companion.days
@@ -78,7 +80,10 @@ val sdJwtVcVerification = runBlocking {
             signer.issue(spec).getOrThrow().serialize()
         }
 
-        val verifier = SdJwtVcVerifier.usingX5c { chain, _ -> chain.firstOrNull() == certificate }
+        val verifier = SdJwtVcVerifier(
+            IssuerVerificationMethod { chain: List<X509Certificate>, _ -> chain.firstOrNull() == certificate },
+            null,
+        )
         verifier.verify(sdJwt)
     }
 }

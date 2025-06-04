@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionViolation
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -50,7 +51,8 @@ interface SdJwtVcVerifier<out JWT> {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>>
+    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -78,7 +80,8 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>>
+    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>> =
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
@@ -86,17 +89,8 @@ fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1
         override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
             this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
 
-        override suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
-
         override suspend fun verify(
             unverifiedSdJwt: String,
-            challenge: JsonObject?,
-        ): Result<SdJwtAndKbJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
-
-        override suspend fun verify(
-            unverifiedSdJwt: JsonObject,
             challenge: JsonObject?,
         ): Result<SdJwtAndKbJwt<JWT1>> =
             this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
@@ -140,4 +134,26 @@ sealed interface SdJwtVcVerificationError {
          */
         data object CannotDetermineIssuerVerificationMethod : IssuerKeyVerificationError
     }
+
+    /**
+     * Verification errors regarding the resolution of Type Metadata and validation against it.
+     */
+    sealed interface TypeMetadataVerificationError : SdJwtVcVerificationError {
+
+        /**
+         * Indicates that Type Metadata could not be resolved.
+         */
+        data class TypeMetadataResolutionFailure(val cause: Throwable? = null) : TypeMetadataVerificationError
+
+        /**
+         * Indicates violations were found when trying to validation an SD-JWT VC against its Type Metadata.
+         */
+        data class TypeMetadataValidationFailure(val errors: List<DefinitionViolation>) : TypeMetadataVerificationError {
+            init {
+                require(errors.isNotEmpty()) { "errors must not be empty" }
+            }
+        }
+    }
 }
+
+internal fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))
