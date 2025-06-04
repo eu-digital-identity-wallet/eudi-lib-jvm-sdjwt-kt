@@ -92,15 +92,17 @@ private class NimbusSdJwtVcVerifier(
     }
 
     private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
-        val typeMetadata = resolveTypeMetadata?.resolve(sdJwt)
-        typeMetadata?.validate(sdJwt)
-        val jsonSchemas = typeMetadata?.schemas.orEmpty()
-        if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
-            jsonSchemaValidator.validate(sdJwt, jsonSchemas)
+        if (null != resolveTypeMetadata) {
+            val typeMetadata = resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)
+            val payload = typeMetadata.validate(sdJwt)
+            val jsonSchemas = typeMetadata.schemas
+            if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
+                jsonSchemaValidator.validatePayloadAgainst(payload, jsonSchemas)
+            }
         }
     }
 
-    private suspend fun ResolveTypeMetadata.resolve(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
+    private suspend fun ResolveTypeMetadata.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
         try {
             val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
             this(vct).getOrThrow()
@@ -108,10 +110,9 @@ private class NimbusSdJwtVcVerifier(
             raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
         }
 
-    private suspend fun JsonSchemaValidator.validate(sdJwt: SdJwt<NimbusSignedJWT>, schemas: List<JsonSchema>) {
-        val recreated = with(NimbusSdJwtOps) { sdJwt.recreateClaims(null) }
+    private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
         val result = try {
-            validate(recreated, schemas)
+            validate(payload, schemas)
         } catch (error: Exception) {
             raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationError(error))
         }
@@ -268,13 +269,17 @@ private suspend fun <T> Result<T>.alsoCatching(action: suspend (T) -> Unit): Res
         it
     }
 
-private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonObject {
     val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
     val validationResult =
         with(DefinitionBasedSdJwtVcValidator) {
             definition.validateSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
         }
-    if (validationResult is DefinitionBasedValidationResult.Invalid) {
-        raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors))
+
+    return when (validationResult) {
+        is DefinitionBasedValidationResult.Valid -> validationResult.payload
+        is DefinitionBasedValidationResult.Invalid -> raise(
+            SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
+        )
     }
 }
