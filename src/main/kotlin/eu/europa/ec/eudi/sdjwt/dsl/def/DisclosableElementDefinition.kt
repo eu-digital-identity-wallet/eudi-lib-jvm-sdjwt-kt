@@ -100,22 +100,4 @@ sealed interface DisclosableDef<K, out A> {
     value class Arr<K, out A>(
         val value: DisclosableDefArray<K, A>,
     ) : DisclosableDef<K, A>
-
-    /**
-     * Represents a set of **alternative definitions** that a data element could conform to.
-     *
-     * This is useful for "oneOf" or "anyOf" scenarios in schema definitions, where
-     * the element's value must match at least one of the provided [DisclosableElementDefinition]s.
-     *
-     * @param value A [Set] of [DisclosableElementDefinition]s, where the data element must satisfy at least one.
-     */
-    @JvmInline
-    value class Alt<K, out A>(
-        val value: Set<DisclosableElementDefinition<K, A>>,
-    ) : DisclosableDef<K, A> {
-        init {
-            require(value.size >= 2) { "At least 2 values must be provided" }
-            require(value.all { it.value !is Alt }) { "An alternatives definition cannot contain other alternatives definitions" }
-        }
-    }
 }

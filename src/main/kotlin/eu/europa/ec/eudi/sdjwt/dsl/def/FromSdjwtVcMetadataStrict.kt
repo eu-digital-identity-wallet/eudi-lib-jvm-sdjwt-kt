@@ -169,9 +169,9 @@ private fun processArrayDefinitionStrict(
     }
 
     val content: DisclosableElementDefinition<String, AttributeMetadata> = when (elementDefinitions.size) {
-        0 -> error("No definition found for array elements at path: $arrayElementsClaimPath")
+        0 -> error("No definitions found for array elements at path: $arrayElementsClaimPath")
         1 -> elementDefinitions.first()
-        else -> +DisclosableDef.Alt(elementDefinitions)
+        else -> error("Multiple definitions found for array elements at path: $arrayElementsClaimPath")
     }
     return SdJwtArrayDefinition(content, arrayMetadata)
 }
