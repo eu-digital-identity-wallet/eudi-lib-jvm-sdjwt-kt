@@ -180,7 +180,7 @@ This converts the flat metadata structure into a hierarchical disclosable struct
 
 The `DefinitionBasedSdJwtVcValidator` provides a mechanism to validate an SD-JWT 
 (its payload and provided disclosures) against its `SdJwtDefinition`. 
-This ensures the presented credential conforms to the expected structure and disclosure rules
+This ensures the presented credentials conforming to the expected structure and disclosure rules
 
 The validation process can identify the following types of errors, reported as `DefinitionViolation` instances:
 
