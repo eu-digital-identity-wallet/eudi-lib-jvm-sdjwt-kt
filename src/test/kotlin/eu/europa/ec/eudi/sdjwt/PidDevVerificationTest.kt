@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import io.ktor.client.*
 import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -45,9 +46,12 @@ class PidDevVerificationTest :
     fun testPy() = doTest(pid2, enableLogging = false)
 
     private fun doTest(unverifiedSdJwtVc: String, enableLogging: Boolean = false) = runTest {
-        val verifier = DefaultSdJwtOps.SdJwtVcVerifier.usingX5cOrIssuerMetadata(
-            httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
-            x509CertificateTrust = { _, _ -> true },
+        val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
+            IssuerVerificationMethod.usingX5cOrIssuerMetadata(
+                httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
+                x509CertificateTrust = { _, _ -> true },
+            ),
+            null,
         )
 
         val issuedSdJwt = try {
