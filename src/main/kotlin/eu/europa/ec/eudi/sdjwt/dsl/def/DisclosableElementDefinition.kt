@@ -35,9 +35,8 @@ interface DisclosableDefObject<K, out A> {
  * Represents the **definition (schema)** of a array-like structure for selectively disclosable data.
  *
  * This interface defines the expected structure and disclosure properties for elements within an array.
- * While its `content` property holds a single [DisclosableElementDefinition], that definition can itself
- * be a [DisclosableDef.Alt], allowing for arrays that contain elements of various types
- * (i.e., heterogeneous arrays) at the instance level.
+ * It is assumed that the array is homogeneous with respect to its element. That is, all elements
+ * share the same [disclosure property][Disclosable] and the same [shape][DisclosableDef]
  *
  * @param K The type of the keys used in the array (typically unused for array elements, but kept for consistency).
  * @param A The type of **metadata** associated with individual array elements or their definition.
@@ -63,8 +62,8 @@ sealed interface DisclosableDef<K, out A> {
     /**
      * Represents a **primitive value** in the schema definition.
      *
-     * This indicates that the element is expected to be a simple, non-structured value
-     * (e.g., string, number, boolean).
+     * This indicates that the element is expected to have no further disclosure properties
+     * (e.g., string, number, boolean, objects, arrays).
      * [A] typically represents metadata about this primitive type,
      * such as format or display hints.
      *
@@ -100,22 +99,4 @@ sealed interface DisclosableDef<K, out A> {
     value class Arr<K, out A>(
         val value: DisclosableDefArray<K, A>,
     ) : DisclosableDef<K, A>
-
-    /**
-     * Represents a set of **alternative definitions** that a data element could conform to.
-     *
-     * This is useful for "oneOf" or "anyOf" scenarios in schema definitions, where
-     * the element's value must match at least one of the provided [DisclosableElementDefinition]s.
-     *
-     * @param value A [Set] of [DisclosableElementDefinition]s, where the data element must satisfy at least one.
-     */
-    @JvmInline
-    value class Alt<K, out A>(
-        val value: Set<DisclosableElementDefinition<K, A>>,
-    ) : DisclosableDef<K, A> {
-        init {
-            require(value.size >= 2) { "At least 2 values must be provided" }
-            require(value.all { it.value !is Alt }) { "An alternatives definition cannot contain other alternatives definitions" }
-        }
-    }
 }
