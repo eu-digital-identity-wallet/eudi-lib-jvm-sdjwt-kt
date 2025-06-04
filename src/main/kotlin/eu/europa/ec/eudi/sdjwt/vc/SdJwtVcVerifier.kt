@@ -154,6 +154,26 @@ sealed interface SdJwtVcVerificationError {
             }
         }
     }
+
+    /**
+     * Verification errors regarding Json schema validations.
+     */
+    sealed interface JsonSchemaVerificationError : SdJwtVcVerificationError {
+
+        /**
+         * Json schema validation failed due to an unexpected [error].
+         */
+        data class JsonSchemaValidationError(val error: Throwable) : JsonSchemaVerificationError
+
+        /**
+         * Indicates violations were found when trying to validate an SD-JWT VC against a Json Schema.
+         */
+        data class JsonSchemaValidationFailure(val errors: List<JsonSchemaViolation>) : JsonSchemaVerificationError {
+            init {
+                require(errors.isNotEmpty()) { "errors must not be empty" }
+            }
+        }
+    }
 }
 
 internal fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))
