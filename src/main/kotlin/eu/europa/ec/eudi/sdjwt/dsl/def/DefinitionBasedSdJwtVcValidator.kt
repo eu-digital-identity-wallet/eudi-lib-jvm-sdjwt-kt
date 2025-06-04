@@ -77,18 +77,6 @@ sealed interface DefinitionViolation {
      * @param claimPath the claim path of the incorrectly disclosed claim
      */
     data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
-
-    /**
-     * The SD-JWT contains in the payload a claim that did not match any of the alternatives
-     * defined in the definition against which it was being validated.
-     *
-     * @param claimPath the claim path of the claim that failed to validate
-     * @param violationsPerAlternative the violations  per alternative definition that were found
-     */
-    data class NoAlternativesMatched(
-        val claimPath: ClaimPath,
-        val violationsPerAlternative: Map<Int, List<DefinitionViolation>>,
-    ) : DefinitionViolation
 }
 
 sealed interface DefinitionBasedValidationResult {
@@ -265,14 +253,14 @@ private class SdJwtVcDefinitionValidator private constructor(
 
             // check type and recurse as needed
             if (JsonNull != claimValue) {
-                val es = when (val def = definition.value) {
+                val claimErrors = when (val claimDefinition = definition.value) {
                     is DisclosableDef.Id<String, *> -> {
                         emptyList()
                     }
 
                     is DisclosableDef.Arr<String, *> -> {
                         if (claimValue is JsonArray) {
-                            validateArray.callRecursive(Triple(claimPath, claimValue, def.value))
+                            validateArray.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
                         } else {
                             listOf(DefinitionViolation.WrongClaimType(claimPath))
                         }
@@ -280,27 +268,13 @@ private class SdJwtVcDefinitionValidator private constructor(
 
                     is DisclosableDef.Obj<String, *> -> {
                         if (claimValue is JsonObject) {
-                            validateObject.callRecursive(Triple(claimPath, claimValue, def.value))
+                            validateObject.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
                         } else {
                             listOf(DefinitionViolation.WrongClaimType(claimPath))
                         }
                     }
-
-                    is DisclosableDef.Alt<String, *> -> {
-                        val violationPerAlternative = mutableMapOf<Int, List<DefinitionViolation>>()
-                        var altNo = 0
-                        var correct = false
-                        for (altDef in def.value) {
-                            val es = callRecursive(Triple(claimPath, claimValue, altDef))
-                            correct = es.isEmpty()
-                            if (correct) break
-                            violationPerAlternative.put(altNo, es)
-                        }
-                        if (correct) emptyList()
-                        else listOf(DefinitionViolation.NoAlternativesMatched(claimPath, violationPerAlternative))
-                    }
                 }
-                allErrors.addAll(es)
+                allErrors.addAll(claimErrors)
             }
             allErrors
         }

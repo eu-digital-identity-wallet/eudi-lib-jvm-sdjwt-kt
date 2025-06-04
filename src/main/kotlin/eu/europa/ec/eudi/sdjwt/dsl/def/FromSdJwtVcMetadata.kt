@@ -114,9 +114,9 @@ private fun processArrayDefinition(
 
     val contentList = distinctArrayChildElements.map(::metaOf).toSet()
     val content: SdJwtElementDefinition = when (contentList.size) {
-        0 -> error("No content for array definition: $arrayMetadata")
+        0 -> error("No content definitions for array definition: $arrayMetadata")
         1 -> contentList.first()
-        else -> +DisclosableDef.Alt(contentList)
+        else -> error("Multiple content definitions for array definition: $arrayMetadata")
     }
     return SdJwtArrayDefinition(content, arrayMetadata)
 }
