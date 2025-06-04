@@ -107,16 +107,16 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
         }
 
     companion object {
-        operator fun invoke(httpClientFactory: KtorHttpClientFactory): UsingIssuerMetadata = UsingIssuerMetadata(httpClientFactory)
-        operator fun <X509Chain> invoke(
+        fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): UsingIssuerMetadata = UsingIssuerMetadata(httpClientFactory)
+        fun <X509Chain> usingX5c(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
         ): UsingX5c<X509Chain> = UsingX5c(x509CertificateTrust)
-        operator fun <JWK> invoke(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
-        operator fun <X509Chain> invoke(
+        fun <JWK> usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
+        fun <X509Chain> usingX5cOrIssuerMetadata(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
             httpClientFactory: KtorHttpClientFactory,
         ): UsingX5cOrIssuerMetadata<X509Chain> = UsingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory)
-        operator fun <JWT> invoke(jwtSignatureVerifier: JwtSignatureVerifier<JWT>): Custom<JWT> = Custom(jwtSignatureVerifier)
+        fun <JWT> usingCustom(jwtSignatureVerifier: JwtSignatureVerifier<JWT>): Custom<JWT> = Custom(jwtSignatureVerifier)
     }
 }
 
