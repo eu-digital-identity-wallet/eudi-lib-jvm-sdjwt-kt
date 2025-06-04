@@ -94,10 +94,10 @@ private class NimbusSdJwtVcVerifier(
     private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
         if (null != resolveTypeMetadata) {
             val typeMetadata = resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)
-            val payload = typeMetadata.validate(sdJwt)
+            val recreatedCredential = typeMetadata.validate(sdJwt)
             val jsonSchemas = typeMetadata.schemas
             if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
-                jsonSchemaValidator.validatePayloadAgainst(payload, jsonSchemas)
+                jsonSchemaValidator.validatePayloadAgainst(recreatedCredential, jsonSchemas)
             }
         }
     }
@@ -277,7 +277,7 @@ private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonOb
         }
 
     return when (validationResult) {
-        is DefinitionBasedValidationResult.Valid -> validationResult.payload
+        is DefinitionBasedValidationResult.Valid -> validationResult.recreatedCredential
         is DefinitionBasedValidationResult.Invalid -> raise(
             SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
         )

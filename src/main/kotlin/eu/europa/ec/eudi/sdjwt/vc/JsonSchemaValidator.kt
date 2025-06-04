@@ -61,18 +61,18 @@ sealed interface JsonSchemaValidationResult {
 fun interface JsonSchemaValidator {
 
     /**
-     * Validates [payload] against [schema].
+     * Validates [unvalidated] against [schema].
      */
-    suspend fun validate(payload: JsonObject, schema: JsonSchema): JsonSchemaValidationResult
+    suspend fun validate(unvalidated: JsonObject, schema: JsonSchema): JsonSchemaValidationResult
 
     /**
-     * Validates [payload] against the non-empty list of [schemas].
+     * Validates [unvalidated] against the non-empty list of [schemas].
      *
      * @throws IllegalArgumentException if [schemas] is empty
      */
-    suspend fun validate(payload: JsonObject, schemas: List<JsonSchema>): JsonSchemaValidationResult = coroutineScope {
+    suspend fun validate(unvalidated: JsonObject, schemas: List<JsonSchema>): JsonSchemaValidationResult = coroutineScope {
         require(schemas.isNotEmpty()) { "schemas must not be empty" }
-        schemas.map { async { validate(payload, it) } }
+        schemas.map { async { validate(unvalidated, it) } }
             .awaitAll()
             .fold(JsonSchemaValidationResult.Valid, JsonSchemaValidationResult::plus)
     }

@@ -79,9 +79,27 @@ sealed interface DefinitionViolation {
     data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
 }
 
+/**
+ * The validation result of an SD-JWT VC against an SdJwtDefinition.
+ */
 sealed interface DefinitionBasedValidationResult {
-    data class Valid(val payload: JsonObject) : DefinitionBasedValidationResult
 
+    /**
+     * The SD-JWT VC was successfully validated.
+     *
+     * @property recreatedCredential the processed/recreated payload of the successfully validated SD-JWT VC
+     * @property disclosuresPerClaimPath disclosures per claim path
+     */
+    data class Valid(
+        val recreatedCredential: JsonObject,
+        val disclosuresPerClaimPath: DisclosuresPerClaimPath,
+    ) : DefinitionBasedValidationResult
+
+    /**
+     * The SD-JWT VC could not be successfully validated.
+     *
+     * @property errors the definition violations that were detected
+     */
     data class Invalid(val errors: List<DefinitionViolation>) : DefinitionBasedValidationResult {
         constructor(
             head: DefinitionViolation,
@@ -299,7 +317,7 @@ private class SdJwtVcDefinitionValidator private constructor(
             sdJwt: UnsignedSdJwt,
             definition: DisclosableDefObject<String, *>,
         ): DefinitionBasedValidationResult {
-            val (processedPayload, disclosuresPerClaimPath) = runCatching {
+            val (recreatedCredential, disclosuresPerClaimPath) = runCatching {
                 val disclosuresPerClaimPath = mutableMapOf<ClaimPath, List<Disclosure>>()
                 val visitor = disclosuresPerClaimVisitor(disclosuresPerClaimPath)
                 sdJwt.recreateClaims(visitor) to disclosuresPerClaimPath.toMap()
@@ -307,9 +325,9 @@ private class SdJwtVcDefinitionValidator private constructor(
                 return DefinitionBasedValidationResult.Invalid(DefinitionViolation.DisclosureInconsistencies(it))
             }
 
-            val errors = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, definition).validate(processedPayload)
+            val errors = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, definition).validate(recreatedCredential)
             return if (errors.isEmpty()) {
-                DefinitionBasedValidationResult.Valid(processedPayload)
+                DefinitionBasedValidationResult.Valid(recreatedCredential, disclosuresPerClaimPath)
             } else {
                 DefinitionBasedValidationResult.Invalid(errors)
             }
