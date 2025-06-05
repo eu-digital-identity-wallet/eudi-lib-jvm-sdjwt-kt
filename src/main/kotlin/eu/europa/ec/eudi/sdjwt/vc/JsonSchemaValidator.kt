@@ -45,9 +45,7 @@ sealed interface JsonSchemaValidationResult {
      *
      * @property errors the violations that were detected
      */
-    data class Invalid(val errors: List<JsonSchemaViolation>) : JsonSchemaValidationResult {
-        constructor(first: JsonSchemaViolation, vararg rest: JsonSchemaViolation) : this(listOf(first, *rest))
-
+    data class Invalid(val errors: Map<Int, List<JsonSchemaViolation>>) : JsonSchemaValidationResult {
         init {
             require(errors.isNotEmpty()) { "errors must not be empty" }
         }
@@ -62,7 +60,7 @@ fun interface JsonSchemaValidator {
     /**
      * Validates [unvalidated] against [schema].
      */
-    suspend fun validate(unvalidated: JsonObject, schema: JsonSchema): JsonSchemaValidationResult
+    suspend fun validate(unvalidated: JsonObject, schema: JsonSchema): List<JsonSchemaViolation>
 
     /**
      * Validates [unvalidated] against the non-empty list of [schemas].
@@ -71,19 +69,25 @@ fun interface JsonSchemaValidator {
      */
     suspend fun validate(unvalidated: JsonObject, schemas: List<JsonSchema>): JsonSchemaValidationResult = coroutineScope {
         require(schemas.isNotEmpty()) { "schemas must not be empty" }
-        val results = schemas.map {
-            val result = validate(unvalidated, it)
-            yield()
-            result
-        }
+        val results = schemas.withIndex()
+            .map { (index, schema) ->
+                val violations = validate(unvalidated, schema)
+                val result = if (violations.isNotEmpty()) {
+                    JsonSchemaValidationResult.Invalid(mapOf(index to violations))
+                } else {
+                    JsonSchemaValidationResult.Valid
+                }
+                yield()
+                result
+            }
         results.fold(JsonSchemaValidationResult.Valid, JsonSchemaValidationResult::plus)
     }
 }
 
 private operator fun JsonSchemaValidationResult.plus(other: JsonSchemaValidationResult): JsonSchemaValidationResult {
-    val allErrors = buildList {
-        if (this@plus is JsonSchemaValidationResult.Invalid) addAll(errors)
-        if (other is JsonSchemaValidationResult.Invalid) addAll(other.errors)
+    val allErrors = buildMap {
+        if (this@plus is JsonSchemaValidationResult.Invalid) putAll(errors)
+        if (other is JsonSchemaValidationResult.Invalid) putAll(other.errors)
     }
 
     return if (allErrors.isNotEmpty()) JsonSchemaValidationResult.Invalid(allErrors)
