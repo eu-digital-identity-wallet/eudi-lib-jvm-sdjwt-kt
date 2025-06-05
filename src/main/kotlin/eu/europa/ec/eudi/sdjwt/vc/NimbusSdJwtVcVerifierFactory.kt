@@ -75,21 +75,22 @@ private class NimbusSdJwtVcVerifier(
         }
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
-            .alsoCatching {
-                validate(it)
-            }
+        runCatching {
+            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            validate(sdJwt)
+            sdJwt
+        }
 
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
-    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        return NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
-            .alsoCatching {
-                validate(it.sdJwt)
-            }
-    }
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
+        runCatching {
+            val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
+            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
+            validate(sdJwtAndKbJwt.sdJwt)
+            sdJwtAndKbJwt
+        }
 
     private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
         if (null != resolveTypeMetadata) {
@@ -262,12 +263,6 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
         else -> raise(CannotDetermineIssuerVerificationMethod)
     }
 }
-
-private suspend fun <T> Result<T>.alsoCatching(action: suspend (T) -> Unit): Result<T> =
-    mapCatching {
-        action(it)
-        it
-    }
 
 private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonObject {
     val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
