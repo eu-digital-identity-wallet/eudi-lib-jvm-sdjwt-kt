@@ -15,9 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -72,9 +71,12 @@ fun interface JsonSchemaValidator {
      */
     suspend fun validate(unvalidated: JsonObject, schemas: List<JsonSchema>): JsonSchemaValidationResult = coroutineScope {
         require(schemas.isNotEmpty()) { "schemas must not be empty" }
-        schemas.map { async { validate(unvalidated, it) } }
-            .awaitAll()
-            .fold(JsonSchemaValidationResult.Valid, JsonSchemaValidationResult::plus)
+        val results = schemas.map {
+            val result = validate(unvalidated, it)
+            yield()
+            result
+        }
+        results.fold(JsonSchemaValidationResult.Valid, JsonSchemaValidationResult::plus)
     }
 }
 
