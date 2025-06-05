@@ -112,12 +112,7 @@ private class NimbusSdJwtVcVerifier(
         }
 
     private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
-        val result = try {
-            validate(payload, schemas)
-        } catch (error: Exception) {
-            raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationError(error))
-        }
-
+        val result = validate(payload, schemas)
         if (result is JsonSchemaValidationResult.Invalid) {
             raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure(result.errors))
         }
