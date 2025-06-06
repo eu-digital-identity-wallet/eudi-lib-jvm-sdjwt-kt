@@ -17,20 +17,35 @@ package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import kotlin.test.Test
-import kotlin.test.assertIs
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
+import kotlin.test.*
 
 class FindElementTest {
+
+    @Test
+    fun failsWhenFirstClaimPathElementIsNotClaim() {
+        listOf(
+            ClaimPath(listOf(ClaimPathElement.AllArrayElements)),
+            ClaimPath(listOf(ClaimPathElement.ArrayElement(0))),
+        ).forEach {
+            assertFailsWith(IllegalArgumentException::class) {
+                PidDefinition.findElement(it)
+            }
+        }
+    }
+
+    @Test
+    fun failsWhenArrayElementsAreUsed() {
+        assertFailsWith(IllegalArgumentException::class) {
+            PidDefinition.findElement(ClaimPath.claim("address").arrayElement(0))
+        }
+    }
 
     @Test
     fun testWithUnknownAttributesOrArrayIndexes() {
         listOf(
             ClaimPath.claim("a").claim("b").claim("c"),
             ClaimPath.claim("address").claim("b").claim("c"),
-            ClaimPath.claim("address").arrayElement(0).claim("country"),
-            ClaimPath.claim("nationalities").arrayElement(0),
         ).forEach {
             assertNull(PidDefinition.findElement(it))
         }
@@ -100,10 +115,8 @@ class FindElementTest {
     @Test
     fun testArraysWithUnknownAttributesOrArrayIndexes() {
         listOf(
-            ClaimPath.claim("addresses").arrayElement(0),
-            ClaimPath.claim("addresses").arrayElement(0).claim("country"),
+            ClaimPath.claim("addresses").claim("country").allArrayElements(),
             ClaimPath.claim("addresses").allArrayElements().claim("country").allArrayElements(),
-            ClaimPath.claim("addresses").allArrayElements().arrayElement(0).claim("country").allArrayElements(),
         ).forEach {
             assertNull(AddressDefinition.findElement(it))
         }
