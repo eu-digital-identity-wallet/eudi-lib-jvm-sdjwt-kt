@@ -54,6 +54,9 @@ fun SdJwt<SignedJWT>.prettyPrint() {
     prettyPrint { it.jwtClaimsSet.jsonObject() }
 }
 
+fun UnsignedSdJwt.prettyPrint() {
+    SdJwt(payload, disclosures).prettyPrint({ it })
+}
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
     println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
