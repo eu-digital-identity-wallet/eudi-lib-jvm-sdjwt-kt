@@ -60,7 +60,7 @@ val sdJwtSpec = sdJwt {
     claim("iss", "https://example.com/issuer")
     claim("iat", 1516239022)
     claim("exp", 1735689661)
-    
+
     // Selectively disclosed claims (included as disclosure digests)
     sdClaim("given_name", "John")
     sdClaim("family_name", "Doe")
@@ -75,7 +75,7 @@ You can create nested objects with mixed disclosure properties:
 val sdJwtSpec = sdJwt {
     // Regular claims
     claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-    
+
     // Object with selectively disclosed properties
     objClaim("address") {
         sdClaim("street_address", "Schulstr. 12")
@@ -83,7 +83,7 @@ val sdJwtSpec = sdJwt {
         sdClaim("region", "Sachsen-Anhalt")
         sdClaim("country", "DE")
     }
-    
+
     // Selectively disclosed object (the entire object is disclosed as one unit)
     sdObjClaim("credentials") {
         claim("degree", "Bachelor of Science")
@@ -103,7 +103,7 @@ val sdJwtSpec = sdJwt {
         claim("US")
         sdClaim("DE")
     }
-    
+
     // Selectively disclosed array (the entire array is disclosed as one unit)
     sdArrClaim("languages") {
         claim("en")
@@ -121,7 +121,7 @@ To enhance privacy by preventing correlation through the number of disclosures, 
 ```kotlin
 val sdJwtSpec = sdJwt(minimumDigests = 5) {
     // This ensures at least 5 digests in the top-level object
-    
+
     objClaim("address", minimumDigests = 3) {
         // This ensures at least 3 digests in the address object
         sdClaim("street_address", "Schulstr. 12")
@@ -178,18 +178,19 @@ This converts the flat metadata structure into a hierarchical disclosable struct
 
 ### SD-JWT-VC Templating: Transforming Raw Data with Definitions
 
-The library introduces a powerful **templating capability**, enabling the generation of an **`SdJwtObject` directly from raw JSON data**, using an **`SdJwtDefinition` as a blueprint**. This mechanism automates the intricate process of applying selective disclosure rules and structuring claims according to a predefined schema.
+The library provides a powerful **templating capability** that generates an **`SdJwtObject` directly from raw JSON data** using an **`SdJwtDefinition` as a template**. This feature automates the process of applying selective disclosure rules to your credential data according to a predefined schema.
 
-This approach eliminates the need for manual invocation of `sdClaim`, `objClaim`, or `arrClaim` for each individual field. Instead, you supply your raw credential data as a standard `JsonObject`, and the `SdJwtDefinition` automatically determines:
+Key benefits of this approach:
 
-1.  **Claim Inclusion**: Only claims present in both your raw data and the `SdJwtDefinition` are processed.
-2.  **Selective Disclosure Status**: If the `SdJwtDefinition` designates a claim as selectively disclosable, it's automatically converted into an SD-JWT digest. Otherwise, it's included directly in the payload.
-3.  **Correct Nesting**: Nested objects and arrays within your raw data are automatically mapped to their corresponding structured claims in the `SdJwtObject`, adhering to the definition's hierarchy.
-4.  **Automatic `vct` Inclusion**: The `vct` (Verifiable Credential Type) claim, essential for SD-JWT-VCs, is automatically sourced from the `SdJwtDefinition`'s metadata and included as a non-selectively disclosable claim.
+1. **Simplified Code**: No need to manually call `sdClaim`, `objClaim`, or `arrClaim` for each field
+2. **Automatic Processing**: Supply raw credential data as a standard `JsonObject`, and the template handles the rest
+3. **Consistent Rules Application**: The `SdJwtDefinition` determines:
+   - Which claims to include (only processes claims present in both data and definition)
+   - Whether claims should be selectively disclosable (based on the definition)
+   - How to handle nested structures (objects and arrays)
+   - Automatic inclusion of the required `vct` claim from the definition's metadata
 
-This significantly streamlines the credential issuance process, ensuring the generated SD-JWT-VC consistently adheres to its defined type and disclosure policies without requiring repetitive manual configuration.
-
-The core of this functionality resides within the `DefinitionBasedSdJwtObjectBuilder`, which functions as the template engine. For enhanced usability, a top-level helper function, `sdJwtVc`, encapsulates this builder, allowing for swift `SdJwtObject` creation from your raw data. You can also enforce strict adherence, causing the process to fail if type mismatches or other inconsistencies are detected between your raw data and the definition.
+The `DefinitionBasedSdJwtObjectBuilder` class powers this functionality, with the convenient `sdJwtVc` helper function providing a simple interface. You can enable strict validation to ensure your data matches the definition exactly.
 
 Consider the following comparison to illustrate the efficiency of this templating approach:
 
@@ -233,28 +234,28 @@ by allowing the `SdJwtDefinition` to govern the transformation, resulting in cle
 
 ### Validating SD-JWTs Against Definitions
 
-The `DefinitionBasedSdJwtVcValidator` provides a mechanism to validate an SD-JWT 
-(its payload and provided disclosures) against its `SdJwtDefinition`. 
-This ensures the presented credentials conforming to the expected structure and disclosure rules
+The `DefinitionBasedSdJwtVcValidator` provides a mechanism to validate an SD-JWT (its payload and provided disclosures) against its `SdJwtDefinition`. This ensures that presented credentials conform to the expected structure and disclosure rules.
+
+#### Validation Process
+
+When validating an SD-JWT against a definition, the validator checks:
+1. That all required claims are present
+2. That claims are disclosed according to the definition (selectively or not)
+3. That the structure of claims matches the definition
+4. That the credential type (`vct`) matches the one in the definition
+
+#### Possible Validation Errors
 
 The validation process can identify the following types of errors, reported as `DefinitionViolation` instances:
 
-- `DisclosureInconsistencies`: Indicates issues with the disclosures themselves, 
-such as non-unique disclosures or disclosures without matching digests, 
-preventing the successful reconstruction of claims.
-- `UnknownClaim`: Occurs when a claim in the SD-JWT payload or disclosures is not present in the `SdJwtDefinition`.
-- `WrongClaimType`: Reported when a claim's type (e.g., object, array, or primitive) 
-in the presented SD-JWT does not match its type as defined in the SdJwtDefinition.
-- `IncorrectlyDisclosedClaim`: Signifies that a claim's selective disclosure status 
-(always disclosed vs. selectively disclosed) in the SD-JWT contradicts its definition. 
-For instance, a claim defined as "always selectively disclosable" is found directly in the payload, or vice-versa.
-- `MissingRequiredClaim` According to SD-JWT-VC `iss` and `vct` claims are required and must be never selectively disclosable
-- `InvalidVct` Signifies that the credential has a `vct` claim that is not equal to the one found in the type metadata
- 
-```kotlin
-import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedSdJwtVcValidator
-import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedValidationResult
+- `DisclosureInconsistencies`: Issues with the disclosures themselves, such as non-unique disclosures or disclosures without matching digests, preventing the successful reconstruction of claims.
+- `UnknownClaim`: A claim in the SD-JWT payload or disclosures is not present in the `SdJwtDefinition`.
+- `WrongClaimType`: A claim's type (e.g., object, array, or primitive) in the presented SD-JWT does not match its type as defined in the SdJwtDefinition.
+- `IncorrectlyDisclosedClaim`: A claim's selective disclosure status (always disclosed vs. selectively disclosed) in the SD-JWT contradicts its definition. For instance, a claim defined as "always selectively disclosable" is found directly in the payload, or vice-versa.
+- `MissingRequiredClaim`: According to SD-JWT-VC, `iss` and `vct` claims are required and must be never selectively disclosable.
+- `InvalidVct`: The credential has a `vct` claim that is not equal to the one found in the type metadata.
 
+```kotlin
 // Assuming you have your sdJwtDefinition, jwtPayload, and disclosures
 val sdJwtDefinition = TODO()
 val validationResult = with(DefinitionBasedSdJwtVcValidator){
@@ -294,7 +295,7 @@ if (displayInfo != null) {
 
 The DSL's metadata support opens up several future possibilities:
 
-1.**Selective Disclosure Policies**: Define policies for what should be selectively disclosed based on metadata attributes.
+1. **Selective Disclosure Policies**: Define policies for what should be selectively disclosed based on metadata attributes.
 
 ```kotlin
 // Define a policy that makes all PII selectively disclosable
@@ -360,7 +361,7 @@ val sdJwtSpec = sdJwt {
 val sdJwtSpec = sdJwt {
     claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
     claim("iss", "https://example.com/issuer")
-    
+
     sdObjClaim("personal_info") {
         sdClaim("given_name", "John")
         sdClaim("family_name", "Doe")
@@ -369,7 +370,7 @@ val sdJwtSpec = sdJwt {
             claim("DE")
         }
     }
-    
+
     sdObjClaim("education") {
         sdArrClaim("degrees") {
             objClaim {
