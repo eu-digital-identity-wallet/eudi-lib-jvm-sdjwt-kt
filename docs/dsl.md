@@ -176,6 +176,61 @@ val sdJwtDefinition = SdJwtDefinition.fromSdJwtVcMetadataStrict(
 
 This converts the flat metadata structure into a hierarchical disclosable structure that accurately represents the disclosure and display properties of the credential.
 
+### SD-JWT-VC Templating: Transforming Raw Data with Definitions
+
+The library introduces a powerful **templating capability**, enabling the generation of an **`SdJwtObject` directly from raw JSON data**, using an **`SdJwtDefinition` as a blueprint**. This mechanism automates the intricate process of applying selective disclosure rules and structuring claims according to a predefined schema.
+
+This approach eliminates the need for manual invocation of `sdClaim`, `objClaim`, or `arrClaim` for each individual field. Instead, you supply your raw credential data as a standard `JsonObject`, and the `SdJwtDefinition` automatically determines:
+
+1.  **Claim Inclusion**: Only claims present in both your raw data and the `SdJwtDefinition` are processed.
+2.  **Selective Disclosure Status**: If the `SdJwtDefinition` designates a claim as selectively disclosable, it's automatically converted into an SD-JWT digest. Otherwise, it's included directly in the payload.
+3.  **Correct Nesting**: Nested objects and arrays within your raw data are automatically mapped to their corresponding structured claims in the `SdJwtObject`, adhering to the definition's hierarchy.
+4.  **Automatic `vct` Inclusion**: The `vct` (Verifiable Credential Type) claim, essential for SD-JWT-VCs, is automatically sourced from the `SdJwtDefinition`'s metadata and included as a non-selectively disclosable claim.
+
+This significantly streamlines the credential issuance process, ensuring the generated SD-JWT-VC consistently adheres to its defined type and disclosure policies without requiring repetitive manual configuration.
+
+The core of this functionality resides within the `DefinitionBasedSdJwtObjectBuilder`, which functions as the template engine. For enhanced usability, a top-level helper function, `sdJwtVc`, encapsulates this builder, allowing for swift `SdJwtObject` creation from your raw data. You can also enforce strict adherence, causing the process to fail if type mismatches or other inconsistencies are detected between your raw data and the definition.
+
+Consider the following comparison to illustrate the efficiency of this templating approach:
+
+```kotlin
+// Option 1: Utilizing the SdJwtDefinition as a template with raw JSON data
+val sdJwtObjectFromTemplate = sdJwtVc(PidDefinition) { // PidDefinition serves as the template
+    put("given_name", "Foo")
+    put("family_name", "Bar")
+    putJsonArray("nationalities") {
+        add("GR")
+    }
+    putJsonObject("age_equal_or_over") { put("18", true) }
+    putJsonObject("address") {
+        put("country", "GR")
+        put("street_address", "12345 Main Street")
+    }
+}.getOrThrow() // Ensure proper Result handling
+
+// Option 2: Manually constructing the SdJwtObject (equivalent to Option 1 if PidDefinition implies these disclosures)
+val manuallyBuiltSdJwtObject = sdJwt {
+    claim(SdJwtVcSpec.VCT, PidDefinition.metadata.vct.value) // Manually add vct
+    sdClaim("given_name", "Foo") // Manually mark as SD
+    sdClaim("family_name", "Bar") // Manually mark as SD
+    sdArrClaim("nationalities") { // Manually mark array as SD, then its elements
+        sdClaim("GR")
+    }
+    sdObjClaim("age_equal_or_over") { // Manually mark object as SD
+        sdClaim("18", true) // Manually mark inner claim as SD
+    }
+    sdObjClaim("address") { // Manually mark object as SD
+        sdClaim("country", "GR") // Manually mark inner claim as SD
+        sdClaim("street_address", "12345 Main Street") // Manually mark inner claim as SD
+    }
+}
+
+// Both sdJwtObjectFromTemplate and manuallyBuiltSdJwtObject will yield the same underlying SdJwtObject structure,
+// assuming PidDefinition accurately specifies the selective disclosure for each claim.
+```
+As demonstrated, the templating approach substantially reduces boilerplate and potential for errors 
+by allowing the `SdJwtDefinition` to govern the transformation, resulting in cleaner and more robust code.
+
 ### Validating SD-JWTs Against Definitions
 
 The `DefinitionBasedSdJwtVcValidator` provides a mechanism to validate an SD-JWT 
@@ -239,17 +294,7 @@ if (displayInfo != null) {
 
 The DSL's metadata support opens up several future possibilities:
 
-1. **Dynamic Credential Templates**: Create credential templates based on metadata that can be dynamically adjusted based on issuer requirements.
-
-```kotlin
-// Create a credential template from metadata
-val credentialTemplate = createTemplateFromMetadata(sdJwtVcMetadata)
-
-// Use the template to create a credential with specific values
-val credential = credentialTemplate.createCredential(userValues)
-```
-
-2. **Selective Disclosure Policies**: Define policies for what should be selectively disclosed based on metadata attributes.
+1.**Selective Disclosure Policies**: Define policies for what should be selectively disclosed based on metadata attributes.
 
 ```kotlin
 // Define a policy that makes all PII selectively disclosable
@@ -261,7 +306,7 @@ val piiPolicy = SelectiveDisclosurePolicy.Builder()
 val sdJwtSpec = createSdJwtWithPolicy(credentialData, piiPolicy)
 ```
 
-3. **Credential Transformation**: Transform credentials between different formats while preserving disclosure properties.
+2.**Credential Transformation**: Transform credentials between different formats while preserving disclosure properties.
 
 ```kotlin
 // Transform an SD-JWT to a different format (e.g., mDL)
@@ -271,7 +316,7 @@ val mdlCredential = sdJwtCredential.transformWithMetadata(
 )
 ```
 
-4. **UI Generation**: Automatically generate UI components based on metadata.
+3.**UI Generation**: Automatically generate UI components based on metadata.
 
 ```kotlin
 // Generate UI components for displaying a credential
