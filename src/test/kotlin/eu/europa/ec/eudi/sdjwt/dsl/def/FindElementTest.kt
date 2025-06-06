@@ -25,10 +25,12 @@ import kotlin.test.assertNull
 class FindElementTest {
 
     @Test
-    fun testWithUnknownAttributes() {
+    fun testWithUnknownAttributesOrArrayIndexes() {
         listOf(
             ClaimPath.claim("a").claim("b").claim("c"),
             ClaimPath.claim("address").claim("b").claim("c"),
+            ClaimPath.claim("address").arrayElement(0).claim("country"),
+            ClaimPath.claim("nationalities").arrayElement(0),
         ).forEach {
             assertNull(PidDefinition.findElement(it))
         }
@@ -41,28 +43,69 @@ class FindElementTest {
         val nationalitiesDef = findElement(ClaimPath.claim("nationalities"))
         assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, AttributeMetadata>>>(nationalitiesDef)
 
+        val nationalityDef = findElement(ClaimPath.claim("nationalities").allArrayElements())
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(nationalityDef)
+
         val addressDef = findElement(ClaimPath.claim("address"))
         assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Obj<String, AttributeMetadata>>>(addressDef)
+
+        val countryDef = findElement(ClaimPath.claim("address").claim("country"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(countryDef)
+
+        val ageOverOrEqual = findElement(ClaimPath.claim("age_equal_or_over"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Obj<String, AttributeMetadata>>>(ageOverOrEqual)
 
         val eighteenDef = findElement(ClaimPath.claim("age_equal_or_over").claim("18"))
         assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(eighteenDef)
     }
 
     @Test
-    fun testWithKnownPidAttributesDispla() {
+    fun testWithKnownPidAttributesDisplay() {
         fun labelOf(path: ClaimPath, lang: String = "en") =
             PidDefinition.findElement(path)
-                ?.value?.attributeMetadata()
+                ?.value
+                ?.attributeMetadata()
                 ?.display
-                ?.first { it.lang.value == lang }?.label
+                ?.first { it.lang.value == lang }
+                ?.label
 
         listOf(
             ClaimPath.claim("nationalities"),
             ClaimPath.claim("address"),
+            ClaimPath.claim("age_equal_or_over"),
             ClaimPath.claim("age_equal_or_over").claim("18"),
         ).forEach {
-            val label = labelOf(it).also { println(it) }
+            val label = labelOf(it).also(::println)
             assertNotNull(label)
+        }
+    }
+
+    @Test
+    fun testWithArrays() {
+        fun findElement(path: ClaimPath) = AddressDefinition.findElement(path)
+
+        val addressesDef = findElement(ClaimPath.claim("addresses"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, AttributeMetadata>>>(addressesDef)
+
+        val addressDef = findElement(ClaimPath.claim("addresses").allArrayElements())
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Obj<String, AttributeMetadata>>>(addressDef)
+
+        val countryDef = findElement(ClaimPath.claim("addresses").allArrayElements().claim("country"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(countryDef)
+
+        val localityDef = findElement(ClaimPath.claim("addresses").allArrayElements().claim("locality"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(localityDef)
+    }
+
+    @Test
+    fun testArraysWithUnknownAttributesOrArrayIndexes() {
+        listOf(
+            ClaimPath.claim("addresses").arrayElement(0),
+            ClaimPath.claim("addresses").arrayElement(0).claim("country"),
+            ClaimPath.claim("addresses").allArrayElements().claim("country").allArrayElements(),
+            ClaimPath.claim("addresses").allArrayElements().arrayElement(0).claim("country").allArrayElements(),
+        ).forEach {
+            assertNull(AddressDefinition.findElement(it))
         }
     }
 }

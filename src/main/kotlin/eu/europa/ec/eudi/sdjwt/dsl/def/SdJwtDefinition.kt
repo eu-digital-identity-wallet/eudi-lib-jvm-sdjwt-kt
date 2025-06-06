@@ -136,19 +136,38 @@ fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMeta
 /**
  * Finds the element that corresponds to the provided [claimPath].
  *
- * @param claimPath The path of the element to look for. It must be comprised only of [ClaimPathElement.Claim]
+ * @param claimPath The path of the element to look for
  * @return the element, if found
- * @throws IllegalArgumentException in case the provided [claimPath] contains either [ClaimPathElement.ArrayElement] or
- * [ClaimPathElement.AllArrayElements]
  */
 fun DisclosableDefObject<String, AttributeMetadata>.findElement(
     claimPath: ClaimPath,
+): SdJwtElementDefinition? = findElement(claimPath.value)
+
+/**
+ * Finds the element that corresponds to the provided [claimPath].
+ * @param claimPath The path of the element to look for.
+ * @return the element, if found
+ */
+private fun DisclosableDefObject<String, AttributeMetadata>.findElement(
+    claimPath: List<ClaimPathElement>,
 ): SdJwtElementDefinition? {
-    val claimNames = claimPath.value.filterIsInstance<ClaimPathElement.Claim>()
-    require(claimNames.size == claimPath.value.size) {
-        "The claim path should include only elements that point to claims (no indexes)"
+    require(claimPath.isNotEmpty()) { "claimPath cannot be empty" }
+
+    val head = claimPath.first()
+    val tail = claimPath.drop(1)
+
+    return when (head) {
+        is ClaimPathElement.ArrayElement, is ClaimPathElement.AllArrayElements -> null
+        is ClaimPathElement.Claim ->
+            content[head.name]?.let { element ->
+                if (tail.isEmpty()) element
+                else when (val elementDef = element.value) {
+                    is DisclosableDef.Obj -> elementDef.value.findElement(tail)
+                    is DisclosableDef.Arr -> elementDef.value.findElement(tail)
+                    is DisclosableDef.Id -> null
+                }
+            }
     }
-    return findElement(claimNames)
 }
 
 /**
@@ -156,47 +175,22 @@ fun DisclosableDefObject<String, AttributeMetadata>.findElement(
  * @param claimPath The path of the element to look for.
  * @return the element, if found
  */
-fun DisclosableDefObject<String, AttributeMetadata>.findElement(
-    claimPath: List<ClaimPathElement.Claim>,
-): SdJwtElementDefinition? {
-    return if (claimPath.isEmpty()) null
-    else {
-        val head = claimPath.first()
-        val tail = claimPath.drop(1)
-        content[head.name]?.let { element ->
-            if (tail.isEmpty()) element
-            else when (val def = element.value) {
-                is DisclosableDef.Obj<String, AttributeMetadata> -> {
-                    def.value.findElement(tail)
-                }
-
-                is DisclosableDef.Arr<String, AttributeMetadata> -> {
-                    def.value.findElement(tail)
-                }
-
-                is DisclosableDef.Id<String, AttributeMetadata> -> null
-            }
-        }
-    }
-}
-
 private fun DisclosableDefArray<String, AttributeMetadata>.findElement(
-    claimPath: List<ClaimPathElement.Claim>,
+    claimPath: List<ClaimPathElement>,
 ): SdJwtElementDefinition? {
-    return if (claimPath.isEmpty()) null
-    else {
-        val tail = claimPath.drop(1)
-        return if (tail.isEmpty()) content
-        else when (val def = content.value) {
-            is DisclosableDef.Obj<String, AttributeMetadata> -> {
-                def.value.findElement(tail)
-            }
+    require(claimPath.isNotEmpty()) { "claimPath cannot be empty" }
 
-            is DisclosableDef.Arr<String, AttributeMetadata> -> {
-                def.value.findElement(tail)
-            }
+    val head = claimPath.first()
+    val tail = claimPath.drop(1)
 
-            is DisclosableDef.Id<String, AttributeMetadata> -> null
-        }
+    return when (head) {
+        is ClaimPathElement.Claim, is ClaimPathElement.ArrayElement -> null
+        is ClaimPathElement.AllArrayElements ->
+            if (tail.isEmpty()) content
+            else when (val elementDef = content.value) {
+                is DisclosableDef.Obj -> elementDef.value.findElement(tail)
+                is DisclosableDef.Arr -> elementDef.value.findElement(tail)
+                is DisclosableDef.Id -> null
+            }
     }
 }
