@@ -124,7 +124,6 @@ fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMeta
         is DisclosableDef.Arr<String, AttributeMetadata> -> {
             check(value is SdJwtArrayDefinition)
             value.metadata
-            value.metadata
         }
 
         is DisclosableDef.Obj<String, AttributeMetadata> -> {
