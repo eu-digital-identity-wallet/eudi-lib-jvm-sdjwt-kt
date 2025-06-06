@@ -15,14 +15,15 @@
  */
 package eu.europa.ec.eudi.sdjwt.examples
 
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.coroutines.runBlocking
 
 val issuedSdJwt: String = runBlocking {
-    val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
     val sdJwtSpec = sdJwt {
         claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
         claim("iss", "https://example.com/issuer")
@@ -36,7 +37,19 @@ val issuedSdJwt: String = runBlocking {
         }
     }
     with(NimbusSdJwtOps) {
-        val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        val issuerKeyPair = ECKey.parse(
+            """
+         {
+          "kty" : "EC",
+          "crv" : "P-256",
+          "x"   : "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
+          "y"   : "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ",
+          "d"   : "5K5SCos8zf9zRemGGUl6yfok-_NiiryNZsvANWMhF-I"
+         }
+            """.trimIndent(),
+        )
+
+        val issuer = issuer(signer = ECDSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.ES256)
         issuer.issue(sdJwtSpec).getOrThrow().serialize()
     }
 }
