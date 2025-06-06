@@ -146,12 +146,10 @@ fun DisclosableDefObject<String, AttributeMetadata>.findElement(
     }
 
     val head = claimPath.head()
-    require(head is ClaimPathElement.Claim) {
-        "the first element of ClaimPath must be a Claim"
-    }
     val tail = claimPath.tail()?.value.orEmpty()
 
-    return findElement(head, tail)
+    return if (head is ClaimPathElement.Claim) findElement(head, tail)
+    else null
 }
 
 private fun DisclosableDefObject<String, AttributeMetadata>.findElement(
@@ -190,9 +188,11 @@ private fun DisclosableDefArray<String, AttributeMetadata>.findElement(
             is DisclosableDef.Obj ->
                 if (headOfTail is ClaimPathElement.Claim) elementDef.value.findElement(headOfTail, tailOfTail)
                 else null
+
             is DisclosableDef.Arr ->
                 if (headOfTail is ClaimPathElement.ArrayElement) elementDef.value.findElement(tailOfTail)
                 else null
+
             is DisclosableDef.Id -> null
         }
     }

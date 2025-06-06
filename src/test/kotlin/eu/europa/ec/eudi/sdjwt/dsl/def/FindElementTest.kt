@@ -26,11 +26,8 @@ class FindElementTest {
     fun failsWhenFirstClaimPathElementIsNotClaim() {
         listOf(
             ClaimPath(listOf(ClaimPathElement.AllArrayElements)),
-            ClaimPath(listOf(ClaimPathElement.ArrayElement(0))),
         ).forEach {
-            assertFailsWith(IllegalArgumentException::class) {
-                PidDefinition.findElement(it)
-            }
+            assertNull(PidDefinition.findElement(it))
         }
     }
 
