@@ -169,9 +169,9 @@ fun interface DefinitionBasedSdJwtVcValidator {
                 }
             }
 
-            requiredStringClaimAndThen(SdJwtVcSpec.ISSUER) {
+            requiredStringClaimAndThen(RFC7519.ISSUER) {
                 if (it.isBlank()) {
-                    add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(SdJwtVcSpec.ISSUER)))
+                    add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(RFC7519.ISSUER)))
                 }
             }
         }
