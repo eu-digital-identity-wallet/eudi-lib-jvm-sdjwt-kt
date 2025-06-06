@@ -56,7 +56,7 @@ class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
     private val holder = HolderActor(genKey("holder"), lookup)
 
     /**
@@ -274,7 +274,7 @@ class HolderActor(
     private val holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
 
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
@@ -331,7 +331,7 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(

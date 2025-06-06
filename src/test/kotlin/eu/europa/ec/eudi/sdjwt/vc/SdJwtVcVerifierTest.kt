@@ -141,6 +141,7 @@ class SdJwtVcVerifierTest {
                 HttpMock.clientReturning(SampleIssuer.issuerMeta)
             },
             null,
+            null,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
@@ -152,6 +153,7 @@ class SdJwtVcVerifierTest {
             IssuerVerificationMethod.usingIssuerMetadata {
                 HttpMock.clientReturning(SampleIssuer.issuerMeta)
             },
+            null,
             null,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -165,6 +167,7 @@ class SdJwtVcVerifierTest {
             IssuerVerificationMethod.usingIssuerMetadata {
                 HttpMock.clientReturning(SampleIssuer.issuerMeta)
             },
+            null,
             null,
         )
         try {
@@ -201,6 +204,7 @@ class SdJwtVcVerifierTest {
                     assertEquals(didJwk, did)
                     listOf(key.toPublicJWK())
                 },
+                null,
                 null,
             )
 

@@ -160,6 +160,7 @@ class SdJwtVcIssuanceTest {
             HttpMock.clientReturning(issuerMetadata)
         },
         null,
+        null,
     )
 
     @Test
