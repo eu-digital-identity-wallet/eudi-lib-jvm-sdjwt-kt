@@ -193,7 +193,9 @@ private object JsonSchemaConverter {
 
     suspend fun convert(schema: JsonSchema): ExternalJsonSchema =
         withContext(Dispatchers.IO) {
-            factory.getSchema(Json.encodeToString(schema), InputFormat.JSON, config)
+            val externalJsonSchema = factory.getSchema(Json.encodeToString(schema), InputFormat.JSON, config)
+            assertEquals(SpecVersion.VersionFlag.V202012.id, externalJsonSchema.getRefSchemaNode("/\$schema").textValue())
+            externalJsonSchema
         }
 }
 
