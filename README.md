@@ -398,10 +398,11 @@ All examples assume that we have the following claim set
 
 ## SD-JWT VC support
 
-The library support verifying 
-[SD-JWT-based Verifiable Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html).
-More specifically, Issuer-signed JWT Verification Key Validation support is provided by
-[SdJwtVcVerifier](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/SdJwtVcVerifier.kt).  
+The library provides comprehensive support for [SD-JWT-based Verifiable Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html), including advanced features for type metadata, validation, and credential building.
+
+### SD-JWT VC Verification
+
+Issuer-signed JWT Verification Key Validation is provided by [SdJwtVcVerifier](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/SdJwtVcVerifier.kt).  
 Please check [KeyBindingTest](src/test/kotlin/eu/europa/ec/eudi/sdjwt/KeyBindingTest.kt) for code examples of
 verifying an SD-JWT VC and an SD-JWT+KB VC (including verification of the Key Binding JWT).
 
@@ -490,6 +491,65 @@ val sdJwtVcVerification = runBlocking {
 
 > [!NOTE]
 > Support for OctetKeyPair required the optional dependency **com.google.crypto.tink:tink**.
+
+### SD-JWT VC Type Metadata
+
+The library provides robust support for SD-JWT-VC type metadata through the [SdJwtDefinition](src/main/kotlin/eu/europa/ec/eudi/sdjwt/dsl/def/SdJwtDefinition.kt) class. This hierarchical representation accurately models the disclosure and display properties of SD-JWT-VC credentials.
+
+Key features include:
+- Rich metadata representation with `VctMetadata` including name, description, display information, and schemas
+- Automatic handling of claims that should never be selectively disclosable according to the SD-JWT-VC specification
+- Hierarchical structure that accurately represents the disclosure properties of nested objects and arrays
+
+### Type Metadata Resolution
+
+The [ResolveTypeMetadata](src/main/kotlin/eu/europa/ec/eudi/sdjwt/vc/ResolveTypeMetadata.kt) interface provides powerful capabilities for resolving and merging SD-JWT-VC type metadata:
+
+- Support for inheritance through the "extends" property
+- Resolution of external references through URI lookups
+- Merging of type metadata from different sources
+- Handling of display information in multiple languages
+
+Example usage:
+```kotlin
+val resolver = ResolveTypeMetadata(
+    lookupTypeMetadata = LookupTypeMetadataUsingKtor(),
+    lookupJsonSchema = LookupJsonSchemaUsingKtor()
+)
+val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
+```
+
+### Definition-Based SD-JWT Object Building
+
+The [DefinitionBasedSdJwtObjectBuilder](src/main/kotlin/eu/europa/ec/eudi/sdjwt/dsl/values/DefinitionBasedSdJwtObjectBuilder.kt) provides a powerful way to build SD-JWT objects based on a predefined template:
+
+- Uses an `SdJwtDefinition` as a template for creating SD-JWT objects
+- Automatically handles selective disclosure based on the definition
+- Transforms raw JSON data into structured SD-JWT objects
+- Provides validation and warnings if the data doesn't match the definition
+
+Example usage:
+```kotlin
+val sdJwtObject = sdJwtVc(sdJwtDefinition) {
+    put("given_name", "John")
+    put("family_name", "Doe")
+    // Additional claims...
+}.getOrThrow()
+```
+
+### Definition-Based Validation
+
+The [DefinitionBasedSdJwtVcValidator](src/main/kotlin/eu/europa/ec/eudi/sdjwt/dsl/def/DefinitionBasedSdJwtVcValidator.kt) provides validation of SD-JWT-VC credentials against a definition:
+
+- Validates that the credential conforms to the expected structure
+- Ensures claims are properly disclosed according to the definition
+- Provides detailed validation results with specific violation information
+- Supports validation of both issuance and presentation SD-JWT-VCs
+
+The validation result (`DefinitionBasedValidationResult`) can be either:
+- `Valid`: Contains the recreated credential and disclosures per claim path
+- `Invalid`: Contains a list of specific violations (missing claims, wrong types, etc.)
+
 
 ## How to contribute
 
