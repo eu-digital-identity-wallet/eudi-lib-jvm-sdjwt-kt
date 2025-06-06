@@ -45,6 +45,7 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
     override fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         resolveTypeMetadata: ResolveTypeMetadata?,
+        jsonSchemaValidator: JsonSchemaValidator?,
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
@@ -59,13 +60,14 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator)
     }
 }
 
 private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val resolveTypeMetadata: ResolveTypeMetadata?,
+    private val jsonSchemaValidator: JsonSchemaValidator?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -73,31 +75,48 @@ private class NimbusSdJwtVcVerifier(
         }
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
-        NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt)
-            .alsoCatching {
-                val typeMetadata = resolveTypeMetadata?.resolve(it)
-                typeMetadata?.validate(it)
-            }
+        runCatching {
+            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            validate(sdJwt)
+            sdJwt
+        }
 
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
-    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> {
-        val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-        return NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
-            .alsoCatching {
-                val typeMetadata = resolveTypeMetadata?.resolve(it.sdJwt)
-                typeMetadata?.validate(it.sdJwt)
+    ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
+        runCatching {
+            val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
+            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
+            validate(sdJwtAndKbJwt.sdJwt)
+            sdJwtAndKbJwt
+        }
+
+    private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+        if (null != resolveTypeMetadata) {
+            val typeMetadata = resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)
+            val recreatedCredential = typeMetadata.validate(sdJwt)
+            val jsonSchemas = typeMetadata.schemas
+            if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
+                jsonSchemaValidator.validatePayloadAgainst(recreatedCredential, jsonSchemas)
             }
+        }
     }
 
-    private suspend fun ResolveTypeMetadata.resolve(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
+    private suspend fun ResolveTypeMetadata.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
         try {
             val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
             this(vct).getOrThrow()
         } catch (error: Exception) {
             raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
         }
+
+    private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
+        val result = validate(payload, schemas)
+        if (result is JsonSchemaValidationResult.Invalid) {
+            raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure(result.errors))
+        }
+    }
 }
 
 /**
@@ -240,19 +259,17 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     }
 }
 
-private suspend fun <T> Result<T>.alsoCatching(action: suspend (T) -> Unit): Result<T> =
-    mapCatching {
-        action(it)
-        it
-    }
-
-private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonObject {
     val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
     val validationResult =
         with(DefinitionBasedSdJwtVcValidator) {
             definition.validateSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
         }
-    if (validationResult is DefinitionBasedValidationResult.Invalid) {
-        raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors))
+
+    return when (validationResult) {
+        is DefinitionBasedValidationResult.Valid -> validationResult.recreatedCredential
+        is DefinitionBasedValidationResult.Invalid -> raise(
+            SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
+        )
     }
 }

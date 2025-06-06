@@ -52,6 +52,7 @@ class PidDevVerificationTest :
                 x509CertificateTrust = { _, _ -> true },
             ),
             null,
+            null,
         )
 
         val issuedSdJwt = try {

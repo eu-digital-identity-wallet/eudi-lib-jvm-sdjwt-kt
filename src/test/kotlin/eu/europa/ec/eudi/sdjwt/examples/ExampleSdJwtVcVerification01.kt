@@ -82,6 +82,7 @@ val sdJwtVcVerification = runBlocking {
         val verifier = SdJwtVcVerifier(
             IssuerVerificationMethod.usingX5c { chain, _ -> chain.firstOrNull() == certificate },
             null,
+            null,
         )
         verifier.verify(sdJwt)
     }
