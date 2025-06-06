@@ -108,3 +108,95 @@ data class AttributeMetadata(
     val display: List<ClaimDisplay>? = null,
     val svgId: SvgId? = null,
 )
+
+//
+// Helper Methods
+//
+
+/**
+ * Gets the [AttributeMetadata] of a [DisclosableDef]
+ * @receiver the attribute definition to query
+ * @return the attribute metadata
+ */
+fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMetadata =
+    when (this) {
+        is DisclosableDef.Id<String, AttributeMetadata> -> value
+        is DisclosableDef.Arr<String, AttributeMetadata> -> {
+            check(value is SdJwtArrayDefinition)
+            value.metadata
+            value.metadata
+        }
+
+        is DisclosableDef.Obj<String, AttributeMetadata> -> {
+            check(value is SdJwtObjectDefinition)
+            value.metadata
+        }
+    }
+
+/**
+ * Finds the element that corresponds to the provided [claimPath].
+ *
+ * @param claimPath The path of the element to look for. It must be comprised only of [ClaimPathElement.Claim]
+ * @return the element, if found
+ * @throws IllegalArgumentException in case the provided [claimPath] contains either [ClaimPathElement.ArrayElement] or
+ * [ClaimPathElement.AllArrayElements]
+ */
+fun DisclosableDefObject<String, AttributeMetadata>.findElement(
+    claimPath: ClaimPath,
+): SdJwtElementDefinition? {
+    val claimNames = claimPath.value.filterIsInstance<ClaimPathElement.Claim>()
+    require(claimNames.size == claimPath.value.size) {
+        "The claim path should include only elements that point to claims (no indexes)"
+    }
+    return findElement(claimNames)
+}
+
+/**
+ * Finds the element that corresponds to the provided [claimPath].
+ * @param claimPath The path of the element to look for.
+ * @return the element, if found
+ */
+fun DisclosableDefObject<String, AttributeMetadata>.findElement(
+    claimPath: List<ClaimPathElement.Claim>,
+): SdJwtElementDefinition? {
+    return if (claimPath.isEmpty()) null
+    else {
+        val head = claimPath.first()
+        val tail = claimPath.drop(1)
+        content[head.name]?.let { element ->
+            if (tail.isEmpty()) element
+            else when (val def = element.value) {
+                is DisclosableDef.Obj<String, AttributeMetadata> -> {
+                    def.value.findElement(tail)
+                }
+
+                is DisclosableDef.Arr<String, AttributeMetadata> -> {
+                    def.value.findElement(tail)
+                }
+
+                is DisclosableDef.Id<String, AttributeMetadata> -> null
+            }
+        }
+    }
+}
+
+private fun DisclosableDefArray<String, AttributeMetadata>.findElement(
+    claimPath: List<ClaimPathElement.Claim>,
+): SdJwtElementDefinition? {
+    return if (claimPath.isEmpty()) null
+    else {
+        val tail = claimPath.drop(1)
+        return if (tail.isEmpty()) content
+        else when (val def = content.value) {
+            is DisclosableDef.Obj<String, AttributeMetadata> -> {
+                def.value.findElement(tail)
+            }
+
+            is DisclosableDef.Arr<String, AttributeMetadata> -> {
+                def.value.findElement(tail)
+            }
+
+            is DisclosableDef.Id<String, AttributeMetadata> -> null
+        }
+    }
+}
