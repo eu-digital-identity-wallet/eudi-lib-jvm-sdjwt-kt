@@ -16,6 +16,8 @@ maven-publish = "0.32.0"
 kotlinx-knit = "0.5.0"
 kover = "0.9.1"
 dependency-check = "12.1.1"
+json-schema-validator = "1.5.6"
+joni = "2.2.6"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -24,16 +26,18 @@ nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimb
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
-kotlinx-coroutines-debug = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-debug", version.ref = "kotlinxCoroutines"}
+kotlinx-coroutines-debug = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-debug", version.ref = "kotlinxCoroutines" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-serialization = { module = "io.ktor:ktor-client-serialization", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
-ktor-client-logging = {module ="io.ktor:ktor-client-logging", version.ref="ktor"}
-ktor-client-java = {module ="io.ktor:ktor-client-java", version.ref="ktor"}
-logback-classic = {module="ch.qos.logback:logback-classic", version.ref="logback"}
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+joni = { module = "org.jruby.joni:joni", version.ref = "joni" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
