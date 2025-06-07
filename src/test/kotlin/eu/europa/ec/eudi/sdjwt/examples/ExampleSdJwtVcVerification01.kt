@@ -25,7 +25,8 @@ import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.sdJwt
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
+import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -78,7 +79,11 @@ val sdJwtVcVerification = runBlocking {
             signer.issue(spec).getOrThrow().serialize()
         }
 
-        val verifier = SdJwtVcVerifier.usingX5c { chain, _ -> chain.firstOrNull() == certificate }
+        val verifier = SdJwtVcVerifier(
+            IssuerVerificationMethod.usingX5c { chain, _ -> chain.firstOrNull() == certificate },
+            null,
+            null,
+        )
         verifier.verify(sdJwt)
     }
 }

@@ -15,9 +15,19 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 /**
  * The digest of a [disclosure][Disclosure]
  */
+@Serializable(with = DisclosureDigestSerializer::class)
 @JvmInline
 value class DisclosureDigest private constructor(val value: String) {
     companion object {
@@ -70,4 +80,20 @@ value class DisclosureDigest private constructor(val value: String) {
             DisclosureDigest(Base64UrlNoPadding.encode(digest))
         }
     }
+}
+
+object DisclosureDigestSerializer : KSerializer<DisclosureDigest> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("DisclosureDigest", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: DisclosureDigest) {
+        encoder.encodeString(value.value)
+    }
+
+    override fun deserialize(decoder: Decoder): DisclosureDigest =
+        decoder.decodeString().let {
+            DisclosureDigest.wrap(it).getOrElse { cause ->
+                throw SerializationException("Failed to deserialize DisclosureDigest", cause)
+            }
+        }
 }

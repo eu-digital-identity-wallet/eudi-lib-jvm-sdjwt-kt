@@ -15,8 +15,9 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,12 +39,10 @@ class RecreateClaimsTest {
         assertEquals(plainClaims, actual)
     }
 
-    private fun discloseAndRecreate(sdElements: DisclosableObject): JsonObject {
-        val sdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
-        return with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
-            sdJwt.recreateClaims(visitor = null).also {
-                println(json.encodeToString(it))
-            }
+    private fun discloseAndRecreate(sdElements: SdJwtObject): JsonObject {
+        val unSignedSdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
+        return unSignedSdJwt.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first.also {
+            println(json.encodeToString(it))
         }
     }
 
