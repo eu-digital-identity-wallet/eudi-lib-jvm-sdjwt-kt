@@ -44,6 +44,6 @@ val claims: JsonObject = runBlocking {
     }
 
     with(NimbusSdJwtOps) {
-        sdJwt.recreateClaims(visitor = null)
+        sdJwt.recreateClaimsAndDisclosuresPerClaim().first
     }
 }

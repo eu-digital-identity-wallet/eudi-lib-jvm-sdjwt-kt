@@ -24,22 +24,7 @@ import kotlinx.serialization.json.JsonObject
  * Each entry contains the [path][ClaimPath] and the [disclosures][Disclosure]
  * required to revel the claim
  */
-typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
-
 interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
-    /**
-     * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaimPath]
-     *
-     * @param JWT the type representing the JWT part of the SD-JWT
-     *
-     * @see SdJwt.recreateClaims
-     */
-    fun SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath> {
-        val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
-        val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
-        val claims = recreateClaims(visitor)
-        return claims to disclosuresPerClaim
-    }
 
     /**
      * Tries to create a presentation that discloses the [requested claims][query].
@@ -72,19 +57,5 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
     companion object {
         operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtPresentationOps<JWT> =
             object : SdJwtPresentationOps<JWT>, SdJwtRecreateClaimsOps<JWT> by SdJwtRecreateClaimsOps(claimsOf) {}
-
-        fun disclosuresPerClaimVisitor(disclosuresPerClaim: MutableMap<ClaimPath, List<Disclosure>>) = ClaimVisitor { path, disclosure ->
-            if (disclosure != null) {
-                require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
-            }
-            val claimDisclosures = run {
-                val containerPath = path.parent()
-                val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
-                disclosure
-                    ?.let { containerDisclosures + it }
-                    ?: containerDisclosures
-            }
-            disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
-        }
     }
 }

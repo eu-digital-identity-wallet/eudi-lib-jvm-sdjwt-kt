@@ -440,7 +440,7 @@ private suspend fun <JWT> doVerify(
     val jwtClaims = claimsOf(jwt)
     val hashAlgorithm = jwtClaims.hashAlgorithm()
     val disclosures = toDisclosures(unverifiedDisclosures)
-    val recreated = UnsignedSdJwt(jwtClaims, disclosures).recreateClaims(null)
+    val (_, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
 
     // Check Key binding
     val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
