@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
 import eu.europa.ec.eudi.sdjwt.*
-import eu.europa.ec.eudi.sdjwt.SdJwtPresentationOps.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.Vct
@@ -306,37 +305,25 @@ private class SdJwtVcDefinitionValidator private constructor(
 
     companion object : DefinitionBasedSdJwtVcValidator {
 
-        private fun validate(
-            jwtPayload: JsonObject,
-            disclosures: List<Disclosure>,
-            definition: DisclosableDefObject<String, *>,
-        ): DefinitionBasedValidationResult =
-            validate(UnsignedSdJwt(jwtPayload, disclosures), definition)
-
-        private fun validate(
-            sdJwt: UnsignedSdJwt,
-            definition: DisclosableDefObject<String, *>,
-        ): DefinitionBasedValidationResult {
-            val (recreatedCredential, disclosuresPerClaimPath) = runCatching {
-                val disclosuresPerClaimPath = mutableMapOf<ClaimPath, List<Disclosure>>()
-                val visitor = disclosuresPerClaimVisitor(disclosuresPerClaimPath)
-                sdJwt.recreateClaims(visitor) to disclosuresPerClaimPath.toMap()
-            }.getOrElse {
-                return DefinitionBasedValidationResult.Invalid(DefinitionViolation.DisclosureInconsistencies(it))
-            }
-
-            val errors = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, definition).validate(recreatedCredential)
-            return if (errors.isEmpty()) {
-                DefinitionBasedValidationResult.Valid(recreatedCredential, disclosuresPerClaimPath)
-            } else {
-                DefinitionBasedValidationResult.Invalid(errors)
-            }
-        }
-
         override fun DisclosableDefObject<String, *>.validate(
             jwtPayload: JsonObject,
             disclosures: List<Disclosure>,
         ): DefinitionBasedValidationResult =
-            validate(jwtPayload, disclosures, this@validate)
+            SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtPayload, disclosures).fold(
+                onFailure = { cause ->
+                    val disclosureInconsistencies = DefinitionViolation.DisclosureInconsistencies(cause)
+                    DefinitionBasedValidationResult.Invalid(disclosureInconsistencies)
+                },
+                onSuccess = { (recreatedCredential, disclosuresPerClaimPath) ->
+
+                    val sdJwtVcDefinitionValidator = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, this)
+                    val violations = sdJwtVcDefinitionValidator.validate(recreatedCredential)
+                    if (violations.isEmpty()) {
+                        DefinitionBasedValidationResult.Valid(recreatedCredential, disclosuresPerClaimPath)
+                    } else {
+                        DefinitionBasedValidationResult.Invalid(violations)
+                    }
+                },
+            )
     }
 }

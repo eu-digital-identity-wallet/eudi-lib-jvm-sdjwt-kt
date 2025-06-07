@@ -55,7 +55,7 @@ fun SdJwt<SignedJWT>.prettyPrint() {
 }
 
 fun UnsignedSdJwt.prettyPrint() {
-    SdJwt(payload, disclosures).prettyPrint({ it })
+    SdJwt(jwtPayload, disclosures).prettyPrint({ it })
 }
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
     println("SD-JWT with ${disclosures.size} disclosures")
@@ -101,7 +101,7 @@ internal fun SdJwtObject.assertThat(description: String = "", expectedDisclosure
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
     val sdJwt = assertNotNull(
-        sdJwtFactory.createSdJwt(this).map { SdJwt(it.payload, it.disclosures) }.getOrNull(),
+        sdJwtFactory.createSdJwt(this).map { SdJwt(it.jwtPayload, it.disclosures) }.getOrNull(),
     ).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")

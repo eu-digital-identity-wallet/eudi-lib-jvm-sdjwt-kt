@@ -92,7 +92,7 @@ private operator fun Disclosed.plus(that: Disclosed): Disclosed {
     return Folded(this.path, disclosures, mergedResult)
 }
 
-data class UnsignedSdJwt(val payload: JsonObject, val disclosures: List<Disclosure>)
+data class UnsignedSdJwt(val jwtPayload: JsonObject, val disclosures: List<Disclosure>)
 
 /**
  * Factory for creating an unsigned JWT using the enhanced fold API.

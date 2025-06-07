@@ -15,25 +15,13 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
+import eu.europa.ec.eudi.sdjwt.ClaimVisitor.Companion.disclosuresPerClaimVisitor
 import eu.europa.ec.eudi.sdjwt.VerificationError.InvalidJwt
 import eu.europa.ec.eudi.sdjwt.VerificationError.UnsupportedHashingAlgorithm
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.serialization.json.*
 
-private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
-
-/**
- * Visitor for selectively disclosed claims.
- */
-fun interface ClaimVisitor {
-
-    /**
-     * Invoked whenever a selectively disclosed claim is encountered while recreating the claims of an [SdJwt].
-     * @param path a ClaimPath to the current element
-     * @param disclosure the disclosure of the current selectively disclosed element
-     */
-    operator fun invoke(path: ClaimPath, disclosure: Disclosure?)
-}
+typealias DisclosuresPerClaimPath = Map<ClaimPath, List<Disclosure>>
 
 /**
  * Operations related to recreating claims
@@ -43,18 +31,10 @@ fun interface ClaimVisitor {
 fun interface SdJwtRecreateClaimsOps<in JWT> {
 
     /**
-     * Recreates the claims, used to produce the SD-JWT
-     * That are:
-     * - The plain claims found into the [SdJwt.jwt]
-     * - Digests found in [SdJwt.jwt] and/or [Disclosure] (in case of recursive disclosure) will
-     *   be replaced by [Disclosure.claim]
+     * Recreates the claims, used to produce the SD-JWT and at the same time calculates [DisclosuresPerClaimPath]
      *
-     * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
-
-     * @receiver the SD-JWT to use
-     * @return the claims that were used to produce the SD-JWT
      */
-    fun SdJwt<JWT>.recreateClaims(visitor: ClaimVisitor?): JsonObject
+    fun SdJwt<JWT>.recreateClaimsAndDisclosuresPerClaim(): Pair<JsonObject, DisclosuresPerClaimPath>
 
     companion object {
         /**
@@ -63,19 +43,59 @@ fun interface SdJwtRecreateClaimsOps<in JWT> {
          * @param claimsOf a function to get the claims of the [SdJwt.jwt]
          */
         operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtRecreateClaimsOps<JWT> =
-            SdJwtRecreateClaimsOps { visitor: ClaimVisitor? ->
-                val disclosedClaims = JsonObject(claimsOf(jwt))
-                RecreateClaims(visitor).recreateClaims(disclosedClaims, disclosures)
+            SdJwtRecreateClaimsOps {
+                val jwtPayload = claimsOf(jwt)
+                recreateClaimsAndDisclosuresPerClaim(jwtPayload, disclosures).getOrThrow()
             }
+
+        fun recreateClaimsAndDisclosuresPerClaim(
+            jwtPayload: JsonObject,
+            disclosures: List<Disclosure>,
+        ): Result<Pair<JsonObject, DisclosuresPerClaimPath>> = runCatching {
+            val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
+            val claims = run {
+                val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
+                RecreateClaims(visitor).recreateClaims(jwtPayload, disclosures)
+            }
+            claims to disclosuresPerClaim.toMap()
+        }
     }
 }
 
-fun UnsignedSdJwt.recreateClaims(visitor: ClaimVisitor?): JsonObject =
-    RecreateClaims(visitor).recreateClaims(payload, disclosures)
+fun UnsignedSdJwt.recreateClaimsAndDisclosuresPerClaim(): Result<Pair<JsonObject, DisclosuresPerClaimPath>> =
+    SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtPayload, disclosures)
 
-/**
- * @param visitor [ClaimVisitor] to invoke whenever a selectively disclosed claim is encountered
- */
+//
+// Implementation
+//
+
+private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
+
+private fun interface ClaimVisitor {
+
+    operator fun invoke(path: ClaimPath, disclosure: Disclosure?)
+
+    companion object {
+        /**
+         * Creates a visitor that will keep the list of disclosures for an attribute
+         * @param disclosuresPerClaim the map to populate
+         */
+        fun disclosuresPerClaimVisitor(disclosuresPerClaim: MutableMap<ClaimPath, List<Disclosure>>) = ClaimVisitor { path, disclosure ->
+            if (disclosure != null) {
+                require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
+            }
+            val claimDisclosures = run {
+                val containerPath = path.parent()
+                val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
+                disclosure
+                    ?.let { containerDisclosures + it }
+                    ?: containerDisclosures
+            }
+            disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
+        }
+    }
+}
+
 private class RecreateClaims(private val visitor: ClaimVisitor?) {
 
     fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): JsonObject {
@@ -104,7 +124,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         jwtClaims: JsonObject,
         disclosures: List<Disclosure>,
     ): JsonObject {
-        // Recalculate digests, using the hash algorithm
+        // Recalculate digests using the hash algorithm
         val disclosuresByDigest = disclosures.groupBy {
             DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
         }
@@ -119,7 +139,7 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         val discloseObject = DiscloseObject(visitor, disclosuresPerDigest)
         val disclosedClaims = discloseObject(currentPath = null, jsonObject = jwtClaims)
 
-        // Make sure, all disclosures have been embedded
+        // Make sure all disclosures have been embedded
         if (disclosuresPerDigest.isNotEmpty()) {
             throw VerificationError.MissingDigests(disclosuresPerDigest.values.toList()).asException()
         }
@@ -155,16 +175,6 @@ private class DiscloseObject(
     // Any JSON Element
     //
 
-    /**
-     * Embed disclosures into [element], if the element
-     * is [JsonObject] or a [JsonArray] with [JSON objects][JsonObject],
-     * including nested elements.
-     *
-     * @param element the element to use
-     * @param currentPath the [ClaimPath] of the current element
-     *
-     * @return a JSON element where all digests have been replaced by disclosed claims
-     */
     private val discloseElement: DeepRecursiveFunction<Pair<ClaimPath, JsonElement>, JsonElement> =
         DeepRecursiveFunction { (currentPath, element) ->
             visited(currentPath, null)
@@ -324,9 +334,9 @@ private sealed interface DisclosedArrayElement {
 
 /**
  * Cet the [digests][DisclosureDigest] by looking for digest claim.
- * This should be an array of digests, under "_sd" name.
+ * This should be an array of digests, under the "_ sd" name.
  *
- * No recursive involved. Just the immediate digests.
+ * No recursive is involved. Just the immediate digests.
  *
  *  @receiver the claims to check
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded

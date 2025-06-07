@@ -40,11 +40,9 @@ class RecreateClaimsTest {
     }
 
     private fun discloseAndRecreate(sdElements: SdJwtObject): JsonObject {
-        val sdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
-        return with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
-            sdJwt.recreateClaims(visitor = null).also {
-                println(json.encodeToString(it))
-            }
+        val unSignedSdJwt = SdJwtFactory().createSdJwt(sdElements).getOrThrow()
+        return unSignedSdJwt.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first.also {
+            println(json.encodeToString(it))
         }
     }
 
