@@ -47,11 +47,11 @@ class SdJsonElementArrayElementTest {
         }
 
         val sdJwt = SdJwtFactory().createSdJwt(sdJwtElements).getOrThrow().also {
-            println(json.encodeToString(it.payload))
+            println(json.encodeToString(it.jwtPayload))
         }
 
         with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
-            sdJwt.recreateClaims(visitor = null)
+            sdJwt.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first
         }
     }
 }

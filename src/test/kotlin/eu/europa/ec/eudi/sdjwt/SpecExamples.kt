@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 
 class SpecExamples {
@@ -130,7 +129,8 @@ class SpecExamples {
 
     private fun SdJwt<JwtAndClaims>.printRecreated() {
         with(DefaultSdJwtOps) {
-            println(json.encodeToString(recreateClaims(visitor = null)))
+            val recreatedClaims = recreateClaimsAndDisclosuresPerClaim().first
+            println(json.encodeToString(recreatedClaims))
         }
     }
 }

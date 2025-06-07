@@ -52,8 +52,6 @@ class TemplateTest {
                 }
             }.getOrThrow()
 
-        val unsigned = sdJwtFactory.createSdJwt(spec).getOrThrow()
-
         val expectedSpec = sdJwt {
             claim(SdJwtVcSpec.VCT, PidDefinition.metadata.vct)
             sdClaim("given_name", "Foo")
@@ -71,8 +69,12 @@ class TemplateTest {
         }
 
         val expectedUnsigned = sdJwtFactory.createSdJwt(expectedSpec).getOrThrow()
+        val expectedRecreated = expectedUnsigned.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first
 
-        assertEquals(expectedUnsigned.recreateClaims(null).toSortedMap(), unsigned.recreateClaims(null).toSortedMap())
+        val unsigned = sdJwtFactory.createSdJwt(spec).getOrThrow()
+        val actualRecreated = unsigned.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first
+
+        assertEquals(expectedRecreated.toSortedMap(), actualRecreated.toSortedMap())
     }
 
     @Test
@@ -96,8 +98,8 @@ class TemplateTest {
             }
         val unsigned = SdJwtFactory.Default.createSdJwt(spec).getOrThrow()
         assertEquals(7, unsigned.disclosures.size)
-        assertEquals(3, unsigned.payload.size)
-        val recreated = unsigned.recreateClaims(null) - SdJwtVcSpec.VCT
+        assertEquals(3, unsigned.jwtPayload.size)
+        val recreated = unsigned.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first - SdJwtVcSpec.VCT
         assertEquals(addresses.toSortedMap(), recreated.toSortedMap())
     }
 }
