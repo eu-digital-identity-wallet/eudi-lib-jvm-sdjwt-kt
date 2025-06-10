@@ -118,4 +118,18 @@ class FindElementTest {
             assertNull(AddressDefinition.findElement(it))
         }
     }
+
+    @Test
+    fun testArrayOfArrays() {
+        fun findElement(path: ClaimPath) = CountriesDefinition.findElement(path)
+
+        val countriesDef = findElement(ClaimPath.claim("countries"))
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, AttributeMetadata>>>(countriesDef)
+
+        val countriesElementDef = findElement(ClaimPath.claim("countries").allArrayElements())
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Arr<String, AttributeMetadata>>>(countriesElementDef)
+
+        val countriesElementElementDef = findElement(ClaimPath.claim("countries").allArrayElements().allArrayElements())
+        assertIs<Disclosable.AlwaysSelectively<DisclosableDef.Id<String, AttributeMetadata>>>(countriesElementElementDef)
+    }
 }
