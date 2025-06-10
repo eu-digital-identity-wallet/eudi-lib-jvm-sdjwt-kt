@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import io.ktor.client.request.*
 import io.ktor.http.*
 
 /**
@@ -42,10 +43,14 @@ fun interface LookupTypeMetadata {
 class LookupTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupTypeMetadata {
-    override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?> = runCatching {
-        val url = Url(vct.value)
-        require(URLProtocol.HTTPS == url.protocol) { "$vct is not an https url" }
-        httpClientFactory().use { httpClient -> httpClient.getJsonOrNull(url) }
+    override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?> {
+        val url = runCatching { Url(vct.value) }.getOrNull()
+        return runCatching {
+            when (url) {
+                is Url -> httpClientFactory().use { it.getJsonOrNull<SdJwtVcTypeMetadata>(url) }
+                else -> null
+            }
+        }
     }
 }
 
@@ -75,10 +80,15 @@ class LookupJsonSchemaUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupJsonSchema {
 
-    override suspend fun invoke(uri: String): Result<JsonSchema?> =
-        runCatching {
-            httpClientFactory().use { it.getJsonOrNull(Url(uri)) }
+    override suspend fun invoke(uri: String): Result<JsonSchema?> {
+        val url = runCatching { Url(uri) }.getOrNull()
+        return runCatching {
+            when (url) {
+                is Url -> httpClientFactory().use { it.getJsonOrNull<JsonSchema>(url) }
+                else -> null
+            }
         }
+    }
 }
 
 data class ResolvedTypeMetadata(
