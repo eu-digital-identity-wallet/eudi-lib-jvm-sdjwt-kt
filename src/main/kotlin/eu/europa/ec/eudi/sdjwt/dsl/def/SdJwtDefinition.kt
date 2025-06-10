@@ -155,42 +155,27 @@ fun DisclosableDefObject<String, AttributeMetadata>.findElement(
 private fun DisclosableDefObject<String, AttributeMetadata>.findElement(
     head: ClaimPathElement.Claim,
     tail: List<ClaimPathElement>,
-): SdJwtElementDefinition? =
-    content[head.name]?.let { element ->
-        if (tail.isEmpty()) element
-        else {
-            val headOfTail = tail.first()
-            val tailOfTail = tail.drop(1)
-
-            when (val elementDef = element.value) {
-                is DisclosableDef.Obj ->
-                    if (headOfTail is ClaimPathElement.Claim) elementDef.value.findElement(headOfTail, tailOfTail)
-                    else null
-
-                is DisclosableDef.Arr ->
-                    if (headOfTail is ClaimPathElement.AllArrayElements) elementDef.value.findElement(tailOfTail)
-                    else null
-
-                is DisclosableDef.Id -> null
-            }
-        }
-    }
+): SdJwtElementDefinition? = content[head.name]?.findElement(tail)
 
 private fun DisclosableDefArray<String, AttributeMetadata>.findElement(
     tail: List<ClaimPathElement>,
+): SdJwtElementDefinition? = content.findElement(tail)
+
+private fun DisclosableElementDefinition<String, AttributeMetadata>.findElement(
+    tail: List<ClaimPathElement>,
 ): SdJwtElementDefinition? =
-    if (tail.isEmpty()) content
+    if (tail.isEmpty()) this
     else {
         val headOfTail = tail.first()
         val tailOfTail = tail.drop(1)
 
-        when (val elementDef = content.value) {
+        when (val elementDef = value) {
             is DisclosableDef.Obj ->
                 if (headOfTail is ClaimPathElement.Claim) elementDef.value.findElement(headOfTail, tailOfTail)
                 else null
 
             is DisclosableDef.Arr ->
-                if (headOfTail is ClaimPathElement.ArrayElement) elementDef.value.findElement(tailOfTail)
+                if (headOfTail is ClaimPathElement.AllArrayElements) elementDef.value.findElement(tailOfTail)
                 else null
 
             is DisclosableDef.Id -> null

@@ -33,7 +33,7 @@ internal fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
 @Suppress("SameParameterValue")
 fun sdJwtVcTypeMetadata(json: String): SdJwtVcTypeMetadata = Json.decodeFromString(json)
 
-val addressMeta = """
+internal val addressMeta = """
     {
       "vct": "https://example.com/addresses",
       "name": "Addresses",
@@ -56,6 +56,7 @@ val addressMeta = """
       ]
     }
 """.trimIndent()
+
 internal val pidMeta = """
     {
       "vct": "urn:eudi:pid:1",
@@ -499,6 +500,24 @@ internal val pidMeta = """
     }
 """.trimIndent()
 
+internal val countriesMeta = """
+    {
+      "vct": "https://example.com/countries",
+      "name": "Countries",
+      "display": [
+        {
+          "lang": "en",
+          "name": "Countries"
+        }
+      ],
+      "claims": [
+        { "path": [ "countries" ], "sd": "always" },
+        { "path": [ "countries", null ], "sd": "always" },
+        { "path": [ "countries", null, null ], "sd": "always" }
+      ]
+    }
+""".trimIndent()
+
 internal val PidDefinition: SdJwtDefinition by lazy {
     val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta)
     val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
@@ -507,6 +526,12 @@ internal val PidDefinition: SdJwtDefinition by lazy {
 
 internal val AddressDefinition: SdJwtDefinition by lazy {
     val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(addressMeta)
+    val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
+    SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
+}
+
+internal val CountriesDefinition: SdJwtDefinition by lazy {
+    val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(countriesMeta)
     val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
     SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
 }
