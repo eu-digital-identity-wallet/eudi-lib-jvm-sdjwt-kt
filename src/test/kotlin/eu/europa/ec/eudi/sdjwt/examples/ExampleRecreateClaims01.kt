@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -25,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
 val claims: JsonObject = runBlocking {
-    val issuerKeyPair: RSAKey = loadRsaKey("/examplesIssuerKey.json")
     val sdJwt: SdJwt<SignedJWT> = run {
         val spec = sdJwt {
             claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
@@ -39,7 +37,7 @@ val claims: JsonObject = runBlocking {
                 sdClaim("country", "DE")
             }
         }
-        val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+        val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
         issuer.issue(spec).getOrThrow()
     }
 

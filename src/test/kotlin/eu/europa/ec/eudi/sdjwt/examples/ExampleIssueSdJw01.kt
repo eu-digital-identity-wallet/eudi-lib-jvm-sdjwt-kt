@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.ECKey
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -37,19 +36,7 @@ val issuedSdJwt: String = runBlocking {
         }
     }
     with(NimbusSdJwtOps) {
-        val issuerKeyPair = ECKey.parse(
-            """
-         {
-          "kty" : "EC",
-          "crv" : "P-256",
-          "x"   : "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
-          "y"   : "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ",
-          "d"   : "5K5SCos8zf9zRemGGUl6yfok-_NiiryNZsvANWMhF-I"
-         }
-            """.trimIndent(),
-        )
-
-        val issuer = issuer(signer = ECDSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.ES256)
+        val issuer = issuer(signer = ECDSASigner(issuerEcKeyPair), signAlgorithm = JWSAlgorithm.ES256)
         issuer.issue(sdJwtSpec).getOrThrow().serialize()
     }
 }
