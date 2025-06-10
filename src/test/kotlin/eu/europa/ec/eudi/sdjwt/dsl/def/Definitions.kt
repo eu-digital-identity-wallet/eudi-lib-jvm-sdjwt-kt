@@ -535,7 +535,3 @@ internal val CountriesDefinition: SdJwtDefinition by lazy {
     val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
     SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
 }
-
-fun main() {
-    println(CountriesDefinition)
-}
