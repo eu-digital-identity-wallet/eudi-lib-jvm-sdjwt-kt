@@ -55,55 +55,60 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
         warnings: MutableList<String>,
     ) {
         definitionContent.forEach { (claimName, elementDef) ->
-            val dataValue = dataObject[claimName]
-
             // Determine if the element is present in the data
-            if (dataValue == null || dataValue is JsonNull) {
-                return@forEach
-            }
+            dataObject[claimName]?.let { dataValue ->
+                val isSd = elementDef is Disclosable.AlwaysSelectively
 
-            val isSd = elementDef is Disclosable.AlwaysSelectively
-
-            when (elementDef.value) {
-                is DisclosableDef.Id -> {
-                    // Primitive claim
+                if (JsonNull == dataValue) {
+                    // null provided for claim
                     if (isSd) sdClaim(claimName, dataValue)
                     else claim(claimName, dataValue)
+                    return@forEach
                 }
 
-                is DisclosableDef.Obj -> {
-                    // Nested object
-                    if (dataValue !is JsonObject) {
-                        warnings.add("Type mismatch: data is not an object but definition expects one for '$claimName'")
-                        return@forEach
+                when (elementDef.value) {
+                    is DisclosableDef.Id -> {
+                        // Primitive claim
+                        if (isSd) sdClaim(claimName, dataValue)
+                        else claim(claimName, dataValue)
                     }
-                    val nestedDef = elementDef.value as DisclosableDef.Obj // Cast needed for content
-                    if (isSd) {
-                        sdObjClaim(claimName) { // Pass minDigests if available
-                            addAll(nestedDef.value.content, dataValue, warnings)
-                        }
-                    } else {
-                        objClaim(claimName) { // Pass minDigests if available
-                            addAll(nestedDef.value.content, dataValue, warnings)
-                        }
-                    }
-                }
 
-                is DisclosableDef.Arr -> {
-                    // Nested array
-                    if (dataValue !is JsonArray) {
-                        // Type mismatch: data is not an array but definition expects one
-                        // Handle error
-                        return@forEach
-                    }
-                    val nestedDef = elementDef.value as DisclosableDef.Arr
-                    if (isSd) {
-                        sdArrClaim(claimName) { // Pass minDigests if available
-                            addElements(nestedDef.value.content, dataValue, warnings)
+                    is DisclosableDef.Obj -> {
+                        // Nested object
+                        if (dataValue !is JsonObject) {
+                            warnings.add("Type mismatch: data is not an object but definition expects one for '$claimName'")
+                            return@forEach
                         }
-                    } else {
-                        arrClaim(claimName) { // Pass minDigests if available
-                            addElements(nestedDef.value.content, dataValue, warnings)
+
+                        val nestedDef = elementDef.value as DisclosableDef.Obj // Cast needed for content
+                        if (isSd) {
+                            sdObjClaim(claimName) { // Pass minDigests if available
+                                addAll(nestedDef.value.content, dataValue, warnings)
+                            }
+                        } else {
+                            objClaim(claimName) { // Pass minDigests if available
+                                addAll(nestedDef.value.content, dataValue, warnings)
+                            }
+                        }
+                    }
+
+                    is DisclosableDef.Arr -> {
+                        // Nested array
+                        if (dataValue !is JsonArray) {
+                            // Type mismatch: data is not an array but definition expects one
+                            warnings.add("Type mismatch: data is not an array but definition expects one for '$claimName'")
+                            return@forEach
+                        }
+
+                        val nestedDef = elementDef.value as DisclosableDef.Arr
+                        if (isSd) {
+                            sdArrClaim(claimName) { // Pass minDigests if available
+                                addElements(nestedDef.value.content, dataValue, warnings)
+                            }
+                        } else {
+                            arrClaim(claimName) { // Pass minDigests if available
+                                addElements(nestedDef.value.content, dataValue, warnings)
+                            }
                         }
                     }
                 }
@@ -119,6 +124,13 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
         val isSd = elementDefinition is Disclosable.AlwaysSelectively
 
         dataArray.forEach { arrayElement ->
+            if (JsonNull == arrayElement) {
+                // null provided for claim
+                if (isSd) sdClaim(arrayElement)
+                else claim(arrayElement)
+                return@forEach
+            }
+
             when (elementDefinition.value) {
                 is DisclosableDef.Id -> {
                     // Primitive array element
@@ -132,6 +144,7 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
                         warnings.add("Type mismatch: data is not an object but definition expects one for '$arrayElement'")
                         return@forEach
                     }
+
                     val nestedObjDef = elementDefinition.value as DisclosableDef.Obj
                     if (isSd) {
                         sdObjClaim {
@@ -150,6 +163,7 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
                         warnings.add("Type mismatch: data is not an array but definition expects one for '$arrayElement'")
                         return@forEach
                     }
+
                     val nestedArrDef = elementDefinition.value as DisclosableDef.Arr
                     if (isSd) {
                         sdArrClaim {
