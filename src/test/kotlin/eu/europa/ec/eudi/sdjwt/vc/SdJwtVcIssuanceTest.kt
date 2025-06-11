@@ -23,6 +23,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
@@ -55,7 +57,7 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
         holderPubKey: JWK,
         iat: Instant,
         exp: Instant? = null,
-    ): DisclosableObject =
+    ): SdJwtObject =
         sdJwt {
             //
             // Never Selectively Disclosable claims
@@ -148,14 +150,18 @@ class SdJwtVcIssuanceTest {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
 
-    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier.usingIssuerMetadata {
-        val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
-        val issuerMetadata = SdJwtVcIssuerMetadata(
-            issuer = issuingService.config.issuer.toString(),
-            jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
-        )
-        HttpMock.clientReturning(issuerMetadata)
-    }
+    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier(
+        IssuerVerificationMethod.usingIssuerMetadata {
+            val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
+            val issuerMetadata = SdJwtVcIssuerMetadata(
+                issuer = issuingService.config.issuer.toString(),
+                jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
+            )
+            HttpMock.clientReturning(issuerMetadata)
+        },
+        null,
+        null,
+    )
 
     @Test
     fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() = runTest {

@@ -16,8 +16,8 @@
 package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jose.jwk.RSAKey
-import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObject
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerMetadata
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
@@ -54,6 +54,9 @@ fun SdJwt<SignedJWT>.prettyPrint() {
     prettyPrint { it.jwtClaimsSet.jsonObject() }
 }
 
+fun UnsignedSdJwt.prettyPrint() {
+    SdJwt(jwtPayload, disclosures).prettyPrint({ it })
+}
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
     println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
@@ -94,10 +97,12 @@ fun DisclosuresPerClaimPath.prettyPrint() {
 
 fun String.removeNewLine(): String = replace("\n", "")
 
-internal fun DisclosableObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
+internal fun SdJwtObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
-    val sdJwt = assertNotNull(sdJwtFactory.createSdJwt(this).getOrNull()).apply { prettyPrint { it } }
+    val sdJwt = assertNotNull(
+        sdJwtFactory.createSdJwt(this).map { SdJwt(it.jwtPayload, it.disclosures) }.getOrNull(),
+    ).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }
@@ -105,8 +110,6 @@ internal fun DisclosableObject.assertThat(description: String = "", expectedDisc
 internal fun loadRsaKey(name: String): RSAKey = RSAKey.parse(loadResource(name))
 
 internal fun loadSdJwt(name: String): String = loadResource(name).removeNewLine()
-
-internal fun loadJwt(name: String): String = loadResource(name).removeNewLine()
 
 internal object HttpMock {
 

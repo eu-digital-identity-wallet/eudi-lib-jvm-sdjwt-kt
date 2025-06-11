@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertContainsPlainClaims
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertDigestNumberGreaterOrEqualToDisclosures
 import eu.europa.ec.eudi.sdjwt.DisclosedClaimSetTest.assertHashFunctionClaimIsPresentIfDisclosures
+import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import kotlin.test.Test
@@ -165,7 +166,7 @@ class FlatDisclosure {
     private fun testFlatDisclosure(
         plainClaims: Map<String, JsonElement>,
         claimsToBeDisclosed: Map<String, JsonElement>,
-    ): SdJwt<JsonObject> {
+    ): UnsignedSdJwt {
         val hashAlgorithm = HashAlgorithm.SHA_256
         val sdJwtElements = sdJwt {
             plainClaims.forEach { claim(it.key, it.value) }
@@ -256,3 +257,37 @@ private object DisclosedClaimSetTest {
         }
     }
 }
+
+/**
+ * Extracts all the [digests][DisclosureDigest] from the given claims
+ * including also subclaims
+ *
+ * @return the digests found in the given claims
+ */
+private val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDigest>> =
+    DeepRecursiveFunction { claims ->
+        claims.flatMap { (attribute, json) ->
+            when {
+                attribute == SdJwtSpec.CLAIM_SD && json is JsonArray ->
+                    json.mapNotNull { element ->
+                        if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
+                        else null
+                    }
+
+                attribute == SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
+                    DisclosureDigest.wrap(json.content).getOrNull()
+                        ?.let { listOf(it) }
+                        ?: emptyList()
+
+                json is JsonObject -> callRecursive(json)
+
+                json is JsonArray ->
+                    json.flatMap {
+                        if (it is JsonObject) callRecursive(it)
+                        else emptyList()
+                    }
+
+                else -> emptyList()
+            }
+        }
+    }

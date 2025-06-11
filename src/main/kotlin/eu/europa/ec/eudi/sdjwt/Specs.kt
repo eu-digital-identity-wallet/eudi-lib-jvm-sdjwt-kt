@@ -189,3 +189,17 @@ object RFC7519 {
     const val ISSUED_AT: String = "iat"
     const val JWT_ID: String = "jti"
 }
+
+/**
+ * [Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)](https://www.rfc-editor.org/rfc/rfc7800)
+ */
+object RFC7800 {
+    const val CNF: String = "cnf"
+}
+
+/**
+ * [Token Status List](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list)
+ */
+object TokenStatusListSpec {
+    const val STATUS: String = "status"
+}
