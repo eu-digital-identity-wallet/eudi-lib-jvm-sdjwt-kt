@@ -26,7 +26,6 @@ import kotlinx.coroutines.runBlocking
 val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val issuedSdJwt = run {
-            val issuerKeyPair = loadRsaKey("/examplesIssuerKey.json")
             val sdJwtSpec = sdJwt {
                 claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
                 claim("iss", "https://example.com/issuer")
@@ -39,7 +38,7 @@ val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
                     sdClaim("country", "DE")
                 }
             }
-            val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+            val issuer = issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
             issuer.issue(sdJwtSpec).getOrThrow()
         }
 
