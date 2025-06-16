@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.sdjwt.examples
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
@@ -37,14 +38,15 @@ import java.util.*
 import javax.security.auth.x500.X500Principal
 import kotlin.time.Duration.Companion.days
 
-internal val issuerEcKeyPair: ECKey =
+internal val issuerEcKeyPair: ECKey by lazy {
     ECKeyGenerator(Curve.P_256)
         .algorithm(JWSAlgorithm.ES256)
         .generate()
+}
 
-val issuerRsaKeyPair = loadRsaKey("/examplesIssuerKey.json")
+internal val issuerRsaKeyPair: RSAKey by lazy { loadRsaKey("/examplesIssuerKey.json") }
 
-val issuerEcKeyPairWithCertificate = run {
+internal val issuerEcKeyPairWithCertificate: ECKey by lazy {
     val issuer = Url("https://issuer.example.com")
 
     val key = ECKeyGenerator(Curve.P_521)
