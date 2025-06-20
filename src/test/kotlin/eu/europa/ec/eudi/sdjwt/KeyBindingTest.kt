@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataResolutionPolicy
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
@@ -56,7 +57,12 @@ class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
+        IssuerVerificationMethod.usingDID(lookup),
+        null,
+        null,
+        TypeMetadataResolutionPolicy.Optional,
+    )
     private val holder = HolderActor(genKey("holder"), lookup)
 
     /**
@@ -274,7 +280,12 @@ class HolderActor(
     private val holderKey: ECKey,
     lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
+        IssuerVerificationMethod.usingDID(lookup),
+        null,
+        null,
+        TypeMetadataResolutionPolicy.Optional,
+    )
 
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
@@ -331,7 +342,12 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     lookup: LookupPublicKeysFromDIDDocument<JWK>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(IssuerVerificationMethod.usingDID(lookup), null, null)
+    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
+        IssuerVerificationMethod.usingDID(lookup),
+        null,
+        null,
+        TypeMetadataResolutionPolicy.Optional,
+    )
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(

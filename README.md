@@ -399,6 +399,7 @@ import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataResolutionPolicy
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 -->
@@ -427,6 +428,7 @@ val sdJwtVcVerification = runBlocking {
             },
             resolveTypeMetadata = null,
             jsonSchemaValidator = null,
+            typeMetadataResolutionPolicy = TypeMetadataResolutionPolicy.Optional,
         )
         verifier.verify(sdJwt)
     }
@@ -466,6 +468,13 @@ val resolver = ResolveTypeMetadata(
 )
 val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
 ```
+
+When constructing an `SdJwtVcVerifier`, a Verifier can provide a `ResolveTypeMetadata` instance alongside a `TypeMetadataResolutionPolicy` that describes his policy concerning Type Metadata resolution.
+Currently, the library provides the following policies:
+
+- `TypeMetadataResolutionPolicy.Optional`: Type Metadata resolution is optional. If resolution succeeds, Type Metadata are used for extra validation checks of an SD-JWT VC. If resolution fails, no further checks are performed.
+- `TypeMetadataResolutionPolicy.AlwaysRequired`: Type Metadata resolution is always required. If resolution fails, the SD-JWT VC is rejected.
+- `TypeMetadataResolutionPolicy.RequiredFor`: Applies the policy `TypeMetadataResolutionPolicy.AlwaysRequired` for a set of specified Vcts, and `TypeMetadataResolutionPolicy.Optional` for all everything else.
 
 ### Definition-Based SD-JWT Object Building
 

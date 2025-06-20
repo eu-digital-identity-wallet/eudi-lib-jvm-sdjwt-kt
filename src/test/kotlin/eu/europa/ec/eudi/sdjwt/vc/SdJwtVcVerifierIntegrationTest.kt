@@ -71,6 +71,7 @@ class SdJwtVcVerifierIntegrationTest {
         jsonSchemaValidator = { unvalidated, schema ->
             JsonSchemaConverter.convert(schema).validate(unvalidated)
         },
+        TypeMetadataResolutionPolicy.AlwaysRequired,
     )
 
     private suspend fun issue(builder: SdJwtObjectBuilder.() -> Unit): String = issuer.issue(sdJwt { builder() }).getOrThrow().serialize()

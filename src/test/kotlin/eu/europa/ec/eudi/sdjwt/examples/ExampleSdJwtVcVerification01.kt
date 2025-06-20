@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataResolutionPolicy
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
@@ -49,6 +50,7 @@ val sdJwtVcVerification = runBlocking {
             },
             resolveTypeMetadata = null,
             jsonSchemaValidator = null,
+            typeMetadataResolutionPolicy = TypeMetadataResolutionPolicy.Optional,
         )
         verifier.verify(sdJwt)
     }

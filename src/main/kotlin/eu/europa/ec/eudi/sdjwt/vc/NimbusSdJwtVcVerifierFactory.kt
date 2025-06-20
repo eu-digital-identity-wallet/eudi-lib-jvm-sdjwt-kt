@@ -46,7 +46,12 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         resolveTypeMetadata: ResolveTypeMetadata?,
         jsonSchemaValidator: JsonSchemaValidator?,
+        typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
     ): SdJwtVcVerifier<SignedJWT> {
+        if (TypeMetadataResolutionPolicy.Optional != typeMetadataResolutionPolicy) {
+            requireNotNull(resolveTypeMetadata) { "resolveTypeMetadata is required when typeMetadataResolutionPolicy is not Optional" }
+        }
+
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
                 httpClientFactory = issuerVerificationMethod.httpClientFactory,
@@ -60,7 +65,7 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator, typeMetadataResolutionPolicy)
     }
 }
 
@@ -68,6 +73,7 @@ private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val resolveTypeMetadata: ResolveTypeMetadata?,
     private val jsonSchemaValidator: JsonSchemaValidator?,
+    private val typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -94,19 +100,27 @@ private class NimbusSdJwtVcVerifier(
 
     private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
         if (null != resolveTypeMetadata) {
-            val typeMetadata = resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)
-            val recreatedCredential = typeMetadata.validate(sdJwt)
-            val jsonSchemas = typeMetadata.schemas
-            if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
-                jsonSchemaValidator.validatePayloadAgainst(recreatedCredential, jsonSchemas)
+            resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)?.let { typeMetadata ->
+                val recreatedCredential = typeMetadata.validate(sdJwt)
+                val jsonSchemas = typeMetadata.schemas
+                if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
+                    jsonSchemaValidator.validatePayloadAgainst(recreatedCredential, jsonSchemas)
+                }
             }
         }
     }
 
-    private suspend fun ResolveTypeMetadata.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
+    private suspend fun ResolveTypeMetadata.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
         try {
             val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
-            this(vct).getOrThrow()
+            val maybeTypeMetadata = this(vct)
+            when (typeMetadataResolutionPolicy) {
+                TypeMetadataResolutionPolicy.Optional -> maybeTypeMetadata.getOrNull()
+                TypeMetadataResolutionPolicy.AlwaysRequired -> maybeTypeMetadata.getOrThrow()
+                is TypeMetadataResolutionPolicy.RequiredFor ->
+                    if (vct in typeMetadataResolutionPolicy.vcts) maybeTypeMetadata.getOrThrow()
+                    else maybeTypeMetadata.getOrNull()
+            }
         } catch (error: Exception) {
             raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
         }
