@@ -120,12 +120,54 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
     }
 }
 
+/**
+ * Defines a Verifier's policy concerning Type Metadata.
+ */
+sealed interface TypeMetadataPolicy {
+
+    /**
+     * Type Metadata are not used.
+     */
+    data object NotUsed : TypeMetadataPolicy
+
+    /**
+     * Type Metadata are not required.
+     * Failure to successfully resolve Type Metadata for any Vct, does not result in the rejection of the SD-JWT VC.
+     */
+    data class Optional(
+        val resolveTypeMetadata: ResolveTypeMetadata,
+        val jsonSchemaValidator: JsonSchemaValidator?,
+    ) : TypeMetadataPolicy
+
+    /**
+     * Type Metadata are always required for all Vcts.
+     * Failure to successfully resolve Type Metadata for any Vct, results in the rejection of the SD-JWT VC.
+     */
+    data class AlwaysRequired(
+        val resolveTypeMetadata: ResolveTypeMetadata,
+        val jsonSchemaValidator: JsonSchemaValidator?,
+    ) : TypeMetadataPolicy
+
+    /**
+     * Type Metadata are always required for the specified Vcts.
+     * Failure to successfully resolve Type Metadata for any of the specified Vcts, results in the rejection of the SD-JWT VC.
+     */
+    data class RequiredFor(
+        val vcts: Set<Vct>,
+        val resolveTypeMetadata: ResolveTypeMetadata,
+        val jsonSchemaValidator: JsonSchemaValidator?,
+    ) : TypeMetadataPolicy {
+        init {
+            require(vcts.isNotEmpty()) { "at least one VCT must be specified" }
+        }
+    }
+}
+
 interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
 
     operator fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<JWT, JWK, X509Chain>,
-        resolveTypeMetadata: ResolveTypeMetadata?,
-        jsonSchemaValidator: JsonSchemaValidator?,
+        typeMetadataPolicy: TypeMetadataPolicy,
     ): SdJwtVcVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
@@ -137,13 +179,11 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
         object : SdJwtVcVerifierFactory<JWT1, JWK1, X509Chain1> {
             override fun invoke(
                 issuerVerificationMethod: IssuerVerificationMethod<JWT1, JWK1, X509Chain1>,
-                resolveTypeMetadata: ResolveTypeMetadata?,
-                jsonSchemaValidator: JsonSchemaValidator?,
+                typeMetadataPolicy: TypeMetadataPolicy,
             ): SdJwtVcVerifier<JWT1> =
                 this@SdJwtVcVerifierFactory.invoke(
                     issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
-                    resolveTypeMetadata,
-                    jsonSchemaValidator,
+                    typeMetadataPolicy,
                 ).map(convertToJwt)
         }
 }

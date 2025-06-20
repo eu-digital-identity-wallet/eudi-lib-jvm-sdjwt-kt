@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import io.ktor.client.*
 import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -51,8 +52,7 @@ class PidDevVerificationTest :
                 httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
                 x509CertificateTrust = { _, _ -> true },
             ),
-            null,
-            null,
+            TypeMetadataPolicy.NotUsed,
         )
 
         val issuedSdJwt = try {

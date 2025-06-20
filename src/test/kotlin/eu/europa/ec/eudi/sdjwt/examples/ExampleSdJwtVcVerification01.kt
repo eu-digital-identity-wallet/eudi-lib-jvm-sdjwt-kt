@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
@@ -47,8 +48,7 @@ val sdJwtVcVerification = runBlocking {
             issuerVerificationMethod = IssuerVerificationMethod.usingX5c { chain, _ ->
                 chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
             },
-            resolveTypeMetadata = null,
-            jsonSchemaValidator = null,
+            typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
         )
         verifier.verify(sdJwt)
     }

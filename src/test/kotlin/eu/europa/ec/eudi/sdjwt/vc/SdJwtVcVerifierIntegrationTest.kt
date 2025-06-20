@@ -55,22 +55,24 @@ class SdJwtVcVerifierIntegrationTest {
     private val issuer = NimbusSdJwtOps.issuer(signer = ECDSASigner(issuerKey), signAlgorithm = JWSAlgorithm.ES256)
     private val verifier = NimbusSdJwtOps.SdJwtVcVerifier(
         issuerVerificationMethod = IssuerVerificationMethod.usingCustom(ECDSAVerifier(issuerKey).asJwtVerifier()),
-        resolveTypeMetadata = ResolveTypeMetadata(
-            lookupTypeMetadata = {
-                assertEquals("urn:eudi:pid:1", it.value)
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                        Json.decodeFromString<SdJwtVcTypeMetadata>(loadResource("/pid_arf_v18.json"))
+        TypeMetadataPolicy.AlwaysRequired(
+            resolveTypeMetadata = ResolveTypeMetadata(
+                lookupTypeMetadata = {
+                    assertEquals("urn:eudi:pid:1", it.value)
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            Json.decodeFromString<SdJwtVcTypeMetadata>(loadResource("/pid_arf_v18.json"))
+                        }
                     }
-                }
-            },
-            lookupJsonSchema = {
-                fail("LookupJsonSchema should not have been invoked. Schema URI: $it")
+                },
+                lookupJsonSchema = {
+                    fail("LookupJsonSchema should not have been invoked. Schema URI: $it")
+                },
+            ),
+            jsonSchemaValidator = { unvalidated, schema ->
+                JsonSchemaConverter.convert(schema).validate(unvalidated)
             },
         ),
-        jsonSchemaValidator = { unvalidated, schema ->
-            JsonSchemaConverter.convert(schema).validate(unvalidated)
-        },
     )
 
     private suspend fun issue(builder: SdJwtObjectBuilder.() -> Unit): String = issuer.issue(sdJwt { builder() }).getOrThrow().serialize()

@@ -44,8 +44,7 @@ import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> {
     override fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
-        resolveTypeMetadata: ResolveTypeMetadata?,
-        jsonSchemaValidator: JsonSchemaValidator?,
+        typeMetadataPolicy: TypeMetadataPolicy,
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
@@ -60,14 +59,13 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy)
     }
 }
 
 private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
-    private val resolveTypeMetadata: ResolveTypeMetadata?,
-    private val jsonSchemaValidator: JsonSchemaValidator?,
+    private val typeMetadataPolicy: TypeMetadataPolicy,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -77,7 +75,7 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatching {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
-            validate(sdJwt)
+            typeMetadataPolicy.validate(sdJwt)
             sdJwt
         }
 
@@ -88,35 +86,9 @@ private class NimbusSdJwtVcVerifier(
         runCatching {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
             val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
-            validate(sdJwtAndKbJwt.sdJwt)
+            typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
         }
-
-    private suspend fun validate(sdJwt: SdJwt<NimbusSignedJWT>) {
-        if (null != resolveTypeMetadata) {
-            val typeMetadata = resolveTypeMetadata.resolveTypeMetadataOf(sdJwt)
-            val recreatedCredential = typeMetadata.validate(sdJwt)
-            val jsonSchemas = typeMetadata.schemas
-            if (null != jsonSchemaValidator && jsonSchemas.isNotEmpty()) {
-                jsonSchemaValidator.validatePayloadAgainst(recreatedCredential, jsonSchemas)
-            }
-        }
-    }
-
-    private suspend fun ResolveTypeMetadata.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata =
-        try {
-            val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
-            this(vct).getOrThrow()
-        } catch (error: Exception) {
-            raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
-        }
-
-    private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
-        val result = validate(payload, schemas)
-        if (result is JsonSchemaValidationResult.Invalid) {
-            raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure(result.errors))
-        }
-    }
 }
 
 /**
@@ -259,6 +231,32 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     }
 }
 
+private suspend fun TypeMetadataPolicy.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+    val typeMetadata = resolveTypeMetadataOf(sdJwt)
+    if (null != typeMetadata) {
+        val recreatedCredential = typeMetadata.validate(sdJwt)
+        val jsonSchemas = typeMetadata.schemas
+        if (jsonSchemas.isNotEmpty()) {
+            jsonSchemaValidator?.validatePayloadAgainst(recreatedCredential, jsonSchemas)
+        }
+    }
+}
+
+private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
+    try {
+        val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
+        when (this) {
+            TypeMetadataPolicy.NotUsed -> null
+            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct).getOrNull()
+            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct).getOrThrow()
+            is TypeMetadataPolicy.RequiredFor ->
+                if (vct in vcts) resolveTypeMetadata(vct).getOrThrow()
+                else resolveTypeMetadata(vct).getOrNull()
+        }
+    } catch (error: Exception) {
+        raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
+    }
+
 private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonObject {
     val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
     val validationResult =
@@ -271,5 +269,20 @@ private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonOb
         is DefinitionBasedValidationResult.Invalid -> raise(
             SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
         )
+    }
+}
+
+private val TypeMetadataPolicy.jsonSchemaValidator: JsonSchemaValidator?
+    get() = when (this) {
+        TypeMetadataPolicy.NotUsed -> null
+        is TypeMetadataPolicy.Optional -> jsonSchemaValidator
+        is TypeMetadataPolicy.AlwaysRequired -> jsonSchemaValidator
+        is TypeMetadataPolicy.RequiredFor -> jsonSchemaValidator
+    }
+
+private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
+    val result = validate(payload, schemas)
+    if (result is JsonSchemaValidationResult.Invalid) {
+        raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure(result.errors))
     }
 }
