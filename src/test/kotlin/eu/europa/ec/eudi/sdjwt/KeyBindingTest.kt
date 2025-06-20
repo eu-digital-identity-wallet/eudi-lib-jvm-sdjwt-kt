@@ -30,7 +30,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
-import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataResolutionPolicy
+import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
@@ -61,7 +61,7 @@ class KeyBindingTest {
         IssuerVerificationMethod.usingDID(lookup),
         null,
         null,
-        TypeMetadataResolutionPolicy.Optional,
+        TypeMetadataPolicy.Optional,
     )
     private val holder = HolderActor(genKey("holder"), lookup)
 
@@ -284,7 +284,7 @@ class HolderActor(
         IssuerVerificationMethod.usingDID(lookup),
         null,
         null,
-        TypeMetadataResolutionPolicy.Optional,
+        TypeMetadataPolicy.Optional,
     )
 
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
@@ -346,7 +346,7 @@ class VerifierActor(
         IssuerVerificationMethod.usingDID(lookup),
         null,
         null,
-        TypeMetadataResolutionPolicy.Optional,
+        TypeMetadataPolicy.Optional,
     )
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null

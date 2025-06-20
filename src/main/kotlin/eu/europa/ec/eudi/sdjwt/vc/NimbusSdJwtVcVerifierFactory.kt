@@ -46,9 +46,9 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         resolveTypeMetadata: ResolveTypeMetadata?,
         jsonSchemaValidator: JsonSchemaValidator?,
-        typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
+        typeMetadataPolicy: TypeMetadataPolicy,
     ): SdJwtVcVerifier<SignedJWT> {
-        if (TypeMetadataResolutionPolicy.Optional != typeMetadataResolutionPolicy) {
+        if (TypeMetadataPolicy.Optional != typeMetadataPolicy) {
             requireNotNull(resolveTypeMetadata) { "resolveTypeMetadata is required when typeMetadataResolutionPolicy is not Optional" }
         }
 
@@ -65,7 +65,7 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator, typeMetadataResolutionPolicy)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, resolveTypeMetadata, jsonSchemaValidator, typeMetadataPolicy)
     }
 }
 
@@ -73,7 +73,7 @@ private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val resolveTypeMetadata: ResolveTypeMetadata?,
     private val jsonSchemaValidator: JsonSchemaValidator?,
-    private val typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
+    private val typeMetadataPolicy: TypeMetadataPolicy,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -114,11 +114,11 @@ private class NimbusSdJwtVcVerifier(
         try {
             val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
             val maybeTypeMetadata = this(vct)
-            when (typeMetadataResolutionPolicy) {
-                TypeMetadataResolutionPolicy.Optional -> maybeTypeMetadata.getOrNull()
-                TypeMetadataResolutionPolicy.AlwaysRequired -> maybeTypeMetadata.getOrThrow()
-                is TypeMetadataResolutionPolicy.RequiredFor ->
-                    if (vct in typeMetadataResolutionPolicy.vcts) maybeTypeMetadata.getOrThrow()
+            when (typeMetadataPolicy) {
+                TypeMetadataPolicy.Optional -> maybeTypeMetadata.getOrNull()
+                TypeMetadataPolicy.AlwaysRequired -> maybeTypeMetadata.getOrThrow()
+                is TypeMetadataPolicy.RequiredFor ->
+                    if (vct in typeMetadataPolicy.vcts) maybeTypeMetadata.getOrThrow()
                     else maybeTypeMetadata.getOrNull()
             }
         } catch (error: Exception) {

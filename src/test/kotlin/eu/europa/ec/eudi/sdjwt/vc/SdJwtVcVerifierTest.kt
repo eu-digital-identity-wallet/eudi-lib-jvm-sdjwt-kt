@@ -142,7 +142,7 @@ class SdJwtVcVerifierTest {
             },
             null,
             null,
-            TypeMetadataResolutionPolicy.Optional,
+            TypeMetadataPolicy.Optional,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
@@ -156,7 +156,7 @@ class SdJwtVcVerifierTest {
             },
             null,
             null,
-            TypeMetadataResolutionPolicy.Optional,
+            TypeMetadataPolicy.Optional,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
@@ -171,7 +171,7 @@ class SdJwtVcVerifierTest {
             },
             null,
             null,
-            TypeMetadataResolutionPolicy.Optional,
+            TypeMetadataPolicy.Optional,
         )
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -209,7 +209,7 @@ class SdJwtVcVerifierTest {
                 },
                 null,
                 null,
-                TypeMetadataResolutionPolicy.Optional,
+                TypeMetadataPolicy.Optional,
             )
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }

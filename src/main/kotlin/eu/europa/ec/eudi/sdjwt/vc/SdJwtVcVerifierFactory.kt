@@ -121,27 +121,27 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
 }
 
 /**
- * Defines a Verifier's policy concerning Type Metadata resolution.
+ * Defines a Verifier's policy concerning Type Metadata.
  */
-sealed interface TypeMetadataResolutionPolicy {
+sealed interface TypeMetadataPolicy {
 
     /**
-     * Type Metadata resolution is not required.
-     * Failure to successfully resolve Type Metadata for any Vct does not result in the rejection of the SD-JWT VC.
+     * Type Metadata are not required.
+     * Failure to successfully resolve Type Metadata for any Vct, does not result in the rejection of the SD-JWT VC.
      */
-    data object Optional : TypeMetadataResolutionPolicy
+    data object Optional : TypeMetadataPolicy
 
     /**
-     * Type Metadata resolution is always required for all Vcts.
-     * Failure to successfully resolve Type Metadata for any Vct results in the rejection of the SD-JWT VC.
+     * Type Metadata are always required for all Vcts.
+     * Failure to successfully resolve Type Metadata for any Vct, results in the rejection of the SD-JWT VC.
      */
-    data object AlwaysRequired : TypeMetadataResolutionPolicy
+    data object AlwaysRequired : TypeMetadataPolicy
 
     /**
-     * Type Metadata resolution is always required for the specified Vcts.
-     * Failure to successfully resolve Type Metadata for any of the specified Vcts results in the rejection of the SD-JWT VC.
+     * Type Metadata are always required for the specified Vcts.
+     * Failure to successfully resolve Type Metadata for any of the specified Vcts, results in the rejection of the SD-JWT VC.
      */
-    data class RequiredFor(val vcts: Set<Vct>) : TypeMetadataResolutionPolicy {
+    data class RequiredFor(val vcts: Set<Vct>) : TypeMetadataPolicy {
         init {
             require(vcts.isNotEmpty()) { "at least one VCT must be specified" }
         }
@@ -154,7 +154,7 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
         issuerVerificationMethod: IssuerVerificationMethod<JWT, JWK, X509Chain>,
         resolveTypeMetadata: ResolveTypeMetadata?,
         jsonSchemaValidator: JsonSchemaValidator?,
-        typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
+        typeMetadataPolicy: TypeMetadataPolicy,
     ): SdJwtVcVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
@@ -168,13 +168,13 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
                 issuerVerificationMethod: IssuerVerificationMethod<JWT1, JWK1, X509Chain1>,
                 resolveTypeMetadata: ResolveTypeMetadata?,
                 jsonSchemaValidator: JsonSchemaValidator?,
-                typeMetadataResolutionPolicy: TypeMetadataResolutionPolicy,
+                typeMetadataPolicy: TypeMetadataPolicy,
             ): SdJwtVcVerifier<JWT1> =
                 this@SdJwtVcVerifierFactory.invoke(
                     issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
                     resolveTypeMetadata,
                     jsonSchemaValidator,
-                    typeMetadataResolutionPolicy,
+                    typeMetadataPolicy,
                 ).map(convertToJwt)
         }
 }

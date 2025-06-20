@@ -161,7 +161,7 @@ class SdJwtVcIssuanceTest {
         },
         null,
         null,
-        TypeMetadataResolutionPolicy.Optional,
+        TypeMetadataPolicy.Optional,
     )
 
     @Test
