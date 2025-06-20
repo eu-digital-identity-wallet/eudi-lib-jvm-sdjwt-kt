@@ -52,9 +52,7 @@ class PidDevVerificationTest :
                 httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
                 x509CertificateTrust = { _, _ -> true },
             ),
-            null,
-            null,
-            TypeMetadataPolicy.Optional,
+            TypeMetadataPolicy.NotUsed,
         )
 
         val issuedSdJwt = try {

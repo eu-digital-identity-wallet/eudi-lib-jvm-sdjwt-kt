@@ -159,9 +159,7 @@ class SdJwtVcIssuanceTest {
             )
             HttpMock.clientReturning(issuerMetadata)
         },
-        null,
-        null,
-        TypeMetadataPolicy.Optional,
+        TypeMetadataPolicy.NotUsed,
     )
 
     @Test

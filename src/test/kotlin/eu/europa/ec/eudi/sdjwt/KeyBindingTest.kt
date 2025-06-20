@@ -59,9 +59,7 @@ class KeyBindingTest {
     private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
         IssuerVerificationMethod.usingDID(lookup),
-        null,
-        null,
-        TypeMetadataPolicy.Optional,
+        TypeMetadataPolicy.NotUsed,
     )
     private val holder = HolderActor(genKey("holder"), lookup)
 
@@ -282,9 +280,7 @@ class HolderActor(
 ) {
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
         IssuerVerificationMethod.usingDID(lookup),
-        null,
-        null,
-        TypeMetadataPolicy.Optional,
+        TypeMetadataPolicy.NotUsed,
     )
 
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
@@ -344,9 +340,7 @@ class VerifierActor(
 ) {
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
         IssuerVerificationMethod.usingDID(lookup),
-        null,
-        null,
-        TypeMetadataPolicy.Optional,
+        TypeMetadataPolicy.NotUsed,
     )
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null
