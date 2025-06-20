@@ -469,12 +469,12 @@ val resolver = ResolveTypeMetadata(
 val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
 ```
 
-When constructing an `SdJwtVcVerifier`, a Verifier can provide a `ResolveTypeMetadata` instance alongside a `TypeMetadataPolicy` that describes his policy concerning Type Metadata resolution.
+When constructing an `SdJwtVcVerifier`, a Verifier can provide a `ResolveTypeMetadata` instance alongside a `TypeMetadataPolicy` that describes his policy concerning Type Metadata.
 Currently, the library provides the following policies:
 
-- `TypeMetadataPolicy.Optional`: Type Metadata resolution is optional. If resolution succeeds, Type Metadata are used for extra validation checks of the SD-JWT VC. If resolution fails, no further checks are performed.
-- `TypeMetadataPolicy.AlwaysRequired`: Type Metadata resolution is always required. If resolution succeeds, Type Metadata are used for extra validation checks of the SD-JWT VC. If resolution fails, the SD-JWT VC is rejected.
-- `TypeMetadataPolicy.RequiredFor`: Applies the policy `TypeMetadataPolicy.AlwaysRequired` for a set of specified Vcts, and `TypeMetadataPolicy.Optional` for everything else.
+- `TypeMetadataPolicy.Optional`: Type Metadata are optional. If resolution succeeds, Type Metadata are used for extra validation checks of the SD-JWT VC. If resolution fails, no further checks are performed.
+- `TypeMetadataPolicy.AlwaysRequired`: Type Metadata are always required. If resolution succeeds, Type Metadata are used for extra validation checks of the SD-JWT VC. If resolution fails, the SD-JWT VC is rejected.
+- `TypeMetadataPolicy.RequiredFor`: Applies `TypeMetadataPolicy.AlwaysRequired` for a set of specified Vcts, and `TypeMetadataPolicy.Optional` for everything else.
 
 ### Definition-Based SD-JWT Object Building
 
