@@ -135,7 +135,7 @@ interface ResolveTypeMetadata {
                     val schema = current.schemaUri?.let { schemaUri ->
                         lookupJsonSchema(schemaUri).getOrThrow() ?: error("unable to lookup JsonSchema for $schemaUri")
                     } ?: current.schema
-                    current.copy(schema = schema, schemaUri = null)
+                    current.copy(schema = schema, schemaUri = null, schemaUriIntegrity = null)
                 }
                 val updatedAccumulator = accumulator + current
                 val parent = current.extends?.let { Vct(it) }
