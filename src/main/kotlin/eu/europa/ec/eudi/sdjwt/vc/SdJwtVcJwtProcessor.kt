@@ -19,15 +19,6 @@ import eu.europa.ec.eudi.sdjwt.JwkSourceJWTProcessor
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
-import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
-import com.nimbusds.jose.JWSHeader as NimbusJWSHeader
-import com.nimbusds.jose.jwk.Curve as NimbusCurve
-import com.nimbusds.jose.jwk.JWK as NimbusJWK
-import com.nimbusds.jose.jwk.JWKMatcher as NimbusJWKMatcher
-import com.nimbusds.jose.jwk.JWKSelector as NimbusJWKSelector
-import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
-import com.nimbusds.jose.jwk.KeyType as NimbusKeyType
-import com.nimbusds.jose.jwk.KeyUse as NimbusKeyUse
 import com.nimbusds.jose.jwk.source.JWKSource as NimbusJWKSource
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier as NimbusDefaultJOSEObjectTypeVerifier
 import com.nimbusds.jose.proc.JOSEObjectTypeVerifier as NimbusJOSEObjectTypeVerifier
@@ -38,7 +29,8 @@ import com.nimbusds.jwt.proc.JWTClaimsSetVerifier as NimbusJWTClaimsSetVerifier
 
 internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
     jwkSource: NimbusJWKSource<C>,
-) : JwkSourceJWTProcessor<C>(typeVerifier(), claimSetVerifier(), jwkSource) {
+    useKeyId: Boolean,
+) : JwkSourceJWTProcessor<C>(typeVerifier(), claimSetVerifier(), jwkSource, useKeyId) {
 
     companion object {
         /**
@@ -56,52 +48,5 @@ internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
                 NimbusJWTClaimsSet.Builder().build(),
                 setOf(RFC7519.ISSUER, SdJwtVcSpec.VCT),
             )
-
-        /**
-         * Gets a [NimbusJWKSource] for a DID Document.
-         */
-        fun <C : NimbusSecurityContext> didJwkSet(
-            jwsHeader: NimbusJWSHeader,
-            jwkSet: NimbusJWKSet,
-        ): NimbusJWKSource<C> =
-            DIDJWKSet<C>(jwsHeader, jwkSet)
     }
 }
-
-/**
- * [NimbusJWKSource] implementation for DID Documents.
- *
- * When [NimbusJWKSource.get] is invoked, it ignores the provided [NimbusJWKSet], and instead uses one that matches
- * all the properties of the provided [NimbusJWSHeader] besides the Key ID.
- */
-private class DIDJWKSet<C : NimbusSecurityContext>(jwsHeader: NimbusJWSHeader, val jwkSet: NimbusJWKSet) :
-    NimbusJWKSource<C> {
-        private val jwkSelector: NimbusJWKSelector by lazy {
-            // Create a JWKMatcher that considers all attributes of the JWK but the Key ID.
-            // The matcher here doesn't support HMAC Secret Key resolution, since DID Document cannot contain private keys.
-            // See also: JWKMatcher.forJWSHeader().
-            val matcher = when (val algorithm = jwsHeader.algorithm) {
-                in NimbusJWSAlgorithm.Family.RSA, in NimbusJWSAlgorithm.Family.EC ->
-                    NimbusJWKMatcher.Builder()
-                        .keyType(NimbusKeyType.forAlgorithm(algorithm))
-                        .keyUses(NimbusKeyUse.SIGNATURE, null)
-                        .algorithms(algorithm, null)
-                        .x509CertSHA256Thumbprint(jwsHeader.x509CertSHA256Thumbprint)
-                        .build()
-
-                in NimbusJWSAlgorithm.Family.ED ->
-                    NimbusJWKMatcher.Builder()
-                        .keyType(NimbusKeyType.forAlgorithm(algorithm))
-                        .keyUses(NimbusKeyUse.SIGNATURE, null)
-                        .algorithms(algorithm, null)
-                        .curves(NimbusCurve.forJWSAlgorithm(algorithm))
-                        .build()
-
-                else -> error("Unsupported JWSAlgorithm '$algorithm'")
-            }
-            NimbusJWKSelector(matcher)
-        }
-
-        override fun get(jwkSelector: NimbusJWKSelector, context: C?): MutableList<NimbusJWK> =
-            this.jwkSelector.select(jwkSet)
-    }

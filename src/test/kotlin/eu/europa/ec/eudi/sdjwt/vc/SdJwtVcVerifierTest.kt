@@ -27,6 +27,7 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jose.proc.BadJOSEException
+import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
@@ -34,12 +35,25 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import org.bouncycastle.asn1.DERSequence
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
+import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import java.math.BigInteger
+import java.security.cert.X509Certificate
+import java.util.*
+import javax.security.auth.x500.X500Principal
 import kotlin.io.encoding.Base64
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.days
 
 private object SampleIssuer {
     const val KEY_ID = "signing-key-01"
@@ -207,4 +221,62 @@ class SdJwtVcVerifierTest {
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
             verifier.verify(serialized).getOrThrow()
         }
+
+    @Test
+    fun `SdJwtVcVerifier ignores KeyId when using x5c as an IssuerJwkSource`() = runTest {
+        val issuer = Url("https://issuer.example.com")
+        val key = ECKeyGenerator(Curve.P_521)
+            .algorithm(JWSAlgorithm.ES512)
+            .keyID("issuer-signing-key#0")
+            .generate()
+        val certificate = run {
+            val issuedAt = Clock.System.now()
+            val expiresAt = issuedAt.plus(365.days)
+            val subject = X500Principal("CN=${issuer.host}")
+            val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())
+            val holder = JcaX509v3CertificateBuilder(
+                subject,
+                BigInteger.valueOf(Random.nextLong()),
+                Date.from(issuedAt.toJavaInstant()),
+                Date.from(expiresAt.toJavaInstant()),
+                subject,
+                key.toECPublicKey(),
+            ).addExtension(
+                Extension.subjectAlternativeName,
+                true,
+                GeneralNames.getInstance(DERSequence(GeneralName(GeneralName.dNSName, issuer.host))),
+            ).build(signer)
+            X509CertUtils.parse(holder.encoded)
+        }
+
+        val sdJwt = run {
+            val spec = sdJwt {
+                claim(RFC7519.ISSUER, issuer.toString())
+                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
+            }
+            val signer = NimbusSdJwtOps.issuer(
+                signer = ECDSASigner(key),
+                signAlgorithm = JWSAlgorithm.ES512,
+            ) {
+                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
+                x509CertChain(listOf(com.nimbusds.jose.util.Base64.encode(certificate.encoded)))
+                keyID("an-unrelated-key-id")
+            }
+            signer.issue(spec).getOrThrow()
+        }
+
+        val verifier = run {
+            val x509CertificateTrust = X509CertificateTrust.usingVct { chain: List<X509Certificate>, vct ->
+                1 == chain.size && certificate.serialNumber == chain.first().serialNumber
+            }
+
+            NimbusSdJwtOps.SdJwtVcVerifier(
+                IssuerVerificationMethod.usingX5c(x509CertificateTrust),
+                TypeMetadataPolicy.NotUsed,
+            )
+        }
+
+        val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
+        verifier.verify(serialized).getOrThrow()
+    }
 }

@@ -86,12 +86,13 @@ internal fun <PubKey> keyBindingJWTProcess(
     challenge: NimbusJWTClaimsSet? = null,
 ): NimbusJWTProcessor<NimbusSecurityContext> where PubKey : NimbusJWK, PubKey : NimbusAsymmetricJWK =
     JwkSourceJWTProcessor(
-        typeVerifier = NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
-        claimSetVerifier = NimbusDefaultJWTClaimsVerifier(
+        NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
+        NimbusDefaultJWTClaimsVerifier(
             challenge ?: NimbusJWTClaimsSet.Builder().build(),
             setOf(RFC7519.AUDIENCE, RFC7519.ISSUED_AT, "nonce"),
         ),
-        jwkSource = NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
+        NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
+        true,
     )
 
 //
@@ -348,6 +349,7 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
     private val typeVerifier: NimbusJOSEObjectTypeVerifier<C>? = null,
     private val claimSetVerifier: NimbusJWTClaimsSetVerifier<C>? = null,
     private val jwkSource: NimbusJWKSource<C>,
+    private val useKeyId: Boolean,
 ) : NimbusJWTProcessor<C> {
 
     private fun notSupported(): Nothing = throw NimbusBadJOSEException("Only Nimbus SignedJWTs are supported")
@@ -367,7 +369,10 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
         typeVerifier?.verify(signedJWT.header.type, context)
 
         val claimsSet = signedJWT.jwtClaimSet()
-        val jwkSelector = NimbusJWKSelector(NimbusJWKMatcher.forJWSHeader(signedJWT.header))
+        val jwkMatcher =
+            if (useKeyId) NimbusJWKMatcher.forJWSHeader(signedJWT.header)
+            else NimbusJWKMatcher.forJWSHeader(signedJWT.header).withoutKeyId()
+        val jwkSelector = NimbusJWKSelector(jwkMatcher)
 
         val jwks = jwkSource.get(jwkSelector, context)
         if (jwks.isNullOrEmpty()) {
@@ -413,3 +418,9 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
             }
     }
 }
+
+private fun NimbusJWKMatcher.withoutKeyId(): NimbusJWKMatcher =
+    NimbusJWKMatcher.Builder(this)
+        .keyID(null)
+        .withKeyIDOnly(false)
+        .build()
