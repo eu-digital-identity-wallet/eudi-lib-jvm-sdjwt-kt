@@ -124,11 +124,11 @@ internal fun sdJwtVcSignatureVerifier(
             throw VerificationError.ParsingError.asException()
         }
 
-        val jwkSource = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
+        val (jwkSource, useKeyId) = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
         yield()
 
         try {
-            val jwtProcessor = SdJwtVcJwtProcessor(jwkSource)
+            val jwtProcessor = SdJwtVcJwtProcessor(jwkSource, useKeyId)
             jwtProcessor.process(signedJwt, null)
             yield()
             signedJwt
@@ -143,8 +143,8 @@ private suspend fun issuerJwkSource(
     trust: X509CertificateTrust<List<X509Certificate>>?,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>?,
     signedJwt: NimbusSignedJWT,
-): NimbusJWKSource<NimbusSecurityContext> {
-    suspend fun fromMetadata(source: Metadata): NimbusJWKSource<NimbusSecurityContext> {
+): IssuerJwkSource {
+    suspend fun fromMetadata(source: Metadata): IssuerJwkSource {
         if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatching {
             val json = httpClientFactory().use { httpClient ->
@@ -152,27 +152,27 @@ private suspend fun issuerJwkSource(
             }
             NimbusJWKSet.parse(Json.encodeToString(json))
         }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
-        return NimbusImmutableJWKSet(jwks)
+        return IssuerJwkSource(NimbusImmutableJWKSet(jwks), true)
     }
 
-    suspend fun fromX509CertChain(source: X509CertChain): NimbusJWKSource<NimbusSecurityContext> {
+    suspend fun fromX509CertChain(source: X509CertChain): IssuerJwkSource {
         if (null == trust) raise(UnsupportedVerificationMethod("x5c"))
 
         val claimSet = signedJwt.jwtClaimsSet.jsonObject()
         if (!trust.isTrusted(source.chain, claimSet)) raise(UntrustedIssuerCertificate())
 
         val jwk = NimbusJWK.parse(source.chain.first())
-        return NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk)))
+        return IssuerJwkSource(NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk))), false)
     }
 
-    suspend fun fromDid(source: DIDUrl): NimbusJWKSource<NimbusSecurityContext> {
+    suspend fun fromDid(source: DIDUrl): IssuerJwkSource {
         if (null == lookup) raise(UnsupportedVerificationMethod("did"))
         val jwks = runCatching {
             lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
         }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
         if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
 
-        return SdJwtVcJwtProcessor.didJwkSet(signedJwt.header, jwks)
+        return IssuerJwkSource(NimbusImmutableJWKSet(jwks), false)
     }
 
     return when (val source = keySource(signedJwt)) {
@@ -181,6 +181,11 @@ private suspend fun issuerJwkSource(
         is DIDUrl -> fromDid(source)
     }
 }
+
+private data class IssuerJwkSource(
+    val jwkSource: NimbusJWKSource<NimbusSecurityContext>,
+    val useKeyId: Boolean,
+)
 
 /**
  * The source from which to get Issuer's public key
