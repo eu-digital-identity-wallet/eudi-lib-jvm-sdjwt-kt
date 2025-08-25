@@ -265,7 +265,7 @@ class SdJwtVcVerifierTest {
         }
 
         val verifier = run {
-            val x509CertificateTrust = X509CertificateTrust.usingVct { chain: List<X509Certificate>, vct ->
+            val x509CertificateTrust = X509CertificateTrust.usingVct { chain: List<X509Certificate>, _ ->
                 1 == chain.size && certificate.serialNumber == chain.first().serialNumber
             }
 
