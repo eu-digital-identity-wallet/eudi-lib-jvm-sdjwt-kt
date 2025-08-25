@@ -26,7 +26,6 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.*
 import kotlin.test.Test
@@ -84,7 +83,7 @@ private data class Context(
 
 private fun createContext(algorithm: JWSAlgorithm): Context = with(NimbusSdJwtOps) {
     val keyId = UUID.randomUUID().toString()
-    val issuedAt = Date(Clock.System.now().toEpochMilliseconds())
+    val issuedAt = Date(kotlin.time.Clock.System.now().toEpochMilliseconds())
 
     when (algorithm) {
         in JWSAlgorithm.Family.EC -> {
