@@ -119,7 +119,7 @@ fun interface JwtSignatureVerifier<out JWT> {
      * @return the payload of the JWT if signature is valid, otherwise raises [InvalidJwt]
      */
     suspend fun verify(jwt: String): Result<JWT> =
-        runCatching {
+        runCatchingCancellable {
             checkSignature(jwt) ?: throw InvalidJwt().asException()
         }
 
@@ -241,7 +241,7 @@ private interface KeyBindingVerifierOps<JWT> {
                     jwtClaims: JsonObject,
                     expectedDigest: SdJwtDigest,
                     unverifiedKbJwt: String?,
-                ): Result<JWT?> = runCatching {
+                ): Result<JWT?> = runCatchingCancellable {
                     fun mustBeNotPresent(): JWT? =
                         if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
                         else null
@@ -250,7 +250,7 @@ private interface KeyBindingVerifierOps<JWT> {
                         if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
                         val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
-                        val keyBindingJwt = runCatching {
+                        val keyBindingJwt = runCatchingCancellable {
                             requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
                                 "KeyBinding JWT cannot be null"
                             }
@@ -431,7 +431,7 @@ private suspend fun <JWT> doVerify(
     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
     keyBindingVerifier: KeyBindingVerifier<JWT>,
     unverifiedSdJwt: String,
-): Result<Pair<SdJwt<JWT>, JWT?>> = runCatching {
+): Result<Pair<SdJwt<JWT>, JWT?>> = runCatchingCancellable {
     // Parse
     val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = StandardSerialization.parse(unverifiedSdJwt)
 

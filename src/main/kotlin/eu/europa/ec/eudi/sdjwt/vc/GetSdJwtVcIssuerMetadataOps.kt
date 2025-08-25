@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -29,7 +30,7 @@ interface GetSdJwtVcIssuerMetadataOps {
 
     suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? =
         alternatives.firstNotNullOfOrNull { formWellKnownUrl ->
-            runCatching { getSdJwtVcIssuerMetadata(issuer, formWellKnownUrl) }.getOrNull()
+            runCatchingCancellable { getSdJwtVcIssuerMetadata(issuer, formWellKnownUrl) }.getOrNull()
         }
 
     companion object : GetSdJwtVcIssuerMetadataOps {

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -94,7 +95,7 @@ private val default: SelectPath = SelectPath { path ->
         accumulatedWildcardScopePathElements = emptyList(),
         accumulatedConcretePathElements = emptyList(),
     )
-    runCatching { deepRecursiveSelector(initialParams) }
+    runCatchingCancellable { deepRecursiveSelector(initialParams) }
 }
 
 private val deepRecursiveSelector = DeepRecursiveFunction<SelectionParams, Selection> { params ->

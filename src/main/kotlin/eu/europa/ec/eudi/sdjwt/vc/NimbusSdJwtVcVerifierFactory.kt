@@ -73,7 +73,7 @@ private class NimbusSdJwtVcVerifier(
         }
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
-        runCatching {
+        runCatchingCancellable {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             sdJwt
@@ -83,7 +83,7 @@ private class NimbusSdJwtVcVerifier(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
-        runCatching {
+        runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
             val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
@@ -146,7 +146,7 @@ private suspend fun issuerJwkSource(
 ): IssuerJwkSource {
     suspend fun fromMetadata(source: Metadata): IssuerJwkSource {
         if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
-        val jwks = runCatching {
+        val jwks = runCatchingCancellable {
             val json = httpClientFactory().use { httpClient ->
                 with(GetSdJwtVcIssuerJwkSetKtorOps) { httpClient.getSdJwtIssuerKeySet(source.iss) }
             }
@@ -167,7 +167,7 @@ private suspend fun issuerJwkSource(
 
     suspend fun fromDid(source: DIDUrl): IssuerJwkSource {
         if (null == lookup) raise(UnsupportedVerificationMethod("did"))
-        val jwks = runCatching {
+        val jwks = runCatchingCancellable {
             lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
         }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
         if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
@@ -206,7 +206,7 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     val kid = jwt.header?.keyID
     val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { NimbusX509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet?.issuer
-    val issUrl = iss?.let { runCatching { Url(it) }.getOrNull() }
+    val issUrl = iss?.let { runCatchingCancellable { Url(it) }.getOrNull() }
     val issScheme = issUrl?.protocol?.name
 
     fun X509Certificate.containsIssuerDnsName(iss: Url): Boolean {

@@ -41,7 +41,7 @@ value class SdJwtDigest private constructor(val value: String) {
          * @param value the base64-url encoded without padding digest value to wrap
          * @return the wrapped value
          */
-        fun wrap(value: String): Result<SdJwtDigest> = runCatching {
+        fun wrap(value: String): Result<SdJwtDigest> = runCatchingCancellable {
             Base64UrlNoPadding.decode(value)
             SdJwtDigest(value)
         }
@@ -59,7 +59,11 @@ value class SdJwtDigest private constructor(val value: String) {
         /**
          * Internal version of digest that takes a Platform parameter
          */
-        internal fun digestInternal(hashes: Hashes, hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> = runCatching {
+        internal fun digestInternal(
+            hashes: Hashes,
+            hashAlgorithm: HashAlgorithm,
+            value: String,
+        ): Result<SdJwtDigest> = runCatchingCancellable {
             require(value.contains(SdJwtSpec.DISCLOSURE_SEPARATOR))
             fun String.noKeyBinding() =
                 if (endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)) {

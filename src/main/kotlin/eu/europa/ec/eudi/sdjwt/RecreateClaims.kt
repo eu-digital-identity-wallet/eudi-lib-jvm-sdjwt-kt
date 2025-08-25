@@ -51,7 +51,7 @@ fun interface SdJwtRecreateClaimsOps<in JWT> {
         fun recreateClaimsAndDisclosuresPerClaim(
             jwtPayload: JsonObject,
             disclosures: List<Disclosure>,
-        ): Result<Pair<JsonObject, DisclosuresPerClaimPath>> = runCatching {
+        ): Result<Pair<JsonObject, DisclosuresPerClaimPath>> = runCatchingCancellable {
             val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
             val claims = run {
                 val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)

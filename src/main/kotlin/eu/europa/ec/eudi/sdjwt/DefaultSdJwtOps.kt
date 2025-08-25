@@ -56,7 +56,7 @@ private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier { (_, c
  */
 private val DefaultSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom<JwtAndClaims> =
     UnverifiedIssuanceFrom { unverifiedSdJwt ->
-        runCatching {
+        runCatchingCancellable {
             val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
             val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
             val disclosures = toDisclosures(unverifiedDisclosures)

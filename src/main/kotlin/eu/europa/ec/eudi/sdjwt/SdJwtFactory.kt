@@ -123,7 +123,7 @@ class SdJwtFactory(
      * @return a [Result] containing the generated [SdJwt] with a [JsonObject] representing the JWT part
      * and the associated disclosure elements, or an exception if the operation fails
      */
-    fun createSdJwt(sdJwtObject: SdJwtObject): Result<UnsignedSdJwt> = runCatching {
+    fun createSdJwt(sdJwtObject: SdJwtObject): Result<UnsignedSdJwt> = runCatchingCancellable {
         val disclosed = sdJwtObject.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,

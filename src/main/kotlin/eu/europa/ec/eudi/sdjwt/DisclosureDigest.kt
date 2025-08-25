@@ -40,7 +40,7 @@ value class DisclosureDigest private constructor(val value: String) {
          * @param s the value to wrap
          * @return the [DisclosureDigest] if the given input represents a valid base64 encoded string
          */
-        internal fun wrap(s: String): Result<DisclosureDigest> = runCatching {
+        internal fun wrap(s: String): Result<DisclosureDigest> = runCatchingCancellable {
             Base64UrlNoPadding.decode(s)
             DisclosureDigest(s)
         }
@@ -74,7 +74,7 @@ value class DisclosureDigest private constructor(val value: String) {
             hashes: Hashes,
             hashingAlgorithm: HashAlgorithm,
             value: String,
-        ): Result<DisclosureDigest> = runCatching {
+        ): Result<DisclosureDigest> = runCatchingCancellable {
             val input = value.encodeToByteArray()
             val digest = hashes.digest(hashingAlgorithm, input)
             DisclosureDigest(Base64UrlNoPadding.encode(digest))

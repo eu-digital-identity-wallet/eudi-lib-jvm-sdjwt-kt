@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.Disclosable
 import eu.europa.ec.eudi.sdjwt.dsl.def.DisclosableDef
 import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtElementDefinition
+import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import kotlinx.serialization.json.*
 
 /**
@@ -193,7 +194,7 @@ fun sdJwtVc(
     sdJwtDefinition: SdJwtDefinition,
     strict: Boolean = true,
     action: JsonObjectBuilder.() -> Unit,
-): Result<SdJwtObject> = runCatching {
+): Result<SdJwtObject> = runCatchingCancellable {
     val data = buildJsonObject(action)
     val builder = DefinitionBasedSdJwtObjectBuilder(sdJwtDefinition)
     val (sdJwtObject, warnings) = builder.build(data)
