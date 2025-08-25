@@ -15,7 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CancellationException
 
 internal inline fun <R> runCatchingCancellable(block: () -> R): Result<R> {
     return try {
