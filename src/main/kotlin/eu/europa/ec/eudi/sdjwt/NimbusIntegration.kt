@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.asJwtVerifier
 import eu.europa.ec.eudi.sdjwt.dsl.values.SdJwtObjectBuilder
 import eu.europa.ec.eudi.sdjwt.vc.NimbusSdJwtVcVerifierFactory
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifierFactory
@@ -27,19 +26,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import java.security.cert.X509Certificate
 import java.text.ParseException
-import kotlin.Boolean
-import kotlin.Nothing
-import kotlin.Result
-import kotlin.String
-import kotlin.Unit
-import kotlin.apply
-import kotlin.check
-import kotlin.checkNotNull
-import kotlin.getOrThrow
-import kotlin.let
-import kotlin.require
-import kotlin.run
-import kotlin.with
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
