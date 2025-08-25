@@ -128,7 +128,7 @@ private fun <JWT> defaultSdJwtSerializationOps(
     }
 
     override suspend fun SdJwt<JWT>.serializeWithKeyBinding(buildKbJwt: BuildKbJwt): Result<String> =
-        runCatching {
+        runCatchingCancellable {
             val presentationSdJwt = serialize()
             val hashAlgorithm = jwt.hashAlgorithmOrDefault()
             val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
@@ -141,7 +141,7 @@ private fun <JWT> defaultSdJwtSerializationOps(
     override suspend fun SdJwt<JWT>.asJwsJsonObjectWithKeyBinding(
         option: JwsSerializationOption,
         buildKbJwt: BuildKbJwt,
-    ): Result<JsonObject> = runCatching {
+    ): Result<JsonObject> = runCatchingCancellable {
         val presentationSdJwt = serialize()
         val hashAlgorithm = jwt.hashAlgorithmOrDefault()
         val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
@@ -176,7 +176,7 @@ private suspend fun kbJwt(
     presentationSdJwt: String,
     hashAlgorithm: HashAlgorithm,
     buildKbJwt: BuildKbJwt,
-): Result<Jwt> = runCatching {
+): Result<Jwt> = runCatchingCancellable {
     val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
     buildKbJwt(sdJwtDigest).getOrThrow()
 }
@@ -185,7 +185,7 @@ enum class JwsSerializationOption {
     General, Flattened
 }
 
-internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> = runCatching {
+internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> = runCatchingCancellable {
     fun json(s: String): JsonObject {
         val decoded = Base64UrlNoPadding.decode(s).toString(Charsets.UTF_8)
         return Json.parseToJsonElement(decoded).jsonObject
@@ -194,7 +194,7 @@ internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>>
     Triple(json(h), json(p), s)
 }
 
-private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> = runCatching {
+private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> = runCatchingCancellable {
     val ps = jwt.split(".")
     if (ps.size != 3) throw VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts").asException()
     val (h, p, s) = jwt.split(".")

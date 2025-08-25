@@ -63,7 +63,7 @@ sealed interface Disclosure {
                 else ArrayElement(s)
             }
 
-        internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatching {
+        internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatchingCancellable {
             val base64Decoded = Base64UrlNoPadding.decode(disclosure).decodeToString()
             val array = Json.decodeFromString<JsonArray>(base64Decoded)
             when (array.size) {
@@ -87,7 +87,7 @@ sealed interface Disclosure {
         internal fun arrayElement(
             saltProvider: SaltProvider = SaltProvider.Default,
             element: JsonElement,
-        ): Result<ArrayElement> = runCatching {
+        ): Result<ArrayElement> = runCatchingCancellable {
             // Create a Json Array [salt, claimName, claimValue]
             val jsonArray = buildJsonArray {
                 add(JsonPrimitive(saltProvider.salt())) // salt
@@ -117,7 +117,7 @@ sealed interface Disclosure {
                 }
             }
 
-            return runCatching {
+            return runCatchingCancellable {
                 // Make sure that the claim name is valid
                 claim.ensureValidAttributeName()
 

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import io.ktor.client.request.*
 import io.ktor.http.*
 
@@ -29,7 +30,7 @@ fun interface LookupTypeMetadata {
         fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
             val lookups = listOf(first, *remaining)
             return LookupTypeMetadata { vct ->
-                runCatching {
+                runCatchingCancellable {
                     lookups.firstNotNullOfOrNull { lookup -> lookup(vct).getOrNull() }
                 }
             }
@@ -44,8 +45,8 @@ class LookupTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupTypeMetadata {
     override suspend fun invoke(vct: Vct): Result<SdJwtVcTypeMetadata?> {
-        val url = runCatching { Url(vct.value) }.getOrNull()
-        return runCatching {
+        val url = runCatchingCancellable { Url(vct.value) }.getOrNull()
+        return runCatchingCancellable {
             when (url) {
                 is Url -> httpClientFactory().use { it.getJsonOrNull<SdJwtVcTypeMetadata>(url) }
                 else -> null
@@ -65,7 +66,7 @@ fun interface LookupJsonSchema {
         fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
             val lookups = listOf(first, *remaining)
             return LookupJsonSchema { uri ->
-                runCatching {
+                runCatchingCancellable {
                     lookups.firstNotNullOfOrNull { lookup -> lookup(uri).getOrNull() }
                 }
             }
@@ -81,8 +82,8 @@ class LookupJsonSchemaUsingKtor(
 ) : LookupJsonSchema {
 
     override suspend fun invoke(uri: String): Result<JsonSchema?> {
-        val url = runCatching { Url(uri) }.getOrNull()
-        return runCatching {
+        val url = runCatchingCancellable { Url(uri) }.getOrNull()
+        return runCatchingCancellable {
             when (url) {
                 is Url -> httpClientFactory().use { it.getJsonOrNull<JsonSchema>(url) }
                 else -> null
@@ -127,7 +128,7 @@ interface ResolveTypeMetadata {
      * Resolves the [ResolvedTypeMetadata] for [vct].
      */
     suspend operator fun invoke(vct: Vct): Result<ResolvedTypeMetadata> =
-        runCatching {
+        runCatchingCancellable {
             tailrec suspend fun resolve(vct: Vct, accumulator: ResolvedTypeMetadata, resolved: Set<Vct>): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
                 val current = run {

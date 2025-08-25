@@ -60,7 +60,7 @@ class SdJwtVcVerifierIntegrationTest {
                 lookupTypeMetadata = {
                     assertEquals("urn:eudi:pid:1", it.value)
                     withContext(Dispatchers.IO) {
-                        runCatching {
+                        runCatchingCancellable {
                             Json.decodeFromString<SdJwtVcTypeMetadata>(loadResource("/pid_arf_v18.json"))
                         }
                     }

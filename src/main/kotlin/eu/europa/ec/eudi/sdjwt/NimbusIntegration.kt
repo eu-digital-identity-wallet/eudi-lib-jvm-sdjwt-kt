@@ -238,7 +238,7 @@ object NimbusSdJwtOps :
             ?.let { cnf -> if (cnf is JsonObject) cnf["jwk"] else null }
             ?.let { jwk -> jwk as? JsonObject }
             ?.let { jwk ->
-                runCatching {
+                runCatchingCancellable {
                     val key = NimbusJWK.parse(jwk.toString())
                     require(key is NimbusAsymmetricJWK)
                     key
@@ -273,7 +273,7 @@ object NimbusSdJwtOps :
         claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit = {},
     ): BuildKbJwt = BuildKbJwt { sdJwtDigest ->
         withContext(Dispatchers.IO) {
-            runCatching {
+            runCatchingCancellable {
                 val header = NimbusJWSHeader.Builder(signAlgorithm).apply {
                     type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
                     val pk = publicKey
@@ -327,7 +327,7 @@ private fun sign(
     signAlgorithm: NimbusJWSAlgorithm,
     jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
 ): (JsonObject) -> Result<NimbusSignedJWT> = { claims ->
-    runCatching {
+    runCatchingCancellable {
         val jwsHeader = with(NimbusJWSHeader.Builder(signAlgorithm)) {
             jwsHeaderCustomization()
             build()

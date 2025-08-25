@@ -49,7 +49,7 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
             sdJwtFactory: SdJwtFactory,
             signSdJwt: SignSdJwt<SIGNED_JWT>,
         ): SdJwtIssuer<SIGNED_JWT> = SdJwtIssuer { sdJwtObject ->
-            runCatching {
+            runCatchingCancellable {
                 val unsignedSdJwt = sdJwtFactory.createSdJwt(sdJwtObject).getOrThrow()
                 signSdJwt(unsignedSdJwt)
             }
