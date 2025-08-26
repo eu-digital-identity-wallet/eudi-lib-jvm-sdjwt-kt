@@ -51,6 +51,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaInstant
 
@@ -80,7 +81,7 @@ private object SampleIssuer {
         val issuer = sdJwtVcIssuer(kid)
         val sdJwtSpec = sdJwt {
             claim(RFC7519.ISSUER, issuerMeta.issuer)
-            claim(RFC7519.ISSUED_AT, kotlin.time.Clock.System.now().epochSeconds)
+            claim(RFC7519.ISSUED_AT, Clock.System.now().epochSeconds)
             claim(SdJwtVcSpec.VCT, "urn:credential:sample")
             sdClaim("foo", "bar")
         }
@@ -229,7 +230,7 @@ class SdJwtVcVerifierTest {
             .keyID("issuer-signing-key#0")
             .generate()
         val certificate = run {
-            val issuedAt = kotlin.time.Clock.System.now()
+            val issuedAt = Clock.System.now()
             val expiresAt = issuedAt.plus(365.days)
             val subject = X500Principal("CN=${issuer.host}")
             val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())

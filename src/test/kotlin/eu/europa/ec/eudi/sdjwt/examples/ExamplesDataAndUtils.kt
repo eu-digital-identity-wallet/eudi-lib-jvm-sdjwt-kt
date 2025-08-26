@@ -34,6 +34,7 @@ import java.math.BigInteger
 import java.security.cert.X509Certificate
 import java.util.*
 import javax.security.auth.x500.X500Principal
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaInstant
 
@@ -53,7 +54,7 @@ internal val issuerEcKeyPairWithCertificate: ECKey by lazy {
         .generate()
 
     val certificate = run {
-        val issuedAt = kotlin.time.Clock.System.now()
+        val issuedAt = Clock.System.now()
         val expiresAt = issuedAt.plus(365.days)
         val subject = X500Principal("CN=${issuer.host}")
         val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())

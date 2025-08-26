@@ -30,6 +30,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.fail
+import kotlin.time.Clock
 
 /**
  * Test cases for Nimbus integration.
@@ -83,7 +84,7 @@ private data class Context(
 
 private fun createContext(algorithm: JWSAlgorithm): Context = with(NimbusSdJwtOps) {
     val keyId = UUID.randomUUID().toString()
-    val issuedAt = Date(kotlin.time.Clock.System.now().toEpochMilliseconds())
+    val issuedAt = Date(Clock.System.now().toEpochMilliseconds())
 
     when (algorithm) {
         in JWSAlgorithm.Family.EC -> {

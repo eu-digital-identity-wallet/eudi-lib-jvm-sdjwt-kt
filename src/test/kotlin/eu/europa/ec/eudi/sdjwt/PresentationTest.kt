@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.*
+import kotlin.time.Clock
 
 class PresentationTest {
 
@@ -122,7 +123,7 @@ class PresentationTest {
             val sdJwt = run {
                 val spec = sdJwt {
                     claim("iss", "foo")
-                    claim("iat", kotlin.time.Clock.System.now().epochSeconds)
+                    claim("iat", Clock.System.now().epochSeconds)
                 }
                 issuer.issue(spec).getOrThrow().also {
                     assertTrue { it.disclosures.isEmpty() }
