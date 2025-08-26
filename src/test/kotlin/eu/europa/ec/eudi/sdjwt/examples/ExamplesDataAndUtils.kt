@@ -24,8 +24,6 @@ import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.X509CertUtils
 import eu.europa.ec.eudi.sdjwt.loadRsaKey
 import io.ktor.http.*
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
 import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.GeneralName
@@ -36,7 +34,9 @@ import java.math.BigInteger
 import java.security.cert.X509Certificate
 import java.util.*
 import javax.security.auth.x500.X500Principal
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaInstant
 
 internal val issuerEcKeyPair: ECKey by lazy {
     ECKeyGenerator(Curve.P_256)

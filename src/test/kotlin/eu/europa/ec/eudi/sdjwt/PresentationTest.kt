@@ -27,10 +27,10 @@ import eu.europa.ec.eudi.sdjwt.examples.complexStructuredSdJwt
 import eu.europa.ec.eudi.sdjwt.examples.sdJwtVcDataV2
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.*
+import kotlin.time.Clock
 
 class PresentationTest {
 

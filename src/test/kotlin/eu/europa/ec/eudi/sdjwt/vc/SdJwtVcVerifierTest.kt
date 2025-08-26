@@ -34,8 +34,6 @@ import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.bouncycastle.asn1.DERSequence
@@ -53,7 +51,9 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.toJavaInstant
 
 private object SampleIssuer {
     const val KEY_ID = "signing-key-01"
@@ -266,7 +266,7 @@ class SdJwtVcVerifierTest {
         }
 
         val verifier = run {
-            val x509CertificateTrust = X509CertificateTrust.usingVct { chain: List<X509Certificate>, vct ->
+            val x509CertificateTrust = X509CertificateTrust.usingVct { chain: List<X509Certificate>, _ ->
                 1 == chain.size && certificate.serialNumber == chain.first().serialNumber
             }
 
