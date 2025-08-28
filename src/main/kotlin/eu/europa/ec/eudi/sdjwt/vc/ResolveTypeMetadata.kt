@@ -92,14 +92,14 @@ private fun validateTypeMetadataIntegrity(expectedIntegrity: List<DocumentIntegr
  */
 fun interface LookupJsonSchema {
 
-    suspend operator fun invoke(uri: String): Result<JsonSchema?>
+    suspend operator fun invoke(uri: String, schemaIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?>
 
     companion object {
         fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
             val lookups = listOf(first, *remaining)
-            return LookupJsonSchema { uri ->
+            return LookupJsonSchema { uri, integrities ->
                 runCatchingCancellable {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri).getOrNull() }
+                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri, integrities).getOrNull() }
                 }
             }
         }
@@ -113,11 +113,21 @@ class LookupJsonSchemaUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupJsonSchema {
 
-    override suspend fun invoke(uri: String): Result<JsonSchema?> {
+    override suspend fun invoke(uri: String, schemaIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?> {
         val url = runCatchingCancellable { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> httpClientFactory().use { it.getJsonOrNull<JsonSchema>(url) }
+                is Url -> httpClientFactory().use {
+                    val jsonSchema = it.getJsonOrNull<ByteArray>(url)
+
+                    if (schemaIntegrity != null && jsonSchema != null) {
+                        validateTypeMetadataIntegrity(schemaIntegrity, jsonSchema)
+                    }
+                    ByteArrayInputStream(jsonSchema).use { bytes ->
+                        Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
+                    }
+                    it.getJsonOrNull<JsonSchema>(url)
+                }
                 else -> null
             }
         }
@@ -159,20 +169,28 @@ interface ResolveTypeMetadata {
     /**
      * Resolves the [ResolvedTypeMetadata] for [vct].
      */
-    suspend operator fun invoke(vct: Vct, integrity: DocumentIntegrities?): Result<ResolvedTypeMetadata> =
+    suspend operator fun invoke(
+        vct: Vct,
+        integrity: DocumentIntegrities?,
+        schemaUriIntegrity: DocumentIntegrities?,
+    ): Result<ResolvedTypeMetadata> =
         runCatchingCancellable {
             tailrec suspend fun resolve(
                 vct: Vct,
                 integrity: DocumentIntegrities?,
+                schemaUriIntegrity: DocumentIntegrities?,
                 accumulator: ResolvedTypeMetadata,
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
                 val current = run {
                     val integrities = integrity?.toDocumentIntegrity()
+                    val schemaUriIntegrities = schemaUriIntegrity?.toDocumentIntegrity()
                     val current = lookupTypeMetadata(vct, integrities).getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                     val schema = current.schemaUri?.let { schemaUri ->
-                        lookupJsonSchema(schemaUri).getOrThrow() ?: error("unable to lookup JsonSchema for $schemaUri")
+                        lookupJsonSchema(schemaUri, schemaUriIntegrities).getOrThrow() ?: error(
+                            "unable to lookup JsonSchema for $schemaUri",
+                        )
                     } ?: current.schema
                     current.copy(schema = schema, schemaUri = null, schemaUriIntegrity = null)
                 }
@@ -180,13 +198,13 @@ interface ResolveTypeMetadata {
                 val parent = current.extends?.let { Vct(it) }
                 val parentIntegrity = current.extendsIntegrity
                 return if (null != parent) {
-                    resolve(parent, parentIntegrity, updatedAccumulator, resolved + vct)
+                    resolve(parent, parentIntegrity, schemaUriIntegrity, updatedAccumulator, resolved + vct)
                 } else {
                     updatedAccumulator
                 }
             }
 
-            resolve(vct, integrity, ResolvedTypeMetadata.empty(vct), emptySet())
+            resolve(vct, integrity, schemaUriIntegrity, ResolvedTypeMetadata.empty(vct), emptySet())
         }
 
     companion object {
