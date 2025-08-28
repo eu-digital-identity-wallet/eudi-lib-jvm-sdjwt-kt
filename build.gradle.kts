@@ -67,6 +67,7 @@ kotlin {
                 "kotlin.io.encoding.ExperimentalEncodingApi",
                 "kotlin.contracts.ExperimentalContracts",
                 "kotlin.time.ExperimentalTime",
+                "kotlinx.serialization.ExperimentalSerializationApi",
             )
             freeCompilerArgs = listOf(
                 "-Xconsistent-data-class-copy-visibility",
