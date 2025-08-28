@@ -65,8 +65,8 @@ class SdJwtVcVerifierIntegrationTest {
                         }
                     }
                 },
-                lookupJsonSchema = {
-                    fail("LookupJsonSchema should not have been invoked. Schema URI: $it")
+                lookupJsonSchema = { schemaUri, _ ->
+                    fail("LookupJsonSchema should not have been invoked. Schema URI: $schemaUri")
                 },
             ),
             jsonSchemaValidator = { unvalidated, schema ->
