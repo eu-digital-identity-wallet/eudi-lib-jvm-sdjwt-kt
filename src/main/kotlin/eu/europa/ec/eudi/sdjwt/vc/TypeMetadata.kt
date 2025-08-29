@@ -16,20 +16,14 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
+import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
-import java.text.ParseException
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -412,16 +406,44 @@ value class DocumentIntegrity(val hashes: List<DocumentHash>) {
 }
 
 private object DocumentIntegritySerializer : KSerializer<DocumentIntegrity> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity", PrimitiveKind.STRING)
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: DocumentIntegrity) {
-        TODO("Not yet implemented")
+        val encoded = value.hashes.joinToString(separator = " ") {
+            buildString {
+                append(it.algorithm.alias)
+                append("-")
+                append(it.hash)
+
+                if (it.options != null) {
+                    append("?")
+                    append(it.options)
+                }
+            }
+        }
+        encoder.encodeString(encoded)
     }
 
     override fun deserialize(decoder: Decoder): DocumentIntegrity {
-        runCatchingCancellable {
-            TODO()
+        val decodedString = decoder.decodeString()
+
+        val documentHashes = runCatching {
+            val documentIntegrities = decodedString.split("\\s+".toRegex())
+            val integritiesValues = documentIntegrities.map {
+                val (algorithmAndIntegrity, options) =
+                    if ("?" in it) {
+                        val split = it.split("?", limit = 2)
+                        split[0] to split[1]
+                    } else it to null
+                val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
+                DocumentHash(IntegrityAlgorithm(algorithm), integrity, options)
+            }
+
+            require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
+            integritiesValues
         }.getOrElse { throw SerializationException(it) }
+        return DocumentIntegrity(documentHashes)
     }
 }
 
@@ -430,21 +452,6 @@ data class DocumentHash(
     val hash: String,
     val options: String?,
 )
-
-//fun DocumentIntegrity.toDocumentHashes(): List<DocumentHash> =
-//    runCatchingCancellable {
-//        val documentIntegrities = value.split("\\s+".toRegex())
-//        val integritiesValues = documentIntegrities.mapNotNull {
-//            val (algorithmAndIntegrity, _) = it.split("?", limit = 2)
-//            val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
-//            IntegrityAlgorithm.fromString(algorithm)?.let { knownAlgorithm ->
-//                DocumentHash(knownAlgorithm, integrity)
-//            }
-//        }
-//
-//        require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
-//        integritiesValues
-//    }.getOrThrow()
 
 @JvmInline
 value class IntegrityAlgorithm(val alias: String) {
