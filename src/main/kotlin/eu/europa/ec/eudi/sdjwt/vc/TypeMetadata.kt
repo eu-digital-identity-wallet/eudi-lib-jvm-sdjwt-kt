@@ -397,7 +397,11 @@ data class LogoMetadata(
 // TODO Check this
 @Serializable
 @JvmInline
-value class DocumentIntegrities(val value: String)
+value class DocumentIntegrities(val value: String){
+    init {
+        require(value.isNotBlank()){ "Integrity value can not be blank" }
+    }
+}
 
 data class DocumentIntegrity(
     val hashAlgorithm: IntegrityAlgorithm,
