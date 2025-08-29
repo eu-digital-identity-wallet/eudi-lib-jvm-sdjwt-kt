@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -403,19 +404,20 @@ data class DocumentIntegrity(
     val value: String,
 )
 
-fun DocumentIntegrities.toDocumentIntegrity(): List<DocumentIntegrity> {
-    val documentIntegrities = value.split("\\s+".toRegex())
-    val integritiesValues = documentIntegrities.mapNotNull {
-        val (hashExpression, _) = it.split("?", limit = 2)
-        val (algorithm, integrity) = hashExpression.split("-", limit = 2)
-        IntegrityAlgorithm.fromString(algorithm)?.let { metadataHashAlgorithm ->
-            DocumentIntegrity(metadataHashAlgorithm, integrity)
+fun DocumentIntegrities.toDocumentIntegrity(): List<DocumentIntegrity> =
+    runCatchingCancellable {
+        val documentIntegrities = value.split("\\s+".toRegex())
+        val integritiesValues = documentIntegrities.mapNotNull {
+            val (algorithmAndIntegrity, _) = it.split("?", limit = 2)
+            val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
+            IntegrityAlgorithm.fromString(algorithm)?.let { knownAlgorithm ->
+                DocumentIntegrity(knownAlgorithm, integrity)
+            }
         }
-    }
 
-    require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
-    return integritiesValues
-}
+        require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
+        integritiesValues
+    }.getOrThrow()
 
 enum class IntegrityAlgorithm(val alias: String) {
     SHA256("sha256"),

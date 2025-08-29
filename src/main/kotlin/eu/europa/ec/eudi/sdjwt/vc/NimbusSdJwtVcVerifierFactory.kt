@@ -253,16 +253,13 @@ private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<Nimbus
         val vctIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
             DocumentIntegrities(it)
         }
-        val schemaIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.SCHEMA_URI_INTEGRITY)?.let {
-            DocumentIntegrities(it)
-        }
         when (this) {
             TypeMetadataPolicy.NotUsed -> null
-            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct, vctIntegrity, schemaIntegrity).getOrNull()
-            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct, vctIntegrity, schemaIntegrity).getOrThrow()
+            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct, vctIntegrity).getOrNull()
+            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
             is TypeMetadataPolicy.RequiredFor ->
-                if (vct in vcts) resolveTypeMetadata(vct, vctIntegrity, schemaIntegrity).getOrThrow()
-                else resolveTypeMetadata(vct, vctIntegrity, schemaIntegrity).getOrNull()
+                if (vct in vcts) resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
+                else resolveTypeMetadata(vct, vctIntegrity).getOrNull()
         }
     } catch (error: Exception) {
         raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))

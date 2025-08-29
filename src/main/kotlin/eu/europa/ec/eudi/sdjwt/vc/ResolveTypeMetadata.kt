@@ -22,21 +22,21 @@ import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayInputStream
-import kotlin.io.encoding.Base64 as Base64Kotlin
+import kotlin.io.encoding.Base64
 
 /**
  * Lookup the Type Metadata of a VCT.
  */
 fun interface LookupTypeMetadata {
 
-    suspend operator fun invoke(vct: Vct, documentIntegrities: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?>
+    suspend operator fun invoke(vct: Vct, expectedIntegrity: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?>
 
     companion object {
         fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
             val lookups = listOf(first, *remaining)
-            return LookupTypeMetadata { vct, integrities ->
+            return LookupTypeMetadata { vct, expectedIntegrity ->
                 runCatchingCancellable {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(vct, integrities).getOrNull() }
+                    lookups.firstNotNullOfOrNull { lookup -> lookup(vct, expectedIntegrity).getOrNull() }
                 }
             }
         }
@@ -49,15 +49,15 @@ fun interface LookupTypeMetadata {
 class LookupTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupTypeMetadata {
-    override suspend fun invoke(vct: Vct, documentIntegrities: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?> {
+    override suspend fun invoke(vct: Vct, expectedIntegrity: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?> {
         val url = runCatchingCancellable { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
                 is Url -> httpClientFactory().use {
                     val metadata = it.getJsonOrNull<ByteArray>(url)
 
-                    if (documentIntegrities != null && metadata != null) {
-                        validateTypeMetadataIntegrity(documentIntegrities, metadata)
+                    if (expectedIntegrity != null && metadata != null) {
+                        validateIntegrity(expectedIntegrity, metadata)
                     }
                     ByteArrayInputStream(metadata).use { bytes ->
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
@@ -69,16 +69,16 @@ class LookupTypeMetadataUsingKtor(
     }
 }
 
-private fun validateTypeMetadataIntegrity(expectedIntegrity: List<DocumentIntegrity>, metadata: ByteArray) {
-    val base64Padding = Base64Kotlin.withPadding(Base64Kotlin.PaddingOption.PRESENT)
+private fun validateIntegrity(expectedIntegrity: List<DocumentIntegrity>, document: ByteArray) {
+    val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
 
     require(
         expectedIntegrity.any {
             val actualIntegrity = run {
                 val digest = when (it.hashAlgorithm) {
-                    IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(metadata)
-                    IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(metadata)
-                    IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(metadata)
+                    IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(document)
+                    IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(document)
+                    IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(document)
                 }
                 base64Padding.encode(digest)
             }
@@ -92,14 +92,14 @@ private fun validateTypeMetadataIntegrity(expectedIntegrity: List<DocumentIntegr
  */
 fun interface LookupJsonSchema {
 
-    suspend operator fun invoke(uri: String, schemaIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?>
+    suspend operator fun invoke(uri: String, expectedIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?>
 
     companion object {
         fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
             val lookups = listOf(first, *remaining)
-            return LookupJsonSchema { uri, integrities ->
+            return LookupJsonSchema { uri, expectedIntegrity ->
                 runCatchingCancellable {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri, integrities).getOrNull() }
+                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri, expectedIntegrity).getOrNull() }
                 }
             }
         }
@@ -113,15 +113,15 @@ class LookupJsonSchemaUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupJsonSchema {
 
-    override suspend fun invoke(uri: String, schemaIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?> {
+    override suspend fun invoke(uri: String, expectedIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?> {
         val url = runCatchingCancellable { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
                 is Url -> httpClientFactory().use {
                     val jsonSchema = it.getJsonOrNull<ByteArray>(url)
 
-                    if (schemaIntegrity != null && jsonSchema != null) {
-                        validateTypeMetadataIntegrity(schemaIntegrity, jsonSchema)
+                    if (expectedIntegrity != null && jsonSchema != null) {
+                        validateIntegrity(expectedIntegrity, jsonSchema)
                     }
                     ByteArrayInputStream(jsonSchema).use { bytes ->
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
@@ -171,23 +171,21 @@ interface ResolveTypeMetadata {
      */
     suspend operator fun invoke(
         vct: Vct,
-        integrity: DocumentIntegrities?,
-        schemaUriIntegrity: DocumentIntegrities?,
+        expectedIntegrity: DocumentIntegrities?,
     ): Result<ResolvedTypeMetadata> =
         runCatchingCancellable {
             tailrec suspend fun resolve(
                 vct: Vct,
-                integrity: DocumentIntegrities?,
-                schemaUriIntegrity: DocumentIntegrities?,
+                expectedIntegrity: DocumentIntegrities?,
                 accumulator: ResolvedTypeMetadata,
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
                 val current = run {
-                    val integrities = integrity?.toDocumentIntegrity()
-                    val schemaUriIntegrities = schemaUriIntegrity?.toDocumentIntegrity()
+                    val integrities = expectedIntegrity?.toDocumentIntegrity()
                     val current = lookupTypeMetadata(vct, integrities).getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                     val schema = current.schemaUri?.let { schemaUri ->
+                        val schemaUriIntegrities = current.schemaUriIntegrity?.toDocumentIntegrity()
                         lookupJsonSchema(schemaUri, schemaUriIntegrities).getOrThrow() ?: error(
                             "unable to lookup JsonSchema for $schemaUri",
                         )
@@ -198,13 +196,13 @@ interface ResolveTypeMetadata {
                 val parent = current.extends?.let { Vct(it) }
                 val parentIntegrity = current.extendsIntegrity
                 return if (null != parent) {
-                    resolve(parent, parentIntegrity, schemaUriIntegrity, updatedAccumulator, resolved + vct)
+                    resolve(parent, parentIntegrity, updatedAccumulator, resolved + vct)
                 } else {
                     updatedAccumulator
                 }
             }
 
-            resolve(vct, integrity, schemaUriIntegrity, ResolvedTypeMetadata.empty(vct), emptySet())
+            resolve(vct, expectedIntegrity, ResolvedTypeMetadata.empty(vct), emptySet())
         }
 
     companion object {

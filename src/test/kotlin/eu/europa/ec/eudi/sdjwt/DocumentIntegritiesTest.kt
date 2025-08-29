@@ -17,17 +17,19 @@ package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrities
 import eu.europa.ec.eudi.sdjwt.vc.toDocumentIntegrity
-import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
-class DocumentIntegrityTest {
+class DocumentIntegritiesTest {
 
     @Test
     fun `ensure single valid DocumentIntegrities is being converted correctly to DocumentIntegrity lists`() {
         val singleValid = DocumentIntegrities("sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
         val singleValidIntegrity = singleValid.toDocumentIntegrity()
 
-        assert(singleValidIntegrity.size == 1)
+        assertEquals(1, singleValidIntegrity.size)
     }
 
     @Test
@@ -38,14 +40,14 @@ class DocumentIntegrityTest {
         )
         val multipleValidIntegrity = multipleValid.toDocumentIntegrity()
 
-        assert(multipleValidIntegrity.size == 2)
+        assertEquals(2, multipleValidIntegrity.size)
     }
 
     @Test
     fun `ensure unknown algorithm in DocumentIntegrities throws IllegalArgumentException`() {
         val unknownAlgorithm = DocumentIntegrities("sha484-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
 
-        assertThrows<IllegalArgumentException> { unknownAlgorithm.toDocumentIntegrity() }
+        assertFailsWith<IllegalArgumentException> { unknownAlgorithm.toDocumentIntegrity() }
     }
 
     @Test
@@ -56,7 +58,11 @@ class DocumentIntegrityTest {
         )
         val knownAndUnknownAlgorithmIntegrity = knownAndUnknownAlgorithm.toDocumentIntegrity()
 
-        assert(knownAndUnknownAlgorithmIntegrity.size == 1)
+        assertEquals(1, knownAndUnknownAlgorithmIntegrity.size)
+        assertEquals(
+            knownAndUnknownAlgorithmIntegrity[0].value,
+            "Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
+        )
     }
 
     @Test
@@ -68,7 +74,7 @@ class DocumentIntegrityTest {
             )
         val multipleValidWithOptionsIntegrity = multipleValidWithOptions.toDocumentIntegrity()
 
-        assert(
+        assertTrue(
             multipleValidWithOptionsIntegrity.size == 2 &&
                 multipleValidWithOptionsIntegrity[0].value == "H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO",
         )
