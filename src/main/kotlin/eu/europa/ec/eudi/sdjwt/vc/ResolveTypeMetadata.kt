@@ -74,15 +74,15 @@ private fun validateIntegrity(expectedIntegrity: List<DocumentHash>, document: B
 
     require(
         expectedIntegrity.any {
-            val actualHash = run {
-                when (it.algorithm) {
+            val actualEncodedHash = run {
+                val digest = when (it.algorithm) {
                     IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(document)
                     IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(document)
                     IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(document)
-                    else -> null
-                }?.let { digest -> base64Padding.encode(digest) }
+                }
+                base64Padding.encode(digest)
             }
-            it.hash == actualHash
+            it.encodedHash == actualEncodedHash
         },
     )
 }

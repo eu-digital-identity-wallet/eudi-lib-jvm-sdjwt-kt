@@ -18,11 +18,6 @@ package eu.europa.ec.eudi.sdjwt.vc
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
 import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
@@ -396,73 +391,61 @@ data class LogoMetadata(
     }
 }
 
-// TODO Add custom serializer
-@Serializable(with = DocumentIntegritySerializer::class)
+@Serializable
 @JvmInline
-value class DocumentIntegrity(val hashes: List<DocumentHash>) {
+value class DocumentIntegrity(val value: String) {
     init {
-        require(hashes.isNotEmpty()) { "No hashes provided" }
-    }
-}
-
-private object DocumentIntegritySerializer : KSerializer<DocumentIntegrity> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: DocumentIntegrity) {
-        val encoded = value.hashes.joinToString(separator = " ") {
-            buildString {
-                append(it.algorithm.alias)
-                append("-")
-                append(it.hash)
-
-                if (it.options != null) {
-                    append("?")
-                    append(it.options)
-                }
-            }
-        }
-        encoder.encodeString(encoded)
+        require(value.matches(SRIPattern)) { "not a valid sub-resource integrity value" }
     }
 
-    override fun deserialize(decoder: Decoder): DocumentIntegrity {
-        val decodedString = decoder.decodeString()
+    val hashes: List<DocumentHash>
+        get() {
+            val hashesWithOptions = value.replace("\\s*".toRegex(), " ")
+                .trim()
+                .split(" ")
 
-        val documentHashes = runCatching {
-            val documentIntegrities = decodedString.split("\\s+".toRegex())
-            val integritiesValues = documentIntegrities.map {
-                val (algorithmAndIntegrity, options) =
+            return hashesWithOptions.map {
+                val (algorithmAndEncodedHash, options) =
                     if ("?" in it) {
                         val split = it.split("?", limit = 2)
                         split[0] to split[1]
                     } else it to null
-                val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
-                DocumentHash(IntegrityAlgorithm(algorithm), integrity, options)
-            }
 
-            require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
-            integritiesValues
-        }.getOrElse { throw SerializationException(it) }
-        return DocumentIntegrity(documentHashes)
+                val (algorithm, encodedHash) = algorithmAndEncodedHash.split("-")
+                val integrityAlgorithm = requireNotNull(IntegrityAlgorithm.fromString(algorithm)) {
+                    "Unknown sub-resource integrity algorithm: $algorithm"
+                }
+                DocumentHash(integrityAlgorithm, encodedHash, options)
+            }
+        }
+
+    companion object {
+        val SRIPattern: Regex = Regex(
+            """
+                ^\s*(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?)(?:\s+(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?))*\s*$
+            """.trimIndent(),
+        )
     }
 }
 
-data class DocumentHash(
+data class DocumentHash internal constructor(
     val algorithm: IntegrityAlgorithm,
-    val hash: String,
+    val encodedHash: String,
     val options: String?,
 )
 
-@JvmInline
-value class IntegrityAlgorithm(val alias: String) {
+enum class IntegrityAlgorithm(val alias: String) {
+    SHA256("sha256"),
+    SHA384("sha384"),
+    SHA512("sha512"),
+    ;
+
     init {
         require(alias.isNotBlank()) { "alias cannot be blank" }
     }
 
     companion object {
-        val SHA256: IntegrityAlgorithm = IntegrityAlgorithm("sha256")
-        val SHA384: IntegrityAlgorithm = IntegrityAlgorithm("sha384")
-        val SHA512: IntegrityAlgorithm = IntegrityAlgorithm("sha512")
+        fun fromString(alias: String): IntegrityAlgorithm? = entries.find { it.alias == alias }
     }
 }
 
