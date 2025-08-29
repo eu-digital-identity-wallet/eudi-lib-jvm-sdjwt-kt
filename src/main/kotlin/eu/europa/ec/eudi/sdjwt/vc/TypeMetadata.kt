@@ -28,7 +28,7 @@ data class SdJwtVcTypeMetadata(
 
     @SerialName(SdJwtVcSpec.VCT) @Required val vct: Vct,
 
-    @SerialName(SdJwtVcSpec.VCT_INTEGRITY) val vctIntegrity: DocumentIntegrities? = null,
+    @SerialName(SdJwtVcSpec.VCT_INTEGRITY) val vctIntegrity: DocumentIntegrity? = null,
 
     /**
      * A human-readable name for the type, intended for developers reading the JSON document
@@ -44,7 +44,7 @@ data class SdJwtVcTypeMetadata(
      */
     @SerialName(SdJwtVcSpec.EXTENDS) val extends: String? = null,
 
-    @SerialName(SdJwtVcSpec.EXTENDS_INTEGRITY) val extendsIntegrity: DocumentIntegrities? = null,
+    @SerialName(SdJwtVcSpec.EXTENDS_INTEGRITY) val extendsIntegrity: DocumentIntegrity? = null,
 
     /**
      * A list containing display information for the type.
@@ -69,7 +69,7 @@ data class SdJwtVcTypeMetadata(
      */
     @SerialName(SdJwtVcSpec.SCHEMA_URI) val schemaUri: String? = null,
 
-    @SerialName(SdJwtVcSpec.SCHEMA_URI_INTEGRITY) val schemaUriIntegrity: DocumentIntegrities? = null,
+    @SerialName(SdJwtVcSpec.SCHEMA_URI_INTEGRITY) val schemaUriIntegrity: DocumentIntegrity? = null,
 
 ) {
     init {
@@ -110,7 +110,7 @@ value class Vct(val value: String) {
 private fun ensureIntegrityIsNotPresent(
     attributeName: String,
     attributeValue: Any?,
-    integrityValue: DocumentIntegrities?,
+    integrityValue: DocumentIntegrity?,
 ) {
     if (attributeValue == null) {
         require(integrityValue == null) {
@@ -303,7 +303,7 @@ data class SvgTemplate(
     @SerialName(SdJwtVcSpec.SVG_URI)
     @Required val uri: String,
 
-    @SerialName(SdJwtVcSpec.SVG_URI_INTEGRITY) val uriIntegrity: DocumentIntegrities? = null,
+    @SerialName(SdJwtVcSpec.SVG_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
     @SerialName(SdJwtVcSpec.SVG_PROPERTIES) val properties: SvgTemplateProperties? = null,
 ) {
@@ -382,7 +382,7 @@ data class LogoMetadata(
     @SerialName(SdJwtVcSpec.LOGO_URI)
     @Required val uri: String,
 
-    @SerialName(SdJwtVcSpec.LOGO_URI_INTEGRITY) val uriIntegrity: DocumentIntegrities? = null,
+    @SerialName(SdJwtVcSpec.LOGO_URI_INTEGRITY) val uriIntegrity: DocumentIntegrity? = null,
 
     /**
      * A string containing alternative text for the logo image
@@ -397,25 +397,25 @@ data class LogoMetadata(
 // TODO Check this
 @Serializable
 @JvmInline
-value class DocumentIntegrities(val value: String){
+value class DocumentIntegrity(val value: String) {
     init {
-        require(value.isNotBlank()){ "Integrity value can not be blank" }
+        require(value.isNotBlank()) { "Integrity value can not be blank" }
     }
 }
 
-data class DocumentIntegrity(
+data class DocumentHash(
     val hashAlgorithm: IntegrityAlgorithm,
     val value: String,
 )
 
-fun DocumentIntegrities.toDocumentIntegrity(): List<DocumentIntegrity> =
+fun DocumentIntegrity.toDocumentHashes(): List<DocumentHash> =
     runCatchingCancellable {
         val documentIntegrities = value.split("\\s+".toRegex())
         val integritiesValues = documentIntegrities.mapNotNull {
             val (algorithmAndIntegrity, _) = it.split("?", limit = 2)
             val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
             IntegrityAlgorithm.fromString(algorithm)?.let { knownAlgorithm ->
-                DocumentIntegrity(knownAlgorithm, integrity)
+                DocumentHash(knownAlgorithm, integrity)
             }
         }
 

@@ -251,7 +251,7 @@ private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<Nimbus
     try {
         val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
         val vctIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
-            DocumentIntegrities(it)
+            DocumentIntegrity(it)
         }
         when (this) {
             TypeMetadataPolicy.NotUsed -> null

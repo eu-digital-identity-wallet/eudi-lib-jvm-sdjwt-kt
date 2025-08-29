@@ -29,7 +29,7 @@ import kotlin.io.encoding.Base64
  */
 fun interface LookupTypeMetadata {
 
-    suspend operator fun invoke(vct: Vct, expectedIntegrity: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?>
+    suspend operator fun invoke(vct: Vct, expectedIntegrity: List<DocumentHash>?): Result<SdJwtVcTypeMetadata?>
 
     companion object {
         fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
@@ -49,7 +49,7 @@ fun interface LookupTypeMetadata {
 class LookupTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupTypeMetadata {
-    override suspend fun invoke(vct: Vct, expectedIntegrity: List<DocumentIntegrity>?): Result<SdJwtVcTypeMetadata?> {
+    override suspend fun invoke(vct: Vct, expectedIntegrity: List<DocumentHash>?): Result<SdJwtVcTypeMetadata?> {
         val url = runCatchingCancellable { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
@@ -69,7 +69,7 @@ class LookupTypeMetadataUsingKtor(
     }
 }
 
-private fun validateIntegrity(expectedIntegrity: List<DocumentIntegrity>, document: ByteArray) {
+private fun validateIntegrity(expectedIntegrity: List<DocumentHash>, document: ByteArray) {
     val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
 
     require(
@@ -92,7 +92,7 @@ private fun validateIntegrity(expectedIntegrity: List<DocumentIntegrity>, docume
  */
 fun interface LookupJsonSchema {
 
-    suspend operator fun invoke(uri: String, expectedIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?>
+    suspend operator fun invoke(uri: String, expectedIntegrity: List<DocumentHash>?): Result<JsonSchema?>
 
     companion object {
         fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
@@ -113,7 +113,7 @@ class LookupJsonSchemaUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
 ) : LookupJsonSchema {
 
-    override suspend fun invoke(uri: String, expectedIntegrity: List<DocumentIntegrity>?): Result<JsonSchema?> {
+    override suspend fun invoke(uri: String, expectedIntegrity: List<DocumentHash>?): Result<JsonSchema?> {
         val url = runCatchingCancellable { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
@@ -171,21 +171,21 @@ interface ResolveTypeMetadata {
      */
     suspend operator fun invoke(
         vct: Vct,
-        expectedIntegrity: DocumentIntegrities?,
+        expectedIntegrity: DocumentIntegrity?,
     ): Result<ResolvedTypeMetadata> =
         runCatchingCancellable {
             tailrec suspend fun resolve(
                 vct: Vct,
-                expectedIntegrity: DocumentIntegrities?,
+                expectedIntegrity: DocumentIntegrity?,
                 accumulator: ResolvedTypeMetadata,
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
                 val current = run {
-                    val integrities = expectedIntegrity?.toDocumentIntegrity()
+                    val integrities = expectedIntegrity?.toDocumentHashes()
                     val current = lookupTypeMetadata(vct, integrities).getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                     val schema = current.schemaUri?.let { schemaUri ->
-                        val schemaUriIntegrities = current.schemaUriIntegrity?.toDocumentIntegrity()
+                        val schemaUriIntegrities = current.schemaUriIntegrity?.toDocumentHashes()
                         lookupJsonSchema(schemaUri, schemaUriIntegrities).getOrThrow() ?: error(
                             "unable to lookup JsonSchema for $schemaUri",
                         )

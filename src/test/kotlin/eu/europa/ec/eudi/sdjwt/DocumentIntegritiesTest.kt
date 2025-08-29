@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrities
-import eu.europa.ec.eudi.sdjwt.vc.toDocumentIntegrity
+import eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity
+import eu.europa.ec.eudi.sdjwt.vc.toDocumentHashes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -26,37 +26,37 @@ class DocumentIntegritiesTest {
 
     @Test
     fun `ensure single valid DocumentIntegrities is being converted correctly to DocumentIntegrity lists`() {
-        val singleValid = DocumentIntegrities("sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
-        val singleValidIntegrity = singleValid.toDocumentIntegrity()
+        val singleValid = DocumentIntegrity("sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
+        val singleValidIntegrity = singleValid.toDocumentHashes()
 
         assertEquals(1, singleValidIntegrity.size)
     }
 
     @Test
     fun `ensure multiple valid DocumentIntegrities is being converted correctly to DocumentIntegrity lists`() {
-        val multipleValid = DocumentIntegrities(
+        val multipleValid = DocumentIntegrity(
             "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO " +
                 "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
         )
-        val multipleValidIntegrity = multipleValid.toDocumentIntegrity()
+        val multipleValidIntegrity = multipleValid.toDocumentHashes()
 
         assertEquals(2, multipleValidIntegrity.size)
     }
 
     @Test
     fun `ensure unknown algorithm in DocumentIntegrities throws IllegalArgumentException`() {
-        val unknownAlgorithm = DocumentIntegrities("sha484-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
+        val unknownAlgorithm = DocumentIntegrity("sha484-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7")
 
-        assertFailsWith<IllegalArgumentException> { unknownAlgorithm.toDocumentIntegrity() }
+        assertFailsWith<IllegalArgumentException> { unknownAlgorithm.toDocumentHashes() }
     }
 
     @Test
     fun `ensure when a known and one unknown algorithm exists, keep only the known one`() {
-        val knownAndUnknownAlgorithm = DocumentIntegrities(
+        val knownAndUnknownAlgorithm = DocumentIntegrity(
             "sha484-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO " +
                 "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
         )
-        val knownAndUnknownAlgorithmIntegrity = knownAndUnknownAlgorithm.toDocumentIntegrity()
+        val knownAndUnknownAlgorithmIntegrity = knownAndUnknownAlgorithm.toDocumentHashes()
 
         assertEquals(1, knownAndUnknownAlgorithmIntegrity.size)
         assertEquals(
@@ -68,11 +68,11 @@ class DocumentIntegritiesTest {
     @Test
     fun `ensure that when options are present, they are removed and ignored`() {
         val multipleValidWithOptions =
-            DocumentIntegrities(
+            DocumentIntegrity(
                 "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
                     "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
             )
-        val multipleValidWithOptionsIntegrity = multipleValidWithOptions.toDocumentIntegrity()
+        val multipleValidWithOptionsIntegrity = multipleValidWithOptions.toDocumentHashes()
 
         assertTrue(
             multipleValidWithOptionsIntegrity.size == 2 &&
