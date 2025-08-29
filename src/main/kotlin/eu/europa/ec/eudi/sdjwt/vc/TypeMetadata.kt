@@ -18,10 +18,18 @@ package eu.europa.ec.eudi.sdjwt.vc
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
+import java.text.ParseException
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -394,43 +402,60 @@ data class LogoMetadata(
     }
 }
 
-// TODO Check this
-@Serializable
+// TODO Add custom serializer
+@Serializable(with = DocumentIntegritySerializer::class)
 @JvmInline
-value class DocumentIntegrity(val value: String) {
+value class DocumentIntegrity(val hashes: List<DocumentHash>) {
     init {
-        require(value.isNotBlank()) { "Integrity value can not be blank" }
+        require(hashes.isNotEmpty()) { "No hashes provided" }
+    }
+}
+
+private object DocumentIntegritySerializer : KSerializer<DocumentIntegrity> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: DocumentIntegrity) {
+        TODO("Not yet implemented")
+    }
+
+    override fun deserialize(decoder: Decoder): DocumentIntegrity {
+        runCatchingCancellable {
+            TODO()
+        }.getOrElse { throw SerializationException(it) }
     }
 }
 
 data class DocumentHash(
-    val hashAlgorithm: IntegrityAlgorithm,
-    val value: String,
+    val algorithm: IntegrityAlgorithm,
+    val hash: String,
+    val options: String?,
 )
 
-fun DocumentIntegrity.toDocumentHashes(): List<DocumentHash> =
-    runCatchingCancellable {
-        val documentIntegrities = value.split("\\s+".toRegex())
-        val integritiesValues = documentIntegrities.mapNotNull {
-            val (algorithmAndIntegrity, _) = it.split("?", limit = 2)
-            val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
-            IntegrityAlgorithm.fromString(algorithm)?.let { knownAlgorithm ->
-                DocumentHash(knownAlgorithm, integrity)
-            }
-        }
+//fun DocumentIntegrity.toDocumentHashes(): List<DocumentHash> =
+//    runCatchingCancellable {
+//        val documentIntegrities = value.split("\\s+".toRegex())
+//        val integritiesValues = documentIntegrities.mapNotNull {
+//            val (algorithmAndIntegrity, _) = it.split("?", limit = 2)
+//            val (algorithm, integrity) = algorithmAndIntegrity.split("-", limit = 2)
+//            IntegrityAlgorithm.fromString(algorithm)?.let { knownAlgorithm ->
+//                DocumentHash(knownAlgorithm, integrity)
+//            }
+//        }
+//
+//        require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
+//        integritiesValues
+//    }.getOrThrow()
 
-        require(integritiesValues.isNotEmpty()) { "No supported integrity algorithm found" }
-        integritiesValues
-    }.getOrThrow()
-
-enum class IntegrityAlgorithm(val alias: String) {
-    SHA256("sha256"),
-    SHA384("sha384"),
-    SHA512("sha512"),
-    ;
+@JvmInline
+value class IntegrityAlgorithm(val alias: String) {
+    init {
+        require(alias.isNotBlank()) { "alias cannot be blank" }
+    }
 
     companion object {
-        fun fromString(s: String): IntegrityAlgorithm? = IntegrityAlgorithm.entries.find { it.alias == s }
+        val SHA256: IntegrityAlgorithm = IntegrityAlgorithm("sha256")
+        val SHA384: IntegrityAlgorithm = IntegrityAlgorithm("sha384")
+        val SHA512: IntegrityAlgorithm = IntegrityAlgorithm("sha512")
     }
 }
 
