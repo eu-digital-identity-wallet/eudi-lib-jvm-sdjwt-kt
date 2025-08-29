@@ -42,7 +42,7 @@ class FromSdJwtVcMetadataStrictTest {
           "name": "Betelgeuse Education Credential - Preliminary Version",
           "description": "This is our development version of the education credential. Don't panic.",
           "extends": "https://galaxy.example.com/galactic-education-credential-0.9",
-          "extends#integrity": "sha256-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-WRL5",
+          "extends#integrity": "sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5",
           "display": [
             {
               "lang": "en-US",
@@ -52,7 +52,7 @@ class FromSdJwtVcMetadataStrictTest {
                 "simple": {
                   "logo": {
                     "uri": "https://betelgeuse.example.com/public/education-logo.png",
-                    "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
+                    "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V",
                     "alt_text": "Betelgeuse Ministry of Education logo"
                   },
                   "background_color": "#12107c",
@@ -61,7 +61,7 @@ class FromSdJwtVcMetadataStrictTest {
                 "svg_templates": [
                   {
                     "uri": "https://betelgeuse.example.com/public/credential-english.svg",
-                    "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
+                    "uri#integrity": "sha256-8cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfh9c",
                     "properties": {
                       "orientation": "landscape",
                       "color_scheme": "light",
@@ -78,7 +78,7 @@ class FromSdJwtVcMetadataStrictTest {
                 "simple": {
                   "logo": {
                     "uri": "https://betelgeuse.example.com/public/education-logo-de.png",
-                    "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
+                    "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V",
                     "alt_text": "Logo des Betelgeusischen Bildungsministeriums"
                   },
                   "background_color": "#12107c",
@@ -87,7 +87,7 @@ class FromSdJwtVcMetadataStrictTest {
                 "svg_templates": [
                   {
                     "uri": "https://betelgeuse.example.com/public/credential-german.svg",
-                    "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
+                    "uri#integrity": "sha256-8cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfh9c",
                     "properties": {
                       "orientation": "landscape",
                       "color_scheme": "light",
@@ -164,7 +164,7 @@ class FromSdJwtVcMetadataStrictTest {
             }
           ],
           "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
-          "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
+          "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
         }
     """.trimIndent()
 

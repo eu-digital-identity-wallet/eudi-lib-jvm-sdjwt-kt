@@ -17,9 +17,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
@@ -393,10 +391,63 @@ data class LogoMetadata(
     }
 }
 
-// TODO Check this
 @Serializable
 @JvmInline
-value class DocumentIntegrity(val value: String)
+value class DocumentIntegrity(val value: String) {
+    init {
+        require(value.matches(SRIPattern)) { "not a valid sub-resource integrity value" }
+    }
+
+    val hashes: List<DocumentHash>
+        get() {
+            val hashesWithOptions = value.replace("\\s*".toRegex(), " ")
+                .trim()
+                .split(" ")
+
+            return hashesWithOptions.map {
+                val (algorithmAndEncodedHash, options) =
+                    if ("?" in it) {
+                        val split = it.split("?", limit = 2)
+                        split[0] to split[1]
+                    } else it to null
+
+                val (algorithm, encodedHash) = algorithmAndEncodedHash.split("-")
+                val integrityAlgorithm = requireNotNull(IntegrityAlgorithm.fromString(algorithm)) {
+                    "Unknown sub-resource integrity algorithm: $algorithm"
+                }
+                DocumentHash(integrityAlgorithm, encodedHash, options)
+            }
+        }
+
+    companion object {
+        val SRIPattern: Regex = Regex(
+            """
+                ^\s*(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?)(?:\s+(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?))*\s*$
+            """.trimIndent(),
+        )
+    }
+}
+
+data class DocumentHash internal constructor(
+    val algorithm: IntegrityAlgorithm,
+    val encodedHash: String,
+    val options: String?,
+)
+
+enum class IntegrityAlgorithm(val alias: String) {
+    SHA256("sha256"),
+    SHA384("sha384"),
+    SHA512("sha512"),
+    ;
+
+    init {
+        require(alias.isNotBlank()) { "alias cannot be blank" }
+    }
+
+    companion object {
+        fun fromString(alias: String): IntegrityAlgorithm? = entries.find { it.alias == alias }
+    }
+}
 
 // TODO Check this
 //  https://www.w3.org/TR/css-color-3/
