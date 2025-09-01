@@ -18,9 +18,6 @@ package eu.europa.ec.eudi.sdjwt.vc
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
-import java.io.ByteArrayInputStream
 
 /**
  * Lookup the Type Metadata of a VCT.
@@ -45,23 +42,17 @@ fun interface LookupTypeMetadata {
  * Lookup the Type Metadata of an HTTPS URL VCT using Ktor.
  */
 class LookupTypeMetadataUsingKtor(
-    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    private val sriValidator: SRIValidator? = SRIValidator(),
+    httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupTypeMetadata {
+
+    private val getSubResourceKtorOps = GetSubResourceKtorOps(httpClientFactory, sriValidator)
+
     override suspend fun invoke(vct: Vct, expectedIntegrity: DocumentIntegrity?): Result<SdJwtVcTypeMetadata?> {
-        val url = runCatchingCancellable { Url(vct.value) }.getOrNull()
+        val url = runCatching { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> httpClientFactory().use {
-                    val metadata = it.getJsonOrNull<ByteArray>(url)
-
-                    if (sriValidator != null && expectedIntegrity != null && metadata != null) {
-                        require(sriValidator.isValid(expectedIntegrity, metadata))
-                    }
-                    ByteArrayInputStream(metadata).use { bytes ->
-                        Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
-                    }
-                }
+                is Url -> getSubResourceKtorOps.getOrNull<SdJwtVcTypeMetadata>(url, expectedIntegrity)
                 else -> null
             }
         }
@@ -91,25 +82,17 @@ fun interface LookupJsonSchema {
  * Lookup a [JsonSchema] from a Uri that is a Url using Ktor.
  */
 class LookupJsonSchemaUsingKtor(
-    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    private val sriValidator: SRIValidator? = SRIValidator(),
+    httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupJsonSchema {
 
+    private val getSubResourceKtorOps = GetSubResourceKtorOps(httpClientFactory, sriValidator)
+
     override suspend fun invoke(uri: String, expectedIntegrity: DocumentIntegrity?): Result<JsonSchema?> {
-        val url = runCatchingCancellable { Url(uri) }.getOrNull()
+        val url = runCatching { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> httpClientFactory().use {
-                    val jsonSchema = it.getJsonOrNull<ByteArray>(url)
-
-                    if (sriValidator != null && expectedIntegrity != null && jsonSchema != null) {
-                        require(sriValidator.isValid(expectedIntegrity, jsonSchema))
-                    }
-                    ByteArrayInputStream(jsonSchema).use { bytes ->
-                        Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
-                    }
-                    it.getJsonOrNull<JsonSchema>(url)
-                }
+                is Url -> getSubResourceKtorOps.getOrNull<JsonSchema>(url, expectedIntegrity)
                 else -> null
             }
         }
