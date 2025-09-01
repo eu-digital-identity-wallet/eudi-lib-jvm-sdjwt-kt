@@ -16,11 +16,13 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.platform
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlin.io.encoding.Base64
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -406,7 +408,7 @@ value class DocumentIntegrity(val value: String) {
                 .trim()
                 .split(" ")
 
-            return hashesWithOptions.mapNotNull {
+            return hashesWithOptions.map {
                 val (algorithmAndEncodedHash, options) =
                     if ("?" in it) {
                         val split = it.split("?", limit = 2)
@@ -414,9 +416,9 @@ value class DocumentIntegrity(val value: String) {
                     } else it to null
 
                 val (algorithm, encodedHash) = algorithmAndEncodedHash.split("-")
-                IntegrityAlgorithm.fromString(algorithm)?.let { integrityAlgorithm ->
-                    DocumentHash(integrityAlgorithm, encodedHash, options)
-                }
+                val integrityAlgorithm = IntegrityAlgorithm.fromString(algorithm)!!
+
+                DocumentHash(integrityAlgorithm, encodedHash, options)
             }
         }
 
@@ -447,6 +449,34 @@ enum class IntegrityAlgorithm(val alias: String, val strength: Int) {
 
     companion object {
         fun fromString(alias: String): IntegrityAlgorithm? = entries.find { it.alias == alias }
+    }
+}
+
+class SRIValidator(private val allowedAlgorithms: Set<IntegrityAlgorithm> = IntegrityAlgorithm.entries.toSet()) {
+    private val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
+
+    init {
+        require(allowedAlgorithms.isNotEmpty()) { "At least one integrity algorithm must be provided" }
+    }
+
+    fun isValid(expectedIntegrity: DocumentIntegrity, contentToValidate: ByteArray): Boolean {
+        val expectedHashesByAlgorithm = expectedIntegrity.hashes.groupBy { it.algorithm }
+        val maybeStrongestAlgorithm = expectedHashesByAlgorithm.keys.filter { it in allowedAlgorithms }.maxByOrNull { it.strength }
+
+        return maybeStrongestAlgorithm?.let { strongestAlgorithm ->
+            val strongestExpectedHashes = expectedHashesByAlgorithm[strongestAlgorithm]!!
+
+            val actualEncodedHash = run {
+                val digest = when (strongestAlgorithm) {
+                    IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(contentToValidate)
+                    IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(contentToValidate)
+                    IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(contentToValidate)
+                }
+                base64Padding.encode(digest)
+            }
+
+            strongestExpectedHashes.any { actualEncodedHash == it.encodedHash }
+        } ?: false
     }
 }
 
