@@ -67,8 +67,8 @@ class DocumentIntegrityTest {
                     "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
             )
 
-        assert(multipleValidWithOptions.hashes.size == 2)
-        assert(multipleValidWithOptions.hashes[0].encodedHash == "H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO")
-        assert(multipleValidWithOptions.hashes[0].options == "extraOptionsReserved")
+        assertEquals(2, multipleValidWithOptions.hashes.size)
+        assertEquals("H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO", multipleValidWithOptions.hashes[0].encodedHash)
+        assertEquals("extraOptionsReserved", multipleValidWithOptions.hashes[0].options)
     }
 }
