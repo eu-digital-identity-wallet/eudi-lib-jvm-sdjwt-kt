@@ -17,7 +17,9 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.vc.ClaimMetadata.Companion.DefaultSelectivelyDisclosable
-import kotlinx.serialization.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
@@ -400,11 +402,11 @@ value class DocumentIntegrity(val value: String) {
 
     val hashes: List<DocumentHash>
         get() {
-            val hashesWithOptions = value.replace("\\s*".toRegex(), " ")
+            val hashesWithOptions = value.replace("\\s+".toRegex(), " ")
                 .trim()
                 .split(" ")
 
-            return hashesWithOptions.map {
+            return hashesWithOptions.mapNotNull {
                 val (algorithmAndEncodedHash, options) =
                     if ("?" in it) {
                         val split = it.split("?", limit = 2)
@@ -412,10 +414,9 @@ value class DocumentIntegrity(val value: String) {
                     } else it to null
 
                 val (algorithm, encodedHash) = algorithmAndEncodedHash.split("-")
-                val integrityAlgorithm = requireNotNull(IntegrityAlgorithm.fromString(algorithm)) {
-                    "Unknown sub-resource integrity algorithm: $algorithm"
+                IntegrityAlgorithm.fromString(algorithm)?.let { integrityAlgorithm ->
+                    DocumentHash(integrityAlgorithm, encodedHash, options)
                 }
-                DocumentHash(integrityAlgorithm, encodedHash, options)
             }
         }
 
@@ -434,10 +435,10 @@ data class DocumentHash internal constructor(
     val options: String?,
 )
 
-enum class IntegrityAlgorithm(val alias: String) {
-    SHA256("sha256"),
-    SHA384("sha384"),
-    SHA512("sha512"),
+enum class IntegrityAlgorithm(val alias: String, val strength: Int) {
+    SHA256("sha256", 1),
+    SHA384("sha384", 2),
+    SHA512("sha512", 3),
     ;
 
     init {
