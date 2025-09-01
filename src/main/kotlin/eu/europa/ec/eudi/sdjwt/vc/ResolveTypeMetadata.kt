@@ -15,14 +15,12 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import eu.europa.ec.eudi.sdjwt.platform
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayInputStream
-import kotlin.io.encoding.Base64
 
 /**
  * Lookup the Type Metadata of a VCT.
@@ -48,6 +46,7 @@ fun interface LookupTypeMetadata {
  */
 class LookupTypeMetadataUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupTypeMetadata {
     override suspend fun invoke(vct: Vct, expectedIntegrity: DocumentIntegrity?): Result<SdJwtVcTypeMetadata?> {
         val url = runCatchingCancellable { Url(vct.value) }.getOrNull()
@@ -56,8 +55,8 @@ class LookupTypeMetadataUsingKtor(
                 is Url -> httpClientFactory().use {
                     val metadata = it.getJsonOrNull<ByteArray>(url)
 
-                    if (expectedIntegrity != null && metadata != null) {
-                        validateIntegrity(expectedIntegrity.hashes, metadata)
+                    if (sriValidator != null && expectedIntegrity != null && metadata != null) {
+                        require(sriValidator.isValid(expectedIntegrity, metadata))
                     }
                     ByteArrayInputStream(metadata).use { bytes ->
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
@@ -67,24 +66,6 @@ class LookupTypeMetadataUsingKtor(
             }
         }
     }
-}
-
-private fun validateIntegrity(expectedIntegrity: List<DocumentHash>, document: ByteArray) {
-    val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
-
-    require(
-        expectedIntegrity.any {
-            val actualEncodedHash = run {
-                val digest = when (it.algorithm) {
-                    IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(document)
-                    IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(document)
-                    IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(document)
-                }
-                base64Padding.encode(digest)
-            }
-            it.encodedHash == actualEncodedHash
-        },
-    )
 }
 
 /**
@@ -111,6 +92,7 @@ fun interface LookupJsonSchema {
  */
 class LookupJsonSchemaUsingKtor(
     private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupJsonSchema {
 
     override suspend fun invoke(uri: String, expectedIntegrity: DocumentIntegrity?): Result<JsonSchema?> {
@@ -120,8 +102,8 @@ class LookupJsonSchemaUsingKtor(
                 is Url -> httpClientFactory().use {
                     val jsonSchema = it.getJsonOrNull<ByteArray>(url)
 
-                    if (expectedIntegrity != null && jsonSchema != null) {
-                        validateIntegrity(expectedIntegrity.hashes, jsonSchema)
+                    if (sriValidator != null && expectedIntegrity != null && jsonSchema != null) {
+                        require(sriValidator.isValid(expectedIntegrity, jsonSchema))
                     }
                     ByteArrayInputStream(jsonSchema).use { bytes ->
                         Json.decodeFromStream<SdJwtVcTypeMetadata>(bytes)
