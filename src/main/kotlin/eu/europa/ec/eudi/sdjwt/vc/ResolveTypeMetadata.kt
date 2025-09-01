@@ -150,7 +150,8 @@ interface ResolveTypeMetadata {
                     val current = lookupTypeMetadata(vct, expectedIntegrity)
                         .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                     val schema = current.schemaUri?.let { schemaUri ->
-                        lookupJsonSchema(schemaUri, current.schemaUriIntegrity).getOrThrow() ?: error(
+                        val schemaUriIntegrity = current.schemaUriIntegrity
+                        lookupJsonSchema(schemaUri, schemaUriIntegrity).getOrThrow() ?: error(
                             "unable to lookup JsonSchema for $schemaUri",
                         )
                     } ?: current.schema
