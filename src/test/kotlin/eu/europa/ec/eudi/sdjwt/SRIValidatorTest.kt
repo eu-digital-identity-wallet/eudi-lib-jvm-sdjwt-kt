@@ -25,53 +25,42 @@ class SRIValidatorTest {
 
     @Test
     fun `ensure that hash of content to validate exists in strongest provided hashes`() {
-        val singleValid = DocumentIntegrity(
+        val expectedIntegrity = DocumentIntegrity(
             "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7 " +
                 "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
                 "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw== " +
+                // SHA-512 hash of test case
                 "sha512-tLL38NKkjSrUzPZcxdw2Cje4pvsXFicllTGy7hgenGSdRfaU7jSVqscGaV9OjUq6UmeHJXyoPYrCiwQcR3r5uw==",
 
         )
-        val validationResult = SRIValidator().isValid(singleValid, "asdasdas".toByteArray(Charsets.UTF_8))
+        val validationResult = SRIValidator().isValid(expectedIntegrity, "asdasdas".toByteArray(Charsets.UTF_8))
 
         assertTrue(validationResult)
     }
 
     @Test
-    fun `hash of content to validate does not exists in strongest provided hashes`() {
-        val singleValid = DocumentIntegrity(
+    fun ` validation fails when hash of content to validate does not exists in strongest provided hashes`() {
+        val expectedIntegrity = DocumentIntegrity(
             "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7 " +
                 "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
                 "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw== " +
+                // SHA-384 hash of test case
                 "sha384-tLL38NKkjSrUzPZcxdw2Cje4pvsXFicllTGy7hgenGSdRfaU7jSVqscGaV9OjUq6UmeHJXyoPYrCiwQcR3r5uw==",
 
         )
-        val validationResult = SRIValidator().isValid(singleValid, "asdasdas".toByteArray(Charsets.UTF_8))
+        val validationResult = SRIValidator().isValid(expectedIntegrity, "asdasdas".toByteArray(Charsets.UTF_8))
 
         assertFalse(validationResult)
     }
 
     @Test
-    fun `hash of content to validate does not exists in provided hashes`() {
-        val singleValid = DocumentIntegrity(
+    fun `validation fails when hash of content to validate does not exists in provided hashes`() {
+        val expectedIntegrity = DocumentIntegrity(
             "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7 " +
                 "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
                 "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw== ",
         )
-        val validationResult = SRIValidator().isValid(singleValid, "asdasdas".toByteArray(Charsets.UTF_8))
-
-        assertFalse(validationResult)
-    }
-
-    @Test
-    fun `hash of content is hash SHA-512 but exists as SHA-386 in provided hashes`() {
-        val singleValid = DocumentIntegrity(
-            "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7 " +
-                "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
-                "sha384-tLL38NKkjSrUzPZcxdw2Cje4pvsXFicllTGy7hgenGSdRfaU7jSVqscGaV9OjUq6UmeHJXyoPYrCiwQcR3r5uw==",
-
-        )
-        val validationResult = SRIValidator().isValid(singleValid, "asdasdas".toByteArray(Charsets.UTF_8))
+        val validationResult = SRIValidator().isValid(expectedIntegrity, "asdasdas".toByteArray(Charsets.UTF_8))
 
         assertFalse(validationResult)
     }

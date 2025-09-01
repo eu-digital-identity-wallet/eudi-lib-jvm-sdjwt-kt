@@ -19,7 +19,6 @@ import eu.europa.ec.eudi.sdjwt.vc.DocumentIntegrity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class DocumentIntegrityTest {
 
@@ -61,16 +60,15 @@ class DocumentIntegrityTest {
     }
 
     @Test
-    fun `ensure that when options are present, they are removed and ignored`() {
+    fun `ensure that when options are present, they are detected correctly`() {
         val multipleValidWithOptions =
             DocumentIntegrity(
-                "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?asdasdsadsadsad " +
+                "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO?extraOptionsReserved " +
                     "sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==",
             )
 
-        assertTrue(
-            multipleValidWithOptions.hashes.size == 2 &&
-                multipleValidWithOptions.hashes[0].encodedHash == "H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO",
-        )
+        assert(multipleValidWithOptions.hashes.size == 2)
+        assert(multipleValidWithOptions.hashes[0].encodedHash == "H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO")
+        assert(multipleValidWithOptions.hashes[0].options == "extraOptionsReserved")
     }
 }
