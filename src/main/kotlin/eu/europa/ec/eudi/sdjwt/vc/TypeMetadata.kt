@@ -453,10 +453,9 @@ enum class IntegrityAlgorithm(val alias: String, val strength: Int) {
 }
 
 /**
- * Performs Subresource Integrity validation based on the [allowedAlgorithms].
+ * Performs integrity validation according to [Subresource Integrity](https://www.w3.org/TR/sri/).
  *
- * Active [allowedAlgorithms] can be configured with SHA-256, SHA-384 and SHA-512.
- * By default, SHA-256, SHA-384 SHA-512 are active.
+ * @param allowedAlgorithms Hash algorithms that are allowed for integrity validation. Defaults to [IntegrityAlgorithm.entries].
  */
 class SRIValidator(private val allowedAlgorithms: Set<IntegrityAlgorithm> = IntegrityAlgorithm.entries.toSet()) {
     private val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
