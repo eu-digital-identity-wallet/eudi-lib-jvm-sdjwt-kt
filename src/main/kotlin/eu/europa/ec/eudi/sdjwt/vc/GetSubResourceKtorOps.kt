@@ -15,20 +15,22 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
+import io.ktor.client.HttpClient
 import io.ktor.http.Url
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayInputStream
 
 internal class GetSubResourceKtorOps(
-    private val httpClientFactory: KtorHttpClientFactory,
     private val sriValidator: SRIValidator?,
 ) {
-    suspend inline fun <reified T> getOrNull(url: Url, expectedIntegrity: DocumentIntegrity?): T? =
-        httpClientFactory().use { httpClient ->
-            val document = httpClient.getJsonOrNull<ByteArray>(url)
+    suspend inline fun <reified T> HttpClient.getJsonOrNull(url: Url, expectedIntegrity: DocumentIntegrity?): T? =
+        if (sriValidator == null || expectedIntegrity == null) {
+            getJsonOrNull<T>(url)
+        } else {
+            val document = getJsonOrNull<ByteArray>(url)
 
-            if (sriValidator != null && expectedIntegrity != null && document != null) {
+            if (document != null) {
                 require(sriValidator.isValid(expectedIntegrity, document)) {
                     "Integrity check failed for document at URL '$url'."
                 }

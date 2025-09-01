@@ -42,17 +42,19 @@ fun interface LookupTypeMetadata {
  * Lookup the Type Metadata of an HTTPS URL VCT using Ktor.
  */
 class LookupTypeMetadataUsingKtor(
-    httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    sriValidator: SRIValidator? = SRIValidator(),
+    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupTypeMetadata {
-
-    private val getSubResourceKtorOps = GetSubResourceKtorOps(httpClientFactory, sriValidator)
 
     override suspend fun invoke(vct: Vct, expectedIntegrity: DocumentIntegrity?): Result<SdJwtVcTypeMetadata?> {
         val url = runCatching { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> getSubResourceKtorOps.getOrNull<SdJwtVcTypeMetadata>(url, expectedIntegrity)
+                is Url -> httpClientFactory().use { httpClient ->
+                    with(GetSubResourceKtorOps(sriValidator)) {
+                        httpClient.getJsonOrNull<SdJwtVcTypeMetadata>(url, expectedIntegrity)
+                    }
+                }
                 else -> null
             }
         }
@@ -82,17 +84,19 @@ fun interface LookupJsonSchema {
  * Lookup a [JsonSchema] from a Uri that is a Url using Ktor.
  */
 class LookupJsonSchemaUsingKtor(
-    httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
-    sriValidator: SRIValidator? = SRIValidator(),
+    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupJsonSchema {
-
-    private val getSubResourceKtorOps = GetSubResourceKtorOps(httpClientFactory, sriValidator)
 
     override suspend fun invoke(uri: String, expectedIntegrity: DocumentIntegrity?): Result<JsonSchema?> {
         val url = runCatching { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> getSubResourceKtorOps.getOrNull<JsonSchema>(url, expectedIntegrity)
+                is Url -> httpClientFactory().use { httpClient ->
+                    with(GetSubResourceKtorOps(sriValidator)) {
+                        httpClient.getJsonOrNull<JsonSchema>(url, expectedIntegrity)
+                    }
+                }
                 else -> null
             }
         }
