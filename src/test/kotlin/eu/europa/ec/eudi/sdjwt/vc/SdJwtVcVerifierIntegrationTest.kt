@@ -57,16 +57,16 @@ class SdJwtVcVerifierIntegrationTest {
         issuerVerificationMethod = IssuerVerificationMethod.usingCustom(ECDSAVerifier(issuerKey).asJwtVerifier()),
         TypeMetadataPolicy.AlwaysRequired(
             resolveTypeMetadata = ResolveTypeMetadata(
-                lookupTypeMetadata = {
-                    assertEquals("urn:eudi:pid:1", it.value)
+                lookupTypeMetadata = { vct, _ ->
+                    assertEquals("urn:eudi:pid:1", vct.value)
                     withContext(Dispatchers.IO) {
                         runCatchingCancellable {
                             Json.decodeFromString<SdJwtVcTypeMetadata>(loadResource("/pid_arf_v18.json"))
                         }
                     }
                 },
-                lookupJsonSchema = {
-                    fail("LookupJsonSchema should not have been invoked. Schema URI: $it")
+                lookupJsonSchema = { schemaUri, _ ->
+                    fail("LookupJsonSchema should not have been invoked. Schema URI: $schemaUri")
                 },
             ),
             jsonSchemaValidator = { unvalidated, schema ->
