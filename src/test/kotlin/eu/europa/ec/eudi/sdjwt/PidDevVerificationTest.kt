@@ -49,7 +49,7 @@ class PidDevVerificationTest :
     private fun doTest(unverifiedSdJwtVc: String, enableLogging: Boolean = false) = runTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingX5cOrIssuerMetadata(
-                httpClientFactory = { createHttpClient(enableLogging = enableLogging) },
+                httpClient = createHttpClient(enableLogging = enableLogging),
                 x509CertificateTrust = { _, _ -> true },
             ),
             TypeMetadataPolicy.NotUsed,

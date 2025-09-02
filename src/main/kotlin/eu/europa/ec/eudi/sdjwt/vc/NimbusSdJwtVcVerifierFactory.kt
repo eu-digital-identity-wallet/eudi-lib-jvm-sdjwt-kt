@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
+import io.ktor.client.HttpClient
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,12 +49,12 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
-                httpClientFactory = issuerVerificationMethod.httpClientFactory,
+                httpClient = issuerVerificationMethod.httpClient,
             )
             is IssuerVerificationMethod.UsingX5c -> sdJwtVcSignatureVerifier(trust = issuerVerificationMethod.x509CertificateTrust)
             is IssuerVerificationMethod.UsingDID -> sdJwtVcSignatureVerifier(lookup = issuerVerificationMethod.didLookup)
             is IssuerVerificationMethod.UsingX5cOrIssuerMetadata -> sdJwtVcSignatureVerifier(
-                httpClientFactory = issuerVerificationMethod.httpClientFactory,
+                httpClient = issuerVerificationMethod.httpClient,
                 trust = issuerVerificationMethod.x509CertificateTrust,
             )
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
@@ -104,7 +105,7 @@ private class NimbusSdJwtVcVerifier(
  *
  *  In addition, the verifier will ensure that `typ` claim is equal to vc+sd-jwt
  *
- * @param httpClientFactory a factory for getting http clients, used while interacting with issuer
+ * @param httpClient an http client, used while interacting with issuer
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
  * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
  * @param lookup an optional way of looking up public keys from DID Documents. A `null` value indicates
@@ -113,7 +114,7 @@ private class NimbusSdJwtVcVerifier(
  * @return a SD-JWT-VC specific signature verifier as described above
  */
 internal fun sdJwtVcSignatureVerifier(
-    httpClientFactory: KtorHttpClientFactory? = null,
+    httpClient: HttpClient? = null,
     trust: X509CertificateTrust<List<X509Certificate>>? = null,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
 ): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
@@ -124,7 +125,7 @@ internal fun sdJwtVcSignatureVerifier(
             throw VerificationError.ParsingError.asException()
         }
 
-        val (jwkSource, useKeyId) = issuerJwkSource(httpClientFactory, trust, lookup, signedJwt)
+        val (jwkSource, useKeyId) = issuerJwkSource(httpClient, trust, lookup, signedJwt)
         yield()
 
         try {
@@ -139,17 +140,18 @@ internal fun sdJwtVcSignatureVerifier(
 }
 
 private suspend fun issuerJwkSource(
-    httpClientFactory: KtorHttpClientFactory?,
+    httpClient: HttpClient?,
     trust: X509CertificateTrust<List<X509Certificate>>?,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>?,
     signedJwt: NimbusSignedJWT,
 ): IssuerJwkSource {
     suspend fun fromMetadata(source: Metadata): IssuerJwkSource {
-        if (httpClientFactory == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
+        if (httpClient == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
         val jwks = runCatchingCancellable {
-            val json = httpClientFactory().use { httpClient ->
-                with(GetSdJwtVcIssuerJwkSetKtorOps) { httpClient.getSdJwtIssuerKeySet(source.iss) }
+            val json = with(GetSdJwtVcIssuerJwkSetKtorOps) {
+                httpClient.getSdJwtIssuerKeySet(source.iss)
             }
+
             NimbusJWKSet.parse(Json.encodeToString(json))
         }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
         return IssuerJwkSource(NimbusImmutableJWKSet(jwks), true)

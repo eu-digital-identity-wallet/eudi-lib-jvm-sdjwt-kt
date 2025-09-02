@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.map
+import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -66,7 +67,7 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
     /**
      * Using SD-JWT VC Issuer Metadata
      */
-    data class UsingIssuerMetadata(val httpClientFactory: KtorHttpClientFactory) : IssuerVerificationMethod<Nothing, Nothing, Any?>
+    data class UsingIssuerMetadata(val httpClient: HttpClient) : IssuerVerificationMethod<Nothing, Nothing, Any?>
 
     /**
      * Using X509 Certificate trust
@@ -85,7 +86,7 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
      */
     data class UsingX5cOrIssuerMetadata<X509Chain>(
         val x509CertificateTrust: X509CertificateTrust<X509Chain>,
-        val httpClientFactory: KtorHttpClientFactory,
+        val httpClient: HttpClient,
     ) : IssuerVerificationMethod<Nothing, Nothing, X509Chain>
 
     /**
@@ -99,23 +100,23 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
         convertFromX509Chain: (X509Chain1) -> X509Chain,
     ): IssuerVerificationMethod<JWT1, JWK1, X509Chain1> =
         when (this) {
-            is UsingIssuerMetadata -> UsingIssuerMetadata(httpClientFactory)
+            is UsingIssuerMetadata -> UsingIssuerMetadata(httpClient)
             is UsingX5c -> UsingX5c(x509CertificateTrust.contraMap(convertFromX509Chain))
             is UsingDID -> UsingDID(didLookup.map(convertToJwk))
-            is UsingX5cOrIssuerMetadata -> UsingX5cOrIssuerMetadata(x509CertificateTrust.contraMap(convertFromX509Chain), httpClientFactory)
+            is UsingX5cOrIssuerMetadata -> UsingX5cOrIssuerMetadata(x509CertificateTrust.contraMap(convertFromX509Chain), httpClient)
             is Custom -> Custom(jwtSignatureVerifier.map(convertToJwt))
         }
 
     companion object {
-        fun usingIssuerMetadata(httpClientFactory: KtorHttpClientFactory): UsingIssuerMetadata = UsingIssuerMetadata(httpClientFactory)
+        fun usingIssuerMetadata(httpClient: HttpClient): UsingIssuerMetadata = UsingIssuerMetadata(httpClient)
         fun <X509Chain> usingX5c(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
         ): UsingX5c<X509Chain> = UsingX5c(x509CertificateTrust)
         fun <JWK> usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
         fun <X509Chain> usingX5cOrIssuerMetadata(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
-            httpClientFactory: KtorHttpClientFactory,
-        ): UsingX5cOrIssuerMetadata<X509Chain> = UsingX5cOrIssuerMetadata(x509CertificateTrust, httpClientFactory)
+            httpClient: HttpClient,
+        ): UsingX5cOrIssuerMetadata<X509Chain> = UsingX5cOrIssuerMetadata(x509CertificateTrust, httpClient)
         fun <JWT> usingCustom(jwtSignatureVerifier: JwtSignatureVerifier<JWT>): Custom<JWT> = Custom(jwtSignatureVerifier)
     }
 }

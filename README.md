@@ -42,6 +42,13 @@ dependencies {
 }
 ```
 
+## Ktor Client
+
+To use certain functionality of this library, a Ktor [HttpClient](https://api.ktor.io/ktor-client/ktor-client-core/io.ktor.client/-http-client/index.html) 
+is required. You must provide a Ktor `HttpClient` configured with your preferred [Client Engine](https://ktor.io/docs/client-engines.html), 
+and the [ContentNegotiation](https://ktor.io/docs/client-serialization.html) plugin installed with 
+[KotlinX Json Serialization](https://ktor.io/docs/client-serialization.html#k53369_158) support enabled.
+
 ## Use cases supported
 
 - [Issuance](#issuance): As an Issuer use the library to issue a SD-JWT

@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
+import io.ktor.client.HttpClient
 import io.ktor.client.request.*
 import io.ktor.http.*
 
@@ -42,7 +43,7 @@ fun interface LookupTypeMetadata {
  * Lookup the Type Metadata of an HTTPS URL VCT using Ktor.
  */
 class LookupTypeMetadataUsingKtor(
-    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val httpClient: HttpClient,
     private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupTypeMetadata {
 
@@ -50,11 +51,11 @@ class LookupTypeMetadataUsingKtor(
         val url = runCatching { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> httpClientFactory().use { httpClient ->
+                is Url ->
                     with(GetSubResourceKtorOps(sriValidator)) {
                         httpClient.getJsonOrNull<SdJwtVcTypeMetadata>(url, expectedIntegrity)
                     }
-                }
+
                 else -> null
             }
         }
@@ -84,7 +85,7 @@ fun interface LookupJsonSchema {
  * Lookup a [JsonSchema] from a Uri that is a Url using Ktor.
  */
 class LookupJsonSchemaUsingKtor(
-    private val httpClientFactory: KtorHttpClientFactory = DefaultHttpClientFactory,
+    private val httpClient: HttpClient,
     private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupJsonSchema {
 
@@ -92,11 +93,11 @@ class LookupJsonSchemaUsingKtor(
         val url = runCatching { Url(uri) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url -> httpClientFactory().use { httpClient ->
+                is Url ->
                     with(GetSubResourceKtorOps(sriValidator)) {
                         httpClient.getJsonOrNull<JsonSchema>(url, expectedIntegrity)
                     }
-                }
+
                 else -> null
             }
         }
@@ -114,6 +115,7 @@ data class ResolvedTypeMetadata(
     init {
         SdJwtVcTypeMetadata.ensureValidPaths(claims)
     }
+
     companion object
 }
 
