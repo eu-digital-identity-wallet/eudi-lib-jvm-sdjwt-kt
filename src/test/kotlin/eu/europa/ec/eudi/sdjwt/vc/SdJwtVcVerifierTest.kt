@@ -151,9 +151,11 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-            IssuerVerificationMethod.usingIssuerMetadata {
-                HttpMock.clientReturning(SampleIssuer.issuerMeta)
-            },
+            IssuerVerificationMethod.usingIssuerMetadata(
+                run {
+                    HttpMock.clientReturning(SampleIssuer.issuerMeta)
+                },
+            ),
             TypeMetadataPolicy.NotUsed,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -163,9 +165,11 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url and no kid`() = runTest {
         val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = null)
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-            IssuerVerificationMethod.usingIssuerMetadata {
-                HttpMock.clientReturning(SampleIssuer.issuerMeta)
-            },
+            IssuerVerificationMethod.usingIssuerMetadata(
+                run {
+                    HttpMock.clientReturning(SampleIssuer.issuerMeta)
+                },
+            ),
             TypeMetadataPolicy.NotUsed,
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -176,9 +180,11 @@ class SdJwtVcVerifierTest {
         // In case the issuer uses the KID
         val unverifiedSdJwt = SampleIssuer.issueUsingKid("wrong kid")
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-            IssuerVerificationMethod.usingIssuerMetadata {
-                HttpMock.clientReturning(SampleIssuer.issuerMeta)
-            },
+            IssuerVerificationMethod.usingIssuerMetadata(
+                run {
+                    HttpMock.clientReturning(SampleIssuer.issuerMeta)
+                },
+            ),
             TypeMetadataPolicy.NotUsed,
         )
         try {

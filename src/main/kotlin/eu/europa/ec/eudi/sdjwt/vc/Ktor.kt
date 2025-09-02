@@ -18,30 +18,8 @@ package eu.europa.ec.eudi.sdjwt.vc
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-
-/**
- * Alias of a method that creates a [HttpClient]
- */
-typealias KtorHttpClientFactory = () -> HttpClient
-
-/**
- * Factory which produces a [Ktor Http client][HttpClient]
- *
- * The actual engine will be peeked up by whatever
- * it is available in classpath
- *
- * @see [Ktor Client]("https://ktor.io/docs/client-dependencies.html#engine-dependency)
- */
-val DefaultHttpClientFactory: KtorHttpClientFactory = {
-    HttpClient {
-        install(ContentNegotiation) { json() }
-        expectSuccess = true
-    }
-}
 
 /**
  * Performs a Get request to fetch Json data from a Url. In case of failure, it returns null.
