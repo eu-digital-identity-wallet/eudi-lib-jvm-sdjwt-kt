@@ -250,13 +250,16 @@ private suspend fun TypeMetadataPolicy.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
 private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
     try {
         val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
+        val vctIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
+            Json.decodeFromString(DocumentIntegrity.serializer(), it)
+        }
         when (this) {
             TypeMetadataPolicy.NotUsed -> null
-            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct).getOrNull()
-            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct).getOrThrow()
+            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct, vctIntegrity).getOrNull()
+            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
             is TypeMetadataPolicy.RequiredFor ->
-                if (vct in vcts) resolveTypeMetadata(vct).getOrThrow()
-                else resolveTypeMetadata(vct).getOrNull()
+                if (vct in vcts) resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
+                else resolveTypeMetadata(vct, vctIntegrity).getOrNull()
         }
     } catch (error: Exception) {
         raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))

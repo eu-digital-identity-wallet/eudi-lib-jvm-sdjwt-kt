@@ -394,11 +394,6 @@ data class LogoMetadata(
 }
 
 // TODO Check this
-@Serializable
-@JvmInline
-value class DocumentIntegrity(val value: String)
-
-// TODO Check this
 //  https://www.w3.org/TR/css-color-3/
 /**
  * An RGB color value as defined in W3C.CSS-COLOR
