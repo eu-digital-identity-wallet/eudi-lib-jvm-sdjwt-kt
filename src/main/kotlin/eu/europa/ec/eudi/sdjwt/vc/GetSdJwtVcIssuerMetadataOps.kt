@@ -26,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 /**
  * Gets the metadata of an SD-JWT VC issuer.
  */
+@Suppress("kotlin:S6517")
 interface GetSdJwtVcIssuerMetadataOps {
 
     suspend fun HttpClient.getSdJwtVcIssuerMetadata(issuer: Url): SdJwtVcIssuerMetadata? =

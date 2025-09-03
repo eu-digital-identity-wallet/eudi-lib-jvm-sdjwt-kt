@@ -303,6 +303,7 @@ private class SdJwtVcDefinitionValidator private constructor(
             (this is Disclosable.NeverSelectively<*> && !requiresDisclosures)
     }
 
+    @Suppress("kotlin:S6516")
     companion object : DefinitionBasedSdJwtVcValidator {
 
         override fun DisclosableDefObject<String, *>.validate(

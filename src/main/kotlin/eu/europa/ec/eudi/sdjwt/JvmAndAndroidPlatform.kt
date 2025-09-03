@@ -29,16 +29,20 @@ internal object JvmAndAndroidHashes : Hashes {
     override fun sha512(input: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA-512").digest(input)
 
+    @Suppress("kotlin:S100")
     override fun sha3_256(input: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA3-256").digest(input)
 
+    @Suppress("kotlin:S100")
     override fun sha3_384(input: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA3-384").digest(input)
 
+    @Suppress("kotlin:S100")
     override fun sha3_512(input: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA3-512").digest(input)
 }
 
+@Suppress("kotlin:S6516")
 internal object JvmAndAndroidSecureRandom : Random {
     override fun nextBytesCopyTo(bytes: ByteArray) {
         SecureRandom().nextBytes(bytes)
