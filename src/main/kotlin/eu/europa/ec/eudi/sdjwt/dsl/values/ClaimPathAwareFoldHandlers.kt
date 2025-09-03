@@ -139,7 +139,7 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
     private fun elementClaimPath(path: List<String?>, index: Int): ClaimPath {
         val indexElement = ClaimPathElement.ArrayElement(index)
         return path.toClaimPath()
-            ?.let { it -> it + indexElement }
+            ?.let { it + indexElement }
             ?: ClaimPath(indexElement)
     }
 
