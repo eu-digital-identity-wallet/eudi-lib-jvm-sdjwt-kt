@@ -192,7 +192,7 @@ private val deepRecursiveSelector = DeepRecursiveFunction<SelectionParams, Selec
                         )
                         matches.add(subSelection.toWildcardMatch(index, finalConcretePathForThisMatch))
                     } catch (_: Exception) {
-                        // Nothing should happen here
+                        // No match found
                     }
                 }
             }
