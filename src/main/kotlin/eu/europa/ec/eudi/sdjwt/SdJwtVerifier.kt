@@ -212,7 +212,7 @@ fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(f: (JWT) -> JWT1): KeyBindingVerifie
         MustNotBePresent -> MustNotBePresent
     }
 
-private interface KeyBindingVerifierOps<JWT> {
+private fun interface KeyBindingVerifierOps<JWT> {
     /**
      * @param jwtClaims The claims of the JWT part of the SD-JWT. They will be used to extract the
      * public key of the Holder, in case of [MustBePresentAndValid]
