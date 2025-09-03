@@ -40,7 +40,7 @@ internal fun Hashes.digest(hashAlgorithm: HashAlgorithm, input: ByteArray): Byte
         HashAlgorithm.SHA3_512 -> sha3_512(input)
     }
 
-internal interface Random {
+internal fun interface Random {
     fun nextBytesCopyTo(bytes: ByteArray)
 }
 
