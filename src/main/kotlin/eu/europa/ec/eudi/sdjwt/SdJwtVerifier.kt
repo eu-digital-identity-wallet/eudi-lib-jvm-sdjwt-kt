@@ -235,39 +235,34 @@ private fun interface KeyBindingVerifierOps<JWT> {
     companion object {
 
         operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): KeyBindingVerifierOps<JWT> =
-            object : KeyBindingVerifierOps<JWT> {
+            KeyBindingVerifierOps { jwtClaims, expectedDigest, unverifiedKbJwt ->
 
-                override suspend fun KeyBindingVerifier<JWT>.verify(
-                    jwtClaims: JsonObject,
-                    expectedDigest: SdJwtDigest,
-                    unverifiedKbJwt: String?,
-                ): Result<JWT?> = runCatchingCancellable {
-                    fun mustBeNotPresent(): JWT? =
-                        if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
-                        else null
+                fun mustBeNotPresent(): JWT? =
+                    if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
+                    else null
 
-                    suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?): JWT {
-                        if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
+                suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?): JWT {
+                    if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
-                        val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
-                        val keyBindingJwt = runCatchingCancellable {
-                            requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
-                                "KeyBinding JWT cannot be null"
-                            }
-                        }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
+                    val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
+                    val keyBindingJwt = runCatchingCancellable {
+                        requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
+                            "KeyBinding JWT cannot be null"
+                        }
+                    }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
 
-                        val keyBindingJwtClaims = claimsOf(keyBindingJwt)
-                        val sdHash = keyBindingJwtClaims[SdJwtSpec.CLAIM_SD_HASH]
-                            ?.takeIf { element -> element is JsonPrimitive && element.isString }
-                            ?.jsonPrimitive
-                            ?.contentOrNull
-                        if (expectedDigest.value != sdHash) throw InvalidKeyBindingJwt(
-                            "${SdJwtSpec.CLAIM_SD_HASH} claim contains an invalid value",
-                        ).asException()
+                    val keyBindingJwtClaims = claimsOf(keyBindingJwt)
+                    val sdHash = keyBindingJwtClaims[SdJwtSpec.CLAIM_SD_HASH]
+                        ?.takeIf { element -> element is JsonPrimitive && element.isString }
+                        ?.jsonPrimitive
+                        ?.contentOrNull
+                    if (expectedDigest.value != sdHash) throw InvalidKeyBindingJwt(
+                        "${SdJwtSpec.CLAIM_SD_HASH} claim contains an invalid value",
+                    ).asException()
 
-                        return keyBindingJwt
-                    }
-
+                    return keyBindingJwt
+                }
+                runCatchingCancellable {
                     when (this) {
                         is MustNotBePresent -> mustBeNotPresent()
                         is MustBePresentAndValid -> mustBePresentAndValid(keyBindingVerifierProvider)
