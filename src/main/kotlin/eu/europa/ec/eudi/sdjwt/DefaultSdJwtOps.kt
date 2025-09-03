@@ -60,7 +60,7 @@ private val DefaultSdJwtUnverifiedIssuanceFrom: UnverifiedIssuanceFrom<JwtAndCla
             val (unverifiedJwt, unverifiedDisclosures) = StandardSerialization.parseIssuance(unverifiedSdJwt)
             val (_, jwtClaims, _) = jwtClaims(unverifiedJwt).getOrThrow()
             val disclosures = toDisclosures(unverifiedDisclosures)
-            val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
+            val (_, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
             SdJwt(unverifiedJwt to jwtClaims, disclosures)
         }
     }
