@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
-import io.ktor.client.HttpClient
+import io.ktor.client.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -103,7 +103,7 @@ private class NimbusSdJwtVcVerifier(
  *  if it is trusted & it contains a SAN URI equal to `iss`
  * - If `iss` claim is a DID the key will be extracted by resolving it.
  *
- *  In addition, the verifier will ensure that `typ` claim is equal to vc+sd-jwt
+ *  In addition, the verifier will ensure that `typ` claim is equal to dc+sd-jwt
  *
  * @param httpClient an http client, used while interacting with issuer
  * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and

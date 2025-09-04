@@ -16,7 +16,6 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
-import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*

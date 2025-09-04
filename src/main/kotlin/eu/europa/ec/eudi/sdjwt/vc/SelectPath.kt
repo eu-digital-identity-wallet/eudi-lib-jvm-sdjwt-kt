@@ -71,13 +71,6 @@ fun interface SelectPath {
      */
     fun JsonElement.query(path: ClaimPath): Result<Selection>
 
-    @Deprecated(
-        message = "Will be removed",
-        replaceWith = ReplaceWith("query(path).map { it.toJsonElement() }"),
-    )
-    fun JsonElement.select(path: ClaimPath): Result<JsonElement?> =
-        query(path).map { it.toJsonElement() }
-
     /**
      * Default implementation
      */

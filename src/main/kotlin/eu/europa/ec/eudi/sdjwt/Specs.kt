@@ -106,13 +106,6 @@ object SdJwtVcSpec {
     const val WELL_KNOWN_SUFFIX_JWT_VC_ISSUER: String = "jwt-vc-issuer"
     const val WELL_KNOWN_JWT_VC_ISSUER: String = "/.well-known/$WELL_KNOWN_SUFFIX_JWT_VC_ISSUER"
 
-    @Deprecated(
-        message = "Removed from SD-JWT-VC",
-        replaceWith = ReplaceWith("SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT"),
-        level = DeprecationLevel.WARNING,
-    )
-    const val MEDIA_SUBTYPE_VC_SD_JWT: String = "vc+sd-jwt"
-
     //
     // Media types
     //
