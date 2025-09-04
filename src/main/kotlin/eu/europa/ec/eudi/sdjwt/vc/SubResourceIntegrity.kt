@@ -95,7 +95,7 @@ class SRIValidator(private val allowedAlgorithms: Set<IntegrityAlgorithm> = Inte
             .maxByOrNull { it.strength }
 
         return maybeStrongestAlgorithm?.let { strongestAlgorithm ->
-            val strongestExpectedHashes = expectedHashesByAlgorithm[strongestAlgorithm]!!
+            val strongestExpectedHashes = checkNotNull(expectedHashesByAlgorithm[strongestAlgorithm])
 
             val actualEncodedHash = run {
                 val digest = when (strongestAlgorithm) {

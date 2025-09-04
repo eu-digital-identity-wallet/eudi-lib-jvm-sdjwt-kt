@@ -20,13 +20,13 @@ internal interface Hashes {
     fun sha384(input: ByteArray): ByteArray
     fun sha512(input: ByteArray): ByteArray
 
-    @Suppress("ktlint:standard:function-naming")
+    @Suppress("ktlint:standard:function-naming", "kotlin:S100")
     fun sha3_256(input: ByteArray): ByteArray
 
-    @Suppress("ktlint:standard:function-naming")
+    @Suppress("ktlint:standard:function-naming", "kotlin:S100")
     fun sha3_384(input: ByteArray): ByteArray
 
-    @Suppress("ktlint:standard:function-naming")
+    @Suppress("ktlint:standard:function-naming", "kotlin:S100")
     fun sha3_512(input: ByteArray): ByteArray
 }
 
@@ -40,7 +40,7 @@ internal fun Hashes.digest(hashAlgorithm: HashAlgorithm, input: ByteArray): Byte
         HashAlgorithm.SHA3_512 -> sha3_512(input)
     }
 
-internal interface Random {
+internal fun interface Random {
     fun nextBytesCopyTo(bytes: ByteArray)
 }
 
