@@ -34,14 +34,10 @@ internal class SdJwtVcJwtProcessor<C : NimbusSecurityContext>(
 
     companion object {
         /**
-         * Accepts both the [SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT]
-         * and the deprecated [SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT]
+         * Accepts [SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT].
          */
         private fun <C : NimbusSecurityContext> typeVerifier(): NimbusJOSEObjectTypeVerifier<C> =
-            NimbusDefaultJOSEObjectTypeVerifier(
-                NimbusJOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_VC_SD_JWT),
-                NimbusJOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT),
-            )
+            NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
 
         private fun <C : NimbusSecurityContext> claimSetVerifier(): NimbusJWTClaimsSetVerifier<C> =
             NimbusDefaultJWTClaimsVerifier(
