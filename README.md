@@ -423,7 +423,7 @@ val sdJwtVcVerification = runBlocking {
             }
 
             val signer = issuer(signer = ECDSASigner(issuerEcKeyPairWithCertificate), signAlgorithm = JWSAlgorithm.ES512) {
-                type(JOSEObjectType("vc+sd-jwt"))
+                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
                 x509CertChain(issuerEcKeyPairWithCertificate.x509CertChain)
             }
             signer.issue(spec).getOrThrow().serialize()
