@@ -168,10 +168,9 @@ fun interface DefinitionBasedSdJwtVcValidator {
                 }
             }
 
-            requiredStringClaimAndThen(RFC7519.ISSUER) {
-                if (it.isBlank()) {
-                    add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(RFC7519.ISSUER)))
-                }
+            val issuer = jwtPayload[RFC7519.ISSUER]
+            if (null != issuer && issuer !is JsonNull && (issuer !is JsonPrimitive || !issuer.isString)) {
+                add(DefinitionViolation.WrongClaimType(ClaimPath.claim(RFC7519.ISSUER)))
             }
         }
 
