@@ -39,7 +39,12 @@ fun interface X509CertificateTrust<in X509Chain> {
     }
 }
 
+@Deprecated(
+    message = "Deprecated in SD-JWT-VC draft 11 to be removed in future version",
+    level = DeprecationLevel.WARNING,
+)
 /**
+ * Deprecated in SD-JWT-VC draft 11 to be removed in future version
  * A function to look up public keys from DIDs/DID URLs.
  */
 fun interface LookupPublicKeysFromDIDDocument<out JWK> {
@@ -76,6 +81,10 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
         val x509CertificateTrust: X509CertificateTrust<X509Chain>,
     ) : IssuerVerificationMethod<Nothing, Nothing, X509Chain>
 
+    @Deprecated(
+        message = "Deprecated in SD-JWT-VC draft 11 to be removed in future version",
+        level = DeprecationLevel.WARNING,
+    )
     /**
      * Using DID resolution
      */
@@ -112,6 +121,8 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
         fun <X509Chain> usingX5c(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
         ): UsingX5c<X509Chain> = UsingX5c(x509CertificateTrust)
+
+        @Deprecated("Deprecated in SD-JWT-VC draft 11 to be removed in future version", level = DeprecationLevel.WARNING)
         fun <JWK> usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
         fun <X509Chain> usingX5cOrIssuerMetadata(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
