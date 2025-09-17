@@ -229,8 +229,6 @@ private fun ResolvedTypeMetadata.mergeWith(
  * 3. description: the description of this instance, or the description of parent in case this has no description
  * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
  * 5. claims: the claims of this instance and the claims of parent not already present in this.
- *   for claims present both in this and parent, their display are merged keeping display of this and display of the parent for
- *   languages not defined by this
  * 6. schemas: the schemas of this instance and the schema of parent if one is present
  *
  * @param parent the Type Metadata of a parent Vct
@@ -242,7 +240,7 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
             thisDisplays.mergeWith(parentDisplays, DisplayMetadata::lang) { thisDisplay, _ -> thisDisplay }
         },
         mergeClaims = { thisClaims, parentClaims ->
-            thisClaims.mergeWith(parentClaims, ClaimMetadata::path, ClaimMetadata::mergeWith)
+            thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, _ -> thisClaim }
         },
     )
 
@@ -261,14 +259,4 @@ private fun <T, K> Iterable<T>.mergeWith(other: Iterable<T>, extractKey: (T) -> 
             else -> error("cannot find value for $key")
         }
     }
-}
-
-private fun ClaimMetadata.mergeWith(parent: ClaimMetadata): ClaimMetadata {
-    require(path == parent.path)
-    return ClaimMetadata(
-        path = path,
-        display = display.orEmpty().mergeWith(parent.display.orEmpty(), ClaimDisplay::lang) { current, _ -> current },
-        selectivelyDisclosable = selectivelyDisclosable,
-        svgId = svgId,
-    )
 }
