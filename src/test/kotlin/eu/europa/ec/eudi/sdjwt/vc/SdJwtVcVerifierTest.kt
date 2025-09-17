@@ -27,14 +27,21 @@ import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
 import com.nimbusds.jose.proc.BadJOSEException
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.asn1.x509.Extension
@@ -46,7 +53,6 @@ import java.math.BigInteger
 import java.security.cert.X509Certificate
 import java.util.*
 import javax.security.auth.x500.X500Principal
-import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -188,11 +194,38 @@ class SdJwtVcVerifierTest {
     fun `SdJwtVcVerifier should verify an SD-JWT-VC that has been signed using an OctetKeyPair using Ed25519 curve and EdDSA algorithm`() =
         runTest {
             val key = OctetKeyPairGenerator(Curve.Ed25519).generate()
-            val didJwk = "did:jwk:${Base64.UrlSafe.encode(key.toPublicJWK().toJSONString().toByteArray())}"
+
+            val httpClient = HttpClient(MockEngine) {
+                expectSuccess = true
+                install(ContentNegotiation) {
+                    json()
+                }
+                engine {
+                    addHandler { request ->
+                        assertEquals(HttpMethod.Get, request.method)
+                        assertEquals("https://example.com/.well-known/jwt-vc-issuer", request.url.toString())
+
+                        respond(
+                            content = Json.encodeToString(
+                                SdJwtVcIssuerMetadata(
+                                    issuer = "https://example.com",
+                                    jwks = Json.decodeFromString<JsonObject>(
+                                        JSONObjectUtils.toJSONString(JWKSet(key.toPublicJWK()).toJSONObject()),
+                                    ),
+                                ),
+                            ),
+                            status = HttpStatusCode.OK,
+                            headers = headers {
+                                append(HttpHeaders.ContentType, ContentType.Application.Json)
+                            },
+                        )
+                    }
+                }
+            }
 
             val sdJwt = run {
                 val spec = sdJwt {
-                    claim(RFC7519.ISSUER, didJwk)
+                    claim(RFC7519.ISSUER, "https://example.com")
                     claim(SdJwtVcSpec.VCT, "urn:credential:sample")
                 }
                 val signer = NimbusSdJwtOps.issuer(
@@ -205,10 +238,7 @@ class SdJwtVcVerifierTest {
             }
 
             val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-                IssuerVerificationMethod.usingDID { did, _ ->
-                    assertEquals(didJwk, did)
-                    listOf(key.toPublicJWK())
-                },
+                IssuerVerificationMethod.usingIssuerMetadata(httpClient),
                 TypeMetadataPolicy.NotUsed,
             )
 
