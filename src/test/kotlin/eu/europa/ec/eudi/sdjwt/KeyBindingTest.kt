@@ -19,6 +19,7 @@ import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.jwk.AsymmetricJWK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
@@ -26,10 +27,11 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.asJwtVerifier
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
-import eu.europa.ec.eudi.sdjwt.vc.LookupPublicKeysFromDIDDocument
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DatePeriod
@@ -56,12 +58,15 @@ import kotlin.time.toJavaInstant
 class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
-    private val lookup = LookupPublicKeysFromDIDDocument { _, _ -> listOf(issuer.issuerKey.toPublicJWK()) }
     private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-        IssuerVerificationMethod.usingDID(lookup),
+        IssuerVerificationMethod.usingCustom(
+            ECDSAVerifier(issuer.issuerKey)
+                .asJwtVerifier()
+                .map { nimbusToJwtAndClaims(it) },
+        ),
         TypeMetadataPolicy.NotUsed,
     )
-    private val holder = HolderActor(genKey("holder"), lookup)
+    private val holder = HolderActor(genKey("holder"), verifier = verifier)
 
     /**
      * This test focuses on the issuance
@@ -107,7 +112,7 @@ class KeyBindingTest {
     @Test
     fun holderBindingFullTest() = runTest {
         suspend fun test(whatToDisclose: Set<ClaimPath>, expectedNumberOfDisclosures: Int) {
-            val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, expectedNumberOfDisclosures, lookup)
+            val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, expectedNumberOfDisclosures, verifier)
 
             val emailCredential = SampleCredential(
                 givenName = "John",
@@ -276,13 +281,8 @@ class IssuerActor(val issuerKey: ECKey) {
  */
 class HolderActor(
     private val holderKey: ECKey,
-    lookup: LookupPublicKeysFromDIDDocument<JWK>,
+    private val verifier: SdJwtVcVerifier<JwtAndClaims>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-        IssuerVerificationMethod.usingDID(lookup),
-        TypeMetadataPolicy.NotUsed,
-    )
-
     fun pubKey(): AsymmetricJWK = holderKey.toPublicJWK()
 
     /**
@@ -336,12 +336,8 @@ class VerifierActor(
     private val clientId: String,
     private val whatToDisclose: Set<ClaimPath>,
     private val expectedNumberOfDisclosures: Int,
-    lookup: LookupPublicKeysFromDIDDocument<JWK>,
+    private val verifier: SdJwtVcVerifier<JwtAndClaims>,
 ) {
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-        IssuerVerificationMethod.usingDID(lookup),
-        TypeMetadataPolicy.NotUsed,
-    )
     private lateinit var lastChallenge: JsonObject
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
