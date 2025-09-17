@@ -143,7 +143,7 @@ val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
 In this case, a `Holder` of an SD-JWT issued by an `Issuer`, wants to create a presentation for a `Verifier`.
 The `Holder` should know which of the selectively disclosed claims to include in the presentation.
 The selectively disclosed claims to include in the presentation are expressed using Claim Paths as per 
-[SD-JWT VC draft 6](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-06.html#name-claim-path).
+[SD-JWT VC draft 11](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-11.html#name-claim-path).
 
 <!--- INCLUDE
 import com.nimbusds.jose.JWSAlgorithm
@@ -387,7 +387,7 @@ All examples assume that we have the following claim set
 
 ## SD-JWT VC support
 
-The library provides comprehensive support for [SD-JWT-based Verifiable Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html), including advanced features for type metadata, validation, and credential building.
+The library provides comprehensive support for [SD-JWT-based Verifiable Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-11.html), including advanced features for type metadata, validation, and credential building.
 
 ### SD-JWT VC Verification
 
