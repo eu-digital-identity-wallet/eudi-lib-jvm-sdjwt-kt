@@ -162,9 +162,7 @@ class FromSdJwtVcMetadataStrictTest {
               ],
               "sd": "allowed"
             }
-          ],
-          "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
-          "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
+          ]
         }
     """.trimIndent()
 

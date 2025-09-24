@@ -469,7 +469,6 @@ Example usage:
 ```kotlin
 val resolver = ResolveTypeMetadata(
     lookupTypeMetadata = LookupTypeMetadataUsingKtor(),
-    lookupJsonSchema = LookupJsonSchemaUsingKtor()
 )
 val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
 ```
