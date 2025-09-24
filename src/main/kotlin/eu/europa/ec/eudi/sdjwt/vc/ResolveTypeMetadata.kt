@@ -107,10 +107,8 @@ interface ResolveTypeMetadata {
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
-                val current = run {
-                    lookupTypeMetadata(vct, expectedIntegrity)
-                        .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
-                }
+                val current = lookupTypeMetadata(vct, expectedIntegrity)
+                    .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                 val updatedAccumulator = accumulator + current
                 val parent = current.extends?.let { Vct(it) }
                 val parentIntegrity = current.extendsIntegrity
