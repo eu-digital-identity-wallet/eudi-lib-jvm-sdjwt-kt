@@ -16,8 +16,6 @@ maven-publish = "0.34.0"
 kotlinx-knit = "0.5.0"
 kover = "0.9.1"
 dependency-check = "12.1.1"
-json-schema-validator = "1.5.6"
-joni = "2.2.6"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -36,8 +34,6 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 bouncy-castle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
-json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
-joni = { module = "org.jruby.joni:joni", version.ref = "joni" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
