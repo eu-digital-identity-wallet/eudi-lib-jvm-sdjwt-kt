@@ -139,7 +139,6 @@ interface ResolveTypeMetadata {
  * 3. description: the description of this instance, or the description of parent in case this has no description
  * 4. display: the result of [mergeDisplay]
  * 5. claims: the result of [mergeClaims]
- * 6. schemas: the schemas of this instance and the schema of parent if one is present
  *
  * @param parent the Type Metadata of a parent Vct
  * @param mergeDisplay function used to merge the [DisplayMetadata] of this instance with those of [parent]
@@ -172,7 +171,6 @@ private fun ResolvedTypeMetadata.mergeWith(
  * 3. description: the description of this instance, or the description of parent in case this has no description
  * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
  * 5. claims: the claims of this instance and the claims of parent not already present in this.
- * 6. schemas: the schemas of this instance and the schema of parent if one is present
  *
  * @param parent the Type Metadata of a parent Vct
  */
