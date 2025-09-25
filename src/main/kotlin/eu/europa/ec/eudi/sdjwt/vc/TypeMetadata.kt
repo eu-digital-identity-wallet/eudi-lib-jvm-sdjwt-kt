@@ -19,7 +19,6 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -54,29 +53,10 @@ data class SdJwtVcTypeMetadata(
      *  List containing claim information for the type
      */
     @SerialName(SdJwtVcSpec.CLAIMS) val claims: List<ClaimMetadata>? = null,
-
-    /**
-     * An embedded JSON Schema document describing the structure of the Verifiable Credential
-     * MUST NOT be used if schema_uri is present
-     */
-    @SerialName(SdJwtVcSpec.SCHEMA) val schema: JsonSchema? = null,
-
-    /**
-     * A URL pointing to a JSON Schema document describing the structure of the Verifiable Credential
-     * MUST NOT be used if schema is present
-     */
-    @SerialName(SdJwtVcSpec.SCHEMA_URI) val schemaUri: String? = null,
-
-    @SerialName(SdJwtVcSpec.SCHEMA_URI_INTEGRITY) val schemaUriIntegrity: DocumentIntegrity? = null,
-
 ) {
     init {
-        if (schema != null) {
-            require(schemaUri == null)
-        }
         ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
-        ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
         ensureValidPaths(claims.orEmpty())
     }
 
@@ -116,10 +96,6 @@ private fun ensureIntegrityIsNotPresent(
         }
     }
 }
-
-@Serializable
-@JvmInline
-value class JsonSchema(val value: JsonObject)
 
 @Serializable
 data class ClaimMetadata(
