@@ -68,7 +68,6 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadataStrict(
             name = sdJwtVcMetadata.name,
             description = sdJwtVcMetadata.description,
             display = sdJwtVcMetadata.display,
-            schemas = sdJwtVcMetadata.schemas,
         )
         SdJwtDefinition(content, vctMetadata)
     }

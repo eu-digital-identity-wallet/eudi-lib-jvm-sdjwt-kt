@@ -15,11 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import com.networknt.schema.InputFormat
-import com.networknt.schema.JsonSchemaFactory
-import com.networknt.schema.SchemaValidatorsConfig
-import com.networknt.schema.SpecVersion
-import com.networknt.schema.regex.JoniRegularExpressionFactory
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -36,10 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import java.util.*
 import kotlin.test.*
-import com.networknt.schema.JsonSchema as ExternalJsonSchema
 
 /**
  * Integration tests for [SdJwtVcVerifier].
@@ -65,13 +58,7 @@ class SdJwtVcVerifierIntegrationTest {
                         }
                     }
                 },
-                lookupJsonSchema = { schemaUri, _ ->
-                    fail("LookupJsonSchema should not have been invoked. Schema URI: $schemaUri")
-                },
             ),
-            jsonSchemaValidator = { unvalidated, schema ->
-                JsonSchemaConverter.convert(schema).validate(unvalidated)
-            },
         ),
     )
 
@@ -146,62 +133,4 @@ class SdJwtVcVerifierIntegrationTest {
         ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) } + DefinitionViolation.WrongClaimType(ClaimPath.claim("nationalities"))
         assertContentEquals(expectedErrors, sdJwtVcVerificationError.errors)
     }
-
-    @Test
-    fun verificationFailureDueToJsonSchemaValidationFailure() = runTest {
-        val serialized = issue {
-            claim(RFC7519.ISSUER, "https://example.com/issuer")
-            claim(SdJwtVcSpec.VCT, "urn:eudi:pid:1")
-            sdClaim("family_name", "")
-            sdArrClaim("nationalities") {
-                sdClaim(10)
-            }
-            sdClaim("email", "tyler.neal")
-            sdObjClaim("age_equal_or_over") {
-                sdClaim("18", "Yes")
-            }
-        }
-        val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
-        val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
-        val sdJwtVcVerificationError =
-            assertIs<SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure>(sdJwtVcError.error)
-        val expectedViolations = listOf(
-            "/family_name: must be at least 1 characters long",
-            "/nationalities/0: integer found, string expected",
-            "/email: does not match the email pattern must be a valid RFC 5321 Mailbox",
-            "/age_equal_or_over/18: string found, boolean expected",
-        )
-        assertEquals(expectedViolations, sdJwtVcVerificationError.errors[0].orEmpty().map { it.description })
-    }
 }
-
-private object JsonSchemaConverter {
-    private val config: SchemaValidatorsConfig by lazy {
-        SchemaValidatorsConfig.Builder()
-            .regularExpressionFactory(JoniRegularExpressionFactory.getInstance())
-            .formatAssertionsEnabled(true)
-            .build()
-    }
-    private val factory: JsonSchemaFactory by lazy {
-        JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012) { factoryBuilder ->
-            factoryBuilder.schemaLoaders { schemaLoadersBuilder ->
-                schemaLoadersBuilder.add {
-                    fail("SchemaLoader should not have been invoked. Schema URI: $it")
-                }
-            }
-            factoryBuilder.enableSchemaCache(true)
-        }
-    }
-
-    suspend fun convert(schema: JsonSchema): ExternalJsonSchema =
-        withContext(Dispatchers.IO) {
-            val externalJsonSchema = factory.getSchema(Json.encodeToString(schema), InputFormat.JSON, config)
-            assertEquals(SpecVersion.VersionFlag.V202012.id, externalJsonSchema.getRefSchemaNode("/\$schema").textValue())
-            externalJsonSchema
-        }
-}
-
-private fun ExternalJsonSchema.validate(unvalidated: JsonObject): List<JsonSchemaViolation> =
-    validate(Json.encodeToString(unvalidated), InputFormat.JSON) { context ->
-        context.executionConfig.formatAssertionsEnabled = true
-    }.mapNotNull { JsonSchemaViolation(it.toString()) }
