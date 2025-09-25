@@ -26,7 +26,6 @@ internal fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
         description = description,
         display = checkNotNull(display).value,
         claims = checkNotNull(claims),
-        schemas = schema?.let { listOf(it) }.orEmpty(),
     )
 }
 

@@ -29,9 +29,7 @@ class TypeMetadataTest {
               "name":"Betelgeuse Education Credential - Preliminary Version",
               "description":"This is our development version of the education credential. Don't panic.",
               "extends":"https://galaxy.example.com/galactic-education-credential-0.9",
-              "extends#integrity":"sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5",
-              "schema_uri":"https://exampleuniversity.com/public/credential-schema-0.9",
-              "schema_uri#integrity":"sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
+              "extends#integrity":"sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5"
             }
         """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json)
@@ -188,9 +186,7 @@ class TypeMetadataTest {
                   ],
                   "sd": "allowed"
                 }
-              ],
-              "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
-              "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
+              ]
             }
         """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json).also(::println)

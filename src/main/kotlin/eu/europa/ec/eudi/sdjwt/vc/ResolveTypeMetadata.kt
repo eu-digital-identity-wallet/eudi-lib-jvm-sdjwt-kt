@@ -62,55 +62,12 @@ class LookupTypeMetadataUsingKtor(
     }
 }
 
-/**
- * Lookup a [JsonSchema] from a Uri.
- */
-fun interface LookupJsonSchema {
-
-    suspend operator fun invoke(uri: String, expectedIntegrity: DocumentIntegrity?): Result<JsonSchema?>
-
-    companion object {
-        fun firstNotNullOfOrNull(first: LookupJsonSchema, vararg remaining: LookupJsonSchema): LookupJsonSchema {
-            val lookups = listOf(first, *remaining)
-            return LookupJsonSchema { uri, expectedIntegrity ->
-                runCatchingCancellable {
-                    lookups.firstNotNullOfOrNull { lookup -> lookup(uri, expectedIntegrity).getOrNull() }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Lookup a [JsonSchema] from a Uri that is a Url using Ktor.
- */
-class LookupJsonSchemaUsingKtor(
-    private val httpClient: HttpClient,
-    private val sriValidator: SRIValidator? = SRIValidator(),
-) : LookupJsonSchema {
-
-    override suspend fun invoke(uri: String, expectedIntegrity: DocumentIntegrity?): Result<JsonSchema?> {
-        val url = runCatching { Url(uri) }.getOrNull()
-        return runCatchingCancellable {
-            when (url) {
-                is Url ->
-                    with(GetSubResourceKtorOps(sriValidator)) {
-                        httpClient.getJsonOrNull<JsonSchema>(url, expectedIntegrity)
-                    }
-
-                else -> null
-            }
-        }
-    }
-}
-
 data class ResolvedTypeMetadata(
     val vct: Vct,
     val name: String?,
     val description: String?,
     val display: List<DisplayMetadata>,
     val claims: List<ClaimMetadata>,
-    val schemas: List<JsonSchema>,
 ) {
     init {
         SdJwtVcTypeMetadata.ensureValidPaths(claims)
@@ -126,7 +83,6 @@ private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata
         description = null,
         display = emptyList(),
         claims = emptyList(),
-        schemas = emptyList(),
     )
 
 /**
@@ -135,7 +91,6 @@ private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata
 interface ResolveTypeMetadata {
 
     val lookupTypeMetadata: LookupTypeMetadata
-    val lookupJsonSchema: LookupJsonSchema
 
     /**
      * Resolves the [ResolvedTypeMetadata] for [vct].
@@ -152,17 +107,8 @@ interface ResolveTypeMetadata {
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
-                val current = run {
-                    val current = lookupTypeMetadata(vct, expectedIntegrity)
-                        .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
-                    val schema = current.schemaUri?.let { schemaUri ->
-                        val schemaUriIntegrity = current.schemaUriIntegrity
-                        lookupJsonSchema(schemaUri, schemaUriIntegrity).getOrThrow() ?: error(
-                            "unable to lookup JsonSchema for $schemaUri",
-                        )
-                    } ?: current.schema
-                    current.copy(schema = schema, schemaUri = null, schemaUriIntegrity = null)
-                }
+                val current = lookupTypeMetadata(vct, expectedIntegrity)
+                    .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                 val updatedAccumulator = accumulator + current
                 val parent = current.extends?.let { Vct(it) }
                 val parentIntegrity = current.extendsIntegrity
@@ -177,10 +123,9 @@ interface ResolveTypeMetadata {
         }
 
     companion object {
-        operator fun invoke(lookupTypeMetadata: LookupTypeMetadata, lookupJsonSchema: LookupJsonSchema): ResolveTypeMetadata =
+        operator fun invoke(lookupTypeMetadata: LookupTypeMetadata): ResolveTypeMetadata =
             object : ResolveTypeMetadata {
                 override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
-                override val lookupJsonSchema: LookupJsonSchema = lookupJsonSchema
             }
     }
 }
@@ -194,7 +139,6 @@ interface ResolveTypeMetadata {
  * 3. description: the description of this instance, or the description of parent in case this has no description
  * 4. display: the result of [mergeDisplay]
  * 5. claims: the result of [mergeClaims]
- * 6. schemas: the schemas of this instance and the schema of parent if one is present
  *
  * @param parent the Type Metadata of a parent Vct
  * @param mergeDisplay function used to merge the [DisplayMetadata] of this instance with those of [parent]
@@ -209,14 +153,12 @@ private fun ResolvedTypeMetadata.mergeWith(
     val newDescription = description ?: parent.description
     val newDisplay = mergeDisplay(display, parent.display?.value.orEmpty())
     val newClaims = mergeClaims(claims, parent.claims.orEmpty())
-    val newSchemas = schemas + listOfNotNull(parent.schema)
     return ResolvedTypeMetadata(
         vct = vct,
         name = newName,
         description = newDescription,
         display = newDisplay,
         claims = newClaims,
-        schemas = newSchemas,
     )
 }
 
@@ -229,7 +171,6 @@ private fun ResolvedTypeMetadata.mergeWith(
  * 3. description: the description of this instance, or the description of parent in case this has no description
  * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
  * 5. claims: the claims of this instance and the claims of parent not already present in this.
- * 6. schemas: the schemas of this instance and the schema of parent if one is present
  *
  * @param parent the Type Metadata of a parent Vct
  */
