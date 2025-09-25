@@ -148,7 +148,6 @@ sealed interface TypeMetadataPolicy {
      */
     data class Optional(
         val resolveTypeMetadata: ResolveTypeMetadata,
-        val jsonSchemaValidator: JsonSchemaValidator?,
     ) : TypeMetadataPolicy
 
     /**
@@ -157,7 +156,6 @@ sealed interface TypeMetadataPolicy {
      */
     data class AlwaysRequired(
         val resolveTypeMetadata: ResolveTypeMetadata,
-        val jsonSchemaValidator: JsonSchemaValidator?,
     ) : TypeMetadataPolicy
 
     /**
@@ -167,7 +165,6 @@ sealed interface TypeMetadataPolicy {
     data class RequiredFor(
         val vcts: Set<Vct>,
         val resolveTypeMetadata: ResolveTypeMetadata,
-        val jsonSchemaValidator: JsonSchemaValidator?,
     ) : TypeMetadataPolicy {
         init {
             require(vcts.isNotEmpty()) { "at least one VCT must be specified" }

@@ -192,8 +192,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
 
     /**
      * Although the SD-JWT contains some obvious errors, [SdJwtDefinition] cannot detect them.
-     * That's actually a limitation of SD-JWT-VC type metadata, which uses JsonSchema
-     * for such validations
+     * That's actually a limitation of SD-JWT-VC type metadata
      */
     @Test
     fun limitationsOfTypeMetadata() = PidDefinition.shouldConsiderValid(
