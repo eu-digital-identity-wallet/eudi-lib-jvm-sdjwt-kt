@@ -452,9 +452,9 @@ val sdJwtVcVerification = runBlocking {
 The library provides robust support for SD-JWT-VC type metadata through the [SdJwtDefinition](src/main/kotlin/eu/europa/ec/eudi/sdjwt/dsl/def/SdJwtDefinition.kt) class. This hierarchical representation accurately models the disclosure and display properties of SD-JWT-VC credentials.
 
 Key features include:
-- Rich metadata representation with `VctMetadata` including name, description, display information, and schemas
-- Automatic handling of claims that should never be selectively disclosable according to the SD-JWT-VC specification
-- Hierarchical structure that accurately represents the disclosure properties of nested objects and arrays
+- Rich metadata representation with `VctMetadata` including name, description and display information  
+- Automatic handling of claims that should never be selectively disclosable according to the SD-JWT-VC specification  
+- Hierarchical structure that accurately represents the disclosure properties of nested objects and arrays  
 
 ### Type Metadata Resolution
 
@@ -469,7 +469,6 @@ Example usage:
 ```kotlin
 val resolver = ResolveTypeMetadata(
     lookupTypeMetadata = LookupTypeMetadataUsingKtor(),
-    lookupJsonSchema = LookupJsonSchemaUsingKtor()
 )
 val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
 ```
