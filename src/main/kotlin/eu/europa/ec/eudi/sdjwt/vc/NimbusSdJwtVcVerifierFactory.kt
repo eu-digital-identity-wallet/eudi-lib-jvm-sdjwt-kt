@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -253,7 +254,7 @@ private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<Nimbus
     try {
         val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
         val vctIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
-            Json.decodeFromString(DocumentIntegrity.serializer(), it)
+            Json.decodeFromJsonElement(DocumentIntegrity.serializer(), JsonPrimitive(it))
         }
         when (this) {
             TypeMetadataPolicy.NotUsed -> null
