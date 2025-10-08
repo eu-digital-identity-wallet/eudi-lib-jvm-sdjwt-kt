@@ -173,6 +173,37 @@ class SdJwtVcVerifierIntegrationTest {
         )
         assertEquals(expectedViolations, sdJwtVcVerificationError.errors[0].orEmpty().map { it.description })
     }
+
+    @Test
+    fun documentIntegrityParsingSuccess() = runTest {
+        val expectedVct = "urn:eudi:ehic:1"
+        val expectedIntegrity = "sha256-LF4WHCjileMGyLqVmGTmOSdiDSCFOo4Nffq/NeXqstc="
+        val serialized = issue {
+            claim(RFC7519.ISSUER, "https://example.com/issuer")
+            claim(SdJwtVcSpec.VCT, expectedVct)
+            claim(SdJwtVcSpec.VCT_INTEGRITY, expectedIntegrity)
+        }
+
+        var documentIntegrityParsed = false
+        val verifier = NimbusSdJwtOps.SdJwtVcVerifier(
+            issuerVerificationMethod = IssuerVerificationMethod.usingCustom(ECDSAVerifier(issuerKey).asJwtVerifier()),
+            TypeMetadataPolicy.Optional(
+                resolveTypeMetadata = ResolveTypeMetadata(
+                    lookupTypeMetadata = { vct, integrity ->
+                        assertEquals(expectedVct, vct.value)
+                        assertEquals(expectedIntegrity, integrity?.value)
+                        documentIntegrityParsed = true
+                        Result.success(null)
+                    },
+                    lookupJsonSchema = { _, _ -> fail("Did not expect to try and resolve Json Schema") },
+                ),
+                jsonSchemaValidator = null,
+            ),
+        )
+
+        verifier.verify(serialized).getOrThrow()
+        assertTrue(documentIntegrityParsed)
+    }
 }
 
 private object JsonSchemaConverter {
