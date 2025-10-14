@@ -135,6 +135,7 @@ object SdJwtVcSpec {
     const val CLAIMS: String = "claims"
     const val CLAIM_PATH: String = "path"
     const val CLAIM_DISPLAY: String = "display"
+    const val CLAIM_MANDATORY: String = "mandatory"
     const val CLAIM_SD: String = "sd"
     const val CLAIM_SD_ALWAYS: String = "always"
     const val CLAIM_SD_ALLOWED: String = "allowed"
