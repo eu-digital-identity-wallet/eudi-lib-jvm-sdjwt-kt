@@ -181,7 +181,24 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
             thisDisplays.mergeWith(parentDisplays, DisplayMetadata::lang) { thisDisplay, _ -> thisDisplay }
         },
         mergeClaims = { thisClaims, parentClaims ->
-            thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, _ -> thisClaim }
+            thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, parentClaim ->
+                if (parentClaim.mandatoryOrDefault)
+                    check(thisClaim.mandatoryOrDefault) {
+                        "The mandatory property of claim ${thisClaim.path} cannot be overridden"
+                    }
+
+                if (parentClaim.selectivelyDisclosableOrDefault in setOf(
+                        ClaimSelectivelyDisclosable.Always,
+                        ClaimSelectivelyDisclosable.Never,
+                    )
+                ) {
+                    check(parentClaim.selectivelyDisclosableOrDefault == thisClaim.selectivelyDisclosableOrDefault) {
+                        "Selectively disclosable property of claim ${thisClaim.path} cannot be overridden"
+                    }
+                }
+
+                thisClaim
+            }
         },
     )
 
