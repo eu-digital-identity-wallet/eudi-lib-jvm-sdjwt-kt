@@ -155,9 +155,11 @@ class ResolveTypeMetadataTest {
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
         val result = typeMetadataResolver(childVct, expectedIntegrity = null)
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()?.claims?.size)
-        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
+        val resolved = result.getOrNull()
+        val claims = assertNotNull(resolved).claims
+        assertEquals(1, claims.size)
+        assertEquals(claimPath, claims.first().path)
+        assertEquals(ClaimSelectivelyDisclosable.Always, claims.first().selectivelyDisclosableOrDefault)
     }
 
     @Test
