@@ -182,19 +182,19 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
         },
         mergeClaims = { thisClaims, parentClaims ->
             thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, parentClaim ->
-                if (parentClaim.mandatory == true)
+                if (parentClaim.mandatoryOrDefault)
                     check(thisClaim.mandatory == true) {
-                        "Parent and child should have mandatory set to true"
+                        "The mandatory property of claim ${thisClaim.path} cannot be overridden"
                     }
 
-                when (parentClaim.selectivelyDisclosable) {
-                    ClaimSelectivelyDisclosable.Always -> check(thisClaim.selectivelyDisclosable == ClaimSelectivelyDisclosable.Always) {
-                        "Child claim ${thisClaim.path} must be selectively disclosable always when parent requires it"
+                if (parentClaim.selectivelyDisclosableOrDefault in setOf(
+                        ClaimSelectivelyDisclosable.Always,
+                        ClaimSelectivelyDisclosable.Never,
+                    )
+                ) {
+                    check(parentClaim.selectivelyDisclosableOrDefault == thisClaim.selectivelyDisclosableOrDefault) {
+                        "Selectively disclosable property of claim ${thisClaim.path} cannot be overridden"
                     }
-                    ClaimSelectivelyDisclosable.Never -> check(thisClaim.selectivelyDisclosable == ClaimSelectivelyDisclosable.Never) {
-                        "Child claim ${thisClaim.path} must be selectively disclosable never when parent requires it"
-                    }
-                    else -> {}
                 }
 
                 thisClaim
