@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ResolveTypeMetadataTest {
@@ -61,9 +62,11 @@ class ResolveTypeMetadataTest {
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
         val result = typeMetadataResolver(childVct, expectedIntegrity = null)
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()?.claims?.size)
-        assertEquals(true, result.getOrNull()?.claims?.first()?.mandatory)
+        val resolved = result.getOrNull()
+        val claims = assertNotNull(resolved).claims
+        assertEquals(1, claims.size)
+        assertEquals(claimPath, claims.first().path)
+        assertTrue(claims.first().mandatoryOrDefault)
     }
 
     @Test
@@ -90,9 +93,11 @@ class ResolveTypeMetadataTest {
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
         val result = typeMetadataResolver(childVct, expectedIntegrity = null)
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()?.claims?.size)
-        assertEquals(true, result.getOrNull()?.claims?.first()?.mandatory)
+        val resolved = result.getOrNull()
+        val claims = assertNotNull(resolved).claims
+        assertEquals(1, claims.size)
+        assertEquals(claimPath, claims.first().path)
+        assertTrue(claims.first().mandatoryOrDefault)
     }
 
     @Test
@@ -122,7 +127,7 @@ class ResolveTypeMetadataTest {
         val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
-        assertContains("The mandatory property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
+        assertContains("The mandatory property of claim $claimPath cannot be overridden", error.message!!)
     }
 
     @Test
@@ -180,9 +185,11 @@ class ResolveTypeMetadataTest {
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
         val result = typeMetadataResolver(childVct, expectedIntegrity = null)
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()?.claims?.size)
-        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
+        val resolved = result.getOrNull()
+        val claims = assertNotNull(resolved).claims
+        assertEquals(1, claims.size)
+        assertEquals(claimPath, claims.first().path)
+        assertEquals(ClaimSelectivelyDisclosable.Always, claims.first().selectivelyDisclosableOrDefault)
     }
 
     @Test
@@ -209,9 +216,11 @@ class ResolveTypeMetadataTest {
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
         val result = typeMetadataResolver(childVct, expectedIntegrity = null)
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()?.claims?.size)
-        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
+        val resolved = result.getOrNull()
+        val claims = assertNotNull(resolved).claims
+        assertEquals(1, claims.size)
+        assertEquals(claimPath, claims.first().path)
+        assertEquals(ClaimSelectivelyDisclosable.Always, claims.first().selectivelyDisclosableOrDefault)
     }
 
     @Test
@@ -241,7 +250,7 @@ class ResolveTypeMetadataTest {
         val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
-        assertContains("Selectively disclosable property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
+        assertContains("Selectively disclosable property of claim $claimPath cannot be overridden", error.message!!)
     }
 
     @Test
@@ -271,6 +280,6 @@ class ResolveTypeMetadataTest {
         val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
-        assertContains("Selectively disclosable property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
+        assertContains("Selectively disclosable property of claim $claimPath cannot be overridden", error.message!!)
     }
 }
