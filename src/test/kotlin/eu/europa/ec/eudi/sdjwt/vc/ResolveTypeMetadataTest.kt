@@ -17,6 +17,8 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -58,7 +60,10 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertTrue(typeMetadataResolver(childVct, expectedIntegrity = null).isSuccess)
+        val result = typeMetadataResolver(childVct, expectedIntegrity = null)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()?.claims?.size)
+        assertEquals(true, result.getOrNull()?.claims?.first()?.mandatory)
     }
 
     @Test
@@ -84,7 +89,10 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertTrue(typeMetadataResolver(childVct, expectedIntegrity = null).isSuccess)
+        val result = typeMetadataResolver(childVct, expectedIntegrity = null)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()?.claims?.size)
+        assertEquals(true, result.getOrNull()?.claims?.first()?.mandatory)
     }
 
     @Test
@@ -111,13 +119,14 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertFailsWith<IllegalStateException> {
+        val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
+        assertContains("The mandatory property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
     }
 
     @Test
-    fun `Resolve succeed when child has Sd Allowed as parent`() = runTest {
+    fun `Resolve succeed when child has Sd Always as parent`() = runTest {
         val parent = SdJwtVcTypeMetadata(
             vct = parentVct,
             claims = listOf(
@@ -140,7 +149,69 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertTrue(typeMetadataResolver(childVct, expectedIntegrity = null).isSuccess)
+        val result = typeMetadataResolver(childVct, expectedIntegrity = null)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()?.claims?.size)
+        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
+    }
+
+    @Test
+    fun `Resolve succeed when child has Sd Always and parent has Allowed`() = runTest {
+        val parent = SdJwtVcTypeMetadata(
+            vct = parentVct,
+            claims = listOf(
+                ClaimMetadata(
+                    path = claimPath,
+                    selectivelyDisclosable = ClaimSelectivelyDisclosable.Allowed,
+                ),
+            ),
+        )
+        val child = SdJwtVcTypeMetadata(
+            vct = childVct,
+            extends = parent.vct.value,
+            claims = listOf(
+                ClaimMetadata(
+                    path = claimPath,
+                    selectivelyDisclosable = ClaimSelectivelyDisclosable.Always,
+                ),
+            ),
+        )
+
+        val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
+
+        val result = typeMetadataResolver(childVct, expectedIntegrity = null)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()?.claims?.size)
+        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
+    }
+
+    @Test
+    fun `Resolve succeed when child has Sd Always and parent doesn't specify`() = runTest {
+        val parent = SdJwtVcTypeMetadata(
+            vct = parentVct,
+            claims = listOf(
+                ClaimMetadata(
+                    path = claimPath,
+                ),
+            ),
+        )
+        val child = SdJwtVcTypeMetadata(
+            vct = childVct,
+            extends = parent.vct.value,
+            claims = listOf(
+                ClaimMetadata(
+                    path = claimPath,
+                    selectivelyDisclosable = ClaimSelectivelyDisclosable.Always,
+                ),
+            ),
+        )
+
+        val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
+
+        val result = typeMetadataResolver(childVct, expectedIntegrity = null)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()?.claims?.size)
+        assertEquals(ClaimSelectivelyDisclosable.Always, result.getOrNull()?.claims?.first()?.selectivelyDisclosable)
     }
 
     @Test
@@ -167,9 +238,10 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertFailsWith<IllegalStateException> {
+        val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
+        assertContains("Selectively disclosable property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
     }
 
     @Test
@@ -196,8 +268,9 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assertFailsWith<IllegalStateException> {
+        val error = assertFailsWith<IllegalStateException> {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
+        assertContains("Selectively disclosable property of claim ${parent.claims?.first()?.path} cannot be overridden", error.message!!)
     }
 }
