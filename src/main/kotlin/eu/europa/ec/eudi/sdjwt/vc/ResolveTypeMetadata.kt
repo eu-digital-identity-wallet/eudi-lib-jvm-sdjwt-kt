@@ -183,7 +183,7 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
         mergeClaims = { thisClaims, parentClaims ->
             thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, parentClaim ->
                 if (parentClaim.mandatoryOrDefault)
-                    check(thisClaim.mandatory == true) {
+                    check(thisClaim.mandatoryOrDefault) {
                         "The mandatory property of claim ${thisClaim.path} cannot be overridden"
                     }
 
