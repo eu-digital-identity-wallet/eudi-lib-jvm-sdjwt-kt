@@ -84,7 +84,7 @@ class ResolveTypeMetadataTest {
 
         val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent))
 
-        assert(typeMetadataResolver(childVct, expectedIntegrity = null).isSuccess)
+        assertTrue(typeMetadataResolver(childVct, expectedIntegrity = null).isSuccess)
     }
 
     @Test
