@@ -111,6 +111,13 @@ data class ClaimMetadata(
     @SerialName(SdJwtVcSpec.CLAIM_DISPLAY) val display: List<ClaimDisplay>? = null,
 
     /**
+     *  indicating that the claim must be present in the issued
+     *   credential
+     *   If omitted, the default value is false
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_MANDATORY) val mandatory: Boolean? = null,
+
+    /**
      *  Indicates whether the claim is selectively disclosable.
      *  If omitted, the default value is [DefaultSelectivelyDisclosable]
      */
@@ -124,11 +131,19 @@ data class ClaimMetadata(
     val selectivelyDisclosableOrDefault: ClaimSelectivelyDisclosable
         get() = selectivelyDisclosable ?: DefaultSelectivelyDisclosable
 
+    val mandatoryOrDefault: Boolean
+        get() = mandatory ?: DefaultMandatory
+
     companion object {
         /**
          * Default [ClaimSelectivelyDisclosable] value is [ClaimSelectivelyDisclosable.Allowed]
          */
         val DefaultSelectivelyDisclosable: ClaimSelectivelyDisclosable = ClaimSelectivelyDisclosable.Allowed
+
+        /**
+         * Default value is false
+         */
+        val DefaultMandatory: Boolean = false
     }
 }
 
