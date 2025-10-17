@@ -50,8 +50,6 @@ dependencies {
     testImplementation(libs.bouncy.castle) {
         because("To generate self-signed X509 Certificates")
     }
-    testImplementation(libs.json.schema.validator)
-    testImplementation(libs.joni)
 }
 
 java {

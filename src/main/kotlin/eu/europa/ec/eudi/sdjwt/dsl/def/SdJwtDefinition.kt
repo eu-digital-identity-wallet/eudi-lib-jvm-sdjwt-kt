@@ -101,7 +101,6 @@ data class VctMetadata(
     val name: String?,
     val description: String?,
     val display: List<DisplayMetadata>,
-    val schemas: List<JsonSchema>,
 )
 
 data class AttributeMetadata(
