@@ -1,12 +1,11 @@
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.gradle.DokkaTask
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
+import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension
 import java.net.URI
 
 plugins {
-    base
-    `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.spotless)
@@ -118,36 +117,35 @@ tasks.jar {
 object Meta {
     const val BASE_URL = "https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt"
 }
-tasks.withType<DokkaTask>().configureEach {
-    dokkaSourceSets {
-        named("main") {
-            // used as project name in the header
-            moduleName.set("EUDI SD-JWT")
 
-            // contains descriptions for the module and the packages
-            includes.from("Module.md")
+//
+// Configuration of Dokka engine
+//
+dokka {
+    // used as project name in the header
+    moduleName = "EUDI SD-JWT"
 
-            documentedVisibilities.set(
-                setOf(
-                    DokkaConfiguration.Visibility.PUBLIC,
-                    DokkaConfiguration.Visibility.PROTECTED,
-                ),
-            )
+    dokkaSourceSets.main {
+        // contains descriptions for the module and the packages
+        includes.from("Module.md")
 
-            val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URI.create("${Meta.BASE_URL}/tree/$it/src").toURL() }
-            remoteSourceUrl
-                ?.let {
-                    sourceLink {
-                        localDirectory.set(projectDir.resolve("src"))
-                        remoteUrl.set(it)
-                        remoteLineSuffix.set("#L")
-                    }
+        documentedVisibilities = setOf(VisibilityModifier.Public, VisibilityModifier.Protected)
+
+        val remoteSourceUrl = System.getenv()["GIT_REF_NAME"]?.let { URI.create("${Meta.BASE_URL}/tree/$it/src") }
+        remoteSourceUrl
+            ?.let {
+                sourceLink {
+                    localDirectory = projectDir.resolve("src")
+                    remoteUrl = it
+                    remoteLineSuffix = "#L"
                 }
-        }
+            }
     }
 }
 
 mavenPublishing {
+    configure(KotlinJvm(javadocJar = JavadocJar.Dokka(tasks.dokkaGeneratePublicationHtml), sourcesJar = true))
+
     pom {
         ciManagement {
             system = "github"
