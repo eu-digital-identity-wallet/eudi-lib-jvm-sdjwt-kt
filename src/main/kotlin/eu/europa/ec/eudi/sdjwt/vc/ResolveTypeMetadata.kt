@@ -169,7 +169,8 @@ private fun ResolvedTypeMetadata.mergeWith(
  * 1. vct: the vct of this instance
  * 2. name: the name of this instance, or the name of parent in case this has no name
  * 3. description: the description of this instance, or the description of parent in case this has no description
- * 4. display: the display of this instance and the display of its parent for the language tags that are not present in this
+ * 4. display: the display of this instance in case it overrides the display of its parent,
+ * otherwise the display of its parent, fallbacks an emtpy list
  * 5. claims: the claims of this instance and the claims of parent not already present in this.
  *
  * @param parent the Type Metadata of a parent Vct
@@ -177,9 +178,7 @@ private fun ResolvedTypeMetadata.mergeWith(
 private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): ResolvedTypeMetadata =
     mergeWith(
         parent = parent,
-        mergeDisplay = { thisDisplays, parentDisplays ->
-            thisDisplays.mergeWith(parentDisplays, DisplayMetadata::lang) { thisDisplay, _ -> thisDisplay }
-        },
+        mergeDisplay = { thisDisplays, parentDisplays -> thisDisplays.ifEmpty { parentDisplays } },
         mergeClaims = { thisClaims, parentClaims ->
             thisClaims.mergeWith(parentClaims, ClaimMetadata::path) { thisClaim, parentClaim ->
                 if (parentClaim.mandatoryOrDefault)
