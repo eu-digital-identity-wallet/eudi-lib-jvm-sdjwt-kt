@@ -274,14 +274,40 @@ data class RenderingMetadata(
 @Serializable
 data class SimpleRenderingMethod(
     /**
-     * An object containing information about the logo to be displayed for the type
+     * An object containing information about the logo to be displayed for the type.
      */
     @SerialName(SdJwtVcSpec.LOGO) val logo: LogoMetadata? = null,
+
     /**
-     * An RGB color value
+     * An object containing information about the background image to be displayed for the type.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE) val backgroundImage: BackgroundImage? = null,
+
+    /**
+     * An RGB color value for the background of the credential.
      */
     @SerialName(SdJwtVcSpec.BACKGROUND_COLOR) val backgroundColor: CssColor? = null,
+
+    /**
+     * An RGB color value for the text of the credential.
+     */
     @SerialName(SdJwtVcSpec.TEXT_COLOR) val textColor: CssColor? = null,
+)
+
+/**
+ * An object containing information about a background image to be displayed.
+ */
+@Serializable
+data class BackgroundImage(
+    /**
+     * A URI pointing to the background image.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE_URI) @Required val uri: String,
+
+    /**
+     * An "integrity metadata" string.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE_URI_INTEGRITY) val integrity: DocumentIntegrity? = null,
 )
 
 @Serializable
