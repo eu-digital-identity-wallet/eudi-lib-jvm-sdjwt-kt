@@ -73,12 +73,12 @@ class FindElementTest {
 
     @Test
     fun testWithKnownPidAttributesDisplay() {
-        fun labelOf(path: ClaimPath, lang: String = "en") =
+        fun labelOf(path: ClaimPath, locale: String = "en") =
             PidDefinition.findElement(path)
                 ?.value
                 ?.attributeMetadata()
                 ?.display
-                ?.first { it.lang.value == lang }
+                ?.first { it.locale.value == locale }
                 ?.label
 
         listOf(

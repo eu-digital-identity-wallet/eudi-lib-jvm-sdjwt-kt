@@ -141,10 +141,10 @@ object SdJwtVcSpec {
     const val CLAIM_SD_ALLOWED: String = "allowed"
     const val CLAIM_SD_NEVER: String = "never"
     const val CLAIM_SVG_ID: String = "svg_id"
-    const val CLAIM_LANG: String = "lang"
+    const val CLAIM_LOCALE: String = "locale"
     const val CLAIM_LABEL = "label"
     const val CLAIM_DESCRIPTION = DESCRIPTION
-    const val LANG: String = "lang"
+    const val LOCALE: String = "locale"
     const val RENDERING: String = "rendering"
     const val SIMPLE: String = "simple"
     const val SVG_TEMPLATES: String = "svg_templates"
