@@ -79,6 +79,10 @@ class TypeMetadataTest {
                         "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V",
                         "alt_text": "Betelgeuse Ministry of Education logo"
                       },
+                      "background_image": {
+                        "uri": "https://betelgeuse.example.com/public/education-logo.png",
+                        "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V"
+                      },
                       "background_color": "#12107c",
                       "text_color": "#FFFFFF"
                     },
