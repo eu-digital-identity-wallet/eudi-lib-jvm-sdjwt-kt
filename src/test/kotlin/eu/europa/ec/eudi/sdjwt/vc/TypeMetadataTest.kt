@@ -29,9 +29,7 @@ class TypeMetadataTest {
               "name":"Betelgeuse Education Credential - Preliminary Version",
               "description":"This is our development version of the education credential. Don't panic.",
               "extends":"https://galaxy.example.com/galactic-education-credential-0.9",
-              "extends#integrity":"sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5",
-              "schema_uri":"https://exampleuniversity.com/public/credential-schema-0.9",
-              "schema_uri#integrity":"sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
+              "extends#integrity":"sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5"
             }
         """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json)
@@ -44,12 +42,12 @@ class TypeMetadataTest {
       "path": ["name"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Vor- und Nachname",
           "description": "Der Name des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Name",
           "description": "The name of the student"
         }
@@ -71,7 +69,7 @@ class TypeMetadataTest {
               "extends#integrity": "sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "name": "Betelgeuse Education Credential",
                   "description": "An education credential for all carbon-based life forms on Betelgeusians",
                   "rendering": {
@@ -80,6 +78,10 @@ class TypeMetadataTest {
                         "uri": "https://betelgeuse.example.com/public/education-logo.png",
                         "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V",
                         "alt_text": "Betelgeuse Ministry of Education logo"
+                      },
+                      "background_image": {
+                        "uri": "https://betelgeuse.example.com/public/education-logo.png",
+                        "uri#integrity": "sha256-LmXfh9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1V"
                       },
                       "background_color": "#12107c",
                       "text_color": "#FFFFFF"
@@ -98,7 +100,7 @@ class TypeMetadataTest {
                   }
                 },
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "name": "Betelgeuse-Bildungsnachweis",
                   "rendering": {
                     "simple": {
@@ -129,12 +131,12 @@ class TypeMetadataTest {
                   "path": ["name"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Vor- und Nachname",
                       "description": "Der Name des Studenten"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Name",
                       "description": "The name of the student"
                     }
@@ -145,12 +147,12 @@ class TypeMetadataTest {
                   "path": ["address"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Adresse",
                       "description": "Adresse zum Zeitpunkt des Abschlusses"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Address",
                       "description": "Address at the time of graduation"
                     }
@@ -161,11 +163,11 @@ class TypeMetadataTest {
                   "path": ["address", "street_address"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Straße"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Street Address"
                     }
                   ],
@@ -176,21 +178,19 @@ class TypeMetadataTest {
                   "path": ["degrees", null],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Abschluss",
                       "description": "Der Abschluss des Studenten"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Degree",
                       "description": "Degree earned by the student"
                     }
                   ],
                   "sd": "allowed"
                 }
-              ],
-              "schema_uri": "https://exampleuniversity.com/public/credential-schema-0.9",
-              "schema_uri#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5caxGgX3c1VLmXfh"
+              ]
             }
         """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json).also(::println)
