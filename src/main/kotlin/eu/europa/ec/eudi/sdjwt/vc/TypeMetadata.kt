@@ -152,7 +152,7 @@ data class ClaimDisplay(
     /**
      *  A language tag
      */
-    @SerialName(SdJwtVcSpec.CLAIM_LANG) @Required val lang: LangTag,
+    @SerialName(SdJwtVcSpec.CLAIM_LOCALE) @Required val locale: LangTag,
 
     /**
      * A human-readable label for the claim, intended for end users
@@ -230,7 +230,7 @@ value class Display(val value: List<DisplayMetadata>) {
 
     companion object {
         fun List<DisplayMetadata>.requireUniqueLang() {
-            val uniqueLangEntries = map { it.lang }.toSet().count()
+            val uniqueLangEntries = map { it.locale }.toSet().count()
             require(size == uniqueLangEntries) {
                 "The list display must contain a single item per language"
             }
@@ -244,7 +244,7 @@ data class DisplayMetadata(
     /**
      * A language tag
      */
-    @SerialName(SdJwtVcSpec.LANG) @Required val lang: LangTag,
+    @SerialName(SdJwtVcSpec.LOCALE) @Required val locale: LangTag,
 
     /**
      * A human-readable name for the type, intended for end users

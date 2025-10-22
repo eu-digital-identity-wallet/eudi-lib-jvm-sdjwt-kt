@@ -3,7 +3,7 @@
   "name": "Type Metadata for Person Identification Data",
   "display": [
     {
-      "lang": "en",
+      "locale": "en",
       "name": "PID",
       "description": "Person Identification Data"
     }
@@ -15,7 +15,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Family Name(s)"
         }
       ],
@@ -27,7 +27,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Given Name(s)"
         }
       ],
@@ -39,7 +39,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Birth Date"
         }
       ],
@@ -51,7 +51,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Birth Place"
         }
       ],
@@ -64,7 +64,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Locality"
         }
       ],
@@ -77,7 +77,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Region"
         }
       ],
@@ -90,7 +90,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Country"
         }
       ],
@@ -102,7 +102,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Nationality"
         }
       ],
@@ -121,7 +121,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Address"
         }
       ],
@@ -134,7 +134,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "House Number"
         }
       ],
@@ -147,7 +147,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Street"
         }
       ],
@@ -160,7 +160,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Locality"
         }
       ],
@@ -173,7 +173,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Region"
         }
       ],
@@ -186,7 +186,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Postal Code"
         }
       ],
@@ -199,7 +199,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Country"
         }
       ],
@@ -212,7 +212,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Full Address"
         }
       ],
@@ -224,7 +224,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Personal Administrative Number"
         }
       ],
@@ -236,7 +236,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Portrait Image"
         }
       ],
@@ -248,7 +248,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Birth Family Name(s)"
         }
       ],
@@ -260,7 +260,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Birth Given Name(s)"
         }
       ],
@@ -272,7 +272,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Sex"
         }
       ],
@@ -284,7 +284,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Email Address"
         }
       ],
@@ -296,7 +296,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Mobile Phone Number"
         }
       ],
@@ -308,7 +308,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Expiry Date"
         }
       ],
@@ -320,7 +320,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Issuing Authority"
         }
       ],
@@ -332,7 +332,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Issuing Country"
         }
       ],
@@ -344,7 +344,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Document Number"
         }
       ],
@@ -356,7 +356,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Issuing Jurisdiction"
         }
       ],
@@ -368,7 +368,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Issuance Date"
         }
       ],
@@ -380,7 +380,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Age Equal or Over"
         }
       ],
@@ -393,7 +393,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Age Over 18"
         }
       ],
@@ -405,7 +405,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Age in Years"
         }
       ],
@@ -417,7 +417,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Age Year of Birth"
         }
       ],
@@ -429,7 +429,7 @@
       ],
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "label": "Trust Anchor"
         }
       ],

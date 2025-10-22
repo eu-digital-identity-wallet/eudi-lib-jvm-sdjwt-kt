@@ -42,12 +42,12 @@ class TypeMetadataTest {
       "path": ["name"],
       "display": [
         {
-          "lang": "de-DE",
+          "locale": "de-DE",
           "label": "Vor- und Nachname",
           "description": "Der Name des Studenten"
         },
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "Name",
           "description": "The name of the student"
         }
@@ -69,7 +69,7 @@ class TypeMetadataTest {
               "extends#integrity": "sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "name": "Betelgeuse Education Credential",
                   "description": "An education credential for all carbon-based life forms on Betelgeusians",
                   "rendering": {
@@ -96,7 +96,7 @@ class TypeMetadataTest {
                   }
                 },
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "name": "Betelgeuse-Bildungsnachweis",
                   "rendering": {
                     "simple": {
@@ -127,12 +127,12 @@ class TypeMetadataTest {
                   "path": ["name"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Vor- und Nachname",
                       "description": "Der Name des Studenten"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Name",
                       "description": "The name of the student"
                     }
@@ -143,12 +143,12 @@ class TypeMetadataTest {
                   "path": ["address"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Adresse",
                       "description": "Adresse zum Zeitpunkt des Abschlusses"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Address",
                       "description": "Address at the time of graduation"
                     }
@@ -159,11 +159,11 @@ class TypeMetadataTest {
                   "path": ["address", "street_address"],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Straße"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Street Address"
                     }
                   ],
@@ -174,12 +174,12 @@ class TypeMetadataTest {
                   "path": ["degrees", null],
                   "display": [
                     {
-                      "lang": "de-DE",
+                      "locale": "de-DE",
                       "label": "Abschluss",
                       "description": "Der Abschluss des Studenten"
                     },
                     {
-                      "lang": "en-US",
+                      "locale": "en-US",
                       "label": "Degree",
                       "description": "Degree earned by the student"
                     }
