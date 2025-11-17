@@ -197,7 +197,7 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
 
     data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
 
-    data class X509CertChain(val iss: Url, val chain: List<X509Certificate>) : SdJwtVcIssuerPublicKeySource
+    data class X509CertChain(val chain: List<X509Certificate>) : SdJwtVcIssuerPublicKeySource
 
     data class DIDUrl(val iss: String, val kid: String?) : SdJwtVcIssuerPublicKeySource
 }
@@ -212,29 +212,10 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     val issUrl = iss?.let { runCatchingCancellable { Url(it) }.getOrNull() }
     val issScheme = issUrl?.protocol?.name
 
-    fun X509Certificate.containsIssuerDnsName(iss: Url): Boolean {
-        val issuerFQDN = iss.host
-        val dnsNames = sanOfDNSName().getOrDefault(emptyList())
-        return issuerFQDN in dnsNames
-    }
-
-    fun X509Certificate.containsIssuerUri(iss: Url): Boolean {
-        val names = sanOfUniformResourceIdentifier().getOrDefault(emptyList())
-        return iss.toString() in names
-    }
-
     return when {
-        issScheme == HTTPS_URI_SCHEME && certChain.isNotEmpty() -> {
-            val leaf = certChain.first()
-            if (leaf.containsIssuerUri(issUrl) || leaf.containsIssuerDnsName(issUrl)) X509CertChain(
-                issUrl,
-                certChain,
-            )
-            else raise(UntrustedIssuerCertificate("Failed to find $issUrl in SAN URI or SAN DNS entries of provided leaf certificate"))
-        }
-
+        certChain.isNotEmpty() -> X509CertChain(certChain)
         issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
-        issScheme == DID_URI_SCHEME && certChain.isEmpty() -> DIDUrl(iss, kid)
+        issScheme == DID_URI_SCHEME -> DIDUrl(iss, kid)
         else -> raise(CannotDetermineIssuerVerificationMethod)
     }
 }
