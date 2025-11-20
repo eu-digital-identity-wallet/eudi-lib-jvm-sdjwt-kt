@@ -26,6 +26,6 @@ class ExampleSdJwtVerifiableCredentials01Test {
 
     @Test
     fun testExampleSdJwtVerifiableCredentials01() {
-        sdJwtVc.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 21)
+        sdJwtVc.assertThat("Appendix A.3 - SD-JWT-Based Verifiable Credentials (SD-JWT VC)", 21)
     }
 }
