@@ -26,6 +26,6 @@ class ExampleFlatSdJwt01Test {
 
     @Test
     fun testExampleFlatSdJwt01() {
-        flatSdJwt.assertThat("Example 1: Flat SD-JWT", 1)
+        flatSdJwt.assertThat("Example: Flat SD-JWT", 1)
     }
 }

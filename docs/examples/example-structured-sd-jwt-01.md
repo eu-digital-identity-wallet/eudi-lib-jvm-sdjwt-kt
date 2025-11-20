@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleStructuredSdJwt01Test --> 
 
-# Example 2: Structured SD-JWT
+# Example: Structured SD-JWT
 
-Check [specification Example 2: Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-structured-sd-jwt)
+Check [RFC Example: Structured SD-JWT](https://www.rfc-editor.org/rfc/rfc9901.html#name-example-structured-sd-jwt)
 
 The example below demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT which contains claim `sub` plain and `address` claim contents selectively disclosable individually
@@ -61,4 +61,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleStructuredSdJwt01.kt).
 
-<!--- TEST structuredSdJwt.assertThat("Example 2: Structured SD-JWT", 4) -->
+<!--- TEST structuredSdJwt.assertThat("Example: Structured SD-JWT", 4) -->

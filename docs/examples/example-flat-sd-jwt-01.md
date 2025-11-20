@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleFlatSdJwt01Test --> 
 
-# Example 1: Flat SD-JWT
+# Example: Flat SD-JWT
 
-Check [specification Example 1: Flat SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-flat-sd-jwt)
+Check [RFC Example: Flat SD-JWT](https://www.rfc-editor.org/rfc/rfc9901.html#name-example-flat-sd-jwt)
 
 The example below demonstrates the usage of the library mixed with the Kotlinx Serialization DSL
 to produce a SD-JWT.
@@ -56,4 +56,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleFlatSdJwt01.kt).
 
-<!--- TEST flatSdJwt.assertThat("Example 1: Flat SD-JWT", 1) -->
+<!--- TEST flatSdJwt.assertThat("Example: Flat SD-JWT", 1) -->

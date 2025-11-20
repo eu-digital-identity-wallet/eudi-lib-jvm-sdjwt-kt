@@ -1,9 +1,9 @@
 <!--- TEST_NAME ExampleComplexStructured01Test --> 
 
-# Appendix 2 - Example 3: Complex Structured SD-JWT
+# Appendix A.2 - Complex Structured SD-JWT
 
 Description of the example in
-the [specification Appendix 2 - Example 3: Complex Structured SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-3-complex-structure)
+the [RFC Appendix A.2 - Complex Structured SD-JWT](https://www.rfc-editor.org/rfc/rfc9901.html#name-complex-structured-sd-jwt)
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -128,4 +128,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleComplexStructured01.kt).
 
-<!--- TEST complexStructuredSdJwt.assertThat("Appendix 2 - Example 3: Complex Structured SD-JWT", 16) -->
+<!--- TEST complexStructuredSdJwt.assertThat("Appendix A.2 - Complex Structured SD-JWT", 16) -->

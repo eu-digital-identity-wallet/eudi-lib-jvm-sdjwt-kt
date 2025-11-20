@@ -26,6 +26,6 @@ class ExampleHandlingStructuredClaims01Test {
 
     @Test
     fun testExampleHandlingStructuredClaims01() {
-        handlingStructuredClaims.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10)
+        handlingStructuredClaims.assertThat("Appendix A.1 - Handling Structured Claims", 10)
     }
 }

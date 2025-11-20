@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleHandlingStructuredClaims01Test --> 
 
-# Appendix A-1 - Example 2: Handling Structured Claims
+# Appendix A.1: Handling Structured Claims
 
-Description of the example in the [specification Appending A-1 - Example 2: Handling Structured Claims](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-2-handling-structur)
+Description of the example in the [RFC Appendix A.1 - Handling Structured Claims](https://www.rfc-editor.org/rfc/rfc9901.html#name-simple-structured-sd-jwt)
 
 In this example, the Issuer decided to create a structured object for the `address` claim, allowing to separately 
 disclose individual members of the claim.
@@ -79,4 +79,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleHandlingStructuredClaims01.kt).
 
-<!--- TEST handlingStructuredClaims.assertThat("Appendix 1 - Example 2: Handling Structured Claims", 10) -->
+<!--- TEST handlingStructuredClaims.assertThat("Appendix A.1 - Handling Structured Claims", 10) -->
