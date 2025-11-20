@@ -251,12 +251,12 @@ private fun interface KeyBindingVerifierOps<JWT> {
                     }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
 
                     val keyBindingJwtClaims = claimsOf(keyBindingJwt)
-                    val sdHash = keyBindingJwtClaims[SdJwtSpec.CLAIM_SD_HASH]
+                    val sdHash = keyBindingJwtClaims[RFC9901.CLAIM_SD_HASH]
                         ?.takeIf { element -> element is JsonPrimitive && element.isString }
                         ?.jsonPrimitive
                         ?.contentOrNull
                     if (expectedDigest.value != sdHash) throw InvalidKeyBindingJwt(
-                        "${SdJwtSpec.CLAIM_SD_HASH} claim contains an invalid value",
+                        "${RFC9901.CLAIM_SD_HASH} claim contains an invalid value",
                     ).asException()
 
                     return keyBindingJwt

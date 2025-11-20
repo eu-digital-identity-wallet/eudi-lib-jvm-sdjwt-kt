@@ -268,13 +268,13 @@ private val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDig
     DeepRecursiveFunction { claims ->
         claims.flatMap { (attribute, json) ->
             when {
-                attribute == SdJwtSpec.CLAIM_SD && json is JsonArray ->
+                attribute == RFC9901.CLAIM_SD && json is JsonArray ->
                     json.mapNotNull { element ->
                         if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
                         else null
                     }
 
-                attribute == SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
+                attribute == RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
                     DisclosureDigest.wrap(json.content).getOrNull()
                         ?.let { listOf(it) }
                         ?: emptyList()

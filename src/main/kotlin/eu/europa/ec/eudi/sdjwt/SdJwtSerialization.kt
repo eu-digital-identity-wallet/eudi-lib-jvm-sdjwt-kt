@@ -231,10 +231,10 @@ internal object StandardSerialization {
      * @throws SdJwtVerificationException with a [ParsingError] in case the given string cannot be parsed
      */
     fun parse(unverifiedSdJwt: String): Triple<Jwt, List<String>, Jwt?> {
-        val parts = unverifiedSdJwt.split(SdJwtSpec.DISCLOSURE_SEPARATOR)
+        val parts = unverifiedSdJwt.split(RFC9901.DISCLOSURE_SEPARATOR)
         if (parts.size <= 1) throw ParsingError.asException()
         val jwt = parts[0]
-        val containsKeyBinding = !unverifiedSdJwt.endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)
+        val containsKeyBinding = !unverifiedSdJwt.endsWith(RFC9901.DISCLOSURE_SEPARATOR)
         val ds = parts
             .drop(1)
             .run { if (containsKeyBinding) dropLast(1) else this }
@@ -245,9 +245,9 @@ internal object StandardSerialization {
 
     private fun <T> Iterable<T>.concat(get: (T) -> String): String =
         joinToString(
-            prefix = "${SdJwtSpec.DISCLOSURE_SEPARATOR}",
+            prefix = "${RFC9901.DISCLOSURE_SEPARATOR}",
             separator = "",
-        ) { "${get(it)}${SdJwtSpec.DISCLOSURE_SEPARATOR}" }
+        ) { "${get(it)}${RFC9901.DISCLOSURE_SEPARATOR}" }
 }
 
 internal object JwsJsonSupport {
@@ -261,9 +261,9 @@ internal object JwsJsonSupport {
     ): JsonObject {
         fun JsonObjectBuilder.putHeadersAndSignature() {
             putJsonObject(RFC7515.JWS_JSON_HEADER) {
-                put(SdJwtSpec.JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
+                put(RFC9901.JWS_JSON_DISCLOSURES, JsonArray(disclosures.map { JsonPrimitive(it) }))
                 if (kbJwt != null) {
-                    put(SdJwtSpec.JWS_JSON_KB_JWT, kbJwt)
+                    put(RFC9901.JWS_JSON_KB_JWT, kbJwt)
                 }
             }
             put(RFC7515.JWS_JSON_PROTECTED, protected)
@@ -320,7 +320,7 @@ internal object JwsJsonSupport {
             ?.jsonObject
 
         // SD-JWT specification extends RFC7515 with a "disclosures" top-level JSON array
-        val unverifiedDisclosures = unprotectedHeader?.get(SdJwtSpec.JWS_JSON_DISCLOSURES)
+        val unverifiedDisclosures = unprotectedHeader?.get(RFC9901.JWS_JSON_DISCLOSURES)
             ?.takeIf { element -> element is JsonArray }
             ?.jsonArray
             ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
