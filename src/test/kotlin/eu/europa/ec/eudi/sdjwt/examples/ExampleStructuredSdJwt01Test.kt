@@ -26,6 +26,6 @@ class ExampleStructuredSdJwt01Test {
 
     @Test
     fun testExampleStructuredSdJwt01() {
-        structuredSdJwt.assertThat("Example 2: Structured SD-JWT", 4)
+        structuredSdJwt.assertThat("Example: Structured SD-JWT", 4)
     }
 }

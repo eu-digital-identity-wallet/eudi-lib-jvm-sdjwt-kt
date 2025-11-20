@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleRecursiveSdJwt01Test -->
 
-# Example 3: SD-JWT with Recursive Disclosures
+# Example: SD-JWT with Recursive Disclosures
 
-Check [specification Example 3: SD-JWT with Recursive Disclosures](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-sd-jwt-with-recursi)
+Check [RFC Example: SD-JWT with Recursive Disclosures](https://www.rfc-editor.org/rfc/rfc9901.html#name-example-sd-jwt-with-recursi)
 
 The Issuer may also decide to make the address claim contents selectively disclosable recursively, i.e., 
 the `address` claim is made selectively disclosable as well as its sub-claims:
@@ -57,4 +57,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleRecursiveSdJwt01.kt).
 
-<!--- TEST recursiveSdJwt.assertThat("Example 3: Recursive SD-JWT", 5) -->
+<!--- TEST recursiveSdJwt.assertThat("Example: Recursive SD-JWT", 5) -->
