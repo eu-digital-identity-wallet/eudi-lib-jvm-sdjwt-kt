@@ -57,4 +57,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleRecursiveSdJwt01.kt).
 
-<!--- TEST recursiveSdJwt.assertThat("Example: Recursive SD-JWT", 5) -->
+<!--- TEST recursiveSdJwt.assertThat("Example: SD-JWT with Recursive Disclosures", 5) -->
