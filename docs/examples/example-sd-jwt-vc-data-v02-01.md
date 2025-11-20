@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleSdJwtVcDataV201Test --> 
 
-# Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0
+# Appendix A.4 - W3C Verifiable Credentials Data Model v2.0
 
-Description of the example in the [specification Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-4b-w3c-verifiable-c)
+Description of the example in the [RFC Appendix A.4 - W3C Verifiable Credentials Data Model v2.0](https://www.rfc-editor.org/rfc/rfc9901.html#name-w3c-verifiable-credentials-)
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -140,4 +140,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVcDataV01.kt).
 
-<!--- TEST sdJwtVcDataV2.assertThat("Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0", 14) -->
+<!--- TEST sdJwtVcDataV2.assertThat("Appendix A.4 - W3C Verifiable Credentials Data Model v2.0", 14) -->
