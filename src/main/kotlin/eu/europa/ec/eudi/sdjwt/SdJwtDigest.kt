@@ -64,12 +64,12 @@ value class SdJwtDigest private constructor(val value: String) {
             hashAlgorithm: HashAlgorithm,
             value: String,
         ): Result<SdJwtDigest> = runCatchingCancellable {
-            require(value.contains(SdJwtSpec.DISCLOSURE_SEPARATOR))
+            require(value.contains(RFC9901.DISCLOSURE_SEPARATOR))
             fun String.noKeyBinding() =
-                if (endsWith(SdJwtSpec.DISCLOSURE_SEPARATOR)) {
+                if (endsWith(RFC9901.DISCLOSURE_SEPARATOR)) {
                     this
                 } else {
-                    removeRange(lastIndexOf(SdJwtSpec.DISCLOSURE_SEPARATOR) + 1, length)
+                    removeRange(lastIndexOf(RFC9901.DISCLOSURE_SEPARATOR) + 1, length)
                 }
 
             val input = value.noKeyBinding().encodeToByteArray()

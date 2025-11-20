@@ -79,11 +79,11 @@ private operator fun Disclosed.plus(that: Disclosed): Disclosed {
     // Merge JSON objects
     val mergedJson = JsonObject(this.result.jsonObject + that.result.jsonObject)
     // Merge SD claims if present in both objects
-    val accSdClaims = this.result.jsonObject[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList<JsonElement>())
-    val currentSdClaims = that.result.jsonObject[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
+    val accSdClaims = this.result.jsonObject[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList<JsonElement>())
+    val currentSdClaims = that.result.jsonObject[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
     val mergedResult = if (accSdClaims.isNotEmpty() || currentSdClaims.isNotEmpty()) {
         val mergedSdClaims = JsonArray(accSdClaims + currentSdClaims)
-        JsonObject(mergedJson + (SdJwtSpec.CLAIM_SD to mergedSdClaims))
+        JsonObject(mergedJson + (RFC9901.CLAIM_SD to mergedSdClaims))
     } else {
         mergedJson
     }
@@ -154,7 +154,7 @@ class SdJwtFactory(
      */
     private fun addDecoyDigests(folded: Disclosed): Disclosed {
         val foldedObj = folded.result.jsonObject // Ensure it's treated as an object for post-processing
-        val sdClaims = foldedObj[SdJwtSpec.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
+        val sdClaims = foldedObj[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
 
         // No need to add decoys if there are no SD claims
         if (sdClaims.isEmpty()) {
@@ -168,7 +168,7 @@ class SdJwtFactory(
         // Sort the combined list of digests and decoys to make the order unpredictable
         val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
         val foldedObjWithDecoys = if (digestsAndDecoys.isNotEmpty()) {
-            JsonObject(foldedObj + (SdJwtSpec.CLAIM_SD to JsonArray(digestsAndDecoys)))
+            JsonObject(foldedObj + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
         } else {
             foldedObj
         }
@@ -178,7 +178,7 @@ class SdJwtFactory(
 
     private val objectHandlers = object : ObjectFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
-            buildJsonObject { putJsonArray(SdJwtSpec.CLAIM_SD) { add(digest.value) } }
+            buildJsonObject { putJsonArray(RFC9901.CLAIM_SD) { add(digest.value) } }
 
         override fun ifId(
             path: List<String?>,
@@ -367,7 +367,7 @@ class SdJwtFactory(
      */
     private fun addHashAlgClaim(jwtClaimSet: JsonObject, disclosures: List<Disclosure>): JsonObject {
         return if (disclosures.isEmpty()) jwtClaimSet
-        else JsonObject(jwtClaimSet + (SdJwtSpec.CLAIM_SD_ALG to JsonPrimitive(hashAlgorithm.alias)))
+        else JsonObject(jwtClaimSet + (RFC9901.CLAIM_SD_ALG to JsonPrimitive(hashAlgorithm.alias)))
     }
 
     /**

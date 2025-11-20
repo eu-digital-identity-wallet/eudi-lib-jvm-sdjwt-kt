@@ -37,7 +37,7 @@ object DefaultSdJwtOps :
 private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
     serializeJwt = { (jwt, _) -> jwt },
     hashAlgorithm = { (_, claims) ->
-        claims[SdJwtSpec.CLAIM_SD_ALG]?.jsonPrimitive?.contentOrNull
+        claims[RFC9901.CLAIM_SD_ALG]?.jsonPrimitive?.contentOrNull
             ?.let { checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" } }
     },
 )
