@@ -26,6 +26,6 @@ class ExampleRecursiveSdJwt01Test {
 
     @Test
     fun testExampleRecursiveSdJwt01() {
-        recursiveSdJwt.assertThat("Example 3: Recursive SD-JWT", 5)
+        recursiveSdJwt.assertThat("Example: SD-JWT with Recursive Disclosures", 5)
     }
 }

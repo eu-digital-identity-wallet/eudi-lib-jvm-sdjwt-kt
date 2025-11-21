@@ -26,6 +26,6 @@ class ExampleSdJwtVcDataV201Test {
 
     @Test
     fun testExampleSdJwtVcDataV01() {
-        sdJwtVcDataV2.assertThat("Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0", 14)
+        sdJwtVcDataV2.assertThat("Appendix A.4 - W3C Verifiable Credentials Data Model v2.0", 14)
     }
 }

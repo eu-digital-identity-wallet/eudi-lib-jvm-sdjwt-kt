@@ -26,6 +26,6 @@ class ExampleComplexStructured01Test {
 
     @Test
     fun testExampleComplexStructured01() {
-        complexStructuredSdJwt.assertThat("Appendix 2 - Example 3: Complex Structured SD-JWT", 16)
+        complexStructuredSdJwt.assertThat("Appendix A.2 - Complex Structured SD-JWT", 16)
     }
 }

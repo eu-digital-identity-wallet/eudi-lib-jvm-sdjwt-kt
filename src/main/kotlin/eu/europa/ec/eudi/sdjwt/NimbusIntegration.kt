@@ -275,7 +275,7 @@ object NimbusSdJwtOps :
         withContext(Dispatchers.IO) {
             runCatchingCancellable {
                 val header = NimbusJWSHeader.Builder(signAlgorithm).apply {
-                    type(NimbusJOSEObjectType(SdJwtSpec.MEDIA_SUBTYPE_KB_JWT))
+                    type(NimbusJOSEObjectType(RFC9901.MEDIA_SUBTYPE_KB_JWT))
                     val pk = publicKey
                     if (pk is NimbusJWK) {
                         keyID(pk.keyID)
@@ -283,7 +283,7 @@ object NimbusSdJwtOps :
                 }.build()
                 val claimSet = NimbusJWTClaimsSet.Builder().apply {
                     claimSetBuilderAction()
-                    claim(SdJwtSpec.CLAIM_SD_HASH, sdJwtDigest.value)
+                    claim(RFC9901.CLAIM_SD_HASH, sdJwtDigest.value)
                 }.build()
 
                 NimbusSignedJWT(header, claimSet).apply { sign(signer) }.serialize()
@@ -303,7 +303,7 @@ private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
             jwt.serialize()
         },
         hashAlgorithm = { jwt ->
-            jwt.jwtClaimsSet.getStringClaim(SdJwtSpec.CLAIM_SD_ALG)?.let {
+            jwt.jwtClaimsSet.getStringClaim(RFC9901.CLAIM_SD_ALG)?.let {
                 checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" }
             }
         },

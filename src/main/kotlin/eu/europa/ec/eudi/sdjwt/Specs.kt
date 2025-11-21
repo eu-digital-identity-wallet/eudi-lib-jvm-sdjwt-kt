@@ -16,10 +16,10 @@
 package eu.europa.ec.eudi.sdjwt
 
 /**
- * [Selective Disclosure for JWTs (SD-JWT)](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+ * [Selective Disclosure for JWTs (SD-JWT)](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
 @Suppress("UNUSED")
-object SdJwtSpec {
+object RFC9901 {
     /**
      * Digests of Disclosures for object properties
      */

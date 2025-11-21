@@ -28,7 +28,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 This is a library offering a DSL (domain-specific language) for defining how a set of claims should be made selectively
 disclosable.
 
-Library implements [SD-JWT draft 12](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-12.html)
+Library implements [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html)
 is implemented in Kotlin, targeting JVM.
 
 Library's SD-JWT DSL leverages the DSL provided by
@@ -377,13 +377,13 @@ All examples assume that we have the following claim set
 }
 ```
 
-- [Example 1: Flat SD-JWT](docs/examples/example-flat-sd-jwt-01.md)
-- [Example 2: Structured SD-JWT](docs/examples/example-structured-sd-jwt-01.md)
-- [Example 3: SD-JWT with Recursive Disclosures](docs/examples/example-recursive-sd-jwt-01.md)
-- [Appendix 1 - Example 2: Handling Structured Claims](docs/examples/example-handling-structure-claims-01.md)
-- [Appendix 2 - Example 3: Complex Structured SD-JWT](docs/examples/example-complex-structured-sd-jwt-01.md)
-- [Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example-sd-jwt-vc-01.md)
-- [Appendix 4 - Example 4b: W3C Verifiable Credentials Data Model v2.0](docs/examples/example-sd-jwt-vc-data-v02-01.md)
+- [Example: Flat SD-JWT](docs/examples/example-flat-sd-jwt-01.md)
+- [Example: Structured SD-JWT](docs/examples/example-structured-sd-jwt-01.md)
+- [Example: SD-JWT with Recursive Disclosures](docs/examples/example-recursive-sd-jwt-01.md)
+- [Appendix A.1 - Handling Structured Claims](docs/examples/example-handling-structure-claims-01.md)
+- [Appendix A.2 - Complex Structured SD-JWT](docs/examples/example-complex-structured-sd-jwt-01.md)
+- [Appendix A.3 - SD-JWT-based Verifiable Credentials (SD-JWT VC)](docs/examples/example-sd-jwt-vc-01.md)
+- [Appendix A.4 - W3C Verifiable Credentials Data Model v2.0](docs/examples/example-sd-jwt-vc-data-v02-01.md)
 
 ## SD-JWT VC support
 

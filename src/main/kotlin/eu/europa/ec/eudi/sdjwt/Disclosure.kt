@@ -32,7 +32,7 @@ sealed interface Disclosure {
      */
     fun claim(): Claim {
         val (_, name, value) = decode(value).getOrThrow()
-        return (name ?: SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST) to value
+        return (name ?: RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) to value
     }
 
     @JvmInline
@@ -111,7 +111,7 @@ sealed interface Disclosure {
             claim: Claim,
         ): Result<ObjectProperty> {
             fun Claim.ensureValidAttributeName() {
-                val reserved = setOf(SdJwtSpec.CLAIM_SD_ALG, SdJwtSpec.CLAIM_SD, SdJwtSpec.CLAIM_ARRAY_ELEMENT_DIGEST)
+                val reserved = setOf(RFC9901.CLAIM_SD_ALG, RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
                 require(name() !in reserved) {
                     "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or")}"
                 }

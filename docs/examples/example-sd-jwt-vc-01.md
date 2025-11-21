@@ -1,8 +1,8 @@
 <!--- TEST_NAME ExampleSdJwtVerifiableCredentials01Test --> 
 
-# Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)
+# Appendix A.3 - SD-JWT-based Verifiable Credentials (SD-JWT VC)
 
-Description of the example in the [specification Appendix 3 - Example 4a: SD-JWT-based Verifiable Credentials (SD-JWT VC)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-08.html#name-example-4a-sd-jwt-based-ver)
+Description of the example in the [RFC Appendix A.3 - SD-JWT-Based Verifiable Credentials (SD-JWT VC)](https://www.rfc-editor.org/rfc/rfc9901.html#name-sd-jwt-based-verifiable-cre)
 
 <!--- INCLUDE
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
@@ -130,4 +130,4 @@ and the following disclosures (salt omitted):
 
 > You can get the full code [here](../../src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVerifiableCredentials01.kt).
 
-<!--- TEST sdJwtVc.assertThat("Appendix 3 - Example 4a: SD-JWT VC", 21) -->
+<!--- TEST sdJwtVc.assertThat("Appendix A.3 - SD-JWT-Based Verifiable Credentials (SD-JWT VC)", 21) -->
