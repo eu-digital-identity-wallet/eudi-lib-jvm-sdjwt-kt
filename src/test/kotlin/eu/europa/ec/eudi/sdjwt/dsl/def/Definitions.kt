@@ -26,7 +26,6 @@ internal fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
         description = description,
         display = checkNotNull(display).value,
         claims = checkNotNull(claims),
-        schemas = schema?.let { listOf(it) }.orEmpty(),
     )
 }
 
@@ -39,7 +38,7 @@ internal val addressMeta = """
       "name": "Addresses",
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "name": "Addresses"
         }
       ],
@@ -63,7 +62,7 @@ internal val pidMeta = """
       "name": "Type Metadata for Person Identification Data",
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "name": "PID",
           "description": "Person Identification Data"
         }
@@ -75,7 +74,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Family Name(s)"
             }
           ],
@@ -87,7 +86,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Given Name(s)"
             }
           ],
@@ -99,7 +98,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Birth Date"
             }
           ],
@@ -111,7 +110,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Birth Place"
             }
           ],
@@ -124,7 +123,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Locality"
             }
           ],
@@ -137,7 +136,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Region"
             }
           ],
@@ -150,7 +149,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Country"
             }
           ],
@@ -162,7 +161,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Nationality"
             }
           ],
@@ -181,7 +180,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Address"
             }
           ],
@@ -194,7 +193,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "House Number"
             }
           ],
@@ -207,7 +206,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Street"
             }
           ],
@@ -220,7 +219,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Locality"
             }
           ],
@@ -233,7 +232,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Region"
             }
           ],
@@ -246,7 +245,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Postal Code"
             }
           ],
@@ -259,7 +258,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Country"
             }
           ],
@@ -272,7 +271,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Full Address"
             }
           ],
@@ -284,7 +283,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Personal Administrative Number"
             }
           ],
@@ -296,7 +295,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Portrait Image"
             }
           ],
@@ -308,7 +307,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Birth Family Name(s)"
             }
           ],
@@ -320,7 +319,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Birth Given Name(s)"
             }
           ],
@@ -332,7 +331,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Sex"
             }
           ],
@@ -344,7 +343,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Email Address"
             }
           ],
@@ -356,7 +355,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Mobile Phone Number"
             }
           ],
@@ -368,7 +367,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Expiry Date"
             }
           ],
@@ -380,7 +379,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Issuing Authority"
             }
           ],
@@ -392,7 +391,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Issuing Country"
             }
           ],
@@ -404,7 +403,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Document Number"
             }
           ],
@@ -416,7 +415,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Issuing Jurisdiction"
             }
           ],
@@ -428,7 +427,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Issuance Date"
             }
           ],
@@ -440,7 +439,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Age Equal or Over"
             }
           ],
@@ -453,7 +452,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Age Over 18"
             }
           ],
@@ -465,7 +464,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Age in Years"
             }
           ],
@@ -477,7 +476,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Age Year of Birth"
             }
           ],
@@ -489,7 +488,7 @@ internal val pidMeta = """
           ],
           "display": [
             {
-              "lang": "en",
+              "locale": "en",
               "label": "Trust Anchor"
             }
           ],
@@ -506,7 +505,7 @@ internal val countriesMeta = """
       "name": "Countries",
       "display": [
         {
-          "lang": "en",
+          "locale": "en",
           "name": "Countries"
         }
       ],

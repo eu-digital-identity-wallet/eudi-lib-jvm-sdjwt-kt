@@ -19,7 +19,6 @@ import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class SdJwtVcTypeMetadata(
@@ -54,29 +53,10 @@ data class SdJwtVcTypeMetadata(
      *  List containing claim information for the type
      */
     @SerialName(SdJwtVcSpec.CLAIMS) val claims: List<ClaimMetadata>? = null,
-
-    /**
-     * An embedded JSON Schema document describing the structure of the Verifiable Credential
-     * MUST NOT be used if schema_uri is present
-     */
-    @SerialName(SdJwtVcSpec.SCHEMA) val schema: JsonSchema? = null,
-
-    /**
-     * A URL pointing to a JSON Schema document describing the structure of the Verifiable Credential
-     * MUST NOT be used if schema is present
-     */
-    @SerialName(SdJwtVcSpec.SCHEMA_URI) val schemaUri: String? = null,
-
-    @SerialName(SdJwtVcSpec.SCHEMA_URI_INTEGRITY) val schemaUriIntegrity: DocumentIntegrity? = null,
-
 ) {
     init {
-        if (schema != null) {
-            require(schemaUri == null)
-        }
         ensureIntegrityIsNotPresent(SdJwtVcSpec.VCT, vct, vctIntegrity)
         ensureIntegrityIsNotPresent(SdJwtVcSpec.EXTENDS, extends, extendsIntegrity)
-        ensureIntegrityIsNotPresent(SdJwtVcSpec.SCHEMA_URI, schemaUri, schemaUriIntegrity)
         ensureValidPaths(claims.orEmpty())
     }
 
@@ -118,10 +98,6 @@ private fun ensureIntegrityIsNotPresent(
 }
 
 @Serializable
-@JvmInline
-value class JsonSchema(val value: JsonObject)
-
-@Serializable
 data class ClaimMetadata(
 
     /**
@@ -133,6 +109,13 @@ data class ClaimMetadata(
      * display information for the claim
      */
     @SerialName(SdJwtVcSpec.CLAIM_DISPLAY) val display: List<ClaimDisplay>? = null,
+
+    /**
+     *  indicating that the claim must be present in the issued
+     *   credential
+     *   If omitted, the default value is false
+     */
+    @SerialName(SdJwtVcSpec.CLAIM_MANDATORY) val mandatory: Boolean? = null,
 
     /**
      *  Indicates whether the claim is selectively disclosable.
@@ -148,11 +131,19 @@ data class ClaimMetadata(
     val selectivelyDisclosableOrDefault: ClaimSelectivelyDisclosable
         get() = selectivelyDisclosable ?: DefaultSelectivelyDisclosable
 
+    val mandatoryOrDefault: Boolean
+        get() = mandatory ?: DefaultMandatory
+
     companion object {
         /**
          * Default [ClaimSelectivelyDisclosable] value is [ClaimSelectivelyDisclosable.Allowed]
          */
         val DefaultSelectivelyDisclosable: ClaimSelectivelyDisclosable = ClaimSelectivelyDisclosable.Allowed
+
+        /**
+         * Default value is false
+         */
+        val DefaultMandatory: Boolean = false
     }
 }
 
@@ -161,7 +152,7 @@ data class ClaimDisplay(
     /**
      *  A language tag
      */
-    @SerialName(SdJwtVcSpec.CLAIM_LANG) @Required val lang: LangTag,
+    @SerialName(SdJwtVcSpec.CLAIM_LOCALE) @Required val locale: LangTag,
 
     /**
      * A human-readable label for the claim, intended for end users
@@ -239,7 +230,7 @@ value class Display(val value: List<DisplayMetadata>) {
 
     companion object {
         fun List<DisplayMetadata>.requireUniqueLang() {
-            val uniqueLangEntries = map { it.lang }.toSet().count()
+            val uniqueLangEntries = map { it.locale }.toSet().count()
             require(size == uniqueLangEntries) {
                 "The list display must contain a single item per language"
             }
@@ -253,7 +244,7 @@ data class DisplayMetadata(
     /**
      * A language tag
      */
-    @SerialName(SdJwtVcSpec.LANG) @Required val lang: LangTag,
+    @SerialName(SdJwtVcSpec.LOCALE) @Required val locale: LangTag,
 
     /**
      * A human-readable name for the type, intended for end users
@@ -283,14 +274,40 @@ data class RenderingMetadata(
 @Serializable
 data class SimpleRenderingMethod(
     /**
-     * An object containing information about the logo to be displayed for the type
+     * An object containing information about the logo to be displayed for the type.
      */
     @SerialName(SdJwtVcSpec.LOGO) val logo: LogoMetadata? = null,
+
     /**
-     * An RGB color value
+     * An object containing information about the background image to be displayed for the type.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE) val backgroundImage: BackgroundImage? = null,
+
+    /**
+     * An RGB color value for the background of the credential.
      */
     @SerialName(SdJwtVcSpec.BACKGROUND_COLOR) val backgroundColor: CssColor? = null,
+
+    /**
+     * An RGB color value for the text of the credential.
+     */
     @SerialName(SdJwtVcSpec.TEXT_COLOR) val textColor: CssColor? = null,
+)
+
+/**
+ * An object containing information about a background image to be displayed.
+ */
+@Serializable
+data class BackgroundImage(
+    /**
+     * A URI pointing to the background image.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE_URI) @Required val uri: String,
+
+    /**
+     * An "integrity metadata" string.
+     */
+    @SerialName(SdJwtVcSpec.BACKGROUND_IMAGE_URI_INTEGRITY) val integrity: DocumentIntegrity? = null,
 )
 
 @Serializable
