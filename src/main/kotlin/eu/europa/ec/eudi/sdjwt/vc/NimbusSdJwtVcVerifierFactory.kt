@@ -222,13 +222,7 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
 
 private suspend fun TypeMetadataPolicy.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
     val typeMetadata = resolveTypeMetadataOf(sdJwt)
-    if (null != typeMetadata) {
-        val recreatedCredential = typeMetadata.validate(sdJwt)
-        val jsonSchemas = typeMetadata.schemas
-        if (jsonSchemas.isNotEmpty()) {
-            jsonSchemaValidator?.validatePayloadAgainst(recreatedCredential, jsonSchemas)
-        }
-    }
+    typeMetadata?.validate(sdJwt)
 }
 
 private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
@@ -261,20 +255,5 @@ private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonOb
         is DefinitionBasedValidationResult.Invalid -> raise(
             SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
         )
-    }
-}
-
-private val TypeMetadataPolicy.jsonSchemaValidator: JsonSchemaValidator?
-    get() = when (this) {
-        TypeMetadataPolicy.NotUsed -> null
-        is TypeMetadataPolicy.Optional -> jsonSchemaValidator
-        is TypeMetadataPolicy.AlwaysRequired -> jsonSchemaValidator
-        is TypeMetadataPolicy.RequiredFor -> jsonSchemaValidator
-    }
-
-private suspend fun JsonSchemaValidator.validatePayloadAgainst(payload: JsonObject, schemas: List<JsonSchema>) {
-    val result = validate(payload, schemas)
-    if (result is JsonSchemaValidationResult.Invalid) {
-        raise(SdJwtVcVerificationError.JsonSchemaVerificationError.JsonSchemaValidationFailure(result.errors))
     }
 }
