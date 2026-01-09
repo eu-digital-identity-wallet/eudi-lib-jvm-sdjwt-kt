@@ -59,11 +59,11 @@ class MinimumDigestsTest {
             sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = MinimumDigests(4)),
         )
 
-    fun issuerWithImplicitMinimumDigests(minimumDigests: Int): SdJwtIssuer<SignedJWT> =
+    fun issuerWithImplicitMinimumDigests(minimumDigests: Int?): SdJwtIssuer<SignedJWT> =
         NimbusSdJwtOps.issuer(
             signer = ECDSASigner(key),
             signAlgorithm = JWSAlgorithm.ES512,
-            sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = MinimumDigests(minimumDigests)),
+            sdJwtFactory = SdJwtFactory(fallbackMinimumDigests = minimumDigests?.let { MinimumDigests(it) }),
         )
 
     private fun assertMinimumDigests(
@@ -128,119 +128,115 @@ class MinimumDigestsTest {
         ).forEach { test(it) }
     }
 
-    private suspend fun checkExplicitMinimumDigestsForNestedElement(
+    private suspend fun checkMinimumDigestsForNestedElement(
         spec: SdJwtObject,
         elementName: String,
-        nestedElementMinimumDigests: Int,
-    ) {
-        val implicitMinimumDigests = 0
-        val sdJwt = testMinimumDigestsAtTopLevel(issuer, implicitMinimumDigests)(spec)
-        val digests = sdJwt.digestsOf(elementName)
-        assertMinimumDigests(nestedElementMinimumDigests, digests.size)
-    }
-
-    private suspend fun checkImplicitMinimumDigestsForNestedElement(
-        spec: SdJwtObject,
-        elementName: String,
-        implicitMinimumDigests: Int,
+        implicitMinimumDigests: Int?,
         nestedElementMinimumDigests: Int?,
     ) {
         val issuer = issuerWithImplicitMinimumDigests(implicitMinimumDigests)
-        val sdJwt = testMinimumDigestsAtTopLevel(issuer, implicitMinimumDigests)(spec)
+        val expectedTopLevelDigests = implicitMinimumDigests ?: 0
+        val sdJwt = testMinimumDigestsAtTopLevel(issuer, expectedTopLevelDigests)(spec)
         val digests = sdJwt.digestsOf(elementName)
-        assertMinimumDigests(nestedElementMinimumDigests ?: implicitMinimumDigests, digests.size)
+        val expectedNestedDigests = nestedElementMinimumDigests ?: expectedTopLevelDigests
+        assertMinimumDigests(expectedNestedDigests, digests.size)
     }
 
     @Test
     fun checkExplicitMinimumDigestsAtNestedSdObj() = runTest {
         val nestedElementMinimumDigests = 6
-        val elementName = "someObj"
-        checkExplicitMinimumDigestsForNestedElement(
-            spec = sdJwt {
-                sdObjClaim(elementName, nestedElementMinimumDigests) {
-                    sdClaim("foo", "bar")
-                    sdClaim("baz", "qux")
-                    sdClaim("quux", "corge")
-                }
-            },
-            elementName = elementName,
+        val spec = sdJwt {
+            sdObjClaim("someObj", nestedElementMinimumDigests) {
+                sdClaim("foo", "bar")
+                sdClaim("baz", "qux")
+                sdClaim("quux", "corge")
+            }
+        }
+        checkMinimumDigestsForNestedElement(
+            spec = spec,
+            elementName = "someObj",
+            implicitMinimumDigests = null,
             nestedElementMinimumDigests = nestedElementMinimumDigests,
         )
     }
 
     @Test
     fun checkImplicitMinimumDigestsAtNestedSdObj() = runTest {
-        val implicitMinimumDigests = 6
-        val nestedElementMinimumDigests = null
-        val elementName = "someObj"
-        checkImplicitMinimumDigestsForNestedElement(
-            spec = sdJwt {
-                sdObjClaim(elementName, nestedElementMinimumDigests) {
-                    sdClaim("foo", "bar")
-                    sdClaim("baz", "qux")
-                    sdClaim("quux", "corge")
-                }
-            },
-            elementName = elementName,
-            implicitMinimumDigests = implicitMinimumDigests,
-            nestedElementMinimumDigests = nestedElementMinimumDigests,
+        // This spec contains a nested object with no explicitly defined minimum digests
+        // Implicitly defined minimum digest should appear
+        val spec = sdJwt {
+            sdObjClaim("someObj") {
+                sdClaim("foo", "bar")
+                sdClaim("baz", "qux")
+                sdClaim("quux", "corge")
+            }
+        }
+        checkMinimumDigestsForNestedElement(
+            spec = spec,
+            elementName = "someObj",
+            implicitMinimumDigests = 6,
+            nestedElementMinimumDigests = null,
         )
     }
 
     @Test
     fun checkImplicitMinimumDigestsAndExplicitMinimumDigestsAtNestedSdObj() = runTest {
-        val implicitMinimumDigests = 4
+        // This spec contains a nested object claim which explicitly defines minimum digests
+        // implicit mimimum digests should be ignored, for the object
         val nestedElementMinimumDigests = 6
-        val elementName = "someObj"
-        checkImplicitMinimumDigestsForNestedElement(
-            spec = sdJwt {
-                sdObjClaim(elementName, nestedElementMinimumDigests) {
-                    sdClaim("foo", "bar")
-                    sdClaim("baz", "qux")
-                    sdClaim("quux", "corge")
-                }
-            },
-            elementName = elementName,
-            implicitMinimumDigests = implicitMinimumDigests,
+        val spec = sdJwt {
+            sdObjClaim("someObj", nestedElementMinimumDigests) {
+                sdClaim("foo", "bar")
+                sdClaim("baz", "qux")
+                sdClaim("quux", "corge")
+            }
+        }
+        checkMinimumDigestsForNestedElement(
+            spec = spec,
+            elementName = "someObj",
+            implicitMinimumDigests = nestedElementMinimumDigests + 1,
             nestedElementMinimumDigests = nestedElementMinimumDigests,
         )
     }
 
     @Test
     fun checkExplicitMinimumDigestsAtNestedSdArray() = runTest {
+        // This spec contains a nested array claim which explicitly defines minimum digests
+        // implicit mimimum digests should be ignored, for the array
         val nestedElementMinimumDigests = 6
-        val nestedElementName = "someArr"
-        checkExplicitMinimumDigestsForNestedElement(
-            spec = sdJwt {
-                sdArrClaim(nestedElementName, nestedElementMinimumDigests) {
-                    sdClaim("foo")
-                    claim(1213)
-                    sdClaim("bar")
-                    sdClaim("baz")
-                }
-            },
-            elementName = nestedElementName,
+        val spec = sdJwt {
+            sdArrClaim("someArr", nestedElementMinimumDigests) {
+                sdClaim("foo")
+                claim(1213)
+                sdClaim("bar")
+                sdClaim("baz")
+            }
+        }
+        checkMinimumDigestsForNestedElement(
+            spec = spec,
+            elementName = "someArr",
+            implicitMinimumDigests = nestedElementMinimumDigests + 2,
             nestedElementMinimumDigests = nestedElementMinimumDigests,
         )
     }
 
     @Test
     fun checkImplicitMinimumDigestsAtNestedSdArray() = runTest {
-        val implicitMinimumDigests = 6
-        val nestedElementMinimumDigests = null
-        val elementName = "someArr"
-        checkImplicitMinimumDigestsForNestedElement(
-            spec = sdJwt {
-                sdArrClaim(elementName, nestedElementMinimumDigests) {
-                    sdClaim("foo")
-                    claim(1213)
-                    sdClaim("bar")
-                    sdClaim("baz")
-                }
-            },
-            elementName = elementName,
-            implicitMinimumDigests = implicitMinimumDigests,
-            nestedElementMinimumDigests = nestedElementMinimumDigests,
+        // This spec contains a nested array claim which doesn't explicitly define minimum digests
+        // it should inherit the implicit minimum digests from the parent SD-JWT
+        val spec = sdJwt {
+            sdArrClaim("someArr") {
+                sdClaim("foo")
+                claim(1213)
+                sdClaim("bar")
+                sdClaim("baz")
+            }
+        }
+        checkMinimumDigestsForNestedElement(
+            spec = spec,
+            elementName = "someArr",
+            implicitMinimumDigests = 10,
+            nestedElementMinimumDigests = null,
         )
     }
 }
