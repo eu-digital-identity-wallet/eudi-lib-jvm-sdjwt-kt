@@ -234,8 +234,7 @@ private class Fold<K, A, R, M>(
         DeepRecursiveFunction { (obj, currentPath) ->
             val result = obj.content.entries.fold(initial(obj, currentPath)) { acc, (key, disclosableElement) ->
                 val keyPath = currentPath + key
-                val disclosableValue = disclosableElement.value
-                val folded = when (disclosableValue) {
+                val folded = when (val disclosableValue = disclosableElement.value) {
                     is DisclosableValue.Id<K, A> -> {
                         @Suppress("UNCHECKED_CAST")
                         val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
@@ -270,8 +269,7 @@ private class Fold<K, A, R, M>(
             elementMetadata.add(initialFolded.metadata)
 
             arr.content.forEachIndexed { index, disclosableElement ->
-                val disclosableValue = disclosableElement.value
-                val folded = when (disclosableValue) {
+                val folded = when (val disclosableValue = disclosableElement.value) {
                     is DisclosableValue.Id<K, A> -> {
                         @Suppress("UNCHECKED_CAST")
                         val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
