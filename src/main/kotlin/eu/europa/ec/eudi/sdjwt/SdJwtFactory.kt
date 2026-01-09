@@ -79,7 +79,7 @@ private operator fun Disclosed.plus(that: Disclosed): Disclosed {
     // Merge JSON objects
     val mergedJson = JsonObject(this.result.jsonObject + that.result.jsonObject)
     // Merge SD claims if present in both objects
-    val accSdClaims = this.result.jsonObject[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList<JsonElement>())
+    val accSdClaims = this.result.jsonObject[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
     val currentSdClaims = that.result.jsonObject[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
     val mergedResult = if (accSdClaims.isNotEmpty() || currentSdClaims.isNotEmpty()) {
         val mergedSdClaims = JsonArray(accSdClaims + currentSdClaims)
@@ -127,11 +127,22 @@ class SdJwtFactory(
         val disclosed = sdJwtObject.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
-            initial = Disclosed(
-                path = emptyList(),
-                result = JsonObject(emptyMap()),
-                metadata = Disclosures(disclosures = emptyList(), minimumDigests = sdJwtObject.minimumDigests),
-            ),
+            initial = { obj, path ->
+                val minDigests = (obj as? SdJwtObject)?.minimumDigests ?: fallbackMinimumDigests
+                Disclosed(
+                    path = path,
+                    result = JsonObject(emptyMap()),
+                    metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
+                )
+            },
+            initialArray = { arr, path ->
+                val minDigests = (arr as? SdJwtArray)?.minimumDigests ?: fallbackMinimumDigests
+                Disclosed(
+                    path = path,
+                    result = JsonArray(emptyList()),
+                    metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
+                )
+            },
             combine = Disclosed::plus,
             arrayResultWrapper = ::JsonArray,
             arrayMetadataCombiner = Disclosures::combineArrayDisclosures,
@@ -153,27 +164,46 @@ class SdJwtFactory(
      * @return A new context with decoy digests added to the result
      */
     private fun addDecoyDigests(folded: Disclosed): Disclosed {
-        val foldedObj = folded.result.jsonObject // Ensure it's treated as an object for post-processing
-        val sdClaims = foldedObj[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
+        val minDigests = folded.metadata.minimumDigests ?: return folded
 
-        // No need to add decoys if there are no SD claims
-        if (sdClaims.isEmpty()) {
-            return folded
+        return when (val result = folded.result) {
+            is JsonObject -> {
+                val sdClaims = result[RFC9901.CLAIM_SD]?.jsonArray ?: JsonArray(emptyList())
+
+                // Add decoys if needed based on the minimum digest requirements
+                val digests = sdClaims.map { it.jsonPrimitive.content }
+                val decoys = genDecoys(digests.size, minDigests).map { JsonPrimitive(it.value) }
+
+                if (decoys.isEmpty()) {
+                    folded
+                } else {
+                    // Sort the combined list of digests and decoys to make the order unpredictable
+                    val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+                    val foldedObjWithDecoys = JsonObject(result + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
+                    folded.copy(result = foldedObjWithDecoys)
+                }
+            }
+
+            is JsonArray -> {
+                // For arrays, decoys are added as "..." elements
+                val sdElements = result.filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
+
+                val decoys = genDecoys(sdElements.size, minDigests).map { digest ->
+                    buildJsonObject { put(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST, digest.value) }
+                }
+
+                if (decoys.isEmpty()) {
+                    folded
+                } else {
+                    val digestsAndDecoys = (result + decoys).sortedBy {
+                        if (it is JsonObject) it[RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST]?.jsonPrimitive?.contentOrNull else null
+                    }
+                    folded.copy(result = JsonArray(digestsAndDecoys))
+                }
+            }
+
+            else -> folded
         }
-
-        // Add decoys if needed based on the minimum digest requirements
-        val digests = sdClaims.map { it.jsonPrimitive.content }
-        val decoys = genDecoys(digests.size, folded.metadata.minimumDigests).map { JsonPrimitive(it.value) }
-
-        // Sort the combined list of digests and decoys to make the order unpredictable
-        val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
-        val foldedObjWithDecoys = if (digestsAndDecoys.isNotEmpty()) {
-            JsonObject(foldedObj + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
-        } else {
-            foldedObj
-        }
-
-        return folded.copy(result = foldedObjWithDecoys)
     }
 
     private val objectHandlers = object : ObjectFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
@@ -249,7 +279,7 @@ class SdJwtFactory(
                         objectPropertyDisclosure(key to objJson)
                     }
 
-                    return Disclosed(
+                    Disclosed(
                         path = path,
                         metadata = Disclosures(foldedObject.metadata.disclosures + disclosure),
                         result = disclosureDigestObj(digest),
