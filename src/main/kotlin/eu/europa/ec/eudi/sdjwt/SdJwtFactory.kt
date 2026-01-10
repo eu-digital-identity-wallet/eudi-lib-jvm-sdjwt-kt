@@ -127,22 +127,8 @@ class SdJwtFactory(
         val disclosed = sdJwtObject.fold(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
-            initial = { obj, path ->
-                val minDigests = (obj as? SdJwtObject)?.minimumDigests ?: fallbackMinimumDigests
-                Disclosed(
-                    path = path,
-                    result = JsonObject(emptyMap()),
-                    metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
-                )
-            },
-            initialArray = { arr, path ->
-                val minDigests = (arr as? SdJwtArray)?.minimumDigests ?: fallbackMinimumDigests
-                Disclosed(
-                    path = path,
-                    result = JsonArray(emptyList()),
-                    metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
-                )
-            },
+            initObj = ::initObj,
+            initArray = ::initArray,
             combine = Disclosed::plus,
             arrayResultWrapper = ::JsonArray,
             arrayMetadataCombiner = Disclosures::combineArrayDisclosures,
@@ -186,7 +172,8 @@ class SdJwtFactory(
 
             is JsonArray -> {
                 // For arrays, decoys are added as "..." elements
-                val sdElements = result.filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
+                val sdElements =
+                    result.filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
 
                 val decoys = genDecoys(sdElements.size, minDigests).map { digest ->
                     buildJsonObject { put(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST, digest.value) }
@@ -204,6 +191,24 @@ class SdJwtFactory(
 
             else -> folded
         }
+    }
+
+    private fun initObj(obj: DisclosableObject<String, JsonElement>, path: List<String?>): Disclosed {
+        val minDigests = (obj as? SdJwtObject)?.minimumDigests ?: fallbackMinimumDigests
+        return Disclosed(
+            path = path,
+            result = JsonObject(emptyMap()),
+            metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
+        )
+    }
+
+    private fun initArray(arr: DisclosableArray<String, JsonElement>, path: List<String?>): Disclosed {
+        val minDigests = (arr as? SdJwtArray)?.minimumDigests ?: fallbackMinimumDigests
+        return Disclosed(
+            path = path,
+            result = JsonArray(emptyList()),
+            metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
+        )
     }
 
     private val objectHandlers = object : ObjectFoldHandlers<String, JsonElement, Disclosures, JsonElement> {

@@ -138,7 +138,7 @@ interface ArrayFoldHandlers<K, in A, M, R> {
  *
  * @param objectHandlers Handlers for processing object elements
  * @param arrayHandlers Handlers for processing array elements
- * @param initial Initial context for the fold operation
+ * @param initObj Initial context for the fold operation
  * @param combine Function to combine fold results from sibling object properties.
  * @param postProcess Optional function to post-process the fold result
  * @return The result of the fold operation
@@ -146,8 +146,8 @@ interface ArrayFoldHandlers<K, in A, M, R> {
 fun <K, A, R, M> DisclosableObject<K, A>.fold(
     objectHandlers: ObjectFoldHandlers<K, A, M, R>,
     arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
-    initial: (DisclosableObject<K, A>, List<K?>) -> Folded<K, M, R>,
-    initialArray: (DisclosableArray<K, A>, List<K?>) -> Folded<K, M, R>,
+    initObj: (DisclosableObject<K, A>, List<K?>) -> Folded<K, M, R>,
+    initArray: (DisclosableArray<K, A>, List<K?>) -> Folded<K, M, R>,
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     arrayResultWrapper: (List<R>) -> R,
     arrayMetadataCombiner: (List<M>) -> M,
@@ -156,8 +156,8 @@ fun <K, A, R, M> DisclosableObject<K, A>.fold(
     val context = Fold(
         objectHandlers,
         arrayHandlers,
-        initial,
-        initialArray,
+        initObj,
+        initArray,
         combine,
         arrayResultWrapper,
         arrayMetadataCombiner,
@@ -216,14 +216,14 @@ fun <K, A, R, M> DisclosableArray<K, A>.fold(
  * @param M The type of metadata stored in the context
  * @property objectHandlers Handlers for processing object elements
  * @property arrayHandlers Handlers for processing array elements
- * @property initial Initial context for the fold operation
+ * @property initObj Initial context for the fold operation
  * @property combine Function to combine fold results
  */
 private class Fold<K, A, R, M>(
     private val objectHandlers: ObjectFoldHandlers<K, A, M, R>,
     private val arrayHandlers: ArrayFoldHandlers<K, A, M, R>,
-    private val initial: (DisclosableObject<K, A>, List<K?>) -> Folded<K, M, R>,
-    private val initialArray: (DisclosableArray<K, A>, List<K?>) -> Folded<K, M, R>,
+    private val initObj: (DisclosableObject<K, A>, List<K?>) -> Folded<K, M, R>,
+    private val initArray: (DisclosableArray<K, A>, List<K?>) -> Folded<K, M, R>,
     private val combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     private val arrayResultWrapper: (List<R>) -> R,
     private val arrayMetadataCombiner: (List<M>) -> M,
@@ -232,7 +232,8 @@ private class Fold<K, A, R, M>(
     // DeepRecursiveFunction for folding objects with path tracking
     val foldObject: DeepRecursiveFunction<Pair<DisclosableObject<K, A>, List<K?>>, Folded<K, M, R>> =
         DeepRecursiveFunction { (obj, currentPath) ->
-            val result = obj.content.entries.fold(initial(obj, currentPath)) { acc, (key, disclosableElement) ->
+            val initialFolded = initObj(obj, currentPath)
+            val result = obj.content.entries.fold(initialFolded) { acc, (key, disclosableElement) ->
                 val keyPath = currentPath + key
                 val folded = when (val disclosableValue = disclosableElement.value) {
                     is DisclosableValue.Id<K, A> -> {
@@ -261,7 +262,7 @@ private class Fold<K, A, R, M>(
     // DeepRecursiveFunction for folding arrays with path tracking
     val foldArray: DeepRecursiveFunction<Pair<DisclosableArray<K, A>, List<K?>>, Folded<K, M, R>> =
         DeepRecursiveFunction { (arr, currentPath) ->
-            val initialFolded = initialArray(arr, currentPath)
+            val initialFolded = initArray(arr, currentPath)
             val arrayContentPathPrefix = currentPath + null
 
             val elementResults = mutableListOf<R>()
