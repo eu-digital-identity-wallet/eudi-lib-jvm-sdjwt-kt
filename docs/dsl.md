@@ -154,8 +154,6 @@ val disclosedClaimNames = sdJwtSpec.fold(
     objectHandlers = customObjectHandlers,
     arrayHandlers = customArrayHandlers,
     combine = { acc, current -> acc + current },
-    arrayResultWrapper = { it.flatten() },
-    arrayMetadataCombiner = { it.flatten() }
 )
 ```
 

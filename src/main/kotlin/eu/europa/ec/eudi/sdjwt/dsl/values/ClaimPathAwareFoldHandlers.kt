@@ -158,6 +158,22 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
     }
 
     /**
+     * Wraps a list of individual element results into the final result type for an array.
+     *
+     * @param elements The results of folding individual elements
+     * @return The combined result for the array
+     */
+    abstract override fun wrapResult(elements: List<R>): R
+
+    /**
+     * Combines metadata from individual array elements into a single metadata for the array.
+     *
+     * @param metadata The metadata gathered from folding individual elements
+     * @return The combined metadata for the array
+     */
+    abstract override fun combineMetadata(metadata: List<M>): M
+
+    /**
      * Constructs a [ClaimPath] by appending a new array index element to the given parent path.
      *
      * @param path The list of string segments representing the parent path (can include `null` for wildcards).

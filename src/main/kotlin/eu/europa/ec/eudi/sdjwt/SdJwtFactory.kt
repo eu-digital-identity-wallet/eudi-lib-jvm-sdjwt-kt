@@ -128,8 +128,6 @@ class SdJwtFactory(
             objectHandlers = objectHandlers,
             arrayHandlers = arrayHandlers,
             combine = Disclosed::plus,
-            arrayResultWrapper = ::JsonArray,
-            arrayMetadataCombiner = Disclosures::combineArrayDisclosures,
             postProcess = ::addDecoyDigests,
         )
 
@@ -303,6 +301,11 @@ class SdJwtFactory(
                 metadata = Disclosures(disclosures = emptyList(), minimumDigests = minDigests),
             )
         }
+
+        override fun wrapResult(elements: List<JsonElement>): JsonElement = JsonArray(elements)
+
+        override fun combineMetadata(metadata: List<Disclosures>): Disclosures =
+            Disclosures.combineArrayDisclosures(metadata)
 
         override fun ifId(
             path: List<String?>,
