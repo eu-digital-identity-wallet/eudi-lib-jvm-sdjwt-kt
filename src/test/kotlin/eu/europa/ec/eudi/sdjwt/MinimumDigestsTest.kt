@@ -88,6 +88,15 @@ class MinimumDigestsTest {
         val issuer = issuerWithFallbackMinimumDigests(fallbackMinimumDigests)
         val expectedTopLevelDigests = fallbackMinimumDigests ?: 0
         val sdJwt = testMinimumDigestsAtTopLevel(issuer, expectedTopLevelDigests, spec)
+        checkDigestsForNestedElement(sdJwt, elementName, expectedTopLevelDigests, nestedElementMinimumDigests)
+    }
+
+    private fun checkDigestsForNestedElement(
+        sdJwt: SdJwt<SignedJWT>,
+        elementName: String,
+        expectedTopLevelDigests: Int,
+        nestedElementMinimumDigests: Int?,
+    ) {
         val digests = sdJwt.digestsOf(elementName)
         val expectedNestedDigests = nestedElementMinimumDigests ?: expectedTopLevelDigests
         assertMinimumDigests(expectedNestedDigests, digests.size)
@@ -171,5 +180,42 @@ class MinimumDigestsTest {
             fallbackMinimumDigests = 10,
             nestedElementMinimumDigests = null,
         )
+    }
+
+    @Test
+    fun moreComplexExample() = runTest {
+        val topLevelMinimumDigests = 10
+        val arrayMinDigests = 8
+        val objMinDigests = 6
+        val spec = sdJwt(topLevelMinimumDigests) {
+            sdArrClaim("someArr", arrayMinDigests) {
+                sdClaim("foo")
+                sdObjClaim(objMinDigests) {
+                    claim(
+                        "marker",
+                        buildJsonObject {
+                            put("a", "value")
+                        },
+                    )
+                    sdClaim("foo", "bar")
+                    sdClaim("baz", "qux")
+                    sdClaim("quux", "corge")
+                }
+                sdClaim("bar")
+                sdClaim("baz")
+            }
+        }
+        val sdJwt = run {
+            val issuer = issuerWithFallbackMinimumDigests(null)
+            testMinimumDigestsAtTopLevel(issuer, topLevelMinimumDigests, spec)
+        }
+        checkDigestsForNestedElement(sdJwt, "someArr", topLevelMinimumDigests, arrayMinDigests)
+        val obj = sdJwt.disclosures.firstNotNullOf {
+            if (it is Disclosure.ArrayElement) {
+                val (_, v) = it.claim()
+                if (v is JsonObject && "marker" in v.keys) v else null
+            } else null
+        }
+        assertMinimumDigests(objMinDigests, obj.digests().size)
     }
 }
