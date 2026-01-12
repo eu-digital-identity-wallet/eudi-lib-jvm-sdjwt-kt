@@ -154,34 +154,35 @@ class SdJwtFactory(
 
                 // Add decoys if needed based on the minimum digest requirements
                 val digests = sdClaims.map { it.jsonPrimitive.content }
-                val decoys = genDecoys(digests.size, minDigests).map { JsonPrimitive(it.value) }
+                val decoys = genDecoys(digests.size, minDigests)
+                    .map { decoyDigest ->
+                        JsonPrimitive(decoyDigest.value)
+                    }
 
-                if (decoys.isEmpty()) {
-                    folded
-                } else {
+                if (decoys.isNotEmpty()) {
                     // Sort the combined list of digests and decoys to make the order unpredictable
                     val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
                     val foldedObjWithDecoys = JsonObject(result + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
                     folded.copy(result = foldedObjWithDecoys)
+                } else {
+                    folded
                 }
             }
 
             is JsonArray -> {
-                // For arrays, decoys are added as "..." elements
                 val sdElements =
                     result.filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
 
-                val decoys = genDecoys(sdElements.size, minDigests).map { digest ->
-                    buildJsonObject { put(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST, digest.value) }
-                }
-
-                if (decoys.isEmpty()) {
-                    folded
-                } else {
-                    val digestsAndDecoys = (result + decoys).sortedBy {
-                        if (it is JsonObject) it[RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST]?.jsonPrimitive?.contentOrNull else null
+                val decoys = genDecoys(sdElements.size, minDigests)
+                    .map { decoyDigest ->
+                        buildJsonObject { put(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST, decoyDigest.value) }
                     }
+
+                if (decoys.isNotEmpty()) {
+                    val digestsAndDecoys = (result + decoys)
                     folded.copy(result = JsonArray(digestsAndDecoys))
+                } else {
+                    folded
                 }
             }
 
