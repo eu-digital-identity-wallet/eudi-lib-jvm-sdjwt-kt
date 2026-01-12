@@ -33,6 +33,20 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<String, A, M, R> {
 
     /**
+     * Provides the empty context for folding an object.
+     *
+     * @param obj The object being folded
+     * @param path The current path in the structure
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
+    abstract fun empty(path: ClaimPath?, obj: DisclosableObject<String, A>): Pair<M, R>
+
+    final override fun empty(path: List<String?>, obj: DisclosableObject<String, A>): Folded<String, M, R> {
+        val (m, r) = empty(path.toClaimPath(), obj)
+        return Folded(path, m, r)
+    }
+
+    /**
      * Constructs a [ClaimPath] by appending a new named attribute element to the given parent path.
      *
      * @param path The list of string segments representing the parent path (can include `null` for wildcards).
@@ -128,6 +142,36 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
  * (ID, array, object) within the array contributes to the fold result, given its corresponding [ClaimPath].
  */
 abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<String, A, M, R> {
+
+    /**
+     * Provides the empty context for folding an array.
+     *
+     * @param arr The array being folded
+     * @param path The current path in the structure
+     * @return A [Pair] containing the accumulated metadata and the result for this element.
+     */
+    abstract fun empty(path: ClaimPath?, arr: DisclosableArray<String, A>): Pair<M, R>
+
+    final override fun empty(path: List<String?>, array: DisclosableArray<String, A>): Folded<String, M, R> {
+        val (m, r) = empty(path.toClaimPath(), array)
+        return Folded(path, m, r)
+    }
+
+    /**
+     * Wraps a list of individual element results into the final result type for an array.
+     *
+     * @param elements The results of folding individual elements
+     * @return The combined result for the array
+     */
+    abstract override fun wrapResult(elements: List<R>): R
+
+    /**
+     * Combines metadata from individual array elements into a single metadata for the array.
+     *
+     * @param metadata The metadata gathered from folding individual elements
+     * @return The combined metadata for the array
+     */
+    abstract override fun combineMetadata(metadata: List<M>): M
 
     /**
      * Constructs a [ClaimPath] by appending a new array index element to the given parent path.
