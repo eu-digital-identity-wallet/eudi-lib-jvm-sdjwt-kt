@@ -41,7 +41,7 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
      */
     abstract fun empty(path: ClaimPath?, obj: DisclosableObject<String, A>): Pair<M, R>
 
-    final override fun empty(obj: DisclosableObject<String, A>, path: List<String?>): Folded<String, M, R> {
+    final override fun empty(path: List<String?>, obj: DisclosableObject<String, A>): Folded<String, M, R> {
         val (m, r) = empty(path.toClaimPath(), obj)
         return Folded(path, m, r)
     }
@@ -152,8 +152,8 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
      */
     abstract fun empty(path: ClaimPath?, arr: DisclosableArray<String, A>): Pair<M, R>
 
-    final override fun empty(arr: DisclosableArray<String, A>, path: List<String?>): Folded<String, M, R> {
-        val (m, r) = empty(path.toClaimPath(), arr)
+    final override fun empty(path: List<String?>, array: DisclosableArray<String, A>): Folded<String, M, R> {
+        val (m, r) = empty(path.toClaimPath(), array)
         return Folded(path, m, r)
     }
 

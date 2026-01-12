@@ -45,11 +45,11 @@ interface ObjectFoldHandlers<K, in A, M, R> {
     /**
      * Provides the empty context for folding an object.
      *
-     * @param obj The object being folded
      * @param path The current path in the structure
+     * @param obj The object being folded
      * @return The empty fold context
      */
-    fun empty(obj: DisclosableObject<K, A>, path: List<K?>): Folded<K, M, R>
+    fun empty(path: List<K?>, obj: DisclosableObject<K, A>): Folded<K, M, R>
 
     /**
      * Handles a selectively disclosable primitive value
@@ -102,11 +102,11 @@ interface ArrayFoldHandlers<K, in A, M, R> {
     /**
      * Provides the empty context for folding an array.
      *
-     * @param arr The array being folded
+     * @param array The array being folded
      * @param path The current path in the structure
      * @return The empty fold context
      */
-    fun empty(arr: DisclosableArray<K, A>, path: List<K?>): Folded<K, M, R>
+    fun empty(path: List<K?>, array: DisclosableArray<K, A>): Folded<K, M, R>
 
     /**
      * Wraps a list of individual element results into the final result type for an array.
@@ -244,7 +244,7 @@ private class Fold<K, A, R, M>(
     // DeepRecursiveFunction for folding objects with path tracking
     val foldObject: DeepRecursiveFunction<Pair<DisclosableObject<K, A>, List<K?>>, Folded<K, M, R>> =
         DeepRecursiveFunction { (obj, currentPath) ->
-            val emptyFolded = objectHandlers.empty(obj, currentPath)
+            val emptyFolded = objectHandlers.empty(currentPath, obj)
             val result = obj.content.entries.fold(emptyFolded) { acc, (key, disclosableElement) ->
                 val keyPath = currentPath + key
                 val folded = when (val disclosableValue = disclosableElement.value) {
@@ -274,7 +274,7 @@ private class Fold<K, A, R, M>(
     // DeepRecursiveFunction for folding arrays with path tracking
     val foldArray: DeepRecursiveFunction<Pair<DisclosableArray<K, A>, List<K?>>, Folded<K, M, R>> =
         DeepRecursiveFunction { (arr, currentPath) ->
-            val emptyFolded = arrayHandlers.empty(arr, currentPath)
+            val emptyFolded = arrayHandlers.empty(currentPath, arr)
             val arrayContentPathPrefix = currentPath + null
 
             val elementResults = mutableListOf<R>()

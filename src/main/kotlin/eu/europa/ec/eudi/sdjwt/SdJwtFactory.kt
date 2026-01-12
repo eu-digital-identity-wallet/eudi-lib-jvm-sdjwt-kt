@@ -193,7 +193,7 @@ class SdJwtFactory(
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { putJsonArray(RFC9901.CLAIM_SD) { add(digest.value) } }
 
-        override fun empty(obj: DisclosableObject<String, JsonElement>, path: List<String?>): Disclosed {
+        override fun empty(path: List<String?>, obj: DisclosableObject<String, JsonElement>): Disclosed {
             val minDigests = (obj as? SdJwtObject)?.minimumDigests ?: fallbackMinimumDigests
             return Disclosed(
                 path = path,
@@ -293,8 +293,8 @@ class SdJwtFactory(
         private fun disclosureDigestObj(digest: DisclosureDigest): JsonObject =
             buildJsonObject { put(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST, digest.value) }
 
-        override fun empty(arr: DisclosableArray<String, JsonElement>, path: List<String?>): Disclosed {
-            val minDigests = (arr as? SdJwtArray)?.minimumDigests ?: fallbackMinimumDigests
+        override fun empty(path: List<String?>, array: DisclosableArray<String, JsonElement>): Disclosed {
+            val minDigests = (array as? SdJwtArray)?.minimumDigests ?: fallbackMinimumDigests
             return Disclosed(
                 path = path,
                 result = JsonArray(emptyList()),
