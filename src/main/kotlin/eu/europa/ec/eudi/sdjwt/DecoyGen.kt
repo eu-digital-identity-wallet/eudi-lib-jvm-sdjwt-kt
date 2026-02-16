@@ -39,13 +39,24 @@ fun interface DecoyGen {
     }
 
     companion object {
+        const val MINIMUM_BYTES: Int = 16
+
         /**
          * Default implementation of [DecoyGen] which produces random decoy [DisclosureDigest]
          */
-        val Default: DecoyGen by lazy {
-            DecoyGen { hashingAlgorithm ->
-                val numberOfBytes = 12..24
-                val saltProvider = SaltProvider.randomSaltProvider(numberOfBytes.random())
+        val Default: DecoyGen by lazy { invoke(MINIMUM_BYTES) }
+
+        /**
+         * Creates a [DecoyGen] with the specified number of bytes for producing random decoy [DisclosureDigest]
+         * @param numOfBytes the number of bytes to be used for producing random decoy [DisclosureDigest].
+         *        Defaults to [MINIMUM_BYTES] (16). Must be at least [MINIMUM_BYTES]
+         * @throws IllegalArgumentException if numOfBytes is less than [MINIMUM_BYTES]
+         */
+        @Throws(IllegalArgumentException::class)
+        operator fun invoke(numOfBytes: Int = MINIMUM_BYTES): DecoyGen {
+            require(numOfBytes >= MINIMUM_BYTES) { "numOfBytes must be at least $MINIMUM_BYTES" }
+            return DecoyGen { hashingAlgorithm ->
+                val saltProvider = SaltProvider.randomSaltProvider(numOfBytes)
                 val random = saltProvider.salt()
                 DisclosureDigest.digest(hashingAlgorithm, random).getOrThrow()
             }
