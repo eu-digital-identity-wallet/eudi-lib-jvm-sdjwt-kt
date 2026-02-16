@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 /**
  * Generates decoy [DisclosureDigest]
  */
-fun interface DecoyGen {
+internal fun interface DecoyGen {
 
     /**
      * Given a [hashingAlgorithm] method produces a decoy [DisclosureDigest]
@@ -44,7 +44,7 @@ fun interface DecoyGen {
         /**
          * Default implementation of [DecoyGen] which produces random decoy [DisclosureDigest]
          */
-        val Default: DecoyGen by lazy { invoke(MINIMUM_BYTES) }
+        val Default: DecoyGen by lazy { random(MINIMUM_BYTES) }
 
         /**
          * Creates a [DecoyGen] with the specified number of bytes for producing random decoy [DisclosureDigest]
@@ -53,7 +53,7 @@ fun interface DecoyGen {
          * @throws IllegalArgumentException if numOfBytes is less than [MINIMUM_BYTES]
          */
         @Throws(IllegalArgumentException::class)
-        operator fun invoke(numOfBytes: Int = MINIMUM_BYTES): DecoyGen {
+        fun random(numOfBytes: Int = MINIMUM_BYTES): DecoyGen {
             require(numOfBytes >= MINIMUM_BYTES) { "numOfBytes must be at least $MINIMUM_BYTES" }
             return DecoyGen { hashingAlgorithm ->
                 val saltProvider = SaltProvider.randomSaltProvider(numOfBytes)

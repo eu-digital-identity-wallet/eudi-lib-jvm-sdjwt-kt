@@ -109,12 +109,38 @@ data class UnsignedSdJwt(val jwtPayload: JsonObject, val disclosures: List<Discl
  * this [SdJwtObject]. If not provided, decoys will be added only if there is a hint at [SdJwtObject] level.
  */
 @Suppress("ktlint:standard:max-line-length")
-class SdJwtFactory(
-    private val hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
-    private val saltProvider: SaltProvider = SaltProvider.Default,
-    private val decoyGen: DecoyGen = DecoyGen.Default,
-    private val fallbackMinimumDigests: MinimumDigests? = null,
+class SdJwtFactory internal constructor(
+    private val hashAlgorithm: HashAlgorithm,
+    private val saltProvider: SaltProvider,
+    private val decoyGen: DecoyGen,
+    private val fallbackMinimumDigests: MinimumDigests?,
 ) {
+
+    /**
+     * @param hashAlgorithm the algorithm to calculate the [DisclosureDigest]
+     *        Defaults to [HashAlgorithm.SHA_256]
+     * @param numOfBytesForSalt the number of bytes to generate for the salt.
+     *        It must be at least 16 bytes. Defaults to 16
+     * @param numOfBytesForDecoys the number of bytes to generate for decoys.
+     *        It must be at least 16 bytes. Defaults to 16
+     * @param fallbackMinimumDigests This is an optional hint, that expresses the number of digests on the immediate level
+     *   of every [SdJwtObject]. It will be taken into account if there is not an explicitly
+     *   defined [hint][SdJwtObject.minimumDigests] for
+     *   this [SdJwtObject]. If not provided, decoys will be added only if there is a hint at [SdJwtObject] level.
+     * @throws IllegalArgumentException if [numOfBytesForDecoys] and/or [numOfBytesForSalt] is less than 16 bytes
+     */
+    @Throws(IllegalArgumentException::class)
+    constructor(
+        hashAlgorithm: HashAlgorithm = HashAlgorithm.SHA_256,
+        numOfBytesForSalt: Int = SaltProvider.MINIMUM_SALT_LENGTH,
+        numOfBytesForDecoys: Int = DecoyGen.MINIMUM_BYTES,
+        fallbackMinimumDigests: MinimumDigests? = null,
+    ) : this(
+        hashAlgorithm,
+        SaltProvider.randomSaltProvider(numOfBytesForSalt),
+        DecoyGen.random(numOfBytesForDecoys),
+        fallbackMinimumDigests,
+    )
 
     /**
      * Creates an SD-JWT from the provided disclosable object specification.

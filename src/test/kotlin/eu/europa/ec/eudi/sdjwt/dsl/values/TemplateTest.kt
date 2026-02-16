@@ -27,6 +27,7 @@ class TemplateTest {
     @Test
     fun test() {
         val sdJwtFactory = SdJwtFactory(
+            hashAlgorithm = HashAlgorithm.SHA_256,
             saltProvider = { "salt" },
             decoyGen = object : DecoyGen {
                 override fun gen(hashingAlgorithm: HashAlgorithm): DisclosureDigest {
@@ -36,6 +37,7 @@ class TemplateTest {
                 override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<DisclosureDigest> =
                     emptySet()
             },
+            fallbackMinimumDigests = null,
         )
 
         val spec =
