@@ -55,8 +55,8 @@ internal fun interface DecoyGen {
         @Throws(IllegalArgumentException::class)
         fun random(numOfBytes: Int = MINIMUM_BYTES): DecoyGen {
             require(numOfBytes >= MINIMUM_BYTES) { "numOfBytes must be at least $MINIMUM_BYTES" }
+            val saltProvider = SaltProvider.randomSaltProvider(numOfBytes)
             return DecoyGen { hashingAlgorithm ->
-                val saltProvider = SaltProvider.randomSaltProvider(numOfBytes)
                 val random = saltProvider.salt()
                 DisclosureDigest.digest(hashingAlgorithm, random).getOrThrow()
             }
