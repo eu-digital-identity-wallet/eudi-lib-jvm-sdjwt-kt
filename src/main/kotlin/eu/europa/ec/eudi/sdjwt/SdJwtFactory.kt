@@ -442,7 +442,7 @@ class SdJwtFactory internal constructor(
      * @param minimumDigests The minimum number of digests required
      * @return A set of decoy digests to add to the SD-JWT
      */
-    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): Set<DisclosureDigest> {
+    private fun genDecoys(disclosureDigests: Int, minimumDigests: MinimumDigests?): List<DisclosureDigest> {
         val min = (minimumDigests ?: fallbackMinimumDigests)?.value ?: 0
         val numOfDecoys = (min - disclosureDigests).coerceAtLeast(0)
         return decoyGen.gen(hashAlgorithm, numOfDecoys)

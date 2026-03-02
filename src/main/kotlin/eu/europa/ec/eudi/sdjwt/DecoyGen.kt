@@ -33,9 +33,9 @@ internal fun interface DecoyGen {
      * @param numOfDecoys the number of decoys to produce
      * @return a series of decoy [DisclosureDigest]
      */
-    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<DisclosureDigest> {
-        return if (numOfDecoys < 1) emptySet()
-        else (1..numOfDecoys).map { gen(hashingAlgorithm) }.toSet()
+    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): List<DisclosureDigest> {
+        return if (numOfDecoys < 1) emptyList()
+        else (1..numOfDecoys).map { gen(hashingAlgorithm) }
     }
 
     companion object {

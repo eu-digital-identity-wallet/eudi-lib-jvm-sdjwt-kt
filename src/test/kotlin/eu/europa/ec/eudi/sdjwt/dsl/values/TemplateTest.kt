@@ -34,8 +34,8 @@ class TemplateTest {
                     throw UnsupportedOperationException("Decoy generation not supported for this test")
                 }
 
-                override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<DisclosureDigest> =
-                    emptySet()
+                override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): List<DisclosureDigest> =
+                    emptyList()
             },
             fallbackMinimumDigests = null,
         )
