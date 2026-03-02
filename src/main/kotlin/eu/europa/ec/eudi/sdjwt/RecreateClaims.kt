@@ -341,11 +341,10 @@ private sealed interface DisclosedArrayElement {
  *  @receiver the claims to check
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
-internal fun JsonObject.directDigests(): Set<DisclosureDigest> =
+internal fun JsonObject.directDigests(): List<DisclosureDigest> =
     this[RFC9901.CLAIM_SD]?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
-        ?.toSet()
-        ?: emptySet()
+        ?: emptyList()
 
 /**
  * Looks in the provided claims for the hashing algorithm

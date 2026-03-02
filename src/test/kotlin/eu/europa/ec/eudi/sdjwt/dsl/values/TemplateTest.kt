@@ -27,15 +27,17 @@ class TemplateTest {
     @Test
     fun test() {
         val sdJwtFactory = SdJwtFactory(
+            hashAlgorithm = HashAlgorithm.SHA_256,
             saltProvider = { "salt" },
             decoyGen = object : DecoyGen {
                 override fun gen(hashingAlgorithm: HashAlgorithm): DisclosureDigest {
                     throw UnsupportedOperationException("Decoy generation not supported for this test")
                 }
 
-                override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): Set<DisclosureDigest> =
-                    emptySet()
+                override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): List<DisclosureDigest> =
+                    emptyList()
             },
+            fallbackMinimumDigests = null,
         )
 
         val spec =

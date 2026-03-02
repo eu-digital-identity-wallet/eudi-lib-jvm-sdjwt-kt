@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 /**
  * An interface for generating [Salt] values.
  */
-fun interface SaltProvider {
+internal fun interface SaltProvider {
 
     /**
      * Provides a new [Salt]
@@ -28,11 +28,13 @@ fun interface SaltProvider {
 
     companion object {
 
+        const val MINIMUM_SALT_LENGTH = 16
+
         /**
          * A default implementation of [SaltProvider].
          * It produces random [Salt] values of size 16 bytes (128 bits)
          */
-        val Default: SaltProvider by lazy { randomSaltProvider(16) }
+        val Default: SaltProvider by lazy { randomSaltProvider(MINIMUM_SALT_LENGTH) }
 
         private val secureRandom: Random = platform().random
 
@@ -43,10 +45,13 @@ fun interface SaltProvider {
          *
          * @return a salt provider which generates random [Salt] values
          */
-        fun randomSaltProvider(numberOfBytes: Int): SaltProvider =
-            SaltProvider {
+        @Throws(IllegalArgumentException::class)
+        fun randomSaltProvider(numberOfBytes: Int): SaltProvider {
+            require(numberOfBytes >= MINIMUM_SALT_LENGTH) { "numberOfBytes must be at least $MINIMUM_SALT_LENGTH" }
+            return SaltProvider {
                 val randomByteArray: ByteArray = ByteArray(numberOfBytes).also { secureRandom.nextBytesCopyTo(it) }
                 Base64UrlNoPadding.encode(randomByteArray)
             }
+        }
     }
 }
