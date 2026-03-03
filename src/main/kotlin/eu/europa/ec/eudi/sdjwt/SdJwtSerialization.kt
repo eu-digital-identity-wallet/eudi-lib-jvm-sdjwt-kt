@@ -48,7 +48,7 @@ interface SdJwtSerializationOps<JWT> {
      */
     fun SdJwt<JWT>.serializeWithKeyBinding(kbJwt: Jwt): String {
         val presentationSdJwt = serialize()
-        return "$presentationSdJwt$kbJwt}"
+        return "$presentationSdJwt$kbJwt"
     }
 
     /**
