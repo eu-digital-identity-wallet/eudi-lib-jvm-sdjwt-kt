@@ -27,6 +27,7 @@ val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
         verify(
             jwtSignatureVerifier,
             unverifiedPresentationSdJwt,
+            ValidityVerificationContext(),
         ).getOrThrow()
     }
 }

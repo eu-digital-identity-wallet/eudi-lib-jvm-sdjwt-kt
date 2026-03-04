@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.util.*
 import kotlin.test.*
+import kotlin.test.Test
 
 /**
  * Integration tests for [SdJwtVcVerifier].
@@ -60,6 +61,7 @@ class SdJwtVcVerifierIntegrationTest {
                 },
             ),
         ),
+        ValidityVerificationContext(),
     )
 
     private suspend fun issue(builder: SdJwtObjectBuilder.() -> Unit): String = issuer.issue(sdJwt { builder() }).getOrThrow().serialize()
@@ -157,6 +159,7 @@ class SdJwtVcVerifierIntegrationTest {
                     },
                 ),
             ),
+            ValidityVerificationContext(),
         )
 
         verifier.verify(serialized).getOrThrow()

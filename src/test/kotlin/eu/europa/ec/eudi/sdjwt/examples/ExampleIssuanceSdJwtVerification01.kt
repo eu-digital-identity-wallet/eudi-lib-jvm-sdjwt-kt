@@ -24,6 +24,6 @@ val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
         val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt, ValidityVerificationContext()).getOrThrow()
     }
 }

@@ -66,7 +66,11 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
-            DefaultSdJwtOps.verify(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt)
+            DefaultSdJwtOps.verify(
+                jwtSignatureVerifier = jwtSignatureVerifier,
+                unverifiedSdJwt = unverifiedSdJwt,
+                validityVerificationContext = ValidityVerificationContext(),
+            )
         assertTrue { verification.isSuccess }
     }
 
@@ -75,7 +79,11 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: String,
     ) {
         val verifiedSdJwt =
-            DefaultSdJwtOps.verify(jwtSignatureVerifier = jwtSignatureVerifier, unverifiedSdJwt = unverifiedSdJwt).getOrThrow()
+            DefaultSdJwtOps.verify(
+                jwtSignatureVerifier = jwtSignatureVerifier,
+                unverifiedSdJwt = unverifiedSdJwt,
+                validityVerificationContext = ValidityVerificationContext(),
+            ).getOrThrow()
 
         val sdJwtWithOutSigVerification =
             DefaultSdJwtOps.unverifiedIssuanceFrom(unverifiedSdJwt).getOrThrow()
@@ -126,6 +134,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         val verification = DefaultSdJwtOps.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
+            validityVerificationContext = ValidityVerificationContext(),
         )
         verification.fold(
             onSuccess = { fail("Was expecting error") },
@@ -147,6 +156,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         val verification = DefaultSdJwtOps.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
+            validityVerificationContext = ValidityVerificationContext(),
         )
         verification.fold(
             onSuccess = { fail("Was expecting error") },
@@ -167,6 +177,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         DefaultSdJwtOps.verify(
             jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt = unverifiedSdJwt,
+            validityVerificationContext = ValidityVerificationContext(),
         ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 
@@ -177,6 +188,7 @@ class SdJwtVerifierVerifyIssuanceTest {
         DefaultSdJwtOps.verify(
             jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt = unverifiedSdJwt,
+            validityVerificationContext = ValidityVerificationContext(),
         ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 

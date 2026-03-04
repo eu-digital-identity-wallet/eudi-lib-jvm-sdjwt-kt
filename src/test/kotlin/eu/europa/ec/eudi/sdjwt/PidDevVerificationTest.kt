@@ -53,6 +53,7 @@ class PidDevVerificationTest :
                 x509CertificateTrust = { _, _ -> true },
             ),
             TypeMetadataPolicy.NotUsed,
+            ValidityVerificationContext(),
         )
 
         val issuedSdJwt = try {

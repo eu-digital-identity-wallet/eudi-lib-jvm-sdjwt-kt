@@ -21,6 +21,7 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.ValidityVerificationContext
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
@@ -49,6 +50,7 @@ val sdJwtVcVerification = runBlocking {
                 chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
             },
             typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
+            ValidityVerificationContext(),
         )
         verifier.verify(sdJwt)
     }

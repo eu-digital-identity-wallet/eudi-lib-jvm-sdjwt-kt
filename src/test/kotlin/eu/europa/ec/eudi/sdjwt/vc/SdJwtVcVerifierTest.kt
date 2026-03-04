@@ -159,6 +159,8 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
+            ValidityVerificationContext(),
+
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
@@ -169,6 +171,7 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
+            ValidityVerificationContext(),
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
@@ -180,6 +183,8 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
+            ValidityVerificationContext(),
+
         )
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -240,6 +245,8 @@ class SdJwtVcVerifierTest {
             val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
                 IssuerVerificationMethod.usingIssuerMetadata(httpClient),
                 TypeMetadataPolicy.NotUsed,
+                ValidityVerificationContext(),
+
             )
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
@@ -297,6 +304,8 @@ class SdJwtVcVerifierTest {
             NimbusSdJwtOps.SdJwtVcVerifier(
                 IssuerVerificationMethod.usingX5c(x509CertificateTrust),
                 TypeMetadataPolicy.NotUsed,
+                ValidityVerificationContext(),
+
             )
         }
 
