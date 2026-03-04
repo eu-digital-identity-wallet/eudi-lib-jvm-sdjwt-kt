@@ -47,6 +47,7 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
     override fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         typeMetadataPolicy: TypeMetadataPolicy,
+        validityVerificationContext: ValidityVerificationContext,
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
@@ -61,13 +62,14 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy, validityVerificationContext)
     }
 }
 
 private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val typeMetadataPolicy: TypeMetadataPolicy,
+    private val validityVerificationContext: ValidityVerificationContext,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -76,7 +78,7 @@ private class NimbusSdJwtVcVerifier(
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt, validityVerificationContext).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             sdJwt
         }
@@ -87,7 +89,12 @@ private class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
+            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(
+                jwtSignatureVerifier,
+                keyBindingVerifier,
+                unverifiedSdJwt,
+                validityVerificationContext,
+            ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
         }
