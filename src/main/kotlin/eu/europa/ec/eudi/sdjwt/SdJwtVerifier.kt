@@ -16,14 +16,19 @@
 package eu.europa.ec.eudi.sdjwt
 
 import eu.europa.ec.eudi.sdjwt.KeyBindingError.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.Companion.mustBePresent
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.let
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * Errors that may occur during SD-JWT verification
@@ -315,6 +320,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: String,
+        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwt<JWT>>
 
     /**
@@ -338,8 +344,9 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
+        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwt<JWT>> =
-        verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+        verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), validityVerificationContext)
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -364,6 +371,7 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         unverifiedSdJwt: String,
+        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
@@ -389,8 +397,10 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         unverifiedSdJwt: JsonObject,
+        validityVerificationContext: ValidityVerificationContext,
+
     ): Result<SdJwtAndKbJwt<JWT>> =
-        verify(jwtSignatureVerifier, keyBindingVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+        verify(jwtSignatureVerifier, keyBindingVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), validityVerificationContext)
 
     companion object {
 
@@ -399,8 +409,15 @@ interface SdJwtVerifier<JWT> {
             override suspend fun verify(
                 jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                 unverifiedSdJwt: String,
+                validityVerificationContext: ValidityVerificationContext,
             ): Result<SdJwt<JWT>> =
-                doVerify(claimsOf, jwtSignatureVerifier, MustNotBePresent, unverifiedSdJwt)
+                doVerify(
+                    claimsOf,
+                    jwtSignatureVerifier,
+                    MustNotBePresent,
+                    unverifiedSdJwt,
+                    validityVerificationContext,
+                )
                     .map { (sdJwt, kbJwt) ->
                         check(kbJwt == null) { "KeyBinding JWT is not expected" }
                         sdJwt
@@ -410,8 +427,9 @@ interface SdJwtVerifier<JWT> {
                 jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                 keyBindingVerifier: MustBePresentAndValid<JWT>,
                 unverifiedSdJwt: String,
+                validityVerificationContext: ValidityVerificationContext,
             ): Result<SdJwtAndKbJwt<JWT>> =
-                doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt)
+                doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt, validityVerificationContext)
                     .map { (sdJwt, kbJwt) ->
                         checkNotNull(kbJwt) { "KeyBinding JWT is expected" }
                         SdJwtAndKbJwt(sdJwt, kbJwt)
@@ -425,6 +443,7 @@ private suspend fun <JWT> doVerify(
     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
     keyBindingVerifier: KeyBindingVerifier<JWT>,
     unverifiedSdJwt: String,
+    validityVerificationContext: ValidityVerificationContext,
 ): Result<Pair<SdJwt<JWT>, JWT?>> = runCatchingCancellable {
     // Parse
     val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = StandardSerialization.parse(unverifiedSdJwt)
@@ -434,7 +453,52 @@ private suspend fun <JWT> doVerify(
     val jwtClaims = claimsOf(jwt)
     val hashAlgorithm = jwtClaims.hashAlgorithm()
     val disclosures = toDisclosures(unverifiedDisclosures)
-    val (_, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
+    val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
+
+    val nbf = recreated[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
+        Instant.fromEpochSeconds(it.toLong())
+    }
+    val exp = recreated[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
+        Instant.fromEpochSeconds(it.toLong())
+    }
+    val aud: List<String>? = recreated[RFC7519.AUDIENCE]?.let { element ->
+        when (element) {
+            is JsonArray ->
+                element.map { it.jsonPrimitive.content }
+            is JsonPrimitive ->
+                element.contentOrNull?.let(::listOf)
+            else -> null
+        }
+    }
+
+    validityVerificationContext.let { context ->
+        fun invalidJwt(message: String): Result<Nothing> =
+            Result.failure(InvalidJwt(message).asException())
+
+        context.notBefore?.let { ctxNotBefore ->
+            nbf?.let { tokenNotBefore ->
+                if (tokenNotBefore > ctxNotBefore) {
+                    return invalidJwt("JWT not valid before $ctxNotBefore")
+                }
+            }
+        }
+
+        context.expiresAt?.let { ctxExpiresAt ->
+            exp?.let { tokenExpiresAt ->
+                if (tokenExpiresAt < ctxExpiresAt) {
+                    return invalidJwt("JWT not valid since expired at $ctxExpiresAt")
+                }
+            }
+        }
+
+        context.audience?.let { expectedAudience ->
+            aud?.let { tokenAudiences ->
+                if (expectedAudience in tokenAudiences) {
+                    return invalidJwt("JWT not having valid aud value $expectedAudience")
+                }
+            }
+        }
+    }
 
     // Check Key binding
     val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
@@ -471,4 +535,24 @@ internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): 
     val jwtAndDisclosures = StandardSerialization.concat(unverifiedJwt, unverifiedDisclosures)
     val kbJwtSerialized = unverifiedKBJwt ?: ""
     return "$jwtAndDisclosures$kbJwtSerialized"
+}
+
+data class ValidityVerificationContext(
+    val notBefore: Instant? = null,
+    val expiresAt: Instant? = null,
+    val audience: String? = null,
+) {
+
+    companion object {
+        operator fun invoke(
+            notBefore: Instant? = null,
+            expiresAt: Instant? = null,
+            audience: String? = null,
+            skew: Duration,
+        ): ValidityVerificationContext {
+            val notBefore = notBefore?.minus(skew)
+            val expiresAt = expiresAt?.plus(skew)
+            return ValidityVerificationContext(notBefore, expiresAt, audience)
+        }
+    }
 }
