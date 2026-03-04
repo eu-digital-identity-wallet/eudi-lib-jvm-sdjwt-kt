@@ -25,7 +25,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
-import kotlin.time.Clock
 
 class SdJwtVerifierVerifyPresentationTest {
 
@@ -210,21 +209,13 @@ class SdJwtVerifierVerifyPresentationTest {
                     KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
                         jwtSignatureVerifier,
                         unverifiedSdJwt,
-                        ValidityVerificationContext(
-                            notBefore = Clock.System.now(),
-                            expiresAt = Clock.System.now(),
-                            audience = "AAAAAAAAAAAA",
-                        ),
+                        ValidityVerificationContext(),
                     )
                     is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
                         jwtSignatureVerifier,
                         holderBindingVerifier,
                         unverifiedSdJwt,
-                        ValidityVerificationContext(
-                            notBefore = Clock.System.now(),
-                            expiresAt = Clock.System.now(),
-                            audience = "AAAAAAAAAAAA",
-                        ),
+                        ValidityVerificationContext(),
                     )
                 }
             verification.getOrThrow()
@@ -245,21 +236,13 @@ class SdJwtVerifierVerifyPresentationTest {
                 KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
                 is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     holderBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
             }
         verification.assertIsFailureWithInvalidDisclosures(invalidDisclosures)
@@ -275,21 +258,13 @@ class SdJwtVerifierVerifyPresentationTest {
                 KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
                 is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
             }
         assertTrue { verification.isSuccess }
@@ -305,21 +280,13 @@ class SdJwtVerifierVerifyPresentationTest {
                 KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
                 is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(
-                        notBefore = Clock.System.now(),
-                        expiresAt = Clock.System.now(),
-                        audience = "AAAAAAAAAAAA",
-                    ),
+                    ValidityVerificationContext(),
                 )
             }
         assertTrue { verification.isSuccess }
