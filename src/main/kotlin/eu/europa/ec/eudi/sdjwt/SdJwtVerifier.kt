@@ -537,7 +537,9 @@ data class ValidityVerificationContext private constructor(
     val expiresAt: Instant? = null,
     val audience: String? = null,
 ) {
-
+    /**
+     * Creates a new instance of [ValidityVerificationContext]
+     */
     companion object {
         /**
          * Creates a new instance of [ValidityVerificationContext] with adjusted validity period
@@ -566,6 +568,15 @@ data class ValidityVerificationContext private constructor(
             return ValidityVerificationContext(notBefore, expiresAt, audience)
         }
 
+        /**
+         * Creates a new instance of [ValidityVerificationContext].
+         *
+         * @param notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
+         * @param expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
+         * @param audience  Optional [String] specifying the intended audience for verification of claim `aud`.
+         *
+         * @return An instance of [ValidityVerificationContext] with the audience and adjusted validity timeframe with no nanoseconds, if set.
+         */
         operator fun invoke(
             notBefore: Instant? = null,
             expiresAt: Instant? = null,
@@ -573,7 +584,7 @@ data class ValidityVerificationContext private constructor(
         ): ValidityVerificationContext = ValidityVerificationContext(
             notBefore = notBefore?.dropNanoSeconds(),
             expiresAt = expiresAt?.dropNanoSeconds(),
-            audience = audience
+            audience = audience,
         )
 
         /**
