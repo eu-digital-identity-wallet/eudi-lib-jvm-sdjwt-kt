@@ -88,6 +88,7 @@ class SdJwtVerifierVerifyPresentationTest {
         verifySuccess(
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
+            null,
             "$jwt~",
         )
     }
@@ -112,7 +113,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, no disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("sd_hash claim contains an invalid value")),
+                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("'sd_hash' claim is missing")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "$jwt~$jwt",
@@ -125,6 +126,7 @@ class SdJwtVerifierVerifyPresentationTest {
             verifySuccess(
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
+                challengeWithoutD1,
                 "$jwt~$kbWithoutD1",
             )
         }
@@ -146,6 +148,7 @@ class SdJwtVerifierVerifyPresentationTest {
         verifySuccess(
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
+            null,
             "$jwt~$d1~",
         )
     }
@@ -164,7 +167,7 @@ class SdJwtVerifierVerifyPresentationTest {
     fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() =
         runTest {
             verifyPresentationExpectingError(
-                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("sd_hash claim contains an invalid value")),
+                VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("'sd_hash' claim is missing")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
                 "$jwt~$d1~$jwt",
@@ -177,6 +180,7 @@ class SdJwtVerifierVerifyPresentationTest {
             verifySuccess(
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
+                challengeWithD1,
                 "$jwt~$d1~$kbWithD1",
             )
         }
@@ -186,6 +190,7 @@ class SdJwtVerifierVerifyPresentationTest {
         verifySuccess(
             NoSignatureValidation,
             KeyBindingVerifierMustBePresent,
+            challengeEx2,
             Json.parseToJsonElement(ex2).jsonObject,
         )
     }
@@ -195,6 +200,7 @@ class SdJwtVerifierVerifyPresentationTest {
         verifySuccess(
             NoSignatureValidation,
             KeyBindingVerifier.MustNotBePresent,
+            null,
             Json.parseToJsonElement(ex3).jsonObject,
         )
     }
@@ -217,6 +223,7 @@ class SdJwtVerifierVerifyPresentationTest {
                     is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                         jwtSignatureVerifier,
                         holderBindingVerifier,
+                        challengeWithoutD1,
                         unverifiedSdJwt,
                     )
                 }
@@ -242,6 +249,7 @@ class SdJwtVerifierVerifyPresentationTest {
                 is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     holderBindingVerifier,
+                    challengeWithoutD1,
                     unverifiedSdJwt,
                 )
             }
@@ -251,6 +259,7 @@ class SdJwtVerifierVerifyPresentationTest {
     private suspend fun verifySuccess(
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
+        challenge: KeyBindingJwtChallenge?,
         unverifiedSdJwt: String,
     ) {
         val verification =
@@ -262,6 +271,7 @@ class SdJwtVerifierVerifyPresentationTest {
                 is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
+                    checkNotNull(challenge),
                     unverifiedSdJwt,
                 )
             }
@@ -271,6 +281,7 @@ class SdJwtVerifierVerifyPresentationTest {
     private suspend fun verifySuccess(
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
+        challenge: KeyBindingJwtChallenge?,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
@@ -282,6 +293,7 @@ class SdJwtVerifierVerifyPresentationTest {
                 is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
+                    checkNotNull(challenge),
                     unverifiedSdJwt,
                 )
             }
@@ -305,15 +317,19 @@ class SdJwtVerifierVerifyPresentationTest {
     """.trimIndent().removeNewLine()
 
     private val kbWithoutD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc0
-            aW1NQ3FTc09fdVFfaXZxQjJ4ayJ9.u3to8ttbbYCFds3QqhI9D3Hmfygz4-0PG3KjTGKh
-            ROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0DdO1nOA    
+            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc
+            0aW1NQ3FTc09fdVFfaXZxQjJ4ayIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
+            sZS5vcmciLCJpYXQiOjE3NzI3MTUwODIsIm5vbmNlIjoibm9uY2UifQ.u3to8ttbbYCF
+            ds3QqhI9D3Hmfygz4-0PG3KjTGKhROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0D
+            dO1nOA    
     """.trimIndent().removeNewLine()
 
     private val kbWithD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA4
-            Sm02ODBqNHJnbWdUd3JjX2lMcyJ9.rkN3lEPVuXaLU3wrL0a5xGQjj8vBsHxWEGh5IQdZ
-            VrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ67m0Hg
+            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA
+            4Sm02ODBqNHJnbWdUd3JjX2lMcyIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
+            sZS5vcmciLCJpYXQiOjE3NzI3MTUxNDksIm5vbmNlIjoibm9uY2UifQ.rkN3lEPVuXaL
+            U3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ
+            67m0Hg
     """.trimIndent().removeNewLine()
 }
 
@@ -345,3 +361,21 @@ private val ex3 = """
       "signature": "QqT_REPTOaBX4EzA9rQqad_iOL6pMl9_onmFH_q-Npyqal5TsxcUc5FIKjQL9BFO8QvA0BFbVbzaO-NLonN3Mw"
     }
 """.trimIndent()
+
+private val challengeWithoutD1 = KeyBindingJwtChallenge(
+    issuedAt = Instant.fromEpochSeconds(1772715082L, 0).let { it..it },
+    audience = "https://verifier.example.org",
+    nonce = "nonce",
+)
+
+private val challengeWithD1 = KeyBindingJwtChallenge(
+    issuedAt = Instant.fromEpochSeconds(1772715149L, 0).let { it..it },
+    audience = "https://verifier.example.org",
+    nonce = "nonce",
+)
+
+private val challengeEx2 = KeyBindingJwtChallenge(
+    issuedAt = Instant.fromEpochSeconds(1725374413L, 0).let { it..it },
+    audience = "https://verifier.example.org",
+    nonce = "1234567890",
+)

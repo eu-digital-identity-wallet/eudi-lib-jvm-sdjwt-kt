@@ -66,7 +66,7 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: String, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>>
+    suspend fun verify(unverifiedSdJwt: String, challenge: KeyBindingJwtChallenge): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
@@ -80,7 +80,7 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>> =
+    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: KeyBindingJwtChallenge): Result<SdJwtAndKbJwt<JWT>> =
         verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
 }
 
@@ -91,7 +91,7 @@ fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1
 
         override suspend fun verify(
             unverifiedSdJwt: String,
-            challenge: JsonObject?,
+            challenge: KeyBindingJwtChallenge,
         ): Result<SdJwtAndKbJwt<JWT1>> =
             this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
     }
