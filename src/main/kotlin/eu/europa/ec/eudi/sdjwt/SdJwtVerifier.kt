@@ -532,7 +532,7 @@ internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): 
  * @property expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
  * @property audience  Optional [String] specifying the intended audience for verification of claim `aud`.
  */
-data class ValidityVerificationContext(
+data class ValidityVerificationContext private constructor(
     val notBefore: Instant? = null,
     val expiresAt: Instant? = null,
     val audience: String? = null,
@@ -561,9 +561,24 @@ data class ValidityVerificationContext(
         ): ValidityVerificationContext {
             require(skew >= Duration.ZERO) { "skew cannot be negative" }
 
-            val notBefore = notBefore?.minus(skew)
-            val expiresAt = expiresAt?.plus(skew)
+            val notBefore = notBefore?.dropNanoSeconds()?.minus(skew)
+            val expiresAt = expiresAt?.dropNanoSeconds()?.plus(skew)
             return ValidityVerificationContext(notBefore, expiresAt, audience)
         }
+
+        operator fun invoke(
+            notBefore: Instant? = null,
+            expiresAt: Instant? = null,
+            audience: String? = null,
+        ): ValidityVerificationContext = ValidityVerificationContext(
+            notBefore = notBefore?.dropNanoSeconds(),
+            expiresAt = expiresAt?.dropNanoSeconds(),
+            audience = audience
+        )
+
+        /**
+         * Returns this [Instant] truncated to millisecond precision.
+         */
+        private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
     }
 }
