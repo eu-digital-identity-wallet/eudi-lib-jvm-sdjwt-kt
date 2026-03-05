@@ -32,7 +32,7 @@ interface SdJwtVcVerifier<out JWT> {
      * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
+     * @param validityVerificationContext context used to verify the validity of the issuer-singed JWT claims `nbf`, `exp` and `aud`
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
@@ -48,7 +48,7 @@ interface SdJwtVcVerifier<out JWT> {
      * @param unverifiedSdJwt the SD-JWT to be verified.
      * A JSON Object that is expected to be in general
      * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
-     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
+     * @param validityVerificationContext context used to verify the validity of the issuer-singed JWT claims `nbf`, `exp` and `aud`
      * @return the verified SD-JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
@@ -82,7 +82,7 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
-     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
+     * @param validityVerificationContext context used to verify the validity of the issuer-singed JWT claims `nbf`, `exp` and `aud`
      * @return the verified SD-JWT and KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT

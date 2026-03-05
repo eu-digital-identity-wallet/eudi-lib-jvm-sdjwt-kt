@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Instant
 
-class SdJwtVerifierVerificationOfClaimsTest {
+class SdJwtVerifierTest {
 
     @Test
     fun `when sd-jwt has a valid jwt and context is valid return Valid`() = runTest {

@@ -586,10 +586,10 @@ data class ValidityVerificationContext private constructor(
             expiresAt = expiresAt?.dropNanoSeconds(),
             audience = audience,
         )
-
-        /**
-         * Returns this [Instant] truncated to millisecond precision.
-         */
-        private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
     }
 }
+
+/**
+ * Returns this [Instant] truncated to millisecond precision.
+ */
+private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
