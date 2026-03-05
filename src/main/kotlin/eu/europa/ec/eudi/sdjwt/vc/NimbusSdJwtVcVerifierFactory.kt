@@ -47,7 +47,6 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
     override fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         typeMetadataPolicy: TypeMetadataPolicy,
-        validityVerificationContext: ValidityVerificationContext,
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
@@ -62,21 +61,23 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy, validityVerificationContext)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy)
     }
 }
 
 private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val typeMetadataPolicy: TypeMetadataPolicy,
-    private val validityVerificationContext: ValidityVerificationContext,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
             KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
         }
 
-    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
+    override suspend fun verify(
+        unverifiedSdJwt: String,
+        validityVerificationContext: ValidityVerificationContext,
+    ): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt, validityVerificationContext).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
@@ -86,6 +87,7 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
+        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)

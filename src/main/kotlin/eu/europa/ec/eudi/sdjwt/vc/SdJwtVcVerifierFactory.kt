@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.ValidityVerificationContext
 import eu.europa.ec.eudi.sdjwt.map
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonObject
@@ -178,7 +177,6 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
     operator fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<JWT, JWK, X509Chain>,
         typeMetadataPolicy: TypeMetadataPolicy,
-        validityVerificationContext: ValidityVerificationContext,
     ): SdJwtVcVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
@@ -191,12 +189,10 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
             override fun invoke(
                 issuerVerificationMethod: IssuerVerificationMethod<JWT1, JWK1, X509Chain1>,
                 typeMetadataPolicy: TypeMetadataPolicy,
-                validityVerificationContext: ValidityVerificationContext,
             ): SdJwtVcVerifier<JWT1> =
                 this@SdJwtVcVerifierFactory.invoke(
                     issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
                     typeMetadataPolicy,
-                    validityVerificationContext,
                 ).map(convertToJwt)
         }
 }

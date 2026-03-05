@@ -32,10 +32,11 @@ interface SdJwtVcVerifier<out JWT> {
      * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
+     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT>>
+    suspend fun verify(unverifiedSdJwt: String, validityVerificationContext: ValidityVerificationContext): Result<SdJwt<JWT>>
 
     /**
      * Verifies an SD-JWT serialized using JWS JSON serialization (either general or flattened format) as defined by RFC7515
@@ -47,12 +48,13 @@ interface SdJwtVcVerifier<out JWT> {
      * @param unverifiedSdJwt the SD-JWT to be verified.
      * A JSON Object that is expected to be in general
      * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
+     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
      * @return the verified SD-JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
-        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+    suspend fun verify(unverifiedSdJwt: JsonObject, validityVerificationContext: ValidityVerificationContext): Result<SdJwt<JWT>> =
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), validityVerificationContext)
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -60,13 +62,19 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp`
+     * and/or `aud`
      * @return the verified SD-JWT and the KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: String, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>>
+    suspend fun verify(
+        unverifiedSdJwt: String,
+        challenge: JsonObject?,
+        validityVerificationContext: ValidityVerificationContext,
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
@@ -74,26 +82,35 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @param validityVerificationContext the context used to verify the validity of the SD-JWT of claims `nbf`, `exp` and/or `aud`
      * @return the verified SD-JWT and KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: JsonObject?): Result<SdJwtAndKbJwt<JWT>> =
-        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
+    suspend fun verify(
+        unverifiedSdJwt: JsonObject,
+        challenge: JsonObject?,
+        validityVerificationContext: ValidityVerificationContext,
+    ): Result<SdJwtAndKbJwt<JWT>> =
+        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge, validityVerificationContext)
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
     return object : SdJwtVcVerifier<JWT1> {
-        override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
+        override suspend fun verify(
+            unverifiedSdJwt: String,
+            validityVerificationContext: ValidityVerificationContext,
+        ): Result<SdJwt<JWT1>> =
+            this@map.verify(unverifiedSdJwt, validityVerificationContext).map { sdJwt -> sdJwt.map(f) }
 
         override suspend fun verify(
             unverifiedSdJwt: String,
             challenge: JsonObject?,
+            validityVerificationContext: ValidityVerificationContext,
         ): Result<SdJwtAndKbJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
+            this@map.verify(unverifiedSdJwt, challenge, validityVerificationContext).map { it.map(f) }
     }
 }
 

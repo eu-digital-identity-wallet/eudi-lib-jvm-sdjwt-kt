@@ -159,9 +159,8 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
-            ValidityVerificationContext(),
         )
-        verifier.verify(unverifiedSdJwt).getOrThrow()
+        verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
     }
 
     @Test
@@ -170,9 +169,8 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
-            ValidityVerificationContext(),
         )
-        verifier.verify(unverifiedSdJwt).getOrThrow()
+        verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
     }
 
     @Test
@@ -182,11 +180,10 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
-            ValidityVerificationContext(),
 
         )
         try {
-            verifier.verify(unverifiedSdJwt).getOrThrow()
+            verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
             val invalidJwt = assertIs<VerificationError.InvalidJwt>(exception.reason)
             val badJoseException = assertIs<BadJOSEException>(invalidJwt.cause)
@@ -244,12 +241,10 @@ class SdJwtVcVerifierTest {
             val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
                 IssuerVerificationMethod.usingIssuerMetadata(httpClient),
                 TypeMetadataPolicy.NotUsed,
-                ValidityVerificationContext(),
-
             )
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-            verifier.verify(serialized).getOrThrow()
+            verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
         }
 
     @Test
@@ -303,12 +298,11 @@ class SdJwtVcVerifierTest {
             NimbusSdJwtOps.SdJwtVcVerifier(
                 IssuerVerificationMethod.usingX5c(x509CertificateTrust),
                 TypeMetadataPolicy.NotUsed,
-                ValidityVerificationContext(),
 
             )
         }
 
         val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-        verifier.verify(serialized).getOrThrow()
+        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
     }
 }

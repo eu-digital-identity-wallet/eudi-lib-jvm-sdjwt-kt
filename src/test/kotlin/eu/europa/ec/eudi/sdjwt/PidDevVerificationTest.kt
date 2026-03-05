@@ -53,11 +53,13 @@ class PidDevVerificationTest :
                 x509CertificateTrust = { _, _ -> true },
             ),
             TypeMetadataPolicy.NotUsed,
-            ValidityVerificationContext(),
         )
 
         val issuedSdJwt = try {
-            verifier.verify(unverifiedSdJwtVc).getOrThrow()
+            verifier.verify(
+                unverifiedSdJwtVc,
+                ValidityVerificationContext(),
+            ).getOrThrow()
         } catch (e: Throwable) {
             printError(unverifiedSdJwtVc, e)
             throw e

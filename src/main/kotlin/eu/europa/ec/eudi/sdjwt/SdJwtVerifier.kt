@@ -456,7 +456,7 @@ private suspend fun <JWT> doVerify(
     val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
 
     // verified validity of nbf, exp and aud claims if exists
-    validateValidity(recreated, validityVerificationContext).getOrThrow()
+    validityVerificationContext.validate(recreated)
 
     // Check Key binding
     val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
@@ -470,14 +470,14 @@ private suspend fun <JWT> doVerify(
     sdJwt to kbJwt
 }
 
-private fun validateValidity(recreated: JsonObject, validityVerificationContext: ValidityVerificationContext): Result<Unit> {
-    val nbf = recreated[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
+private fun ValidityVerificationContext.validate(payload: JsonObject) {
+    val nbf = payload[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
         Instant.fromEpochSeconds(it.toLong())
     }
-    val exp = recreated[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
+    val exp = payload[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
         Instant.fromEpochSeconds(it.toLong())
     }
-    val aud: List<String>? = recreated[RFC7519.AUDIENCE]?.let { element ->
+    val aud: List<String>? = payload[RFC7519.AUDIENCE]?.let { element ->
         when {
             element is JsonArray ->
                 element.map { it.jsonPrimitive.content }
@@ -487,35 +487,29 @@ private fun validateValidity(recreated: JsonObject, validityVerificationContext:
         }
     }
 
-    validityVerificationContext.let { context ->
-        fun invalidJwt(message: String): Result<Nothing> =
-            Result.failure(InvalidJwt(message).asException())
-
-        context.notBefore?.let { notBeforeContext ->
-            nbf?.let { nbfClaim ->
-                if (nbfClaim >= notBeforeContext) {
-                    return invalidJwt("JWT nbf claim is before given date")
-                }
-            }
-        }
-
-        context.expiresAt?.let { expireContext ->
-            exp?.let { expClaim ->
-                if (expClaim < expireContext) {
-                    return invalidJwt("JWT exp claim is after given date")
-                }
-            }
-        }
-
-        context.audience?.let { audienceContext ->
-            aud?.let { audClaim ->
-                if (audienceContext !in audClaim) {
-                    return invalidJwt("JWT not containing valid aud value")
-                }
+    this.notBefore?.let { notBeforeContext ->
+        nbf?.let { nbfClaim ->
+            if (nbfClaim >= notBeforeContext) {
+                throw InvalidJwt(("JWT nbf claim is before given date")).asException()
             }
         }
     }
-    return Result.success(Unit)
+
+    this.expiresAt?.let { expireContext ->
+        exp?.let { expClaim ->
+            if (expClaim < expireContext) {
+                throw InvalidJwt(("JWT exp claim is after given date")).asException()
+            }
+        }
+    }
+
+    this.audience?.let { audienceContext ->
+        aud?.let { audClaim ->
+            if (audienceContext !in audClaim) {
+                throw InvalidJwt(("JWT not containing valid aud value")).asException()
+            }
+        }
+    }
 }
 
 /**

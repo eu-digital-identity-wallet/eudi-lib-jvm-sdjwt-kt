@@ -61,7 +61,6 @@ class SdJwtVcVerifierIntegrationTest {
                 },
             ),
         ),
-        ValidityVerificationContext(),
     )
 
     private suspend fun issue(builder: SdJwtObjectBuilder.() -> Unit): String = issuer.issue(sdJwt { builder() }).getOrThrow().serialize()
@@ -93,7 +92,7 @@ class SdJwtVcVerifierIntegrationTest {
             }
             sdClaim("age_in_years", 35)
         }
-        verifier.verify(serialized).getOrThrow()
+        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
     }
 
     @Test
@@ -102,7 +101,8 @@ class SdJwtVcVerifierIntegrationTest {
             claim(RFC7519.ISSUER, "https://example.com/issuer")
             sdClaim(SdJwtVcSpec.VCT, "urn:eudi:pid:1")
         }
-        val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+        val exception =
+            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized, ValidityVerificationContext()).getOrThrow() }
         val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val sdJwtVcVerificationError =
             assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure>(sdJwtVcError.error)
@@ -123,7 +123,8 @@ class SdJwtVcVerifierIntegrationTest {
                 claim("18", true)
             }
         }
-        val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+        val exception =
+            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized, ValidityVerificationContext()).getOrThrow() }
         val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val sdJwtVcVerificationError =
             assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure>(sdJwtVcError.error)
@@ -159,10 +160,9 @@ class SdJwtVcVerifierIntegrationTest {
                     },
                 ),
             ),
-            ValidityVerificationContext(),
         )
 
-        verifier.verify(serialized).getOrThrow()
+        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
         assertTrue(documentIntegrityParsed)
     }
 }
