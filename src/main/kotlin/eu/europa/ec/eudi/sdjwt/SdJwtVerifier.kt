@@ -21,12 +21,7 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustBePresentAndValid
 import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlin.let
+import kotlinx.serialization.json.*
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -486,28 +481,21 @@ private fun ValidityVerificationContext.validate(payload: JsonObject) {
             else -> error("${RFC7519.AUDIENCE} can be JsonArray or JsonPrimitive with string content")
         }
     }
-
-    this.notBefore?.let { notBeforeContext ->
-        nbf?.let { nbfClaim ->
-            if (nbfClaim >= notBeforeContext) {
-                throw InvalidJwt(("JWT nbf claim is before given date")).asException()
-            }
+    if (null != this.notBefore && null != nbf) {
+        if (nbf >= this.notBefore) {
+            throw InvalidJwt(("JWT nbf claim is before given date")).asException()
         }
     }
 
-    this.expiresAt?.let { expireContext ->
-        exp?.let { expClaim ->
-            if (expClaim < expireContext) {
-                throw InvalidJwt(("JWT exp claim is after given date")).asException()
-            }
+    if (null != this.expiresAt && null != exp) {
+        if (exp < this.expiresAt) {
+            throw InvalidJwt(("JWT exp claim is after given date")).asException()
         }
     }
 
-    this.audience?.let { audienceContext ->
-        aud?.let { audClaim ->
-            if (audienceContext !in audClaim) {
-                throw InvalidJwt(("JWT not containing valid aud value")).asException()
-            }
+    if (null != this.audience && null != aud) {
+        if (this.audience !in aud) {
+            throw InvalidJwt(("JWT not containing valid aud value")).asException()
         }
     }
 }
@@ -537,6 +525,13 @@ internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): 
     return "$jwtAndDisclosures$kbJwtSerialized"
 }
 
+/**
+ * Represents the context required for validity verification of claims: `exp`, `nbf` and `aud`.
+ *
+ * @property notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
+ * @property expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
+ * @property audience  Optional [String] specifying the intended audience for verification of claim `aud`.
+ */
 data class ValidityVerificationContext(
     val notBefore: Instant? = null,
     val expiresAt: Instant? = null,
@@ -544,13 +539,27 @@ data class ValidityVerificationContext(
 ) {
 
     companion object {
+        /**
+         * Creates a new instance of [ValidityVerificationContext] with adjusted validity period
+         * based on the provided skew duration.
+         * For [notBefore], [skew] value is subtracted from the provided value.
+         * For [expiresAt], [skew] value is added to the provided value.
+         *
+         * @param notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
+         * @param expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
+         * @param audience  Optional [String] specifying the intended audience for verification of claim `aud`.
+         * @param skew      The duration to adjust the validity period for clock skew compensation. Must be zero or positive.
+         *
+         * @return A new instance of [ValidityVerificationContext] with the adjusted validity timeframe and audience.
+         * @throws IllegalArgumentException if the skew duration is negative.
+         */
         operator fun invoke(
             notBefore: Instant? = null,
             expiresAt: Instant? = null,
             audience: String? = null,
             skew: Duration,
         ): ValidityVerificationContext {
-            require(skew >= Duration.ZERO) { "skew must be positive" }
+            require(skew >= Duration.ZERO) { "skew cannot be negative" }
 
             val notBefore = notBefore?.minus(skew)
             val expiresAt = expiresAt?.plus(skew)
