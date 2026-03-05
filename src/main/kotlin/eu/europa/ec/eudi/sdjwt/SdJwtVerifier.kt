@@ -455,50 +455,8 @@ private suspend fun <JWT> doVerify(
     val disclosures = toDisclosures(unverifiedDisclosures)
     val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
 
-    val nbf = recreated[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
-        Instant.fromEpochSeconds(it.toLong())
-    }
-    val exp = recreated[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
-        Instant.fromEpochSeconds(it.toLong())
-    }
-    val aud: List<String>? = recreated[RFC7519.AUDIENCE]?.let { element ->
-        when (element) {
-            is JsonArray ->
-                element.map { it.jsonPrimitive.content }
-            is JsonPrimitive ->
-                element.contentOrNull?.let(::listOf)
-            else -> null
-        }
-    }
-
-    validityVerificationContext.let { context ->
-        fun invalidJwt(message: String): Result<Nothing> =
-            Result.failure(InvalidJwt(message).asException())
-
-        context.notBefore?.let { ctxNotBefore ->
-            nbf?.let { tokenNotBefore ->
-                if (tokenNotBefore > ctxNotBefore) {
-                    return invalidJwt("JWT not valid before $ctxNotBefore")
-                }
-            }
-        }
-
-        context.expiresAt?.let { ctxExpiresAt ->
-            exp?.let { tokenExpiresAt ->
-                if (tokenExpiresAt < ctxExpiresAt) {
-                    return invalidJwt("JWT not valid since expired at $ctxExpiresAt")
-                }
-            }
-        }
-
-        context.audience?.let { expectedAudience ->
-            aud?.let { tokenAudiences ->
-                if (expectedAudience in tokenAudiences) {
-                    return invalidJwt("JWT not having valid aud value $expectedAudience")
-                }
-            }
-        }
-    }
+    // verified validity of nbf, exp and aud claims if exists
+    validateValidity(recreated, validityVerificationContext).getOrThrow()
 
     // Check Key binding
     val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
@@ -510,6 +468,54 @@ private suspend fun <JWT> doVerify(
     // Assemble it
     val sdJwt = SdJwt(jwt, disclosures)
     sdJwt to kbJwt
+}
+
+private fun validateValidity(recreated: JsonObject, validityVerificationContext: ValidityVerificationContext): Result<Unit> {
+    val nbf = recreated[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
+        Instant.fromEpochSeconds(it.toLong())
+    }
+    val exp = recreated[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
+        Instant.fromEpochSeconds(it.toLong())
+    }
+    val aud: List<String>? = recreated[RFC7519.AUDIENCE]?.let { element ->
+        when {
+            element is JsonArray ->
+                element.map { it.jsonPrimitive.content }
+            element is JsonPrimitive && element.isString ->
+                listOf(element.content)
+            else -> error("${RFC7519.AUDIENCE} can be JsonArray or JsonPrimitive with string content")
+        }
+    }
+
+    validityVerificationContext.let { context ->
+        fun invalidJwt(message: String): Result<Nothing> =
+            Result.failure(InvalidJwt(message).asException())
+
+        context.notBefore?.let { notBeforeContext ->
+            nbf?.let { nbfClaim ->
+                if (nbfClaim >= notBeforeContext) {
+                    return invalidJwt("JWT nbf claim is before given date")
+                }
+            }
+        }
+
+        context.expiresAt?.let { expireContext ->
+            exp?.let { expClaim ->
+                if (expClaim < expireContext) {
+                    return invalidJwt("JWT exp claim is after given date")
+                }
+            }
+        }
+
+        context.audience?.let { audienceContext ->
+            aud?.let { audClaim ->
+                if (audienceContext !in audClaim) {
+                    return invalidJwt("JWT not containing valid aud value")
+                }
+            }
+        }
+    }
+    return Result.success(Unit)
 }
 
 /**
@@ -550,6 +556,8 @@ data class ValidityVerificationContext(
             audience: String? = null,
             skew: Duration,
         ): ValidityVerificationContext {
+            require(skew >= Duration.ZERO) { "skew must be positive" }
+
             val notBefore = notBefore?.minus(skew)
             val expiresAt = expiresAt?.plus(skew)
             return ValidityVerificationContext(notBefore, expiresAt, audience)
