@@ -160,7 +160,6 @@ class SdJwtVcVerifierTest {
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
             ValidityVerificationContext(),
-
         )
         verifier.verify(unverifiedSdJwt).getOrThrow()
     }
