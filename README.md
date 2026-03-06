@@ -128,8 +128,8 @@ import kotlinx.coroutines.runBlocking
 val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
-        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt, ValidityVerificationContext()).getOrThrow()
+        val unverifiedIssuanceSdJwt = serializedUnverifiedIssuanceSdJwt
+        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
     }
 }
 ```
@@ -216,11 +216,10 @@ import kotlinx.coroutines.*
 val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
+        val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
         verify(
             jwtSignatureVerifier,
             unverifiedPresentationSdJwt,
-            ValidityVerificationContext(),
         ).getOrThrow()
     }
 }
@@ -405,7 +404,6 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.RFC7519
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.ValidityVerificationContext
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
@@ -438,12 +436,7 @@ val sdJwtVcVerification = runBlocking {
             typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
         )
 
-        val validityVerificationContext = ValidityVerificationContext()
-
-        verifier.verify(
-            sdJwt,
-            validityVerificationContext,
-        )
+        verifier.verify(sdJwt)
     }
 }
 ```

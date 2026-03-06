@@ -209,7 +209,7 @@ class SdJwtVcIssuanceTest {
             lXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~
         """.trimIndent().removeNewLine()
 
-        val sdJwt = sdJwtVcVerifier.verify(unverified, ValidityVerificationContext()).getOrThrow()
+        val sdJwt = sdJwtVcVerifier.verify(unverified).getOrThrow()
         val jwsJson = with(DefaultSdJwtOps) {
             sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
         }
@@ -248,7 +248,7 @@ class SdJwtVcIssuanceTest {
                 EOtnT09YNGp9nZbETjor3nCzM0J0MvQ
             """.trimIndent().removeNewLine()
 
-        val (sdJwt, kbJwtAndClaims) = sdJwtVcVerifier.verify(unverified, null, ValidityVerificationContext()).getOrThrow()
+        val (sdJwt, kbJwtAndClaims) = sdJwtVcVerifier.verify(unverified, null).getOrThrow()
         val (kbJwt, kbJwtClaims) = assertNotNull(kbJwtAndClaims)
 
         println(json.encodeToString(JsonObject(kbJwtClaims)))
@@ -277,7 +277,7 @@ class SdJwtVcIssuanceTest {
     //
 
     private suspend fun verify(issuedSdJwtStr: String) {
-        val verified: SdJwt<JwtAndClaims> = sdJwtVcVerifier.verify(issuedSdJwtStr, ValidityVerificationContext()).getOrThrow()
+        val verified: SdJwt<JwtAndClaims> = sdJwtVcVerifier.verify(issuedSdJwtStr).getOrThrow()
 
         // Check Header
         val jwsHeader = SignedJWT.parse(verified.jwt.first).header

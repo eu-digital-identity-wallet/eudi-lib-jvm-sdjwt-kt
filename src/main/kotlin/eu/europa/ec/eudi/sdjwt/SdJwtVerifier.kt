@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier.MustNotBePresent
 import eu.europa.ec.eudi.sdjwt.VerificationError.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError
 import kotlinx.serialization.json.*
+import kotlin.contracts.contract
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -315,7 +317,6 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: String,
-        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwt<JWT>>
 
     /**
@@ -339,9 +340,8 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
-        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwt<JWT>> =
-        verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), validityVerificationContext)
+        verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -366,7 +366,6 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         unverifiedSdJwt: String,
-        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
@@ -392,43 +391,38 @@ interface SdJwtVerifier<JWT> {
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         unverifiedSdJwt: JsonObject,
-        validityVerificationContext: ValidityVerificationContext,
-
     ): Result<SdJwtAndKbJwt<JWT>> =
-        verify(jwtSignatureVerifier, keyBindingVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), validityVerificationContext)
+        verify(jwtSignatureVerifier, keyBindingVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     companion object {
 
-        operator fun <JWT> invoke(claimsOf: (JWT) -> JsonObject): SdJwtVerifier<JWT> = object : SdJwtVerifier<JWT> {
+        operator fun <JWT> invoke(clock: Clock, skew: Duration?, claimsOf: (JWT) -> JsonObject): SdJwtVerifier<JWT> {
+            if (null != skew) {
+                require(!skew.isNegative()) { "skew cannot be negative" }
+            }
 
-            override suspend fun verify(
-                jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
-                unverifiedSdJwt: String,
-                validityVerificationContext: ValidityVerificationContext,
-            ): Result<SdJwt<JWT>> =
-                doVerify(
-                    claimsOf,
-                    jwtSignatureVerifier,
-                    MustNotBePresent,
-                    unverifiedSdJwt,
-                    validityVerificationContext,
-                )
-                    .map { (sdJwt, kbJwt) ->
-                        check(kbJwt == null) { "KeyBinding JWT is not expected" }
-                        sdJwt
-                    }
+            return object : SdJwtVerifier<JWT> {
+                override suspend fun verify(
+                    jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+                    unverifiedSdJwt: String,
+                ): Result<SdJwt<JWT>> =
+                    doVerify(claimsOf, jwtSignatureVerifier, MustNotBePresent, clock, skew ?: Duration.ZERO, unverifiedSdJwt)
+                        .map { (sdJwt, kbJwt) ->
+                            check(kbJwt == null) { "KeyBinding JWT is not expected" }
+                            sdJwt
+                        }
 
-            override suspend fun verify(
-                jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
-                keyBindingVerifier: MustBePresentAndValid<JWT>,
-                unverifiedSdJwt: String,
-                validityVerificationContext: ValidityVerificationContext,
-            ): Result<SdJwtAndKbJwt<JWT>> =
-                doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt, validityVerificationContext)
-                    .map { (sdJwt, kbJwt) ->
-                        checkNotNull(kbJwt) { "KeyBinding JWT is expected" }
-                        SdJwtAndKbJwt(sdJwt, kbJwt)
-                    }
+                override suspend fun verify(
+                    jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+                    keyBindingVerifier: MustBePresentAndValid<JWT>,
+                    unverifiedSdJwt: String,
+                ): Result<SdJwtAndKbJwt<JWT>> =
+                    doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, clock, skew ?: Duration.ZERO, unverifiedSdJwt)
+                        .map { (sdJwt, kbJwt) ->
+                            checkNotNull(kbJwt) { "KeyBinding JWT is expected" }
+                            SdJwtAndKbJwt(sdJwt, kbJwt)
+                        }
+            }
         }
     }
 }
@@ -437,8 +431,9 @@ private suspend fun <JWT> doVerify(
     claimsOf: (JWT) -> JsonObject,
     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
     keyBindingVerifier: KeyBindingVerifier<JWT>,
+    clock: Clock,
+    skew: Duration,
     unverifiedSdJwt: String,
-    validityVerificationContext: ValidityVerificationContext,
 ): Result<Pair<SdJwt<JWT>, JWT?>> = runCatchingCancellable {
     // Parse
     val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = StandardSerialization.parse(unverifiedSdJwt)
@@ -450,8 +445,8 @@ private suspend fun <JWT> doVerify(
     val disclosures = toDisclosures(unverifiedDisclosures)
     val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
 
-    // verified validity of nbf, exp and aud claims if exists
-    validityVerificationContext.validate(recreated)
+    // Verify validity of SD-JWT (checks `nbf`, and `exp`)
+    recreated.validate(clock, skew)
 
     // Check Key binding
     val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
@@ -465,37 +460,49 @@ private suspend fun <JWT> doVerify(
     sdJwt to kbJwt
 }
 
-private fun ValidityVerificationContext.validate(payload: JsonObject) {
-    val nbf = payload[RFC7519.NOT_BEFORE]?.jsonPrimitive?.content?.let {
-        Instant.fromEpochSeconds(it.toLong())
+private fun JsonElement.isLong(): Boolean {
+    contract {
+        returns(true) implies (this@isLong is JsonPrimitive)
     }
-    val exp = payload[RFC7519.EXPIRATION_TIME]?.jsonPrimitive?.content?.let {
-        Instant.fromEpochSeconds(it.toLong())
-    }
-    val aud: List<String>? = payload[RFC7519.AUDIENCE]?.let { element ->
-        when {
-            element is JsonArray ->
-                element.map { it.jsonPrimitive.content }
-            element is JsonPrimitive && element.isString ->
-                listOf(element.content)
-            else -> error("${RFC7519.AUDIENCE} can be JsonArray or JsonPrimitive with string content")
+    return this is JsonPrimitive && null != longOrNull
+}
+
+private fun JsonObject.nbf(): Instant? =
+    this[RFC7519.NOT_BEFORE]
+        ?.let {
+            check(it.isLong()) {
+                "'${RFC7519.NOT_BEFORE}' claim must be a number"
+            }
+            Instant.fromEpochSeconds(it.content.toLong())
         }
-    }
-    if (null != this.notBefore && null != nbf) {
-        if (nbf >= this.notBefore) {
-            throw InvalidJwt(("JWT nbf claim is before given date")).asException()
+
+private fun JsonObject.exp(): Instant? =
+    this[RFC7519.EXPIRATION_TIME]
+        ?.let {
+            check(it.isLong()) {
+                "'${RFC7519.EXPIRATION_TIME}' claim must be a number"
+            }
+            Instant.fromEpochSeconds(it.content.toLong())
+        }
+
+/**
+ * Returns this [Instant] truncated to millisecond precision.
+ */
+private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
+
+private fun JsonObject.validate(clock: Clock, skew: Duration) {
+    val now = clock.now().dropNanoSeconds()
+    val nbf = nbf()
+    if (null != nbf) {
+        if ((nbf - skew) > now) {
+            throw InvalidJwt(("SD-JWT is not active yet")).asException()
         }
     }
 
-    if (null != this.expiresAt && null != exp) {
-        if (exp < this.expiresAt) {
-            throw InvalidJwt(("JWT exp claim is after given date")).asException()
-        }
-    }
-
-    if (null != this.audience && null != aud) {
-        if (this.audience !in aud) {
-            throw InvalidJwt(("JWT not containing valid aud value")).asException()
+    val exp = exp()
+    if (null != exp) {
+        if (now >= (exp + skew)) {
+            throw InvalidJwt(("SD-JWT is expired")).asException()
         }
     }
 }
@@ -524,72 +531,3 @@ internal fun JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt: JsonObject): 
     val kbJwtSerialized = unverifiedKBJwt ?: ""
     return "$jwtAndDisclosures$kbJwtSerialized"
 }
-
-/**
- * Represents the context required for validity verification of claims: `exp`, `nbf` and `aud`.
- *
- * @property notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
- * @property expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
- * @property audience  Optional [String] specifying the intended audience for verification of claim `aud`.
- */
-data class ValidityVerificationContext private constructor(
-    val notBefore: Instant? = null,
-    val expiresAt: Instant? = null,
-    val audience: String? = null,
-) {
-    /**
-     * Creates a new instance of [ValidityVerificationContext]
-     */
-    companion object {
-        /**
-         * Creates a new instance of [ValidityVerificationContext] with adjusted validity period
-         * based on the provided skew duration.
-         * For [notBefore], [skew] value is subtracted from the provided value.
-         * For [expiresAt], [skew] value is added to the provided value.
-         *
-         * @param notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
-         * @param expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
-         * @param audience  Optional [String] specifying the intended audience for verification of claim `aud`.
-         * @param skew      The duration to adjust the validity period for clock skew compensation. Must be zero or positive.
-         *
-         * @return A new instance of [ValidityVerificationContext] with the adjusted validity timeframe and audience.
-         * @throws IllegalArgumentException if the skew duration is negative.
-         */
-        operator fun invoke(
-            notBefore: Instant? = null,
-            expiresAt: Instant? = null,
-            audience: String? = null,
-            skew: Duration,
-        ): ValidityVerificationContext {
-            require(skew >= Duration.ZERO) { "skew cannot be negative" }
-
-            val notBefore = notBefore?.dropNanoSeconds()?.minus(skew)
-            val expiresAt = expiresAt?.dropNanoSeconds()?.plus(skew)
-            return ValidityVerificationContext(notBefore, expiresAt, audience)
-        }
-
-        /**
-         * Creates a new instance of [ValidityVerificationContext].
-         *
-         * @param notBefore Optional [Instant] defining the earliest valid time for verification of claim `nbf`.
-         * @param expiresAt Optional [Instant] defining the latest valid time for verification of claim `exp`.
-         * @param audience  Optional [String] specifying the intended audience for verification of claim `aud`.
-         *
-         * @return An instance of [ValidityVerificationContext] with the audience and adjusted validity timeframe with no nanoseconds, if set.
-         */
-        operator fun invoke(
-            notBefore: Instant? = null,
-            expiresAt: Instant? = null,
-            audience: String? = null,
-        ): ValidityVerificationContext = ValidityVerificationContext(
-            notBefore = notBefore?.dropNanoSeconds(),
-            expiresAt = expiresAt?.dropNanoSeconds(),
-            audience = audience,
-        )
-    }
-}
-
-/**
- * Returns this [Instant] truncated to millisecond precision.
- */
-private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())

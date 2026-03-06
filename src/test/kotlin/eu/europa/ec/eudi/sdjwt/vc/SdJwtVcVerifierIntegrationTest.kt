@@ -92,7 +92,7 @@ class SdJwtVcVerifierIntegrationTest {
             }
             sdClaim("age_in_years", 35)
         }
-        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
+        verifier.verify(serialized).getOrThrow()
     }
 
     @Test
@@ -102,7 +102,7 @@ class SdJwtVcVerifierIntegrationTest {
             sdClaim(SdJwtVcSpec.VCT, "urn:eudi:pid:1")
         }
         val exception =
-            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized, ValidityVerificationContext()).getOrThrow() }
+            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
         val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val sdJwtVcVerificationError =
             assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure>(sdJwtVcError.error)
@@ -124,7 +124,7 @@ class SdJwtVcVerifierIntegrationTest {
             }
         }
         val exception =
-            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized, ValidityVerificationContext()).getOrThrow() }
+            assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
         val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val sdJwtVcVerificationError =
             assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure>(sdJwtVcError.error)
@@ -162,7 +162,7 @@ class SdJwtVcVerifierIntegrationTest {
             ),
         )
 
-        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
+        verifier.verify(serialized).getOrThrow()
         assertTrue(documentIntegrityParsed)
     }
 }

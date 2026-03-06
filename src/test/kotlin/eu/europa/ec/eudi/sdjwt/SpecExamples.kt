@@ -123,7 +123,6 @@ class SpecExamples {
         DefaultSdJwtOps.verify(
             DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt,
-            ValidityVerificationContext(),
         ).getOrThrow()
             .also { it.printRecreated() }
     }

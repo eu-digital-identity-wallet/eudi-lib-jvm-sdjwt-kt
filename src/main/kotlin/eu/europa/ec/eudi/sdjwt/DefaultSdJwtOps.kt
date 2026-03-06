@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt
 
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 
 object DefaultSdJwtOps :
     SdJwtVerifier<JwtAndClaims> by DefaultVerifier,
@@ -44,7 +45,7 @@ private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
 
 private val DefaultPresentationOps = SdJwtPresentationOps<JwtAndClaims> { (_, claims) -> claims }
 
-private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier { (_, claims) -> claims }
+private val DefaultVerifier: SdJwtVerifier<JwtAndClaims> = SdJwtVerifier(Clock.System, null) { (_, claims) -> claims }
 
 /**
  * A method for obtaining an [SdJwt] given an unverified SdJwt, without checking the signature

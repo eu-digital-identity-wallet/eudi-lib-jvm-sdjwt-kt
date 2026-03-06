@@ -24,6 +24,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class SdJwtVerifierVerifyIssuanceTest {
 
@@ -66,10 +68,9 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
-            DefaultSdJwtOps.verify(
+            sdJwtVerifier.verify(
                 jwtSignatureVerifier = jwtSignatureVerifier,
                 unverifiedSdJwt = unverifiedSdJwt,
-                validityVerificationContext = ValidityVerificationContext(),
             )
         assertTrue { verification.isSuccess }
     }
@@ -79,10 +80,9 @@ class SdJwtVerifierVerifyIssuanceTest {
         unverifiedSdJwt: String,
     ) {
         val verifiedSdJwt =
-            DefaultSdJwtOps.verify(
+            sdJwtVerifier.verify(
                 jwtSignatureVerifier = jwtSignatureVerifier,
                 unverifiedSdJwt = unverifiedSdJwt,
-                validityVerificationContext = ValidityVerificationContext(),
             ).getOrThrow()
 
         val sdJwtWithOutSigVerification =
@@ -131,10 +131,9 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
     ) {
-        val verification = DefaultSdJwtOps.verify(
+        val verification = sdJwtVerifier.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
-            validityVerificationContext = ValidityVerificationContext(),
         )
         verification.fold(
             onSuccess = { fail("Was expecting error") },
@@ -153,10 +152,9 @@ class SdJwtVerifierVerifyIssuanceTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         unverifiedSdJwt: JsonObject,
     ) {
-        val verification = DefaultSdJwtOps.verify(
+        val verification = sdJwtVerifier.verify(
             jwtSignatureVerifier = jwtSignatureVerifier,
             unverifiedSdJwt = unverifiedSdJwt,
-            validityVerificationContext = ValidityVerificationContext(),
         )
         verification.fold(
             onSuccess = { fail("Was expecting error") },
@@ -170,14 +168,15 @@ class SdJwtVerifierVerifyIssuanceTest {
         )
     }
 
+    private val sdJwtVerifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1735689500L)))
+
     private suspend fun verifyIssuanceExceptingInvalidDisclosure(
         invalidDisclosures: List<String>,
         unverifiedSdJwt: String,
     ) {
-        DefaultSdJwtOps.verify(
+        sdJwtVerifier.verify(
             jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt = unverifiedSdJwt,
-            validityVerificationContext = ValidityVerificationContext(),
         ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 
@@ -185,10 +184,9 @@ class SdJwtVerifierVerifyIssuanceTest {
         invalidDisclosures: List<String>,
         unverifiedSdJwt: JsonObject,
     ) {
-        DefaultSdJwtOps.verify(
+        sdJwtVerifier.verify(
             jwtSignatureVerifier = DefaultSdJwtOps.NoSignatureValidation,
             unverifiedSdJwt = unverifiedSdJwt,
-            validityVerificationContext = ValidityVerificationContext(),
         ).assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
 

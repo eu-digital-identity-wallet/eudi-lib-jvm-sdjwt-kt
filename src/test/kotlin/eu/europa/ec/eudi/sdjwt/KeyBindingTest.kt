@@ -34,7 +34,6 @@ import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.DatePeriod
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
@@ -103,7 +102,7 @@ class KeyBindingTest {
         assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
         // Assert issuer verifier is able to verify JWT
-        val jwtClaims = assertNotNull(verifier.verify(issuedSdJwtStr, validityVerificationContext).getOrNull())
+        val jwtClaims = assertNotNull(verifier.verify(issuedSdJwtStr).getOrNull())
 
         // Extract and verify holder public key
         assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
@@ -216,7 +215,7 @@ class IssuerActor(val issuerKey: ECKey) {
     private val iss: String by lazy {
         "did:jwk:${Base64UrlNoPadding.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }
-    private val expirationPeriod: DatePeriod = DatePeriod(months = 12)
+    private val expirationPeriod = (12 * 31).days
 
     /**
      * The [SdJwtIssuer]
@@ -238,7 +237,7 @@ class IssuerActor(val issuerKey: ECKey) {
     suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String = with(NimbusSdJwtOps) {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Clock.System.now()
-        val exp = iat.plus(expirationPeriod.days.days)
+        val exp = iat + expirationPeriod
         val sdJwtElements =
             sdJwt {
                 claim(RFC7519.ISSUER, iss)
@@ -292,7 +291,7 @@ class HolderActor(
 
     suspend fun storeCredential(sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
-        verifier.verify(sdJwt, validityVerificationContext).fold(
+        verifier.verify(sdJwt).fold(
             onSuccess = { issued ->
                 credentialSdJwt = issued
                 holderDebug("Stored SD-JWT")
@@ -346,7 +345,7 @@ class VerifierActor(
     ).also { lastChallenge = it.challenge.asJson() }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
-        val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge, validityVerificationContext).getOrThrow()
+        val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
         presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
@@ -371,4 +370,3 @@ class VerifierActor(
         println("Verifier: $s")
     }
 }
-private var validityVerificationContext = ValidityVerificationContext()

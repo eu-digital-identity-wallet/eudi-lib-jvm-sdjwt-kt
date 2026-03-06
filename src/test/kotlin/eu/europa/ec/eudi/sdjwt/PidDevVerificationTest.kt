@@ -56,10 +56,7 @@ class PidDevVerificationTest :
         )
 
         val issuedSdJwt = try {
-            verifier.verify(
-                unverifiedSdJwtVc,
-                ValidityVerificationContext(),
-            ).getOrThrow()
+            verifier.verify(unverifiedSdJwtVc).getOrThrow()
         } catch (e: Throwable) {
             printError(unverifiedSdJwtVc, e)
             throw e

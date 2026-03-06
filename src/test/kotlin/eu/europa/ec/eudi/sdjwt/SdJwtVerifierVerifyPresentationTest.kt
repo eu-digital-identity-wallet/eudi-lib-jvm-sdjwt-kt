@@ -25,6 +25,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class SdJwtVerifierVerifyPresentationTest {
 
@@ -197,6 +199,8 @@ class SdJwtVerifierVerifyPresentationTest {
         )
     }
 
+    private val sdJwtVerifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1735689500L)))
+
     private suspend fun verifyPresentationExpectingError(
         expectedError: VerificationError,
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
@@ -206,16 +210,14 @@ class SdJwtVerifierVerifyPresentationTest {
         try {
             val verification =
                 when (holderBindingVerifier) {
-                    KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
+                    KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
                         jwtSignatureVerifier,
                         unverifiedSdJwt,
-                        ValidityVerificationContext(),
                     )
-                    is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                    is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                         jwtSignatureVerifier,
                         holderBindingVerifier,
                         unverifiedSdJwt,
-                        ValidityVerificationContext(),
                     )
                 }
             verification.getOrThrow()
@@ -233,16 +235,14 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (holderBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
+                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
-                is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     holderBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
             }
         verification.assertIsFailureWithInvalidDisclosures(invalidDisclosures)
@@ -255,16 +255,14 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (keyBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
+                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
-                is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
             }
         assertTrue { verification.isSuccess }
@@ -277,16 +275,14 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (keyBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> DefaultSdJwtOps.verify(
+                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
-                is KeyBindingVerifier.MustBePresentAndValid -> DefaultSdJwtOps.verify(
+                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
                     jwtSignatureVerifier,
                     keyBindingVerifier,
                     unverifiedSdJwt,
-                    ValidityVerificationContext(),
                 )
             }
         assertTrue { verification.isSuccess }

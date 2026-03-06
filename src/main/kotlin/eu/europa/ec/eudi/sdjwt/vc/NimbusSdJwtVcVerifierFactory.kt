@@ -76,10 +76,9 @@ private class NimbusSdJwtVcVerifier(
 
     override suspend fun verify(
         unverifiedSdJwt: String,
-        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt, validityVerificationContext).getOrThrow()
+            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             sdJwt
         }
@@ -87,7 +86,6 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: JsonObject?,
-        validityVerificationContext: ValidityVerificationContext,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
@@ -95,7 +93,6 @@ private class NimbusSdJwtVcVerifier(
                 jwtSignatureVerifier,
                 keyBindingVerifier,
                 unverifiedSdJwt,
-                validityVerificationContext,
             ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt

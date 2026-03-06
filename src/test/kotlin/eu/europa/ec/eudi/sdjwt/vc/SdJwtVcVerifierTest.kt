@@ -160,7 +160,7 @@ class SdJwtVcVerifierTest {
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
         )
-        verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
+        verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
@@ -170,7 +170,7 @@ class SdJwtVcVerifierTest {
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
         )
-        verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
+        verifier.verify(unverifiedSdJwt).getOrThrow()
     }
 
     @Test
@@ -183,7 +183,7 @@ class SdJwtVcVerifierTest {
 
         )
         try {
-            verifier.verify(unverifiedSdJwt, ValidityVerificationContext()).getOrThrow()
+            verifier.verify(unverifiedSdJwt).getOrThrow()
         } catch (exception: SdJwtVerificationException) {
             val invalidJwt = assertIs<VerificationError.InvalidJwt>(exception.reason)
             val badJoseException = assertIs<BadJOSEException>(invalidJwt.cause)
@@ -244,7 +244,7 @@ class SdJwtVcVerifierTest {
             )
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-            verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
+            verifier.verify(serialized).getOrThrow()
         }
 
     @Test
@@ -303,6 +303,6 @@ class SdJwtVcVerifierTest {
         }
 
         val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-        verifier.verify(serialized, ValidityVerificationContext()).getOrThrow()
+        verifier.verify(serialized).getOrThrow()
     }
 }
