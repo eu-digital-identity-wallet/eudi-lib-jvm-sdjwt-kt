@@ -74,9 +74,7 @@ private class NimbusSdJwtVcVerifier(
             KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
         }
 
-    override suspend fun verify(
-        unverifiedSdJwt: String,
-    ): Result<SdJwt<NimbusSignedJWT>> =
+    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
@@ -89,11 +87,7 @@ private class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge)
-            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(
-                jwtSignatureVerifier,
-                keyBindingVerifier,
-                unverifiedSdJwt,
-            ).getOrThrow()
+            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, keyBindingVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
         }
