@@ -34,7 +34,6 @@ import eu.europa.ec.eudi.sdjwt.vc.IssuerVerificationMethod
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerifier
 import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.DatePeriod
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
@@ -216,7 +215,7 @@ class IssuerActor(val issuerKey: ECKey) {
     private val iss: String by lazy {
         "did:jwk:${Base64UrlNoPadding.encode(issuerKey.toPublicJWK().toJSONString().encodeToByteArray())}"
     }
-    private val expirationPeriod: DatePeriod = DatePeriod(months = 12)
+    private val expirationPeriod = (12 * 31).days
 
     /**
      * The [SdJwtIssuer]
@@ -238,7 +237,7 @@ class IssuerActor(val issuerKey: ECKey) {
     suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String = with(NimbusSdJwtOps) {
         issuerDebug("Issuing new SD-JWT ...")
         val iat = Clock.System.now()
-        val exp = iat.plus(expirationPeriod.days.days)
+        val exp = iat + expirationPeriod
         val sdJwtElements =
             sdJwt {
                 claim(RFC7519.ISSUER, iss)

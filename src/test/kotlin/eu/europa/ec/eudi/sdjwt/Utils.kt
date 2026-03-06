@@ -30,6 +30,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.fail
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
     val otherClaims = JsonObject(filterKeys { it != attributeName })
@@ -144,3 +146,10 @@ internal fun Result<*>.assertIsFailureWithInvalidDisclosures(invalidDisclosures:
             }
         },
     )
+
+internal fun SdJwtVerifier(clock: Clock): SdJwtVerifier<JwtAndClaims> = SdJwtVerifier(clock, null) { (_, claims) -> claims }
+
+internal fun Clock.Companion.fixed(now: Instant): Clock =
+    object : Clock {
+        override fun now(): Instant = now
+    }

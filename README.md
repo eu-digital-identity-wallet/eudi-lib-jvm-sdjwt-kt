@@ -128,7 +128,7 @@ import kotlinx.coroutines.runBlocking
 val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedIssuanceSdJwt = loadSdJwt("/exampleIssuanceSdJwt.txt")
+        val unverifiedIssuanceSdJwt = serializedUnverifiedIssuanceSdJwt
         verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
     }
 }
@@ -216,7 +216,7 @@ import kotlinx.coroutines.*
 val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
     with(NimbusSdJwtOps) {
         val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedPresentationSdJwt = loadSdJwt("/examplePresentationSdJwt.txt")
+        val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
         verify(
             jwtSignatureVerifier,
             unverifiedPresentationSdJwt,
