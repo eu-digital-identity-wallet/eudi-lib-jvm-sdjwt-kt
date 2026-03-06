@@ -74,6 +74,7 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @return the verified SD-JWT and KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
      * are representing in both string and decoded payload.
