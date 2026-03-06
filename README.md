@@ -183,7 +183,7 @@ val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
 ```
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwt01.kt).
 
-<!--- TEST kotlin.test.assertEquals(3, presentationSdJwt.disclosures.size) -->
+<!--- TEST assertEquals(3, presentationSdJwt.disclosures.size) -->
 
 In the above example, the `Holder` has decided to disclose the claims `region` and `country` of the selectively 
 disclosed claim `address`.

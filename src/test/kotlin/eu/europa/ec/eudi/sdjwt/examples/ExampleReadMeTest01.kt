@@ -17,7 +17,7 @@ package eu.europa.ec.eudi.sdjwt.examples
 
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
-import kotlin.test.Test
+import kotlin.test.*
 
 /**
 * [sdJwt]
@@ -36,7 +36,7 @@ class ExampleReadMeTest01 {
 
     @Test
     fun testExamplePresentationSdJwt01() {
-        kotlin.test.assertEquals(3, presentationSdJwt.disclosures.size)
+        assertEquals(3, presentationSdJwt.disclosures.size)
     }
 
     @Test

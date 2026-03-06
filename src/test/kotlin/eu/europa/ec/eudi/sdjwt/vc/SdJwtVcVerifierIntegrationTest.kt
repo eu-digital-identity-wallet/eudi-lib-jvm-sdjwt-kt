@@ -33,7 +33,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.util.*
 import kotlin.test.*
-import kotlin.test.Test
 
 /**
  * Integration tests for [SdJwtVcVerifier].
