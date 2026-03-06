@@ -180,7 +180,6 @@ class SdJwtVcVerifierTest {
         val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
             IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
             TypeMetadataPolicy.NotUsed,
-
         )
         try {
             verifier.verify(unverifiedSdJwt).getOrThrow()
@@ -298,7 +297,6 @@ class SdJwtVcVerifierTest {
             NimbusSdJwtOps.SdJwtVcVerifier(
                 IssuerVerificationMethod.usingX5c(x509CertificateTrust),
                 TypeMetadataPolicy.NotUsed,
-
             )
         }
 

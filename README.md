@@ -435,7 +435,6 @@ val sdJwtVcVerification = runBlocking {
             },
             typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
         )
-
         verifier.verify(sdJwt)
     }
 }
