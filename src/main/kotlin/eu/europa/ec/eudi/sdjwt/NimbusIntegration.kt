@@ -26,6 +26,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import java.security.cert.X509Certificate
 import java.text.ParseException
+import kotlin.time.Clock
 import com.nimbusds.jose.JOSEException as NimbusJOSEException
 import com.nimbusds.jose.JOSEObjectType as NimbusJOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm as NimbusJWSAlgorithm
@@ -311,7 +312,7 @@ private val NimbusSerializationOps: SdJwtSerializationOps<NimbusSignedJWT> =
 
 private val NimbusPresentationOps: SdJwtPresentationOps<NimbusSignedJWT> = SdJwtPresentationOps { jwt -> jwt.jwtClaimsSet.jsonObject() }
 
-private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier { jwt -> jwt.jwtClaimsSet.jsonObject() }
+private val NimbusVerifier: SdJwtVerifier<NimbusSignedJWT> = SdJwtVerifier(Clock.System, null) { jwt -> jwt.jwtClaimsSet.jsonObject() }
 
 /**
  * Creates a function that given some claims signs them producing a [NimbusSignedJWT]
