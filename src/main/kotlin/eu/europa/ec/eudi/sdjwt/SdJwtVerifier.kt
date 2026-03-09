@@ -486,12 +486,12 @@ private fun JsonObject.exp(): Instant? =
         }
 
 /**
- * Returns this [Instant] truncated to millisecond precision.
+ * Returns a new [Instant] that has seconds precision.
  */
-private fun Instant.dropNanoSeconds(): Instant = Instant.fromEpochMilliseconds(toEpochMilliseconds())
+private fun Instant.withSecondsPrecision(): Instant = Instant.fromEpochSeconds(epochSeconds, 0)
 
 private fun JsonObject.validate(clock: Clock, skew: Duration) {
-    val now = clock.now().dropNanoSeconds()
+    val now = clock.now().withSecondsPrecision()
     val nbf = nbf()
     if (null != nbf) {
         if ((nbf - skew) > now) {
