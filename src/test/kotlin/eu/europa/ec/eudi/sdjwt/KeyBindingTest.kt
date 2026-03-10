@@ -328,13 +328,13 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     private val verifier: SdJwtVcVerifier<JwtAndClaims>,
 ) {
-    private lateinit var lastKeyBindingJwtVerificationContext: KeyBindingJwtChallenge
+    private lateinit var lastChallenge: KeyBindingJwtChallenge
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
         VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
         whatToDisclose,
     ).also {
-        lastKeyBindingJwtVerificationContext = KeyBindingJwtChallenge(
+        lastChallenge = KeyBindingJwtChallenge(
             issuedAt = it.challenge.iat,
             audience = it.challenge.aud,
             nonce = it.challenge.nonce,
@@ -342,7 +342,7 @@ class VerifierActor(
     }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
-        val (presented, _) = verifier.verify(unverifiedSdJwt, lastKeyBindingJwtVerificationContext).getOrThrow()
+        val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
         presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")
