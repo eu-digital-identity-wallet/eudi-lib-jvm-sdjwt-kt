@@ -60,6 +60,7 @@ class SdJwtVcVerifierIntegrationTest {
                 },
             ),
         ),
+        null,
     )
 
     private suspend fun issue(builder: SdJwtObjectBuilder.() -> Unit): String = issuer.issue(sdJwt { builder() }).getOrThrow().serialize()
@@ -159,6 +160,7 @@ class SdJwtVcVerifierIntegrationTest {
                     },
                 ),
             ),
+            null,
         )
 
         verifier.verify(serialized).getOrThrow()

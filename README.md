@@ -434,6 +434,7 @@ val sdJwtVcVerification = runBlocking {
                 chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
             },
             typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
+            null,
         )
         verifier.verify(sdJwt)
     }
