@@ -513,6 +513,15 @@ The validation result (`DefinitionBasedValidationResult`) can be either:
 - `Valid`: Contains the recreated credential and disclosures per claim path
 - `Invalid`: Contains a list of specific violations (missing claims, wrong types, etc.)
 
+### Token Status List 
+
+When constructing an `SdJwtVcVerifier`, a Verifier can provide a `CheckWithTokenStatusList` implementation to check the Status
+of an SD-JWT VC from a Token Status List.
+
+If an SD-JWT VC contains a `status` claim, with a Token Status List Reference (`status_list` claim), the library will attempt to check 
+the Status in the Token Status List using the provided `CheckWithTokenStatusList` implementation, and ensure that the Status is valid. 
+
+In case Status is non-valid, the SD-JWT VC is rejected, and an error is raised.
 
 ## How to contribute
 
