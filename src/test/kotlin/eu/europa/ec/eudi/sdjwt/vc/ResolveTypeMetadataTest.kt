@@ -16,7 +16,12 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import kotlinx.coroutines.test.runTest
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class ResolveTypeMetadataTest {
     companion object {

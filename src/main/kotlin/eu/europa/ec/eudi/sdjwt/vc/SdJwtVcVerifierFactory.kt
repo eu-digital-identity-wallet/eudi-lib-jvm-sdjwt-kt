@@ -18,7 +18,7 @@ package eu.europa.ec.eudi.sdjwt.vc
 import eu.europa.ec.eudi.sdjwt.JwtSignatureVerifier
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
 import eu.europa.ec.eudi.sdjwt.map
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 

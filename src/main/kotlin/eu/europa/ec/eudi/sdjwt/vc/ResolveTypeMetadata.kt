@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import io.ktor.client.request.*
 import io.ktor.http.*
 

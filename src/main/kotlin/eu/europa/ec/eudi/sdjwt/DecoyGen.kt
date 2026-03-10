@@ -15,8 +15,6 @@
  */
 package eu.europa.ec.eudi.sdjwt
 
-import eu.europa.ec.eudi.sdjwt.DecoyGen.Companion.MINIMUM_BYTES
-
 /**
  * Generates decoy [DisclosureDigest]
  */

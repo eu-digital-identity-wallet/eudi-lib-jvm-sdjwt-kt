@@ -246,7 +246,6 @@ private fun interface KeyBindingVerifierOps<JWT> {
 
                 suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?): JWT {
                     if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
-                    checkNotNull(challenge)
 
                     val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
                     val keyBindingJwt = runCatchingCancellable {
@@ -259,7 +258,7 @@ private fun interface KeyBindingVerifierOps<JWT> {
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
                         throw InvalidKeyBindingJwt("${RFC9901.CLAIM_SD_HASH} claim contains an invalid value").asException()
                     }
-                    if (keyBindingJwtClaims.iat !in challenge.issuedAt) {
+                    if (null != challenge && (keyBindingJwtClaims.iat !in challenge.issuedAt)) {
                         throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
                     }
 
@@ -444,7 +443,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
-        challenge: KeyBindingJwtChallenge,
+        challenge: KeyBindingJwtChallenge?,
         unverifiedSdJwt: String,
     ): Result<SdJwtAndKbJwt<JWT>>
 
@@ -471,7 +470,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
-        challenge: KeyBindingJwtChallenge,
+        challenge: KeyBindingJwtChallenge?,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwtAndKbJwt<JWT>> =
         verify(
@@ -502,7 +501,7 @@ interface SdJwtVerifier<JWT> {
                 override suspend fun verify(
                     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                     keyBindingVerifier: MustBePresentAndValid<JWT>,
-                    challenge: KeyBindingJwtChallenge,
+                    challenge: KeyBindingJwtChallenge?,
                     unverifiedSdJwt: String,
                 ): Result<SdJwtAndKbJwt<JWT>> =
                     doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, clock, skew ?: Duration.ZERO, challenge, unverifiedSdJwt)

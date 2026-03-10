@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import io.ktor.client.*
-import io.ktor.http.*
+import io.ktor.client.HttpClient
+import io.ktor.http.Url
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayInputStream

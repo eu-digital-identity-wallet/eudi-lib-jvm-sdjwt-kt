@@ -168,16 +168,12 @@ object NimbusSdJwtOps :
      */
     fun KeyBindingVerifier.Companion.mustBePresentAndValid(
         holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: JsonObject?,
     ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> {
         val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<NimbusSignedJWT> = { sdJwtClaims ->
             val holderPublicKey = holderPubKeyExtractor(sdJwtClaims) ?: throw KeyBindingError.MissingHolderPublicKey.asException()
             if (holderPublicKey !is NimbusJWK) throw KeyBindingError.UnsupportedHolderPublicKey.asException()
-            val challengeClaimSet: NimbusJWTClaimsSet? = challenge?.exactMatchClaims?.let {
-                NimbusJWTClaimsSet.parse(
-                    Json.encodeToString(it),
-                )
-            }
+            val challengeClaimSet: NimbusJWTClaimsSet? = challenge?.let { NimbusJWTClaimsSet.parse(Json.encodeToString(it)) }
             keyBindingJWTProcess(holderPublicKey, challengeClaimSet).asJwtVerifier()
         }
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
