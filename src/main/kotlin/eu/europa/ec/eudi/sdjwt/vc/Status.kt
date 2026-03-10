@@ -15,19 +15,17 @@
  */
 package eu.europa.ec.eudi.sdjwt.vc
 
-import kotlinx.serialization.json.JsonObject
-
 /**
  * The status of an SD-JWT VC.
  */
 sealed interface Status {
     data object Valid : Status
-    class Invalid(val message: String, val cause: Throwable?) : Status
+    data class NonValid(val value: UByte) : Status
 }
 
 /**
- * Resolves the status of an SD-JWT VC given the contents of the `status` claim.
+ * Checks the status of an SD-JWT VC in a Token Status List.
  */
-fun interface ResolveStatus {
-    suspend operator fun invoke(status: JsonObject): Status
+fun interface CheckWithTokenStatusList {
+    suspend operator fun invoke(uri: String, index: UInt): Status
 }
