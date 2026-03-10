@@ -74,9 +74,12 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * - The header contains typ claim equal to `kb+jwt`
  * - The header contains the signing algorithm claim
  * - The JWT must be signed by the given [holderPubKey]
- * - Claims `iat`, `aud`, `nonce`, and `sd_hash` must be present to the JWT payload
+ * - If the challenge is provided it should present in JWT payload
+ * - Claims `aud`, `iat` and `nonce`must be present to the JWT payload
  *
  * @param holderPubKey the public key of the holder
+ * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
+ * If provided, Key Binding JWT payload should contain the challenge as is.
  * @return
  */
 internal fun <PubKey> keyBindingJWTProcess(
@@ -162,8 +165,10 @@ object NimbusSdJwtOps :
      *
      *  @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
      * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
+
      * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
      * If provided, Key Binding JWT payload should contain the challenge as is.
+
      * @see keyBindingJWTProcess
      */
     fun KeyBindingVerifier.Companion.mustBePresentAndValid(

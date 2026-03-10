@@ -219,6 +219,7 @@ private fun interface KeyBindingVerifierOps<JWT> {
      * public key of the Holder, in case of [MustBePresentAndValid]
      * @param expectedDigest The digest of the SD-JWT, as expected to be found inside the Key Binding JWT
      * under `sd_hash` claim.
+     * It will be used in case of [MustBePresentAndValid]
      * @param challenge Challenge for verifying the validity of the Key-Binding JWT.
      * Will be used in when [this] is [MustBePresentAndValid]
      * @param unverifiedKbJwt the Key Binding JWT to be verified.
@@ -518,7 +519,7 @@ interface SdJwtVerifier<JWT> {
  * Challenge for Key-Binding JWT.
  *
  * @property issuedAt window within which `iat` of the Key-Binding JWT is considered valid
- * @property exactMatchClaims other claims that must be exactly matched withing the Key-Binding JWT claims-set
+ * @property exactMatchClaims other claims that must be exactly matched in the Key-Binding JWT claims-set
  */
 data class KeyBindingJwtChallenge private constructor(
     internal val issuedAt: ClosedRange<Instant>,
