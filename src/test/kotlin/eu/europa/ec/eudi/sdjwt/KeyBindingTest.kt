@@ -328,13 +328,13 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     private val verifier: SdJwtVcVerifier<JwtAndClaims>,
 ) {
-    private lateinit var lastChallenge: KeyBindingJwtChallenge
+    private lateinit var lastChallenge: ChallengePredicate
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
         VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
         whatToDisclose,
     ).also {
-        lastChallenge = KeyBindingJwtChallenge(
+        lastChallenge = ChallengePredicate(
             issuedAt = it.challenge.iat,
             audience = it.challenge.aud,
             nonce = it.challenge.nonce,

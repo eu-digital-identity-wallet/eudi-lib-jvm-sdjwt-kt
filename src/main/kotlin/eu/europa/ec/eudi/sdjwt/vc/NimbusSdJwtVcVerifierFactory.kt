@@ -83,7 +83,7 @@ private class NimbusSdJwtVcVerifier(
 
     override suspend fun verify(
         unverifiedSdJwt: String,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge?.exactMatchClaims)

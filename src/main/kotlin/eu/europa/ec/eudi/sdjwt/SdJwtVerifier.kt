@@ -25,6 +25,7 @@ import kotlinx.serialization.json.*
 import kotlin.contracts.contract
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
@@ -232,7 +233,7 @@ private fun interface KeyBindingVerifierOps<JWT> {
     suspend fun KeyBindingVerifier<JWT>.verify(
         jwtClaims: JsonObject,
         expectedDigest: SdJwtDigest,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
         unverifiedKbJwt: String?,
     ): Result<JWT?>
 
@@ -444,7 +445,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
         unverifiedSdJwt: String,
     ): Result<SdJwtAndKbJwt<JWT>>
 
@@ -471,7 +472,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         keyBindingVerifier: MustBePresentAndValid<JWT>,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
         unverifiedSdJwt: JsonObject,
     ): Result<SdJwtAndKbJwt<JWT>> =
         verify(
@@ -502,7 +503,7 @@ interface SdJwtVerifier<JWT> {
                 override suspend fun verify(
                     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                     keyBindingVerifier: MustBePresentAndValid<JWT>,
-                    challenge: KeyBindingJwtChallenge?,
+                    challenge: ChallengePredicate?,
                     unverifiedSdJwt: String,
                 ): Result<SdJwtAndKbJwt<JWT>> =
                     doVerify(claimsOf, jwtSignatureVerifier, keyBindingVerifier, clock, skew ?: Duration.ZERO, challenge, unverifiedSdJwt)
@@ -521,7 +522,7 @@ interface SdJwtVerifier<JWT> {
  * @property issuedAt window within which `iat` of the Key-Binding JWT is considered valid
  * @property exactMatchClaims other claims that must be exactly matched in the Key-Binding JWT claims-set
  */
-data class KeyBindingJwtChallenge private constructor(
+data class ChallengePredicate private constructor(
     internal val issuedAt: ClosedRange<Instant>,
     internal val exactMatchClaims: JsonObject,
 ) {
@@ -531,7 +532,7 @@ data class KeyBindingJwtChallenge private constructor(
 
     companion object {
         /**
-         * Creates a new [KeyBindingJwtChallenge] instance.
+         * Creates a new [ChallengePredicate] instance.
          *
          * @param issuedAt expected `iat` of the Key-Binding JWT
          * @param audience expected `aud` of the Key-Binding JWT
@@ -543,10 +544,10 @@ data class KeyBindingJwtChallenge private constructor(
             issuedAt: Instant,
             audience: String,
             nonce: String,
-            skew: Duration? = null,
+            skew: Duration = 5.seconds,
             exactMatchClaimsBuilder: JsonObjectBuilder.() -> Unit = {},
-        ): KeyBindingJwtChallenge {
-            require(null == skew || !skew.isNegative()) { "skew cannot be negative" }
+        ): ChallengePredicate {
+            require(!skew.isNegative()) { "skew cannot be negative" }
             val exactMatchClaims =
                 buildJsonObject {
                     exactMatchClaimsBuilder()
@@ -557,9 +558,8 @@ data class KeyBindingJwtChallenge private constructor(
                 }.let {
                     JsonObject(it)
                 }
-            val skew = skew ?: Duration.ZERO
             val issuedAt = (issuedAt - skew).withSecondsPrecision()..(issuedAt + skew).withSecondsPrecision()
-            return KeyBindingJwtChallenge(issuedAt, exactMatchClaims)
+            return ChallengePredicate(issuedAt, exactMatchClaims)
         }
     }
 }
@@ -570,7 +570,7 @@ private suspend fun <JWT> doVerify(
     keyBindingVerifier: KeyBindingVerifier<JWT>,
     clock: Clock,
     skew: Duration,
-    challenge: KeyBindingJwtChallenge?,
+    challenge: ChallengePredicate?,
     unverifiedSdJwt: String,
 ): Result<Pair<SdJwt<JWT>, JWT?>> = runCatchingCancellable {
     // Parse

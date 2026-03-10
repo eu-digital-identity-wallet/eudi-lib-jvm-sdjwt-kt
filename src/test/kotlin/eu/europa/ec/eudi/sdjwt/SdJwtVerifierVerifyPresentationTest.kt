@@ -259,7 +259,7 @@ class SdJwtVerifierVerifyPresentationTest {
     private suspend fun verifySuccess(
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
         unverifiedSdJwt: String,
     ) {
         val verification =
@@ -281,7 +281,7 @@ class SdJwtVerifierVerifyPresentationTest {
     private suspend fun verifySuccess(
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         keyBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
-        challenge: KeyBindingJwtChallenge?,
+        challenge: ChallengePredicate?,
         unverifiedSdJwt: JsonObject,
     ) {
         val verification =
@@ -362,19 +362,19 @@ private val ex3 = """
     }
 """.trimIndent()
 
-private val challengeWithoutD1 = KeyBindingJwtChallenge(
+private val challengeWithoutD1 = ChallengePredicate(
     issuedAt = Instant.fromEpochSeconds(1772715082L, 0),
     audience = "https://verifier.example.org",
     nonce = "nonce",
 )
 
-private val challengeWithD1 = KeyBindingJwtChallenge(
+private val challengeWithD1 = ChallengePredicate(
     issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
     audience = "https://verifier.example.org",
     nonce = "nonce",
 )
 
-private val challengeEx2 = KeyBindingJwtChallenge(
+private val challengeEx2 = ChallengePredicate(
     issuedAt = Instant.fromEpochSeconds(1725374413L, 0),
     audience = "https://verifier.example.org",
     nonce = "1234567890",
