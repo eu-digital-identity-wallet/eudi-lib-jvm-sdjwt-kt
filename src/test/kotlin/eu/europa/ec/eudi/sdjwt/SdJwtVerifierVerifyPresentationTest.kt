@@ -363,19 +363,19 @@ private val ex3 = """
 """.trimIndent()
 
 private val challengeWithoutD1 = KeyBindingJwtChallenge(
-    issuedAt = Instant.fromEpochSeconds(1772715082L, 0).let { it..it },
+    issuedAt = Instant.fromEpochSeconds(1772715082L, 0),
     audience = "https://verifier.example.org",
     nonce = "nonce",
 )
 
 private val challengeWithD1 = KeyBindingJwtChallenge(
-    issuedAt = Instant.fromEpochSeconds(1772715149L, 0).let { it..it },
+    issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
     audience = "https://verifier.example.org",
     nonce = "nonce",
 )
 
 private val challengeEx2 = KeyBindingJwtChallenge(
-    issuedAt = Instant.fromEpochSeconds(1725374413L, 0).let { it..it },
+    issuedAt = Instant.fromEpochSeconds(1725374413L, 0),
     audience = "https://verifier.example.org",
     nonce = "1234567890",
 )

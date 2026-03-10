@@ -259,7 +259,9 @@ private fun interface KeyBindingVerifierOps<JWT> {
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
                         throw InvalidKeyBindingJwt("${RFC9901.CLAIM_SD_HASH} claim contains an invalid value").asException()
                     }
-                    keyBindingJwtClaims.validate(challenge)
+                    if (keyBindingJwtClaims.iat !in challenge.issuedAt) {
+                        throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
+                    }
 
                     return keyBindingJwt
                 }
@@ -349,23 +351,6 @@ private value class KeyBindingJwtClaims private constructor(val value: JsonObjec
             if (null == value.nonce()) throw InvalidKeyBindingJwt("'${RFC9901.CLAIM_NONCE}' claim is missing").asException()
             return KeyBindingJwtClaims(value)
         }
-    }
-}
-
-/**
- * Ensures the claims of [this] are valid per the constraints of [challenge].
- */
-private fun KeyBindingJwtClaims.validate(challenge: KeyBindingJwtChallenge) {
-    if (iat !in challenge.issuedAt) {
-        throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
-    }
-
-    if (audience != challenge.audience) {
-        throw InvalidKeyBindingJwt("Unexpected '${RFC7519.AUDIENCE}'").asException()
-    }
-
-    if (nonce != challenge.nonce) {
-        throw InvalidKeyBindingJwt("Unexpected '${RFC9901.CLAIM_NONCE}'").asException()
     }
 }
 
@@ -534,13 +519,11 @@ interface SdJwtVerifier<JWT> {
  * Challenge for Key-Binding JWT.
  *
  * @property issuedAt window within which `iat` of the Key-Binding JWT is considered valid
- * @property audience the required `aud` of the Key-Binding JWT
- * @property nonce the required `nonce` of the Key-Binding JWT
+ * @property exactMatchClaims other claims that must be exactly matched withing the Key-Binding JWT claims-set
  */
 data class KeyBindingJwtChallenge private constructor(
-    val issuedAt: ClosedRange<Instant>,
-    val audience: String,
-    val nonce: String,
+    internal val issuedAt: ClosedRange<Instant>,
+    internal val exactMatchClaims: JsonObject,
 ) {
     init {
         require(!issuedAt.isEmpty()) { "issuedAt must not be an empty range" }
@@ -550,20 +533,34 @@ data class KeyBindingJwtChallenge private constructor(
         /**
          * Creates a new [KeyBindingJwtChallenge] instance.
          *
-         * If [issuedAt] is provided, [Instant.nanosecondsOfSecond] is dropped to avoid issued with
-         * `iat` in Key-Binding JWT which is encoded as epoch seconds.
+         * @param issuedAt expected `iat` of the Key-Binding JWT
+         * @param audience expected `aud` of the Key-Binding JWT
+         * @param nonce expected `nonce` of the Key-Binding JWT
+         * @param skew **positive** duration, if provided defines a time window with [iat] within which `iat` of Key-Binding JWT is considered valid
+         * @param exactMatchClaimsBuilder builder for other claims that must be exactly matched withing the Key-Binding JWT claims-set
          */
         operator fun invoke(
-            issuedAt: ClosedRange<Instant>,
+            issuedAt: Instant,
             audience: String,
             nonce: String,
-        ): KeyBindingJwtChallenge =
-            KeyBindingJwtChallenge(
-                // Drop nanoseconds from issuedAt. `iat` claim isn't so fine-grained
-                issuedAt = issuedAt.start.withSecondsPrecision()..issuedAt.endInclusive.withSecondsPrecision(),
-                audience = audience,
-                nonce = nonce,
-            )
+            skew: Duration? = null,
+            exactMatchClaimsBuilder: JsonObjectBuilder.() -> Unit = {},
+        ): KeyBindingJwtChallenge {
+            require(null == skew || !skew.isNegative()) { "skew cannot be negative" }
+            val exactMatchClaims =
+                buildJsonObject {
+                    exactMatchClaimsBuilder()
+                    put(RFC7519.AUDIENCE, audience)
+                    put(RFC9901.CLAIM_NONCE, nonce)
+                }.filterKeys {
+                    it !in setOf(RFC7519.ISSUED_AT, RFC9901.CLAIM_SD_HASH)
+                }.let {
+                    JsonObject(it)
+                }
+            val skew = skew ?: Duration.ZERO
+            val issuedAt = (issuedAt - skew).withSecondsPrecision()..(issuedAt + skew).withSecondsPrecision()
+            return KeyBindingJwtChallenge(issuedAt, exactMatchClaims)
+        }
     }
 }
 

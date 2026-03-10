@@ -335,7 +335,7 @@ class VerifierActor(
         whatToDisclose,
     ).also {
         lastKeyBindingJwtVerificationContext = KeyBindingJwtChallenge(
-            issuedAt = it.challenge.iat..it.challenge.iat,
+            issuedAt = it.challenge.iat,
             audience = it.challenge.aud,
             nonce = it.challenge.nonce,
         )

@@ -249,7 +249,7 @@ class SdJwtVcIssuanceTest {
             """.trimIndent().removeNewLine()
 
         val challenge = KeyBindingJwtChallenge(
-            issuedAt = Instant.fromEpochSeconds(1731530704L).let { it..it },
+            issuedAt = Instant.fromEpochSeconds(1731530704L),
             audience = "https://example.com/verifier",
             nonce = "1234567890",
         )

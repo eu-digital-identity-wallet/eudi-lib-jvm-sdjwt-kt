@@ -79,12 +79,14 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * @param holderPubKey the public key of the holder
  * @return
  */
-internal fun <PubKey> keyBindingJWTProcess(holderPubKey: PubKey):
-    NimbusJWTProcessor<NimbusSecurityContext> where PubKey : NimbusJWK, PubKey : NimbusAsymmetricJWK =
+internal fun <PubKey> keyBindingJWTProcess(
+    holderPubKey: PubKey,
+    challenge: NimbusJWTClaimsSet? = null,
+): NimbusJWTProcessor<NimbusSecurityContext> where PubKey : NimbusJWK, PubKey : NimbusAsymmetricJWK =
     JwkSourceJWTProcessor(
         NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
         NimbusDefaultJWTClaimsVerifier(
-            NimbusJWTClaimsSet.Builder().build(),
+            challenge ?: NimbusJWTClaimsSet.Builder().build(),
             setOf(RFC7519.ISSUED_AT, RFC7519.AUDIENCE, RFC9901.CLAIM_NONCE, RFC9901.CLAIM_SD_HASH),
         ),
         NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
@@ -160,16 +162,23 @@ object NimbusSdJwtOps :
      *
      *  @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
      * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
-     *
+     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
+     * If provided, Key Binding JWT payload should contain the challenge as is.
      * @see keyBindingJWTProcess
      */
     fun KeyBindingVerifier.Companion.mustBePresentAndValid(
         holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
+        challenge: KeyBindingJwtChallenge?,
     ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> {
         val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<NimbusSignedJWT> = { sdJwtClaims ->
             val holderPublicKey = holderPubKeyExtractor(sdJwtClaims) ?: throw KeyBindingError.MissingHolderPublicKey.asException()
             if (holderPublicKey !is NimbusJWK) throw KeyBindingError.UnsupportedHolderPublicKey.asException()
-            keyBindingJWTProcess(holderPublicKey).asJwtVerifier()
+            val challengeClaimSet: NimbusJWTClaimsSet? = challenge?.exactMatchClaims?.let {
+                NimbusJWTClaimsSet.parse(
+                    Json.encodeToString(it),
+                )
+            }
+            keyBindingJWTProcess(holderPublicKey, challengeClaimSet).asJwtVerifier()
         }
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
     }
