@@ -36,6 +36,11 @@ object RFC9901 {
     const val CLAIM_SD_HASH: String = "sd_hash"
 
     /**
+     * Nonce value for KB-JWT to ensure freshness.
+     */
+    const val CLAIM_NONCE: String = "nonce"
+
+    /**
      * Digest of the Disclosure for an array element
      */
     const val CLAIM_ARRAY_ELEMENT_DIGEST: String = "..."

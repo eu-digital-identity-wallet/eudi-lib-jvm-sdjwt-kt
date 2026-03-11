@@ -90,7 +90,7 @@ internal fun <PubKey> keyBindingJWTProcess(
         NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
         NimbusDefaultJWTClaimsVerifier(
             challenge ?: NimbusJWTClaimsSet.Builder().build(),
-            setOf(RFC7519.AUDIENCE, RFC7519.ISSUED_AT, "nonce"),
+            setOf(RFC7519.ISSUED_AT, RFC7519.AUDIENCE, RFC9901.CLAIM_NONCE, RFC9901.CLAIM_SD_HASH),
         ),
         NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
         true,
@@ -168,17 +168,16 @@ object NimbusSdJwtOps :
 
      * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
      * If provided, Key Binding JWT payload should contain the challenge as is.
-     *
+
      * @see keyBindingJWTProcess
      */
     fun KeyBindingVerifier.Companion.mustBePresentAndValid(
         holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
-        challenge: JsonObject? = null,
+        challenge: JsonObject?,
     ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> {
         val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<NimbusSignedJWT> = { sdJwtClaims ->
             val holderPublicKey = holderPubKeyExtractor(sdJwtClaims) ?: throw KeyBindingError.MissingHolderPublicKey.asException()
             if (holderPublicKey !is NimbusJWK) throw KeyBindingError.UnsupportedHolderPublicKey.asException()
-
             val challengeClaimSet: NimbusJWTClaimsSet? = challenge?.let { NimbusJWTClaimsSet.parse(Json.encodeToString(it)) }
             keyBindingJWTProcess(holderPublicKey, challengeClaimSet).asJwtVerifier()
         }
