@@ -280,6 +280,7 @@ class SdJwtVcVerifierIntegrationTest {
         val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.NonValidStatus>(error.error)
         assertEquals(0x01u, reason.status.status)
+        assertEquals("revoked", reason.status.explanation)
     }
 
     @Test
