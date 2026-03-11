@@ -104,7 +104,7 @@ object RFC7515 {
 }
 
 /**
- * [SD-JWT-based Verifiable Credentials](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/11/)
+ * [SD-JWT-based Verifiable Credentials](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/13/)
  */
 object SdJwtVcSpec {
 
