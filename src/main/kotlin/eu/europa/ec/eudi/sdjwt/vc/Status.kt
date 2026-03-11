@@ -20,7 +20,7 @@ package eu.europa.ec.eudi.sdjwt.vc
  */
 sealed interface Status {
     data object Valid : Status
-    data class NonValid(val value: UByte) : Status
+    data class NonValid(val status: UByte, val explanation: String) : Status
 }
 
 /**

@@ -269,7 +269,7 @@ class SdJwtVcVerifierIntegrationTest {
         val checkStatus = CheckWithTokenStatusList { uri, index ->
             assertEquals("https://example.com/status_list/10", uri)
             assertEquals(4u, index)
-            Status.NonValid(0x01u)
+            Status.NonValid(0x01u, "revoked")
         }
         val verifier = NimbusSdJwtOps.SdJwtVcVerifier(
             issuerVerificationMethod = IssuerVerificationMethod.usingCustom(ECDSAVerifier(issuerKey).asJwtVerifier()),
@@ -279,7 +279,7 @@ class SdJwtVcVerifierIntegrationTest {
         val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
         val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
         val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.NonValidStatus>(error.error)
-        assertEquals(0x01u, reason.status.value)
+        assertEquals(0x01u, reason.status.status)
     }
 
     @Test
