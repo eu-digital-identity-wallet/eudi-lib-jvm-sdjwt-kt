@@ -16,6 +16,8 @@
 package eu.europa.ec.eudi.sdjwt.vc
 
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.util.JSONObjectUtils
+import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedSdJwtVcValidator
@@ -24,14 +26,22 @@ import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
 import eu.europa.ec.eudi.sdjwt.dsl.def.fromSdJwtVcMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcIssuerPublicKeySource.*
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.IssuerKeyVerificationError.*
+import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcVerificationError.StatusVerificationError
 import io.ktor.client.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.serializer
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
@@ -47,6 +57,7 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
     override fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<SignedJWT, JWK, List<X509Certificate>>,
         typeMetadataPolicy: TypeMetadataPolicy,
+        checkStatus: CheckWithTokenStatusList?,
     ): SdJwtVcVerifier<SignedJWT> {
         val jwtSignatureVerifier = when (issuerVerificationMethod) {
             is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
@@ -61,13 +72,14 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
             is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
         }
 
-        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy)
+        return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy, checkStatus)
     }
 }
 
 private class NimbusSdJwtVcVerifier(
     private val jwtSignatureVerifier: JwtSignatureVerifier<NimbusSignedJWT>,
     private val typeMetadataPolicy: TypeMetadataPolicy,
+    private val checkStatus: CheckWithTokenStatusList?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
     private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
         with(NimbusSdJwtOps) {
@@ -78,6 +90,7 @@ private class NimbusSdJwtVcVerifier(
         runCatchingCancellable {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
+            checkStatus?.ensureStatusIsValid(sdJwt)
             sdJwt
         }
 
@@ -94,6 +107,7 @@ private class NimbusSdJwtVcVerifier(
                 unverifiedSdJwt,
             ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
+            checkStatus?.ensureStatusIsValid(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
         }
 }
@@ -262,3 +276,47 @@ private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonOb
         )
     }
 }
+
+private suspend fun CheckWithTokenStatusList.ensureStatusIsValid(sdJwt: SdJwt<NimbusSignedJWT>) {
+    val statusListReference = sdJwt.jwt.jwtClaimsSet.jsonObjectClaim(TokenStatusListSpec.STATUS)
+        .getOrElse { raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim must be a JsonObject", it)) }
+        ?.decodeAs<StatusClaim>()
+        ?.getOrElse { raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim is malformed", it)) }
+        ?.statusListReference
+
+    if (null != statusListReference) {
+        val status = runCatchingCancellable {
+            invoke(statusListReference.uri, statusListReference.index)
+        }.getOrElse { raise(StatusVerificationError.StatusCheckFailure("Unable to check Status in Token Status List", it)) }
+
+        if (status is Status.NonValid) {
+            raise(StatusVerificationError.NonValidStatus(status))
+        }
+    }
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
+private data class StatusClaim(
+    @SerialName(TokenStatusListSpec.STATUS_LIST) val statusListReference: StatusListReferenceClaim? = null,
+)
+
+@Serializable
+private data class StatusListReferenceClaim(
+    @Required @SerialName(TokenStatusListSpec.INDEX) val index: UInt,
+    @Required @SerialName(TokenStatusListSpec.URI) val uri: String,
+)
+
+private fun JWTClaimsSet.jsonObjectClaim(claim: String): Result<JsonObject?> =
+    runCatching {
+        getJSONObjectClaim(claim)
+            ?.let {
+                val serialized = JSONObjectUtils.toJSONString(it)
+                Json.decodeFromString<JsonObject>(serialized)
+            }
+    }
+
+private inline fun <reified T : Any> JsonElement.decodeAs(serializer: KSerializer<T> = serializer<T>()): Result<T> =
+    runCatching {
+        Json.decodeFromJsonElement(serializer, this)
+    }

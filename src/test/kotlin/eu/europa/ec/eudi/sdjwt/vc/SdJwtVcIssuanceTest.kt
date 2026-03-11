@@ -162,6 +162,7 @@ class SdJwtVcIssuanceTest {
             },
         ),
         TypeMetadataPolicy.NotUsed,
+        null,
     )
 
     @Test

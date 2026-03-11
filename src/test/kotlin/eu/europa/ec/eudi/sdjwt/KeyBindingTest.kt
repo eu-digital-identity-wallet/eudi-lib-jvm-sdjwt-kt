@@ -64,6 +64,7 @@ class KeyBindingTest {
                 .map { nimbusToJwtAndClaims(it) },
         ),
         TypeMetadataPolicy.NotUsed,
+        null,
     )
     private val holder = HolderActor(genKey("holder"), verifier = verifier)
 
