@@ -121,7 +121,6 @@ class KeyBindingTest {
             )
 
             // Issuer should know holder's public key
-
             val issuedSdJwt = issuer.issue(holder.pubKey(), emailCredential)
 
             // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
@@ -189,20 +188,12 @@ data class SampleCredential(
     val countries: List<String>,
 )
 
-@Serializable
 data class VerifierChallenge(
     val nonce: String,
     val aud: String,
-    val iat: Long,
-) {
-    fun asJson(): JsonObject = Json.encodeToJsonElement(this).jsonObject
+    val iat: Instant,
+)
 
-    companion object {
-        operator fun invoke(nonce: String, aud: String, iat: Instant) = VerifierChallenge(nonce, aud, iat.epochSeconds)
-    }
-}
-
-@Serializable
 data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<ClaimPath>)
 
 /**
@@ -318,9 +309,9 @@ class HolderActor(
 
         return with(NimbusSdJwtOps) {
             val buildKbJwt = kbJwtIssuer(ECDSASigner(holderKey), JWSAlgorithm.ES256, holderKey.toPublicJWK()) {
+                issueTime(Date.from(verifierQuery.challenge.iat.toJavaInstant()))
                 audience(verifierQuery.challenge.aud)
-                claim("nonce", verifierQuery.challenge.nonce)
-                issueTime(Date.from(Instant.fromEpochSeconds(verifierQuery.challenge.iat).toJavaInstant()))
+                claim(RFC9901.CLAIM_NONCE, verifierQuery.challenge.nonce)
             }
             presentationSdJwt.serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
@@ -337,12 +328,18 @@ class VerifierActor(
     private val expectedNumberOfDisclosures: Int,
     private val verifier: SdJwtVcVerifier<JwtAndClaims>,
 ) {
-    private lateinit var lastChallenge: JsonObject
+    private lateinit var lastChallenge: ChallengePredicate
     private var presentation: SdJwt<JwtAndClaims>? = null
     fun query(): VerifierQuery = VerifierQuery(
         VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
         whatToDisclose,
-    ).also { lastChallenge = it.challenge.asJson() }
+    ).also {
+        lastChallenge = ChallengePredicate(
+            issuedAt = it.challenge.iat,
+            audience = it.challenge.aud,
+            nonce = it.challenge.nonce,
+        )
+    }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
         val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
