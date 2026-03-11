@@ -154,6 +154,21 @@ sealed interface SdJwtVcVerificationError {
             }
         }
     }
+
+    /**
+     * Verification error regarding Status check and validation.
+     */
+    sealed interface StatusVerificationError : SdJwtVcVerificationError {
+        /**
+         * Status could not be checked.
+         */
+        class StatusCheckFailure(val message: String, val cause: Throwable) : StatusVerificationError
+
+        /**
+         * The Status of an SD-JWT VC is non-valid.
+         */
+        data class NonValidStatus(val status: Status.NonValid) : StatusVerificationError
+    }
 }
 
 internal fun raise(error: SdJwtVcVerificationError): Nothing = throw SdJwtVerificationException(VerificationError.SdJwtVcError(error))

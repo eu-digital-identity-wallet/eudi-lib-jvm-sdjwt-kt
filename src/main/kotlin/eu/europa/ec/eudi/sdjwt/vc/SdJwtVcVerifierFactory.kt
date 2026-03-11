@@ -177,6 +177,7 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
     operator fun invoke(
         issuerVerificationMethod: IssuerVerificationMethod<JWT, JWK, X509Chain>,
         typeMetadataPolicy: TypeMetadataPolicy,
+        checkStatus: CheckWithTokenStatusList?,
     ): SdJwtVcVerifier<JWT>
 
     fun <JWT1, JWK1, X509Chain1> transform(
@@ -189,10 +190,12 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
             override fun invoke(
                 issuerVerificationMethod: IssuerVerificationMethod<JWT1, JWK1, X509Chain1>,
                 typeMetadataPolicy: TypeMetadataPolicy,
+                checkStatus: CheckWithTokenStatusList?,
             ): SdJwtVcVerifier<JWT1> =
                 this@SdJwtVcVerifierFactory.invoke(
                     issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
                     typeMetadataPolicy,
+                    checkStatus,
                 ).map(convertToJwt)
         }
 }

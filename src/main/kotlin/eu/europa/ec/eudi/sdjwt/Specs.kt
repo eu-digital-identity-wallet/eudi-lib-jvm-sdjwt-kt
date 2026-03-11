@@ -201,4 +201,7 @@ object RFC7800 {
  */
 object TokenStatusListSpec {
     const val STATUS: String = "status"
+    const val STATUS_LIST: String = "status_list"
+    const val INDEX: String = "idx"
+    const val URI: String = "uri"
 }
