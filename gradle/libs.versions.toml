@@ -15,7 +15,7 @@ ktlintVersion = "0.50.0"
 maven-publish = "0.35.0"
 kotlinx-knit = "0.5.0"
 kover = "0.9.8"
-dependency-check = "12.1.1"
+dependency-check = "12.2.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
