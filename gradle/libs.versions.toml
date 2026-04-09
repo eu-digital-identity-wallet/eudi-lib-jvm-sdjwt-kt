@@ -14,7 +14,7 @@ spotless = "7.0.2"
 ktlintVersion = "0.50.0"
 maven-publish = "0.35.0"
 kotlinx-knit = "0.5.0"
-kover = "0.9.7"
+kover = "0.9.8"
 dependency-check = "12.1.1"
 
 [libraries]
