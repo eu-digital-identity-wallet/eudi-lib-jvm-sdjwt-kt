@@ -59,7 +59,7 @@ kotlin {
     jvmToolchain {
         languageVersion = JavaLanguageVersion.of(libs.versions.java.get())
         compilerOptions {
-            apiVersion = KotlinVersion.KOTLIN_2_2
+            apiVersion = KotlinVersion.DEFAULT
             optIn = listOf(
                 "kotlin.io.encoding.ExperimentalEncodingApi",
                 "kotlin.contracts.ExperimentalContracts",
