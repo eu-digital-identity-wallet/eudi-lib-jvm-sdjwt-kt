@@ -56,7 +56,7 @@ class SdJwtVerifierTest {
             val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
             val invalidDisclosures = error.invalidDisclosures
             assertEquals(1, invalidDisclosures.size)
-            assertEquals("Disclosed claim cannot be one of: _sd, ...", invalidDisclosures.keys.first())
+            assertEquals("Given claim should not contain an attribute named _sd_alg, or _sd, or ...", invalidDisclosures.keys.first())
         }
 
         // _sd

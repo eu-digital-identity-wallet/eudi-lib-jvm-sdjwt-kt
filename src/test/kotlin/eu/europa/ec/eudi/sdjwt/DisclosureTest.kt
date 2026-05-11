@@ -50,7 +50,7 @@ class DisclosureTest {
     fun `fails to decode disclosures with reserved claims`() {
         fun test(disclosure: String) {
             val exception = assertFailsWith<IllegalArgumentException> { Disclosure.decode(disclosure).getOrThrow() }
-            assertEquals("Disclosed claim cannot be one of: _sd, ...", exception.message)
+            assertEquals("Given claim should not contain an attribute named _sd_alg, or _sd, or ...", exception.message)
         }
 
         // _sd
