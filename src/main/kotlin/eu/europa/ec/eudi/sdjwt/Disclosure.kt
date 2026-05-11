@@ -68,8 +68,15 @@ sealed interface Disclosure {
             val array = Json.decodeFromString<JsonArray>(base64Decoded)
             when (array.size) {
                 3 -> {
+                    fun String.ensureNotReserved() {
+                        val reserved = setOf(RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
+                        require(this !in reserved) {
+                            "Disclosed claim cannot be one of: ${reserved.joinToString()}"
+                        }
+                    }
+
                     val salt = array[0].jsonPrimitive.content
-                    val claimName = array[1].jsonPrimitive.content
+                    val claimName = array[1].jsonPrimitive.content.also { it.ensureNotReserved() }
                     val claimValue = array[2]
                     Triple(salt, claimName, claimValue)
                 }

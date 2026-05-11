@@ -19,6 +19,8 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.NoSignatureValidation
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Clock
@@ -42,6 +44,26 @@ class SdJwtVerifierTest {
     fun `when sd-jwt is expired, verification fails`() = runTest {
         val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1804229054L)))
         verifier.verifyExpectingError(VerificationError.InvalidJwt("SD-JWT is expired"), "$jwt~")
+    }
+
+    @Test
+    fun `when sd-jwt contains disclosures with claims with reserved names, verification fails`() = runTest {
+        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
+
+        suspend fun test(disclosure: String) {
+            val exception =
+                assertFailsWith<SdJwtVerificationException> { verifier.verify(NoSignatureValidation, "$jwt~$disclosure~").getOrThrow() }
+            val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+            val invalidDisclosures = error.invalidDisclosures
+            assertEquals(1, invalidDisclosures.size)
+            assertEquals("Disclosed claim cannot be one of: _sd, ...", invalidDisclosures.keys.first())
+        }
+
+        // _sd
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIl9zZCIsIk3DtmJpdXMiXQ")
+
+        // ...
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 
     private suspend fun SdJwtVerifier<JwtAndClaims>.verifyExpectingError(

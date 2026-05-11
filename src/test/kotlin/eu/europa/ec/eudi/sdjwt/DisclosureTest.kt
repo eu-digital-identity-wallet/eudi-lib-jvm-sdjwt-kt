@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.sdjwt
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 
 class DisclosureTest {
@@ -43,6 +44,20 @@ class DisclosureTest {
         assertEquals(expectedSalt, salt)
         assertNotNull(name)
         assertEquals(expectedClaim, name to value)
+    }
+
+    @Test
+    fun `fails to decode disclosures with reserved claims`() {
+        fun test(disclosure: String) {
+            val exception = assertFailsWith<IllegalArgumentException> { Disclosure.decode(disclosure).getOrThrow() }
+            assertEquals("Disclosed claim cannot be one of: _sd, ...", exception.message)
+        }
+
+        // _sd
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIl9zZCIsIk3DtmJpdXMiXQ")
+
+        // ...
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 
     private fun fixedSaltProvider(s: String): SaltProvider =

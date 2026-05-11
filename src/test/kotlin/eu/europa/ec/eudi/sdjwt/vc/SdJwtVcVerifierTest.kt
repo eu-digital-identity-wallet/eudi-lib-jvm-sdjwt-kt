@@ -56,6 +56,7 @@ import javax.security.auth.x500.X500Principal
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -307,5 +308,29 @@ class SdJwtVcVerifierTest {
 
         val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
         verifier.verify(serialized).getOrThrow()
+    }
+
+    @Test
+    fun `SdJwtVcVerifier must fail when an SD-JWT-VC contains a Disclosure using a reserved name`() = runTest {
+        val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
+        val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
+            IssuerVerificationMethod.usingIssuerMetadata(HttpMock.clientReturning(SampleIssuer.issuerMeta)),
+            TypeMetadataPolicy.NotUsed,
+            null,
+        )
+
+        suspend fun test(disclosure: String) {
+            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify("$unverifiedSdJwt~$disclosure~").getOrThrow() }
+            val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+            val invalidDisclosures = error.invalidDisclosures
+            assertEquals(1, invalidDisclosures.size)
+            assertEquals("Disclosed claim cannot be one of: _sd, ...", invalidDisclosures.keys.first())
+        }
+
+        // _sd
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIl9zZCIsIk3DtmJpdXMiXQ")
+
+        // ...
+        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 }
