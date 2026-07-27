@@ -5,7 +5,7 @@ kotlinxSerialization = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 kotlinxDatetime = "0.7.1"
 ktor = "3.3.3"
-nimbusJoseWwt = "10.9"
+nimbusJoseJwt = "10.9.1"
 tink = "1.23.0"
 bouncyCastle = "1.84"
 logback = "1.5.38"
@@ -20,7 +20,7 @@ dependency-check = "12.2.2"
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
-nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseWwt" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbusJoseJwt" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
