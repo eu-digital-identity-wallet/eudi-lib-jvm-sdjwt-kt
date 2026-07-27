@@ -23,12 +23,13 @@ class ClaimPathTest {
 
     @Test
     fun `parsing happy path`() {
-        val jsonExamples = listOf(
-            """["name"]""",
-            """["address"]""",
-            """["address", "street_address"]""",
-            """["degrees", null, "type"]""",
-        )
+        val jsonExamples =
+            listOf(
+                """["name"]""",
+                """["address"]""",
+                """["address", "street_address"]""",
+                """["degrees", null, "type"]""",
+            )
 
         jsonExamples.forEach { example ->
             val path = jsonSupport.decodeFromString(ClaimPath.serializer(), example)

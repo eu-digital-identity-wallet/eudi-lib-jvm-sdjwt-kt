@@ -26,14 +26,16 @@ class RecreateClaimsTest {
 
     @Test
     fun `recreating plain claims should return the plain claims`() {
-        val plainClaims = buildJsonObject {
-            put("iss", "iss")
-            put("sub", "sub")
-        }
+        val plainClaims =
+            buildJsonObject {
+                put("iss", "iss")
+                put("sub", "sub")
+            }
 
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-        }
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+            }
         val actual = discloseAndRecreate(sdJwtElements)
 
         assertEquals(plainClaims, actual)
@@ -48,20 +50,23 @@ class RecreateClaimsTest {
 
     @Test
     fun `recreating plain and flat disclosed claims should return their combination`() {
-        val plainClaims = buildJsonObject {
-            put("iss", "iss")
-            put("sub", "sub")
-        }
-        val flatClaims = buildJsonObject {
-            put("foo", "bar")
-            put("tsou", "la")
-            put("d1", 1)
-        }
+        val plainClaims =
+            buildJsonObject {
+                put("iss", "iss")
+                put("sub", "sub")
+            }
+        val flatClaims =
+            buildJsonObject {
+                put("foo", "bar")
+                put("tsou", "la")
+                put("d1", 1)
+            }
 
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-            flatClaims.forEach { sdClaim(it.key, it.value) }
-        }
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+                flatClaims.forEach { sdClaim(it.key, it.value) }
+            }
         val expected = JsonObject(plainClaims + flatClaims)
         val actual = discloseAndRecreate(sdJwtElements)
 
@@ -70,30 +75,36 @@ class RecreateClaimsTest {
 
     @Test
     fun `recreating plain and structure which contains some plain and flats`() {
-        val plainClaims = buildJsonObject {
-            put("iss", "iss")
-            put("sub", "sub")
-        }
-        val structuredPlainSubClaims = buildJsonObject {
-            put("test123", 123)
-        }
-        val structuredSubClaims = buildJsonObject {
-            put("foo", "bar")
-            put("foo1", "bar1")
-            put("d1", 1)
-        }
-
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-            objClaim("structured") {
-                structuredPlainSubClaims.forEach { claim(it.key, it.value) }
-                structuredSubClaims.forEach { sdClaim(it.key, it.value) }
+        val plainClaims =
+            buildJsonObject {
+                put("iss", "iss")
+                put("sub", "sub")
             }
-        }
+        val structuredPlainSubClaims =
+            buildJsonObject {
+                put("test123", 123)
+            }
+        val structuredSubClaims =
+            buildJsonObject {
+                put("foo", "bar")
+                put("foo1", "bar1")
+                put("d1", 1)
+            }
 
-        val expected = plainClaims + buildJsonObject {
-            put("structured", JsonObject(structuredSubClaims + structuredPlainSubClaims))
-        }
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+                objClaim("structured") {
+                    structuredPlainSubClaims.forEach { claim(it.key, it.value) }
+                    structuredSubClaims.forEach { sdClaim(it.key, it.value) }
+                }
+            }
+
+        val expected =
+            plainClaims +
+                buildJsonObject {
+                    put("structured", JsonObject(structuredSubClaims + structuredPlainSubClaims))
+                }
 
         val actual = discloseAndRecreate(sdJwtElements)
         assertEquals(expected, actual)
@@ -102,38 +113,43 @@ class RecreateClaimsTest {
     @OptIn(ExperimentalSerializationApi::class)
     @Test
     fun `recreating plain and recursive which contains some plain and flats`() {
-        val plainClaims = buildJsonObject {
-            put("iss", "iss")
-            put("sub", "sub")
-        }
-        val subClaims = buildJsonObject {
-            put("test123", 123)
-            putJsonArray("foo") { addAll(listOf(true, false, true)) }
-            putJsonArray("addresses") {
-                add(
-                    buildJsonObject {
-                        put("type", "work")
-                        put("street", "workStreet")
-                    },
-                )
-                add(
-                    buildJsonObject {
-                        put("type", "home")
-                        put("street", "homeStreet")
-                    },
-                )
+        val plainClaims =
+            buildJsonObject {
+                put("iss", "iss")
+                put("sub", "sub")
             }
-        }
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-            sdObjClaim("rec") {
-                subClaims.forEach { sdClaim(it.key, it.value) }
+        val subClaims =
+            buildJsonObject {
+                put("test123", 123)
+                putJsonArray("foo") { addAll(listOf(true, false, true)) }
+                putJsonArray("addresses") {
+                    add(
+                        buildJsonObject {
+                            put("type", "work")
+                            put("street", "workStreet")
+                        },
+                    )
+                    add(
+                        buildJsonObject {
+                            put("type", "home")
+                            put("street", "homeStreet")
+                        },
+                    )
+                }
             }
-        }
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+                sdObjClaim("rec") {
+                    subClaims.forEach { sdClaim(it.key, it.value) }
+                }
+            }
 
-        val expected = plainClaims + buildJsonObject {
-            put("rec", subClaims)
-        }
+        val expected =
+            plainClaims +
+                buildJsonObject {
+                    put("rec", subClaims)
+                }
 
         val actual = discloseAndRecreate(sdJwtElements)
         assertEquals(expected, actual)

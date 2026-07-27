@@ -56,7 +56,9 @@ interface GetSdJwtVcIssuerMetadataOps {
                         metadata.apply { ensureIssuerIs(issuer.toString()) }
                     }
 
-                    else -> null
+                    else -> {
+                        null
+                    }
                 }
             }
     }

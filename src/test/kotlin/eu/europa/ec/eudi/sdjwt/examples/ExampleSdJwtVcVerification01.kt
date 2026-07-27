@@ -27,30 +27,36 @@ import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
-val sdJwtVcVerification = runBlocking {
-    val issuer = Url("https://issuer.example.com")
+val sdJwtVcVerification =
+    runBlocking {
+        val issuer = Url("https://issuer.example.com")
 
-    with(NimbusSdJwtOps) {
-        val sdJwt = run {
-            val spec = sdJwt {
-                claim(RFC7519.ISSUER, issuer.toString())
-                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
-            }
+        with(NimbusSdJwtOps) {
+            val sdJwt =
+                run {
+                    val spec =
+                        sdJwt {
+                            claim(RFC7519.ISSUER, issuer.toString())
+                            claim(SdJwtVcSpec.VCT, "urn:credential:sample")
+                        }
 
-            val signer = issuer(signer = ECDSASigner(issuerEcKeyPairWithCertificate), signAlgorithm = JWSAlgorithm.ES512) {
-                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-                x509CertChain(issuerEcKeyPairWithCertificate.x509CertChain)
-            }
-            signer.issue(spec).getOrThrow().serialize()
+                    val signer =
+                        issuer(signer = ECDSASigner(issuerEcKeyPairWithCertificate), signAlgorithm = JWSAlgorithm.ES512) {
+                            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
+                            x509CertChain(issuerEcKeyPairWithCertificate.x509CertChain)
+                        }
+                    signer.issue(spec).getOrThrow().serialize()
+                }
+
+            val verifier =
+                SdJwtVcVerifier(
+                    issuerVerificationMethod =
+                        IssuerVerificationMethod.usingX5c { chain, _ ->
+                            chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
+                        },
+                    typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
+                    null,
+                )
+            verifier.verify(sdJwt)
         }
-
-        val verifier = SdJwtVcVerifier(
-            issuerVerificationMethod = IssuerVerificationMethod.usingX5c { chain, _ ->
-                chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
-            },
-            typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
-            null,
-        )
-        verifier.verify(sdJwt)
     }
-}
