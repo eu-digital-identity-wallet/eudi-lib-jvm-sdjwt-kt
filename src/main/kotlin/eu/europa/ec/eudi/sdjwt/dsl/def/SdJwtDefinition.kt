@@ -45,7 +45,8 @@ data class SdJwtDefinition(
     fun plusSdJwtVcNeverSelectivelyDisclosableClaims(): SdJwtDefinition {
         val newContents = content.toMutableMap()
         SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.forEach { claim ->
-            val definition = newContents[claim]?.value ?: DisclosableDef.Id(AttributeMetadata())
+            // Only 'vct' is mandatory out of all the never SD claims
+            val definition = newContents[claim]?.value ?: DisclosableDef.Id(AttributeMetadata(mandatory = SdJwtVcSpec.VCT == claim))
             newContents[claim] = !definition
         }
         return SdJwtDefinition(newContents, metadata)
@@ -92,6 +93,7 @@ data class VctMetadata(
 data class AttributeMetadata(
     val display: List<ClaimDisplay>? = null,
     val svgId: SvgId? = null,
+    val mandatory: Boolean,
 )
 
 //
@@ -103,18 +105,18 @@ data class AttributeMetadata(
  * @receiver the attribute definition to query
  * @return the attribute metadata
  */
-fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMetadata =
+fun DisclosableDef<*, AttributeMetadata>.attributeMetadata(): AttributeMetadata =
     when (this) {
-        is DisclosableDef.Id<String, AttributeMetadata> -> {
+        is DisclosableDef.Id<*, AttributeMetadata> -> {
             value
         }
 
-        is DisclosableDef.Arr<String, AttributeMetadata> -> {
+        is DisclosableDef.Arr<*, AttributeMetadata> -> {
             check(value is SdJwtArrayDefinition)
             value.metadata
         }
 
-        is DisclosableDef.Obj<String, AttributeMetadata> -> {
+        is DisclosableDef.Obj<*, AttributeMetadata> -> {
             check(value is SdJwtObjectDefinition)
             value.metadata
         }
