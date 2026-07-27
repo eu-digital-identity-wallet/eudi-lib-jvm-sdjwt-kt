@@ -356,7 +356,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
     ): DefinitionBasedValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
         return with(DefinitionBasedSdJwtVcValidator) {
-            sdJwtDefinition.validate(payload, disclosures.filter(disclosureFilter))
+            sdJwtDefinition.validateIssuance(payload, disclosures.filter(disclosureFilter))
         }
     }
 
