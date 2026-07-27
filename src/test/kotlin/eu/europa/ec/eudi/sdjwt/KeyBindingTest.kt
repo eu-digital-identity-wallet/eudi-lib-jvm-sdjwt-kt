@@ -107,7 +107,7 @@ class KeyBindingTest {
             assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
 
             // Assert issuer verifier is able to verify JWT
-            val jwtClaims = assertNotNull(verifier.verify(issuedSdJwtStr).getOrNull())
+            val jwtClaims = assertNotNull(verifier.verifyIssuance(issuedSdJwtStr).getOrNull())
 
             // Extract and verify holder public key
             assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
@@ -304,7 +304,7 @@ class HolderActor(
 
     suspend fun storeCredential(sdJwt: String) {
         holderDebug("Storing issued SD-JWT ...")
-        verifier.verify(sdJwt).fold(
+        verifier.verifyIssuance(sdJwt).fold(
             onSuccess = { issued ->
                 credentialSdJwt = issued
                 holderDebug("Stored SD-JWT")
@@ -368,7 +368,7 @@ class VerifierActor(
         }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
-        val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
+        val (presented, _) = verifier.verifyPresentation(unverifiedSdJwt, lastChallenge).getOrThrow()
         presented.prettyPrint { it.second }
         presentation = presented.ensureContainsWhatRequested()
         verifierDebug("Presentation accepted with SD Claims:")

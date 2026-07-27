@@ -126,86 +126,80 @@ sealed interface DefinitionBasedValidationResult {
     }
 }
 
-fun interface DefinitionBasedSdJwtVcValidator {
+interface DefinitionBasedSdJwtVcValidator {
 
     /**
-     * Validates a SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
+     * Validates an issued SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
      *
-     * The validation can be performed by a wallet, right after issued the credential. In this case,
-     * the full list of [disclosures] it is assumed, as provided by the SD-JWT-VC issuer.
+     * This validation can be performed by a wallet, right after credential issuance. In this case,
+     * the full list of [disclosures] is assumed, as provided by the SD-JWT-VC issuer.
      *
-     * In addition, the validation can be performed by a verifier, right after received a presentation
-     * of the SD-JWT-VC from the wallet. In this case, [disclosures] can be even empty
-     *
-     * @param jwtPayload The JWT payload of a presented SD-JWT-VC
+     * @param jwtPayload The JWT payload of an SD-JWT-VC
      * @param disclosures The list of disclosures related to the SD-JWT-VC.
      * @receiver The definition of the SD-JWT-VC credential against which the given [jwtPayload] and [disclosures]
      * will be validated
      */
-    fun DisclosableDefObject<String, *>.validate(
+    fun DisclosableDefObject<String, AttributeMetadata>.validateIssuance(
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult
 
     /**
-     * Validates an SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
+     * Validates a presented SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
+     *
+     * This validation can be performed by a verifier, right after receiving a presentation
+     * of the SD-JWT-VC from the wallet. In this case, [disclosures] can be even empty.
+     *
+     * @param jwtPayload The JWT payload of an SD-JWT-VC
+     * @param disclosures The list of disclosures related to the SD-JWT-VC.
+     * @receiver The definition of the SD-JWT-VC credential against which the given [jwtPayload] and [disclosures]
+     * will be validated
+     */
+    fun DisclosableDefObject<String, AttributeMetadata>.validatePresentation(
+        jwtPayload: JsonObject,
+        disclosures: List<Disclosure>,
+    ): DefinitionBasedValidationResult
+
+    /**
+     * Validates an issued SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
      *
      * The method performs validation by verifying the required claims in the JWT payload and
-     * ensuring that they conform to the definition. It also validates against the list of disclosures.
+     * ensuring that they conform to the definition. In this case, the full list of [disclosures] is assumed,
+     * as provided by the SD-JWT-VC issuer.
      *
-     * @param jwtPayload The JSON object representing the JWT payload of the SD-JWT-VC credential to validate.
+     * @param jwtPayload The JSON object representing the JWT payload of the issued SD-JWT-VC credential to validate.
      * @param disclosures A list of disclosures associated with the SD-JWT-VC credential. The list may vary depending
      * on whether the validation is performed by a wallet or a verifier.
      * @return A [DefinitionBasedValidationResult] object representing the result of the validation. It specifies
      * whether the validation was successful or not, and if not, includes a list of violations.
      */
-    fun SdJwtDefinition.validateSdJwtVc(
+    fun SdJwtDefinition.validateIssuanceSdJwtVc(
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,
-    ): DefinitionBasedValidationResult {
-        val sdJwtVcViolations =
-            buildList {
-                fun requiredStringClaimAndThen(
-                    claimName: String,
-                    andThen: (String) -> Unit,
-                ) {
-                    when (val claimValue = jwtPayload[claimName]) {
-                        null, JsonNull -> {
-                            add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(claimName)))
-                        }
-
-                        else -> {
-                            if (claimValue !is JsonPrimitive || !claimValue.isString) {
-                                add(DefinitionViolation.WrongClaimType(ClaimPath.claim(claimName)))
-                            } else {
-                                andThen(claimValue.content)
-                            }
-                        }
-                    }
-                }
-
-                requiredStringClaimAndThen(SdJwtVcSpec.VCT) {
-                    if (it != metadata.vct.value) {
-                        add(DefinitionViolation.InvalidVct(metadata.vct, it))
-                    }
-                }
-
-                val issuer = jwtPayload[RFC7519.ISSUER]
-                if (null != issuer && issuer !is JsonNull && (issuer !is JsonPrimitive || !issuer.isString)) {
-                    add(DefinitionViolation.WrongClaimType(ClaimPath.claim(RFC7519.ISSUER)))
-                }
-            }
-
-        val result = plusSdJwtVcNeverSelectivelyDisclosableClaims().validate(jwtPayload, disclosures)
-        return if (sdJwtVcViolations.isNotEmpty()) {
-            when (result) {
-                is DefinitionBasedValidationResult.Invalid -> result.copy(errors = sdJwtVcViolations + result.errors)
-                is DefinitionBasedValidationResult.Valid -> DefinitionBasedValidationResult.Invalid(sdJwtVcViolations)
-            }
-        } else {
-            result
+    ): DefinitionBasedValidationResult =
+        validate(jwtPayload, disclosures) { jwtPayload, disclosures ->
+            validateIssuance(jwtPayload, disclosures)
         }
-    }
+
+    /**
+     * Validates a presented SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
+     *
+     * The method performs validation by verifying the required claims in the JWT payload and
+     * ensuring that they conform to the definition. In this case, [disclosures] can be even empty.
+     *
+     * @param jwtPayload The JSON object representing the JWT payload of the presented SD-JWT-VC credential to validate.
+     * @param disclosures A list of disclosures associated with the SD-JWT-VC credential. The list may vary depending
+     * on whether the validation is performed by a wallet or a verifier.
+     * @return A [DefinitionBasedValidationResult] object representing the result of the validation. It specifies
+     * whether the validation was successful or not, and if not, includes a list of violations.
+     */
+    fun SdJwtDefinition.validatePresentationSdJwtVc(
+        jwtPayload: JsonObject,
+        disclosures: List<Disclosure>,
+    ): DefinitionBasedValidationResult =
+        validate(jwtPayload, disclosures) { jwtPayload, disclosures ->
+            validatePresentation(jwtPayload, disclosures)
+        }
 
     companion object : DefinitionBasedSdJwtVcValidator by SdJwtVcDefinitionValidator
 }
@@ -214,37 +208,93 @@ fun interface DefinitionBasedSdJwtVcValidator {
 // Implementation
 //
 
+private fun SdJwtDefinition.validate(
+    jwtPayload: JsonObject,
+    disclosures: List<Disclosure>,
+    validate: DisclosableDefObject<String, AttributeMetadata>.(JsonObject, List<Disclosure>) -> DefinitionBasedValidationResult,
+): DefinitionBasedValidationResult {
+    val sdJwtVcViolations =
+        buildList {
+            fun requiredStringClaimAndThen(
+                claimName: String,
+                andThen: (String) -> Unit,
+            ) {
+                when (val claimValue = jwtPayload[claimName]) {
+                    null, JsonNull -> {
+                        add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(claimName)))
+                    }
+
+                    else -> {
+                        if (claimValue !is JsonPrimitive || !claimValue.isString) {
+                            add(DefinitionViolation.WrongClaimType(ClaimPath.claim(claimName)))
+                        } else {
+                            andThen(claimValue.content)
+                        }
+                    }
+                }
+            }
+
+            requiredStringClaimAndThen(SdJwtVcSpec.VCT) {
+                if (it != metadata.vct.value) {
+                    add(DefinitionViolation.InvalidVct(metadata.vct, it))
+                }
+            }
+
+            val issuer = jwtPayload[RFC7519.ISSUER]
+            if (null != issuer && issuer !is JsonNull && (issuer !is JsonPrimitive || !issuer.isString)) {
+                add(DefinitionViolation.WrongClaimType(ClaimPath.claim(RFC7519.ISSUER)))
+            }
+        }
+
+    val result = plusSdJwtVcNeverSelectivelyDisclosableClaims().validate(jwtPayload, disclosures)
+    return if (sdJwtVcViolations.isNotEmpty()) {
+        when (result) {
+            is DefinitionBasedValidationResult.Invalid -> result.copy(errors = sdJwtVcViolations + result.errors)
+            is DefinitionBasedValidationResult.Valid -> DefinitionBasedValidationResult.Invalid(sdJwtVcViolations)
+        }
+    } else {
+        result
+    }
+}
+
 /**
  * Validates a SD-JWT-VC credential against the [SdJwtDefinition] of this credential.
  *
- * The validation can be performed by a wallet, right after issued the credential. In this case,
- * the full list of [Disclosure] it is assumed, as provided by the SD-JWT-VC issuer.
- *
- * In addition, the validation can be performed by a verifier, right after receiving a presentation
- * of the SD-JWT-VC from the wallet. In this case, the list of [Disclosure] can be even empty
+ * The validation can be performed by a wallet, right after credential issuance, in which case
+ * the full list of [Disclosure] it is assumed, as provided by the SD-JWT-VC issuer, or by a verifier
+ * in which case the list of [Disclosure] can be even empty.
  */
+@Suppress("ktlint:standard:max-line-length")
 private class SdJwtVcDefinitionValidator private constructor(
     private val disclosuresPerClaimPath: DisclosuresPerClaimPath,
-    private val definition: DisclosableDefObject<String, *>,
+    private val definition: DisclosableDefObject<String, AttributeMetadata>,
+    private val isIssuance: Boolean,
 ) {
-
-    @Suppress("ktlint:standard:max-line-length")
     private val validateObject:
-        DeepRecursiveFunction<Triple<ClaimPath?, JsonObject, DisclosableDefObject<String, *>>, List<DefinitionViolation>> =
+        DeepRecursiveFunction<Triple<ClaimPath?, JsonObject, DisclosableDefObject<String, AttributeMetadata>>, List<DefinitionViolation>> =
         DeepRecursiveFunction { (parent, current, definition) ->
             val objErrors = mutableListOf<DefinitionViolation>()
 
             val unknownClaims = current.keys - definition.content.keys
             objErrors.addAll(
                 unknownClaims.map {
-                    val unknownClaimPaths = parent?.claim(it) ?: ClaimPath.Companion.claim(it)
-                    DefinitionViolation.UnknownClaim(unknownClaimPaths)
+                    val unknownClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
+                    DefinitionViolation.UnknownClaim(unknownClaimPath)
+                },
+            )
+
+            val requiredClaims = definition.content.filter { (_, childDefinition) -> childDefinition.mustBePresent(isIssuance) }.keys
+            val missingClaims = requiredClaims - current.keys
+            objErrors.addAll(
+                missingClaims.map {
+                    val missingClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
+                    DefinitionViolation.MissingRequiredClaim(missingClaimPath)
                 },
             )
 
             // iterate through the known claims and validate them
             current.filterKeys { it !in unknownClaims }.forEach { (claimName, claimValue) ->
-                val claimPath = parent?.claim(claimName) ?: ClaimPath.Companion.claim(claimName)
+                val claimPath = parent?.claim(claimName) ?: ClaimPath.claim(claimName)
                 val claimDefinition =
                     checkNotNull(definition.content[claimName]) { "cannot find definition for $claimPath" }
                 objErrors.addAll(validateDef.callRecursive(Triple(claimPath, claimValue, claimDefinition)))
@@ -252,12 +302,18 @@ private class SdJwtVcDefinitionValidator private constructor(
             objErrors
         }
 
-    @Suppress("ktlint:standard:max-line-length")
     private val validateArray:
-        DeepRecursiveFunction<Triple<ClaimPath, JsonArray, DisclosableDefArray<String, *>>, List<DefinitionViolation>> =
+        DeepRecursiveFunction<Triple<ClaimPath, JsonArray, DisclosableDefArray<String, AttributeMetadata>>, List<DefinitionViolation>> =
         DeepRecursiveFunction { (parent, current, definition) ->
             val arrayErrors = mutableListOf<DefinitionViolation>()
             val elementDefinition = definition.content
+
+            val arrayElementsRequired = elementDefinition.mustBePresent(isIssuance)
+            if (arrayElementsRequired && current.isEmpty()) {
+                val missingClaimPath = parent.allArrayElements()
+                arrayErrors.add(DefinitionViolation.MissingRequiredClaim(missingClaimPath))
+            }
+
             current.withIndex().forEach { (claimIndex, claimValue) ->
                 val claimPath = parent.arrayElement(claimIndex)
                 arrayErrors.addAll(validateDef.callRecursive(Triple(claimPath, claimValue, elementDefinition)))
@@ -266,7 +322,7 @@ private class SdJwtVcDefinitionValidator private constructor(
         }
 
     private val validateDef:
-        DeepRecursiveFunction<Triple<ClaimPath, JsonElement, DisclosableElementDefinition<String, *>>, List<DefinitionViolation>> =
+        DeepRecursiveFunction<Triple<ClaimPath, JsonElement, DisclosableElementDefinition<String, AttributeMetadata>>, List<DefinitionViolation>> =
         DeepRecursiveFunction { (claimPath, claimValue, definition) ->
             val allErrors = mutableListOf<DefinitionViolation>()
             // check disclosability
@@ -278,11 +334,11 @@ private class SdJwtVcDefinitionValidator private constructor(
             if (JsonNull != claimValue) {
                 val claimErrors =
                     when (val claimDefinition = definition.value) {
-                        is DisclosableDef.Id<String, *> -> {
+                        is DisclosableDef.Id<String, AttributeMetadata> -> {
                             emptyList()
                         }
 
-                        is DisclosableDef.Arr<String, *> -> {
+                        is DisclosableDef.Arr<String, AttributeMetadata> -> {
                             if (claimValue is JsonArray) {
                                 validateArray.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
                             } else {
@@ -290,7 +346,7 @@ private class SdJwtVcDefinitionValidator private constructor(
                             }
                         }
 
-                        is DisclosableDef.Obj<String, *> -> {
+                        is DisclosableDef.Obj<String, AttributeMetadata> -> {
                             if (claimValue is JsonObject) {
                                 validateObject.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
                             } else {
@@ -332,10 +388,20 @@ private class SdJwtVcDefinitionValidator private constructor(
 
     @Suppress("kotlin:S6516")
     companion object : DefinitionBasedSdJwtVcValidator {
-
-        override fun DisclosableDefObject<String, *>.validate(
+        override fun DisclosableDefObject<String, AttributeMetadata>.validateIssuance(
             jwtPayload: JsonObject,
             disclosures: List<Disclosure>,
+        ): DefinitionBasedValidationResult = validate(jwtPayload, disclosures, isIssuance = true)
+
+        override fun DisclosableDefObject<String, AttributeMetadata>.validatePresentation(
+            jwtPayload: JsonObject,
+            disclosures: List<Disclosure>,
+        ): DefinitionBasedValidationResult = validate(jwtPayload, disclosures, isIssuance = false)
+
+        private fun DisclosableDefObject<String, AttributeMetadata>.validate(
+            jwtPayload: JsonObject,
+            disclosures: List<Disclosure>,
+            isIssuance: Boolean,
         ): DefinitionBasedValidationResult =
             SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtPayload, disclosures).fold(
                 onFailure = { cause ->
@@ -343,8 +409,7 @@ private class SdJwtVcDefinitionValidator private constructor(
                     DefinitionBasedValidationResult.Invalid(disclosureInconsistencies)
                 },
                 onSuccess = { (recreatedCredential, disclosuresPerClaimPath) ->
-
-                    val sdJwtVcDefinitionValidator = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, this)
+                    val sdJwtVcDefinitionValidator = SdJwtVcDefinitionValidator(disclosuresPerClaimPath, this, isIssuance)
                     val violations = sdJwtVcDefinitionValidator.validate(recreatedCredential)
                     if (violations.isEmpty()) {
                         DefinitionBasedValidationResult.Valid(recreatedCredential, disclosuresPerClaimPath)
@@ -355,3 +420,18 @@ private class SdJwtVcDefinitionValidator private constructor(
             )
     }
 }
+
+/**
+ * Checks whether the claim to which this [DisclosableElementDefinition] corresponds to, must be present in the processed SD-JWT VC payload.
+ *
+ * This function considers whether the check is performed for an Issued or Presented SD-JWT VC.
+ *
+ * During Issuance, a claim is must be present if [AttributeMetadata.mandatory] is `true`.
+ * During Presentation, a claim is must be present if it is **Never Selectively Disclosable** and [AttributeMetadata.mandatory] is `true`.
+ */
+private fun DisclosableElementDefinition<*, AttributeMetadata>.mustBePresent(isIssuance: Boolean): Boolean =
+    if (isIssuance) {
+        value.attributeMetadata().mandatory
+    } else {
+        (this is Disclosable.NeverSelectively) && value.attributeMetadata().mandatory
+    }

@@ -57,6 +57,6 @@ val sdJwtVcVerification =
                     typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
                     null,
                 )
-            verifier.verify(sdJwt)
+            verifier.verifyIssuance(sdJwt)
         }
     }
