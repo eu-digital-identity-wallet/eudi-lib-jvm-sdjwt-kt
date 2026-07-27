@@ -43,7 +43,10 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains an invalid JWT
      */
-    data class InvalidJwt(val message: String? = null, val cause: Throwable? = null) : VerificationError {
+    data class InvalidJwt(
+        val message: String? = null,
+        val cause: Throwable? = null,
+    ) : VerificationError {
         constructor(cause: Throwable) : this(null, cause)
     }
 
@@ -51,12 +54,16 @@ sealed interface VerificationError {
      * Failure to verify key binding
      * @param details the specific problem
      */
-    data class KeyBindingFailed(val details: KeyBindingError) : VerificationError
+    data class KeyBindingFailed(
+        val details: KeyBindingError,
+    ) : VerificationError
 
     /**
      * SD-JWT contains invalid disclosures (cannot obtain a claim)
      */
-    data class InvalidDisclosures(val invalidDisclosures: Map<String, List<String>>) : VerificationError {
+    data class InvalidDisclosures(
+        val invalidDisclosures: Map<String, List<String>>,
+    ) : VerificationError {
         init {
             require(invalidDisclosures.isNotEmpty())
             require(invalidDisclosures.values.all { it.isNotEmpty() })
@@ -66,12 +73,16 @@ sealed interface VerificationError {
     /**
      * SD-JWT contains a JWT which contains an unsupported Hashing Algorithm claim
      */
-    data class UnsupportedHashingAlgorithm(val algorithm: String) : VerificationError
+    data class UnsupportedHashingAlgorithm(
+        val algorithm: String,
+    ) : VerificationError
 
     /**
      * SD-JWT contains non-unique disclosures
      */
-    data class NonUniqueDisclosures(val nonUniqueDisclosures: List<String>) : VerificationError {
+    data class NonUniqueDisclosures(
+        val nonUniqueDisclosures: List<String>,
+    ) : VerificationError {
         init {
             require(nonUniqueDisclosures.isNotEmpty())
         }
@@ -86,19 +97,25 @@ sealed interface VerificationError {
      * SD-JWT doesn't contain digests for the [disclosures]
      * @param disclosures The disclosures for which there are no digests
      */
-    data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
+    data class MissingDigests(
+        val disclosures: List<Disclosure>,
+    ) : VerificationError
 
     /**
      * Failed to verify an SD-JWT VC.
      */
-    data class SdJwtVcError(val error: SdJwtVcVerificationError) : VerificationError
+    data class SdJwtVcError(
+        val error: SdJwtVcVerificationError,
+    ) : VerificationError
 }
 
 /**
  * An exception carrying a [verification error][reason]
  * @param reason the problem
  */
-data class SdJwtVerificationException(val reason: VerificationError) : Exception()
+data class SdJwtVerificationException(
+    val reason: VerificationError,
+) : Exception()
 
 /**
  * Creates a [SdJwtVerificationException] for the given error
@@ -133,11 +150,8 @@ fun interface JwtSignatureVerifier<out JWT> {
     suspend fun checkSignature(jwt: String): JWT?
 }
 
-fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(
-    f: (JWT) -> JWT1,
-): JwtSignatureVerifier<JWT1> {
-    return JwtSignatureVerifier { jwt -> checkSignature(jwt)?.let { f(it) } }
-}
+fun <JWT, JWT1> JwtSignatureVerifier<JWT>.map(f: (JWT) -> JWT1): JwtSignatureVerifier<JWT1> =
+    JwtSignatureVerifier { jwt -> checkSignature(jwt)?.let { f(it) } }
 
 /**
  * Errors related to Key Binding
@@ -157,7 +171,10 @@ sealed interface KeyBindingError {
     /**
      * SD-JWT contains an invalid Key Binding JWT
      */
-    data class InvalidKeyBindingJwt(val message: String? = null, val cause: Throwable? = null) : KeyBindingError {
+    data class InvalidKeyBindingJwt(
+        val message: String? = null,
+        val cause: Throwable? = null,
+    ) : KeyBindingError {
         constructor(message: String) : this(message = message, cause = null)
         constructor(cause: Throwable) : this(message = null, cause = cause)
     }
@@ -195,23 +212,27 @@ sealed interface KeyBindingVerifier<out JWT> {
      * It assumes that Issuer has included somehow the holder pub key to SD-JWT.
      *
      */
-    class MustBePresentAndValid<out JWT>(val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?) :
-        KeyBindingVerifier<JWT>
+    class MustBePresentAndValid<out JWT>(
+        val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?,
+    ) : KeyBindingVerifier<JWT>
 
     companion object {
 
-        fun <JWT> mustBePresent(verifier: JwtSignatureVerifier<JWT>): MustBePresentAndValid<JWT> =
-            MustBePresentAndValid { _ -> verifier }
+        fun <JWT> mustBePresent(verifier: JwtSignatureVerifier<JWT>): MustBePresentAndValid<JWT> = MustBePresentAndValid { _ -> verifier }
     }
 }
 
 fun <JWT, JWT1> KeyBindingVerifier<JWT>.map(f: (JWT) -> JWT1): KeyBindingVerifier<JWT1> =
     when (this) {
-        is MustBePresentAndValid<JWT> -> MustBePresentAndValid { sdJwtClaims ->
-            keyBindingVerifierProvider(sdJwtClaims)?.map { f(it) }
+        is MustBePresentAndValid<JWT> -> {
+            MustBePresentAndValid { sdJwtClaims ->
+                keyBindingVerifierProvider(sdJwtClaims)?.map { f(it) }
+            }
         }
 
-        MustNotBePresent -> MustNotBePresent
+        MustNotBePresent -> {
+            MustNotBePresent
+        }
     }
 
 private fun interface KeyBindingVerifierOps<JWT> {
@@ -243,18 +264,21 @@ private fun interface KeyBindingVerifierOps<JWT> {
             KeyBindingVerifierOps { jwtClaims, expectedDigest, challenge, unverifiedKbJwt ->
 
                 fun mustBeNotPresent(): JWT? =
-                    if (unverifiedKbJwt != null) throw UnexpectedKeyBindingJwt.asException()
-                    else null
+                    if (unverifiedKbJwt != null)
+                        throw UnexpectedKeyBindingJwt.asException()
+                    else
+                        null
 
                 suspend fun mustBePresentAndValid(keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<JWT>?): JWT {
                     if (unverifiedKbJwt == null) throw MissingKeyBindingJwt.asException()
 
                     val keyBindingJwtVerifier = keyBindingVerifierProvider(jwtClaims) ?: throw MissingHolderPublicKey.asException()
-                    val keyBindingJwt = runCatchingCancellable {
-                        requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
-                            "KeyBinding JWT cannot be null"
-                        }
-                    }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
+                    val keyBindingJwt =
+                        runCatchingCancellable {
+                            requireNotNull(keyBindingJwtVerifier.checkSignature(unverifiedKbJwt)) {
+                                "KeyBinding JWT cannot be null"
+                            }
+                        }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
 
                     val keyBindingJwtClaims = KeyBindingJwtClaims(claimsOf(keyBindingJwt))
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
@@ -276,8 +300,7 @@ private fun interface KeyBindingVerifierOps<JWT> {
     }
 }
 
-internal fun KeyBindingError.asException(): SdJwtVerificationException =
-    KeyBindingFailed(this).asException()
+internal fun KeyBindingError.asException(): SdJwtVerificationException = KeyBindingFailed(this).asException()
 
 private fun JsonObject.iat(): Instant? =
     this[RFC7519.ISSUED_AT]
@@ -326,7 +349,9 @@ private fun JsonObject.sdHash(): String? =
  * Τhe claims of a Key-Binding JWT.
  */
 @JvmInline
-private value class KeyBindingJwtClaims private constructor(val value: JsonObject) : Map<String, JsonElement> by value {
+private value class KeyBindingJwtClaims private constructor(
+    val value: JsonObject,
+) : Map<String, JsonElement> by value {
 
     val sdHash: String get() = checkNotNull(value.sdHash())
     val iat: Instant get() = checkNotNull(value.iat())
@@ -419,8 +444,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
-    ): Result<SdJwt<JWT>> =
-        verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+    ): Result<SdJwt<JWT>> = verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -484,7 +508,11 @@ interface SdJwtVerifier<JWT> {
 
     companion object {
 
-        operator fun <JWT> invoke(clock: Clock, skew: Duration?, claimsOf: (JWT) -> JsonObject): SdJwtVerifier<JWT> {
+        operator fun <JWT> invoke(
+            clock: Clock,
+            skew: Duration?,
+            claimsOf: (JWT) -> JsonObject,
+        ): SdJwtVerifier<JWT> {
             if (null != skew) {
                 require(!skew.isNegative()) { "skew cannot be negative" }
             }
@@ -572,31 +600,32 @@ private suspend fun <JWT> doVerify(
     skew: Duration,
     challenge: ChallengePredicate?,
     unverifiedSdJwt: String,
-): Result<Pair<SdJwt<JWT>, JWT?>> = runCatchingCancellable {
-    // Parse
-    val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = StandardSerialization.parse(unverifiedSdJwt)
+): Result<Pair<SdJwt<JWT>, JWT?>> =
+    runCatchingCancellable {
+        // Parse
+        val (unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt) = StandardSerialization.parse(unverifiedSdJwt)
 
-    // Check JWT
-    val jwt = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
-    val jwtClaims = claimsOf(jwt)
-    val hashAlgorithm = jwtClaims.hashAlgorithm()
-    val disclosures = toDisclosures(unverifiedDisclosures)
-    val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
+        // Check JWT
+        val jwt = jwtSignatureVerifier.verify(unverifiedJwt).getOrThrow()
+        val jwtClaims = claimsOf(jwt)
+        val hashAlgorithm = jwtClaims.hashAlgorithm()
+        val disclosures = toDisclosures(unverifiedDisclosures)
+        val (recreated, _) = SdJwtRecreateClaimsOps.recreateClaimsAndDisclosuresPerClaim(jwtClaims, disclosures).getOrThrow()
 
-    // Verify validity of SD-JWT (checks `nbf`, and `exp`)
-    recreated.validate(clock, skew)
+        // Verify validity of SD-JWT (checks `nbf`, and `exp`)
+        recreated.validate(clock, skew)
 
-    // Check Key binding
-    val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
-    val kbJwt =
-        with(KeyBindingVerifierOps(claimsOf)) {
-            keyBindingVerifier.verify(jwtClaims, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
-        }
+        // Check Key binding
+        val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
+        val kbJwt =
+            with(KeyBindingVerifierOps(claimsOf)) {
+                keyBindingVerifier.verify(jwtClaims, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
+            }
 
-    // Assemble it
-    val sdJwt = SdJwt(jwt, disclosures)
-    sdJwt to kbJwt
-}
+        // Assemble it
+        val sdJwt = SdJwt(jwt, disclosures)
+        sdJwt to kbJwt
+    }
 
 private fun JsonElement.isLong(): Boolean {
     contract {
@@ -628,7 +657,10 @@ private fun JsonObject.exp(): Instant? =
  */
 private fun Instant.withSecondsPrecision(): Instant = Instant.fromEpochSeconds(epochSeconds, 0)
 
-private fun JsonObject.validate(clock: Clock, skew: Duration) {
+private fun JsonObject.validate(
+    clock: Clock,
+    skew: Duration,
+) {
     val now = clock.now().withSecondsPrecision()
     val nbf = nbf()
     if (null != nbf) {
@@ -652,12 +684,13 @@ private fun JsonObject.validate(clock: Clock, skew: Duration) {
  */
 internal fun toDisclosures(unverifiedDisclosures: List<String>): List<Disclosure> {
     val maybeDisclosures = unverifiedDisclosures.map { it to Disclosure.wrap(it) }
-    val invalidDisclosures = maybeDisclosures.filter { (_, result) -> result.isFailure }
-        .map { (invalidDisclosure, failure) ->
-            val cause = failure.exceptionOrNull()!!.message ?: "unknown error occurred"
-            cause to invalidDisclosure
-        }
-        .groupBy({ it.first }, { it.second })
+    val invalidDisclosures =
+        maybeDisclosures
+            .filter { (_, result) -> result.isFailure }
+            .map { (invalidDisclosure, failure) ->
+                val cause = failure.exceptionOrNull()!!.message ?: "unknown error occurred"
+                cause to invalidDisclosure
+            }.groupBy({ it.first }, { it.second })
     if (invalidDisclosures.isNotEmpty()) throw InvalidDisclosures(invalidDisclosures).asException()
     return maybeDisclosures.map { (_, result) -> result.getOrNull()!! }
 }

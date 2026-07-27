@@ -39,9 +39,15 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
      * @param path The current path in the structure
      * @return A [Pair] containing the accumulated metadata and the result for this element.
      */
-    abstract fun empty(path: ClaimPath?, obj: DisclosableObject<String, A>): Pair<M, R>
+    abstract fun empty(
+        path: ClaimPath?,
+        obj: DisclosableObject<String, A>,
+    ): Pair<M, R>
 
-    final override fun empty(path: List<String?>, obj: DisclosableObject<String, A>): Folded<String, M, R> {
+    final override fun empty(
+        path: List<String?>,
+        obj: DisclosableObject<String, A>,
+    ): Folded<String, M, R> {
         val (m, r) = empty(path.toClaimPath(), obj)
         return Folded(path, m, r)
     }
@@ -56,9 +62,11 @@ abstract class ClaimPathAwareObjectFoldHandlers<A, M, R> : ObjectFoldHandlers<St
     protected fun attributeClaimPath(
         path: List<String?>,
         key: String,
-    ): ClaimPath = path.toClaimPath()
-        ?.let { it + ClaimPathElement.Claim(key) }
-        ?: ClaimPath.claim(key)
+    ): ClaimPath =
+        path
+            .toClaimPath()
+            ?.let { it + ClaimPathElement.Claim(key) }
+            ?: ClaimPath.claim(key)
 
     /**
      * Handles a disclosable ID (primitive) value at the given [path].
@@ -150,9 +158,15 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
      * @param path The current path in the structure
      * @return A [Pair] containing the accumulated metadata and the result for this element.
      */
-    abstract fun empty(path: ClaimPath?, arr: DisclosableArray<String, A>): Pair<M, R>
+    abstract fun empty(
+        path: ClaimPath?,
+        arr: DisclosableArray<String, A>,
+    ): Pair<M, R>
 
-    final override fun empty(path: List<String?>, array: DisclosableArray<String, A>): Folded<String, M, R> {
+    final override fun empty(
+        path: List<String?>,
+        array: DisclosableArray<String, A>,
+    ): Folded<String, M, R> {
         val (m, r) = empty(path.toClaimPath(), array)
         return Folded(path, m, r)
     }
@@ -180,9 +194,13 @@ abstract class ClaimPathAwareArrayFoldHandlers<A, M, R> : ArrayFoldHandlers<Stri
      * @param index The integer index of the new array element to append.
      * @return A [ClaimPath] representing the full path to the new array element.
      */
-    private fun elementClaimPath(path: List<String?>, index: Int): ClaimPath {
+    private fun elementClaimPath(
+        path: List<String?>,
+        index: Int,
+    ): ClaimPath {
         val indexElement = ClaimPathElement.ArrayElement(index)
-        return path.toClaimPath()
+        return path
+            .toClaimPath()
             ?.let { it + indexElement }
             ?: ClaimPath(indexElement)
     }

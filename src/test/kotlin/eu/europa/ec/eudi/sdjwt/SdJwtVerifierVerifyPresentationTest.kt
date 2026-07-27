@@ -31,14 +31,15 @@ import kotlin.time.Instant
 class SdJwtVerifierVerifyPresentationTest {
 
     @Test
-    fun `when sd-jwt is empty verify should return ParsingError`() = runTest {
-        verifyPresentationExpectingError(
-            VerificationError.ParsingError,
-            NoSignatureValidation,
-            KeyBindingVerifierMustBePresent,
-            "",
-        )
-    }
+    fun `when sd-jwt is empty verify should return ParsingError`() =
+        runTest {
+            verifyPresentationExpectingError(
+                VerificationError.ParsingError,
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
+                "",
+            )
+        }
 
     @Test
     fun `when sd-jwt has an invalid jwt but no disclosures , no ending ~ verify should return ParsingError`() =
@@ -63,14 +64,15 @@ class SdJwtVerifierVerifyPresentationTest {
         }
 
     @Test
-    fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() = runTest {
-        verifyPresentationExpectingError(
-            VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts"),
-            NoSignatureValidation,
-            KeyBindingVerifierMustBePresent,
-            "jwt~",
-        )
-    }
+    fun `when sd-jwt has an invalid jwt but no disclosures verify should return InvalidJwt`() =
+        runTest {
+            verifyPresentationExpectingError(
+                VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts"),
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
+                "jwt~",
+            )
+        }
 
     @Test
     fun `when sd-jwt has an invalid jwt, no disclosures and has keyBinding verify should return InvalidJwt`() =
@@ -84,14 +86,15 @@ class SdJwtVerifierVerifyPresentationTest {
         }
 
     @Test
-    fun `when sd-jwt has a valid jwt, no disclosures and no keyBinding verify should return Valid`() = runTest {
-        verifySuccess(
-            NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            null,
-            "$jwt~",
-        )
-    }
+    fun `when sd-jwt has a valid jwt, no disclosures and no keyBinding verify should return Valid`() =
+        runTest {
+            verifySuccess(
+                NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                null,
+                "$jwt~",
+            )
+        }
 
     @Test
     fun `when sd-jwt has an valid jwt, no disclosures and invalid keyBinding verify should return InvalidKeyBindingJwt`() =
@@ -132,36 +135,39 @@ class SdJwtVerifierVerifyPresentationTest {
         }
 
     @Test
-    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() = runTest {
-        val list = listOf("d1", "d2")
+    fun `when sd-jwt has an valid jwt, invalid disclosures verify should return InvalidDisclosures`() =
+        runTest {
+            val list = listOf("d1", "d2")
 
-        verifyPresentationExpectingInvalidDisclosuresError(
-            list,
-            NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            "$jwt~d1~d2~",
-        )
-    }
-
-    @Test
-    fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() = runTest {
-        verifySuccess(
-            NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            null,
-            "$jwt~$d1~",
-        )
-    }
+            verifyPresentationExpectingInvalidDisclosuresError(
+                list,
+                NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                "$jwt~d1~d2~",
+            )
+        }
 
     @Test
-    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() = runTest {
-        verifyPresentationExpectingError(
-            VerificationError.NonUniqueDisclosures(listOf(d1)),
-            NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            "$jwt~$d1~$d1~",
-        )
-    }
+    fun `when sd-jwt has an valid jwt, valid disclosures verify should return Valid`() =
+        runTest {
+            verifySuccess(
+                NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                null,
+                "$jwt~$d1~",
+            )
+        }
+
+    @Test
+    fun `when sd-jwt has an valid jwt, non unique disclosures verify should return NonUnqueDisclosures`() =
+        runTest {
+            verifyPresentationExpectingError(
+                VerificationError.NonUniqueDisclosures(listOf(d1)),
+                NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                "$jwt~$d1~$d1~",
+            )
+        }
 
     @Test
     fun `when sd-jwt has an valid jwt, valid disclosures and keyBinding without 'sd_hash' verify fails with InvalidKeyBindingJwt`() =
@@ -186,24 +192,26 @@ class SdJwtVerifierVerifyPresentationTest {
         }
 
     @Test
-    fun `happy path with sd-jwt with kb-jwt in JWS JSON`() = runTest {
-        verifySuccess(
-            NoSignatureValidation,
-            KeyBindingVerifierMustBePresent,
-            challengeEx2,
-            Json.parseToJsonElement(ex2).jsonObject,
-        )
-    }
+    fun `happy path with sd-jwt with kb-jwt in JWS JSON`() =
+        runTest {
+            verifySuccess(
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
+                challengeEx2,
+                Json.parseToJsonElement(ex2).jsonObject,
+            )
+        }
 
     @Test
-    fun `happy path with sd-jwt without kb-jwt in JWS JSON`() = runTest {
-        verifySuccess(
-            NoSignatureValidation,
-            KeyBindingVerifier.MustNotBePresent,
-            null,
-            Json.parseToJsonElement(ex3).jsonObject,
-        )
-    }
+    fun `happy path with sd-jwt without kb-jwt in JWS JSON`() =
+        runTest {
+            verifySuccess(
+                NoSignatureValidation,
+                KeyBindingVerifier.MustNotBePresent,
+                null,
+                Json.parseToJsonElement(ex3).jsonObject,
+            )
+        }
 
     private val sdJwtVerifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1735689500L)))
 
@@ -216,16 +224,21 @@ class SdJwtVerifierVerifyPresentationTest {
         try {
             val verification =
                 when (holderBindingVerifier) {
-                    KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
-                        jwtSignatureVerifier,
-                        unverifiedSdJwt,
-                    )
-                    is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
-                        jwtSignatureVerifier,
-                        holderBindingVerifier,
-                        challengeWithoutD1,
-                        unverifiedSdJwt,
-                    )
+                    KeyBindingVerifier.MustNotBePresent -> {
+                        sdJwtVerifier.verify(
+                            jwtSignatureVerifier,
+                            unverifiedSdJwt,
+                        )
+                    }
+
+                    is KeyBindingVerifier.MustBePresentAndValid -> {
+                        sdJwtVerifier.verify(
+                            jwtSignatureVerifier,
+                            holderBindingVerifier,
+                            challengeWithoutD1,
+                            unverifiedSdJwt,
+                        )
+                    }
                 }
             verification.getOrThrow()
             fail("Was expecting $expectedError")
@@ -242,16 +255,21 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (holderBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    unverifiedSdJwt,
-                )
-                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    holderBindingVerifier,
-                    challengeWithoutD1,
-                    unverifiedSdJwt,
-                )
+                KeyBindingVerifier.MustNotBePresent -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        unverifiedSdJwt,
+                    )
+                }
+
+                is KeyBindingVerifier.MustBePresentAndValid -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        holderBindingVerifier,
+                        challengeWithoutD1,
+                        unverifiedSdJwt,
+                    )
+                }
             }
         verification.assertIsFailureWithInvalidDisclosures(invalidDisclosures)
     }
@@ -264,16 +282,21 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (keyBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    unverifiedSdJwt,
-                )
-                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    keyBindingVerifier,
-                    checkNotNull(challenge),
-                    unverifiedSdJwt,
-                )
+                KeyBindingVerifier.MustNotBePresent -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        unverifiedSdJwt,
+                    )
+                }
+
+                is KeyBindingVerifier.MustBePresentAndValid -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        keyBindingVerifier,
+                        checkNotNull(challenge),
+                        unverifiedSdJwt,
+                    )
+                }
             }
         assertTrue { verification.isSuccess }
     }
@@ -286,54 +309,64 @@ class SdJwtVerifierVerifyPresentationTest {
     ) {
         val verification =
             when (keyBindingVerifier) {
-                KeyBindingVerifier.MustNotBePresent -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    unverifiedSdJwt,
-                )
-                is KeyBindingVerifier.MustBePresentAndValid -> sdJwtVerifier.verify(
-                    jwtSignatureVerifier,
-                    keyBindingVerifier,
-                    checkNotNull(challenge),
-                    unverifiedSdJwt,
-                )
+                KeyBindingVerifier.MustNotBePresent -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        unverifiedSdJwt,
+                    )
+                }
+
+                is KeyBindingVerifier.MustBePresentAndValid -> {
+                    sdJwtVerifier.verify(
+                        jwtSignatureVerifier,
+                        keyBindingVerifier,
+                        checkNotNull(challenge),
+                        unverifiedSdJwt,
+                    )
+                }
             }
         assertTrue { verification.isSuccess }
     }
 
-    private val jwt = """
-            eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkZwaEZGcGoxdnRyMHJwWUstMTRmaWNrR
-            0tNZzN6ZjFmSXBKWHhUSzhQQUUiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL
-            2lzc3VlciIsICJpYXQiOiAxNTE2MjM5MDIyLCAiZXhwIjogMTczNTY4OTY2MSwgInN1Y
-            iI6ICI2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCAiX3NkX2FsZ
-            yI6ICJzaGEtMjU2In0.tqqCvNdrZ8ILN82t3g-T8LQJp3ykVf8tVPfAr8ijqhG9uc0Kl
-            wYeE4ISu3DQkOk7VeaMMYB73Hsdyjal6e9FS
-    """.trimIndent().removeNewLine()
+    private val jwt =
+        """
+        eyJhbGciOiAiRVMyNTYifQ.eyJfc2QiOiBbIkZwaEZGcGoxdnRyMHJwWUstMTRmaWNrR
+        0tNZzN6ZjFmSXBKWHhUSzhQQUUiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL
+        2lzc3VlciIsICJpYXQiOiAxNTE2MjM5MDIyLCAiZXhwIjogMTczNTY4OTY2MSwgInN1Y
+        iI6ICI2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCAiX3NkX2FsZ
+        yI6ICJzaGEtMjU2In0.tqqCvNdrZ8ILN82t3g-T8LQJp3ykVf8tVPfAr8ijqhG9uc0Kl
+        wYeE4ISu3DQkOk7VeaMMYB73Hsdyjal6e9FS
+        """.trimIndent().removeNewLine()
 
-    private val d1 = """
-            WyJpbVFmR2oxX00wRWw3NmtkdmY3RG
-            F3IiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIlNjaHVsc3RyLiAxMiIsIC
-            Jsb2NhbGl0eSI6ICJTY2h1bHBmb3J0YSIsICJyZWdpb24iOiAiU2FjaHNlbi1BbmhhbH
-            QiLCAiY291bnRyeSI6ICJERSJ9XQ
-    """.trimIndent().removeNewLine()
+    private val d1 =
+        """
+        WyJpbVFmR2oxX00wRWw3NmtkdmY3RG
+        F3IiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIlNjaHVsc3RyLiAxMiIsIC
+        Jsb2NhbGl0eSI6ICJTY2h1bHBmb3J0YSIsICJyZWdpb24iOiAiU2FjaHNlbi1BbmhhbH
+        QiLCAiY291bnRyeSI6ICJERSJ9XQ
+        """.trimIndent().removeNewLine()
 
-    private val kbWithoutD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc
-            0aW1NQ3FTc09fdVFfaXZxQjJ4ayIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
-            sZS5vcmciLCJpYXQiOjE3NzI3MTUwODIsIm5vbmNlIjoibm9uY2UifQ.u3to8ttbbYCF
-            ds3QqhI9D3Hmfygz4-0PG3KjTGKhROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0D
-            dO1nOA    
-    """.trimIndent().removeNewLine()
+    private val kbWithoutD1 =
+        """
+        eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc
+        0aW1NQ3FTc09fdVFfaXZxQjJ4ayIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
+        sZS5vcmciLCJpYXQiOjE3NzI3MTUwODIsIm5vbmNlIjoibm9uY2UifQ.u3to8ttbbYCF
+        ds3QqhI9D3Hmfygz4-0PG3KjTGKhROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0D
+        dO1nOA    
+        """.trimIndent().removeNewLine()
 
-    private val kbWithD1 = """
-            eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA
-            4Sm02ODBqNHJnbWdUd3JjX2lMcyIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
-            sZS5vcmciLCJpYXQiOjE3NzI3MTUxNDksIm5vbmNlIjoibm9uY2UifQ.rkN3lEPVuXaL
-            U3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ
-            67m0Hg
-    """.trimIndent().removeNewLine()
+    private val kbWithD1 =
+        """
+        eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA
+        4Sm02ODBqNHJnbWdUd3JjX2lMcyIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
+        sZS5vcmciLCJpYXQiOjE3NzI3MTUxNDksIm5vbmNlIjoibm9uY2UifQ.rkN3lEPVuXaL
+        U3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ
+        67m0Hg
+        """.trimIndent().removeNewLine()
 }
 
-private val ex2 = """
+private val ex2 =
+    """
     {
       "header": {
         "disclosures": [
@@ -346,9 +379,10 @@ private val ex2 = """
       "protected": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0",
       "signature": "QqT_REPTOaBX4EzA9rQqad_iOL6pMl9_onmFH_q-Npyqal5TsxcUc5FIKjQL9BFO8QvA0BFbVbzaO-NLonN3Mw"
     }
-""".trimIndent()
+    """.trimIndent()
 
-private val ex3 = """
+private val ex3 =
+    """
     {
       "header": {
         "disclosures": [
@@ -360,22 +394,25 @@ private val ex3 = """
       "protected": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0",
       "signature": "QqT_REPTOaBX4EzA9rQqad_iOL6pMl9_onmFH_q-Npyqal5TsxcUc5FIKjQL9BFO8QvA0BFbVbzaO-NLonN3Mw"
     }
-""".trimIndent()
+    """.trimIndent()
 
-private val challengeWithoutD1 = ChallengePredicate(
-    issuedAt = Instant.fromEpochSeconds(1772715082L, 0),
-    audience = "https://verifier.example.org",
-    nonce = "nonce",
-)
+private val challengeWithoutD1 =
+    ChallengePredicate(
+        issuedAt = Instant.fromEpochSeconds(1772715082L, 0),
+        audience = "https://verifier.example.org",
+        nonce = "nonce",
+    )
 
-private val challengeWithD1 = ChallengePredicate(
-    issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
-    audience = "https://verifier.example.org",
-    nonce = "nonce",
-)
+private val challengeWithD1 =
+    ChallengePredicate(
+        issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
+        audience = "https://verifier.example.org",
+        nonce = "nonce",
+    )
 
-private val challengeEx2 = ChallengePredicate(
-    issuedAt = Instant.fromEpochSeconds(1725374413L, 0),
-    audience = "https://verifier.example.org",
-    nonce = "1234567890",
-)
+private val challengeEx2 =
+    ChallengePredicate(
+        issuedAt = Instant.fromEpochSeconds(1725374413L, 0),
+        audience = "https://verifier.example.org",
+        nonce = "1234567890",
+    )

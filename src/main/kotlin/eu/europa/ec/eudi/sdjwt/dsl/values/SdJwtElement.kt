@@ -69,16 +69,15 @@ data class SdJwtArray(
 typealias SdJwtElement = DisclosableElement<String, JsonElement>
 
 @PublishedApi
-internal fun factory(
-    minimumDigests: Int?,
-) = object : DisclosableContainerFactory<String, JsonElement, SdJwtObject, SdJwtArray> {
+internal fun factory(minimumDigests: Int?) =
+    object : DisclosableContainerFactory<String, JsonElement, SdJwtObject, SdJwtArray> {
 
-    override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): SdJwtObject =
-        SdJwtObject(elements, minimumDigests.atLeastDigests())
+        override fun obj(elements: Map<String, DisclosableElement<String, JsonElement>>): SdJwtObject =
+            SdJwtObject(elements, minimumDigests.atLeastDigests())
 
-    override fun arr(elements: List<DisclosableElement<String, JsonElement>>): SdJwtArray =
-        SdJwtArray(elements, minimumDigests.atLeastDigests())
-}
+        override fun arr(elements: List<DisclosableElement<String, JsonElement>>): SdJwtArray =
+            SdJwtArray(elements, minimumDigests.atLeastDigests())
+    }
 
 /**
  * A builder for creating an [SdJwtArray] using a fluent DSL.
@@ -90,7 +89,9 @@ internal fun factory(
  * @property elements The list of [SdJwtElement]s built by this builder.
  */
 @DisclosableElementDsl
-class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
+class SdJwtArrayBuilder(
+    elements: MutableList<SdJwtElement>,
+) {
 
     private val claims = DisclosableArraySpecBuilder(factory = factory(null), elements)
 
@@ -111,7 +112,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param serializer The serializer of the value
      * @param V the type of the value
      */
-    fun <V>claim(value: V, serializer: KSerializer<V>): Unit = claims.claim(Json.encodeToJsonElement(serializer, value))
+    fun <V> claim(
+        value: V,
+        serializer: KSerializer<V>,
+    ): Unit = claims.claim(Json.encodeToJsonElement(serializer, value))
 
     /**
      * Adds a regular (non-selectively disclosable) JSON element to the array.
@@ -119,7 +123,7 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param value The to add.
      * @param V the type of the value
      */
-    inline fun <reified V>claim(value: V): Unit = claim(value, serializer())
+    inline fun <reified V> claim(value: V): Unit = claim(value, serializer())
 
     /**
      * Adds a regular (non-selectively disclosable) string value to the array.
@@ -153,7 +157,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param serializer The serializer of the value
      * @param V the type of the value
      */
-    fun <V>sdClaim(value: V, serializer: KSerializer<V>): Unit = claims.sdClaim(Json.encodeToJsonElement(serializer, value))
+    fun <V> sdClaim(
+        value: V,
+        serializer: KSerializer<V>,
+    ): Unit = claims.sdClaim(Json.encodeToJsonElement(serializer, value))
 
     /**
      * Adds a selectively disclosable (SD) JSON element to the array.
@@ -161,7 +168,7 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param value The value to add.
      * @param V the type of the value
      */
-    inline fun <reified V>sdClaim(value: V): Unit = sdClaim(value, serializer())
+    inline fun <reified V> sdClaim(value: V): Unit = sdClaim(value, serializer())
 
     /**
      * Adds a selectively disclosable (SD) string value to the array.
@@ -187,8 +194,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param minimumDigests An optional hint for decoy digests within this nested object.
      * @param action A lambda with [SdJwtObjectBuilder] as its receiver to define the object's content.
      */
-    fun objClaim(minimumDigests: Int? = null, action: SdJwtObjectBuilder.() -> Unit): Unit =
-        claims.objClaim(buildSdJwtObject(minimumDigests, action))
+    fun objClaim(
+        minimumDigests: Int? = null,
+        action: SdJwtObjectBuilder.() -> Unit,
+    ): Unit = claims.objClaim(buildSdJwtObject(minimumDigests, action))
 
     /**
      * Adds a selectively disclosable (SD) nested object to the array.
@@ -196,8 +205,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param minimumDigests An optional hint for decoy digests within this nested object.
      * @param action A lambda with [SdJwtObjectBuilder] as its receiver to define the object's content.
      */
-    fun sdObjClaim(minimumDigests: Int? = null, action: SdJwtObjectBuilder.() -> Unit): Unit =
-        claims.sdObjClaim(buildSdJwtObject(minimumDigests, action))
+    fun sdObjClaim(
+        minimumDigests: Int? = null,
+        action: SdJwtObjectBuilder.() -> Unit,
+    ): Unit = claims.sdObjClaim(buildSdJwtObject(minimumDigests, action))
 
     /**
      * Adds a regular (non-selectively disclosable) nested array to the array.
@@ -205,8 +216,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param minimumDigests An optional hint for decoy digests within this nested array.
      * @param action A lambda with [SdJwtArrayBuilder] as its receiver to define the array's content.
      */
-    fun arrClaim(minimumDigests: Int? = null, action: SdJwtArrayBuilder.() -> Unit): Unit =
-        claims.arrClaim(buildSdJwtArray(minimumDigests, action))
+    fun arrClaim(
+        minimumDigests: Int? = null,
+        action: SdJwtArrayBuilder.() -> Unit,
+    ): Unit = claims.arrClaim(buildSdJwtArray(minimumDigests, action))
 
     /**
      * Adds a selectively disclosable (SD) nested array to the array.
@@ -214,8 +227,10 @@ class SdJwtArrayBuilder(elements: MutableList<SdJwtElement>) {
      * @param minimumDigests An optional hint for decoy digests within this nested array.
      * @param action A lambda with [SdJwtArrayBuilder] as its receiver to define the array's content.
      */
-    fun sdArrClaim(minimumDigests: Int? = null, action: SdJwtArrayBuilder.() -> Unit): Unit =
-        claims.sdArrClaim(buildSdJwtArray(minimumDigests, action))
+    fun sdArrClaim(
+        minimumDigests: Int? = null,
+        action: SdJwtArrayBuilder.() -> Unit,
+    ): Unit = claims.sdArrClaim(buildSdJwtArray(minimumDigests, action))
 }
 
 /**
@@ -249,7 +264,9 @@ inline fun buildSdJwtArray(
  * @property elements The map of [String] keys to [SdJwtElement]s built by this builder.
  */
 @DisclosableElementDsl
-class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
+class SdJwtObjectBuilder(
+    elements: MutableMap<String, SdJwtElement>,
+) {
 
     private val claims = DisclosableObjectSpecBuilder(factory(null), elements)
     val elements: Map<String, SdJwtElement> get() = claims.elements
@@ -260,7 +277,10 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param name The name of the claim.
      * @param value The [JsonElement] value of the claim.
      */
-    fun claim(name: String, value: JsonElement): Unit = claims.claim(name, value)
+    fun claim(
+        name: String,
+        value: JsonElement,
+    ): Unit = claims.claim(name, value)
 
     /**
      * Adds a regular (non-selectively disclosable) JSON element claim to the object.
@@ -269,7 +289,11 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param value The value of the claim.
      * @param V the type of the value
      */
-    fun<V> claim(name: String, value: V, serializer: KSerializer<V>): Unit = claim(name, Json.encodeToJsonElement(serializer, value))
+    fun <V> claim(
+        name: String,
+        value: V,
+        serializer: KSerializer<V>,
+    ): Unit = claim(name, Json.encodeToJsonElement(serializer, value))
 
     /**
      * Adds a regular (non-selectively disclosable) JSON element claim to the object.
@@ -278,28 +302,40 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param value The value of the claim.
      * @param V the type of the value
      */
-    inline fun<reified V> claim(name: String, value: V): Unit = claim(name, value, serializer())
+    inline fun <reified V> claim(
+        name: String,
+        value: V,
+    ): Unit = claim(name, value, serializer())
 
     /**
      * Adds a regular (non-selectively disclosable) string claim to the object.
      * @param name The name of the claim.
      * @param value The [String] value of the claim.
      */
-    fun claim(name: String, value: String): Unit = claim(name, JsonPrimitive(value))
+    fun claim(
+        name: String,
+        value: String,
+    ): Unit = claim(name, JsonPrimitive(value))
 
     /**
      * Adds a regular (non-selectively disclosable) number claim to the object.
      * @param name The name of the claim.
      * @param value The [Number] value of the claim.
      */
-    fun claim(name: String, value: Number): Unit = claim(name, JsonPrimitive(value))
+    fun claim(
+        name: String,
+        value: Number,
+    ): Unit = claim(name, JsonPrimitive(value))
 
     /**
      * Adds a regular (non-selectively disclosable) boolean claim to the object.
      * @param name The name of the claim.
      * @param value The [Boolean] value of the claim.
      */
-    fun claim(name: String, value: Boolean): Unit = claim(name, JsonPrimitive(value))
+    fun claim(
+        name: String,
+        value: Boolean,
+    ): Unit = claim(name, JsonPrimitive(value))
 
     /**
      * Adds a selectively disclosable (SD) JSON element claim to the object.
@@ -307,7 +343,10 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param name The name of the claim.
      * @param value The [JsonElement] value of the claim.
      */
-    fun sdClaim(name: String, value: JsonElement): Unit = claims.sdClaim(name, value)
+    fun sdClaim(
+        name: String,
+        value: JsonElement,
+    ): Unit = claims.sdClaim(name, value)
 
     /**
      * Adds a selectively disclosable (SD) JSON element claim to the object.
@@ -317,7 +356,11 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param serializer The serializer of the value
      * @param V the type of the value
      */
-    fun<V> sdClaim(name: String, value: V, serializer: KSerializer<V>): Unit = sdClaim(name, Json.encodeToJsonElement(serializer, value))
+    fun <V> sdClaim(
+        name: String,
+        value: V,
+        serializer: KSerializer<V>,
+    ): Unit = sdClaim(name, Json.encodeToJsonElement(serializer, value))
 
     /**
      * Adds a selectively disclosable (SD) JSON element claim to the object.
@@ -326,28 +369,40 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
      * @param value The value of the claim.
      * @param V the type of the value
      */
-    inline fun<reified V> sdClaim(name: String, value: V): Unit = sdClaim(name, value, serializer())
+    inline fun <reified V> sdClaim(
+        name: String,
+        value: V,
+    ): Unit = sdClaim(name, value, serializer())
 
     /**
      * Adds a selectively disclosable (SD) string claim to the object.
      * @param name The name of the claim.
      * @param value The [String] value of the claim.
      */
-    fun sdClaim(name: String, value: String): Unit = sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(
+        name: String,
+        value: String,
+    ): Unit = sdClaim(name, JsonPrimitive(value))
 
     /**
      * Adds a selectively disclosable (SD) number claim to the object.
      * @param name The name of the claim.
      * @param value The [Number] value of the claim.
      */
-    fun sdClaim(name: String, value: Number): Unit = sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(
+        name: String,
+        value: Number,
+    ): Unit = sdClaim(name, JsonPrimitive(value))
 
     /**
      * Adds a selectively disclosable (SD) boolean claim to the object.
      * @param name The name of the claim.
      * @param value The [Boolean] value of the claim.
      */
-    fun sdClaim(name: String, value: Boolean): Unit = sdClaim(name, JsonPrimitive(value))
+    fun sdClaim(
+        name: String,
+        value: Boolean,
+    ): Unit = sdClaim(name, JsonPrimitive(value))
 
     /**
      * Adds a regular (non-selectively disclosable) nested object claim to the current object.
@@ -360,8 +415,7 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
         name: String,
         minimumDigests: Int? = null,
         action: (SdJwtObjectBuilder).() -> Unit,
-    ): Unit =
-        claims.objClaim(name, buildSdJwtObject(minimumDigests, action))
+    ): Unit = claims.objClaim(name, buildSdJwtObject(minimumDigests, action))
 
     /**
      * Adds a selectively disclosable (SD) nested object claim to the current object.
@@ -374,8 +428,7 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
         name: String,
         minimumDigests: Int? = null,
         action: (SdJwtObjectBuilder).() -> Unit,
-    ): Unit =
-        claims.sdObjClaim(name, buildSdJwtObject(minimumDigests, action))
+    ): Unit = claims.sdObjClaim(name, buildSdJwtObject(minimumDigests, action))
 
     /**
      * Adds a regular (non-selectively disclosable) nested array claim to the current object.
@@ -388,8 +441,7 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
         name: String,
         minimumDigests: Int? = null,
         action: SdJwtArrayBuilder.() -> Unit,
-    ): Unit =
-        claims.arrClaim(name, buildSdJwtArray(minimumDigests, action))
+    ): Unit = claims.arrClaim(name, buildSdJwtArray(minimumDigests, action))
 
     /**
      * Adds a selectively disclosable (SD) nested array claim to the current object.
@@ -402,8 +454,7 @@ class SdJwtObjectBuilder(elements: MutableMap<String, SdJwtElement>) {
         name: String,
         minimumDigests: Int? = null,
         action: SdJwtArrayBuilder.() -> Unit,
-    ): Unit =
-        claims.sdArrClaim(name, buildSdJwtArray(minimumDigests, action))
+    ): Unit = claims.sdArrClaim(name, buildSdJwtArray(minimumDigests, action))
 }
 
 /**

@@ -30,7 +30,9 @@ sealed interface DefinitionViolation {
      *
      * @param cause the underlying exception that occurred during claim reconstruction.
      */
-    data class DisclosureInconsistencies(val cause: Throwable) : DefinitionViolation
+    data class DisclosureInconsistencies(
+        val cause: Throwable,
+    ) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload a 'vct' that does not correspond to the 'vct' of the definition it is being
@@ -39,14 +41,19 @@ sealed interface DefinitionViolation {
      * @param expected the expected 'vct', i.e. the 'vct' in of the definition
      * @param actual the 'vct' contained in the SD-JWT payload, if any
      */
-    data class InvalidVct(val expected: Vct, val actual: String) : DefinitionViolation
+    data class InvalidVct(
+        val expected: Vct,
+        val actual: String,
+    ) : DefinitionViolation
 
     /**
      * The SD-JWT is missing from its payload a required claim.
      *
      * @param claimPath the claim path of the missing claim
      */
-    data class MissingRequiredClaim(val claimPath: ClaimPath) : DefinitionViolation
+    data class MissingRequiredClaim(
+        val claimPath: ClaimPath,
+    ) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -54,7 +61,9 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of the unknown claim
      */
-    data class UnknownClaim(val claimPath: ClaimPath) : DefinitionViolation
+    data class UnknownClaim(
+        val claimPath: ClaimPath,
+    ) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -63,7 +72,9 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of the claim that has incorrect type
      */
-    data class WrongClaimType(val claimPath: ClaimPath) : DefinitionViolation
+    data class WrongClaimType(
+        val claimPath: ClaimPath,
+    ) : DefinitionViolation
 
     /**
      * The SD-JWT contains in the payload or in the given disclosures,
@@ -75,7 +86,9 @@ sealed interface DefinitionViolation {
      *
      * @param claimPath the claim path of the incorrectly disclosed claim
      */
-    data class IncorrectlyDisclosedClaim(val claimPath: ClaimPath) : DefinitionViolation
+    data class IncorrectlyDisclosedClaim(
+        val claimPath: ClaimPath,
+    ) : DefinitionViolation
 }
 
 /**
@@ -99,7 +112,9 @@ sealed interface DefinitionBasedValidationResult {
      *
      * @property errors the definition violations that were detected
      */
-    data class Invalid(val errors: List<DefinitionViolation>) : DefinitionBasedValidationResult {
+    data class Invalid(
+        val errors: List<DefinitionViolation>,
+    ) : DefinitionBasedValidationResult {
         constructor(
             head: DefinitionViolation,
             vararg tail: DefinitionViolation,
@@ -148,31 +163,38 @@ fun interface DefinitionBasedSdJwtVcValidator {
         jwtPayload: JsonObject,
         disclosures: List<Disclosure>,
     ): DefinitionBasedValidationResult {
-        val sdJwtVcViolations = buildList {
-            fun requiredStringClaimAndThen(claimName: String, andThen: (String) -> Unit) {
-                when (val claimValue = jwtPayload[claimName]) {
-                    null, JsonNull -> add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(claimName)))
-                    else -> {
-                        if (claimValue !is JsonPrimitive || !claimValue.isString) {
-                            add(DefinitionViolation.WrongClaimType(ClaimPath.claim(claimName)))
-                        } else {
-                            andThen(claimValue.content)
+        val sdJwtVcViolations =
+            buildList {
+                fun requiredStringClaimAndThen(
+                    claimName: String,
+                    andThen: (String) -> Unit,
+                ) {
+                    when (val claimValue = jwtPayload[claimName]) {
+                        null, JsonNull -> {
+                            add(DefinitionViolation.MissingRequiredClaim(ClaimPath.claim(claimName)))
+                        }
+
+                        else -> {
+                            if (claimValue !is JsonPrimitive || !claimValue.isString) {
+                                add(DefinitionViolation.WrongClaimType(ClaimPath.claim(claimName)))
+                            } else {
+                                andThen(claimValue.content)
+                            }
                         }
                     }
                 }
-            }
 
-            requiredStringClaimAndThen(SdJwtVcSpec.VCT) {
-                if (it != metadata.vct.value) {
-                    add(DefinitionViolation.InvalidVct(metadata.vct, it))
+                requiredStringClaimAndThen(SdJwtVcSpec.VCT) {
+                    if (it != metadata.vct.value) {
+                        add(DefinitionViolation.InvalidVct(metadata.vct, it))
+                    }
+                }
+
+                val issuer = jwtPayload[RFC7519.ISSUER]
+                if (null != issuer && issuer !is JsonNull && (issuer !is JsonPrimitive || !issuer.isString)) {
+                    add(DefinitionViolation.WrongClaimType(ClaimPath.claim(RFC7519.ISSUER)))
                 }
             }
-
-            val issuer = jwtPayload[RFC7519.ISSUER]
-            if (null != issuer && issuer !is JsonNull && (issuer !is JsonPrimitive || !issuer.isString)) {
-                add(DefinitionViolation.WrongClaimType(ClaimPath.claim(RFC7519.ISSUER)))
-            }
-        }
 
         val result = plusSdJwtVcNeverSelectivelyDisclosableClaims().validate(jwtPayload, disclosures)
         return if (sdJwtVcViolations.isNotEmpty()) {
@@ -254,27 +276,28 @@ private class SdJwtVcDefinitionValidator private constructor(
 
             // check type and recurse as needed
             if (JsonNull != claimValue) {
-                val claimErrors = when (val claimDefinition = definition.value) {
-                    is DisclosableDef.Id<String, *> -> {
-                        emptyList()
-                    }
+                val claimErrors =
+                    when (val claimDefinition = definition.value) {
+                        is DisclosableDef.Id<String, *> -> {
+                            emptyList()
+                        }
 
-                    is DisclosableDef.Arr<String, *> -> {
-                        if (claimValue is JsonArray) {
-                            validateArray.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
-                        } else {
-                            listOf(DefinitionViolation.WrongClaimType(claimPath))
+                        is DisclosableDef.Arr<String, *> -> {
+                            if (claimValue is JsonArray) {
+                                validateArray.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
+                            } else {
+                                listOf(DefinitionViolation.WrongClaimType(claimPath))
+                            }
+                        }
+
+                        is DisclosableDef.Obj<String, *> -> {
+                            if (claimValue is JsonObject) {
+                                validateObject.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
+                            } else {
+                                listOf(DefinitionViolation.WrongClaimType(claimPath))
+                            }
                         }
                     }
-
-                    is DisclosableDef.Obj<String, *> -> {
-                        if (claimValue is JsonObject) {
-                            validateObject.callRecursive(Triple(claimPath, claimValue, claimDefinition.value))
-                        } else {
-                            listOf(DefinitionViolation.WrongClaimType(claimPath))
-                        }
-                    }
-                }
                 allErrors.addAll(claimErrors)
             }
             allErrors
@@ -286,17 +309,22 @@ private class SdJwtVcDefinitionValidator private constructor(
     }
 
     private fun DisclosableElementDefinition<String, *>.isProperlyDisclosed(claim: ClaimPath): Boolean {
-        val requiresDisclosures = run {
-            val parentDisclosures = claim.parent()?.let {
-                checkNotNull(disclosuresPerClaimPath[it]) { "cannot find disclosures for $it" }
-            }.orEmpty()
-            val claimDisclosures = checkNotNull(disclosuresPerClaimPath[claim]) {
-                "cannot find disclosures for $claim"
-            }
+        val requiresDisclosures =
+            run {
+                val parentDisclosures =
+                    claim
+                        .parent()
+                        ?.let {
+                            checkNotNull(disclosuresPerClaimPath[it]) { "cannot find disclosures for $it" }
+                        }.orEmpty()
+                val claimDisclosures =
+                    checkNotNull(disclosuresPerClaimPath[claim]) {
+                        "cannot find disclosures for $claim"
+                    }
 
-            // if claim requires more disclosures than its parent, it is selectively disclosed
-            claimDisclosures.size > parentDisclosures.size
-        }
+                // if claim requires more disclosures than its parent, it is selectively disclosed
+                claimDisclosures.size > parentDisclosures.size
+            }
 
         return (this is Disclosable.AlwaysSelectively<*> && requiresDisclosures) ||
             (this is Disclosable.NeverSelectively<*> && !requiresDisclosures)

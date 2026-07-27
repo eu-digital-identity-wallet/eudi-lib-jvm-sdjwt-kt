@@ -94,9 +94,10 @@ class DisclosableTest {
     @Test
     fun `test DisclosableValue Obj creation and properties`() {
         val factory = DisclosableContainerFactory.default<String, String>()
-        val objContent = mapOf<String, DisclosableElement<String, String>>(
-            "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
-        )
+        val objContent =
+            mapOf<String, DisclosableElement<String, String>>(
+                "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
+            )
         val obj = factory.obj(objContent)
         val disclosableObj = DisclosableValue.Obj(obj)
 
@@ -108,9 +109,10 @@ class DisclosableTest {
     @Test
     fun `test DisclosableValue Arr creation and properties`() {
         val factory = DisclosableContainerFactory.default<String, String>()
-        val arrContent = listOf<DisclosableElement<String, String>>(
-            Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
-        )
+        val arrContent =
+            listOf<DisclosableElement<String, String>>(
+                Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
+            )
         val arr = factory.arr(arrContent)
         val disclosableArr = DisclosableValue.Arr(arr)
 
@@ -128,18 +130,20 @@ class DisclosableTest {
         assertEquals(value, id.value)
 
         val factory = DisclosableContainerFactory.default<String, String>()
-        val objContent = mapOf<String, DisclosableElement<String, String>>(
-            "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
-        )
+        val objContent =
+            mapOf<String, DisclosableElement<String, String>>(
+                "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
+            )
         val obj = factory.obj(objContent)
         val disclosableObj = DisclosableValue.obj(obj)
 
         assertIs<DisclosableValue.Obj<String, String>>(disclosableObj)
         assertEquals(obj, disclosableObj.value)
 
-        val arrContent = listOf<DisclosableElement<String, String>>(
-            Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
-        )
+        val arrContent =
+            listOf<DisclosableElement<String, String>>(
+                Disclosable.AlwaysSelectively(DisclosableValue.Id("value")),
+            )
         val arr = factory.arr(arrContent)
         val disclosableArr = DisclosableValue.arr(arr)
 
@@ -150,9 +154,10 @@ class DisclosableTest {
     @Test
     fun `test mapElements function for DisclosableObject`() {
         val factory = DisclosableContainerFactory.default<String, Int>()
-        val objContent = mapOf<String, DisclosableElement<String, Int>>(
-            "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
-        )
+        val objContent =
+            mapOf<String, DisclosableElement<String, Int>>(
+                "key" to Disclosable.AlwaysSelectively(DisclosableValue.Id(5)),
+            )
         val obj = factory.obj(objContent)
         val mapped = obj.map(fK = { it }) { it * 2 }
 

@@ -112,94 +112,97 @@ interface SdJwtSerializationOps<JWT> {
         operator fun <JWT> invoke(
             serializeJwt: (JWT) -> String,
             hashAlgorithm: (JWT) -> HashAlgorithm?,
-        ): SdJwtSerializationOps<JWT> =
-            defaultSdJwtSerializationOps(serializeJwt, hashAlgorithm)
+        ): SdJwtSerializationOps<JWT> = defaultSdJwtSerializationOps(serializeJwt, hashAlgorithm)
     }
 }
 
 private fun <JWT> defaultSdJwtSerializationOps(
     serializeJwt: (JWT) -> String,
     hashAlgorithm: (JWT) -> HashAlgorithm?,
-): SdJwtSerializationOps<JWT> = object : SdJwtSerializationOps<JWT> {
+): SdJwtSerializationOps<JWT> =
+    object : SdJwtSerializationOps<JWT> {
 
-    override fun SdJwt<JWT>.serialize(): String {
-        val serializedJwt = serializeJwt(jwt)
-        return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
-    }
-
-    override suspend fun SdJwt<JWT>.serializeWithKeyBinding(buildKbJwt: BuildKbJwt): Result<String> =
-        runCatchingCancellable {
-            val presentationSdJwt = serialize()
-            val hashAlgorithm = jwt.hashAlgorithmOrDefault()
-            val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
-            "$presentationSdJwt$kbJwt"
+        override fun SdJwt<JWT>.serialize(): String {
+            val serializedJwt = serializeJwt(jwt)
+            return StandardSerialization.concat(serializedJwt, disclosures.map { it.value })
         }
 
-    override fun SdJwt<JWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject =
-        toJwsJsonObject(option, kbJwt = null)
+        override suspend fun SdJwt<JWT>.serializeWithKeyBinding(buildKbJwt: BuildKbJwt): Result<String> =
+            runCatchingCancellable {
+                val presentationSdJwt = serialize()
+                val hashAlgorithm = jwt.hashAlgorithmOrDefault()
+                val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
+                "$presentationSdJwt$kbJwt"
+            }
 
-    override suspend fun SdJwt<JWT>.asJwsJsonObjectWithKeyBinding(
-        option: JwsSerializationOption,
-        buildKbJwt: BuildKbJwt,
-    ): Result<JsonObject> = runCatchingCancellable {
-        val presentationSdJwt = serialize()
-        val hashAlgorithm = jwt.hashAlgorithmOrDefault()
-        val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
-        asJwsJsonObjectWithKeyBinding(option, kbJwt)
-    }
+        override fun SdJwt<JWT>.asJwsJsonObject(option: JwsSerializationOption): JsonObject = toJwsJsonObject(option, kbJwt = null)
 
-    override fun SdJwt<JWT>.asJwsJsonObjectWithKeyBinding(
-        option: JwsSerializationOption,
-        kbJwt: Jwt,
-    ): JsonObject = toJwsJsonObject(option, kbJwt)
+        override suspend fun SdJwt<JWT>.asJwsJsonObjectWithKeyBinding(
+            option: JwsSerializationOption,
+            buildKbJwt: BuildKbJwt,
+        ): Result<JsonObject> =
+            runCatchingCancellable {
+                val presentationSdJwt = serialize()
+                val hashAlgorithm = jwt.hashAlgorithmOrDefault()
+                val kbJwt = kbJwt(presentationSdJwt, hashAlgorithm, buildKbJwt).getOrThrow()
+                asJwsJsonObjectWithKeyBinding(option, kbJwt)
+            }
 
-    private fun SdJwt<JWT>.toJwsJsonObject(
-        option: JwsSerializationOption,
-        kbJwt: Jwt?,
-    ): JsonObject {
-        val (protected, payload, signature) = run {
-            val jwt = serializeJwt(this@toJwsJsonObject.jwt)
-            splitJwt(jwt).getOrThrow()
+        override fun SdJwt<JWT>.asJwsJsonObjectWithKeyBinding(
+            option: JwsSerializationOption,
+            kbJwt: Jwt,
+        ): JsonObject = toJwsJsonObject(option, kbJwt)
+
+        private fun SdJwt<JWT>.toJwsJsonObject(
+            option: JwsSerializationOption,
+            kbJwt: Jwt?,
+        ): JsonObject {
+            val (protected, payload, signature) =
+                run {
+                    val jwt = serializeJwt(this@toJwsJsonObject.jwt)
+                    splitJwt(jwt).getOrThrow()
+                }
+            return with(JwsJsonSupport) {
+                val ds = this@toJwsJsonObject.disclosures.map<Disclosure, String> { it.value }.toSet<String>()
+                option.buildJwsJson(protected, payload, signature, ds, kbJwt)
+            }
         }
-        return with(JwsJsonSupport) {
-            val ds = this@toJwsJsonObject.disclosures.map<Disclosure, String> { it.value }.toSet<String>()
-            option.buildJwsJson(protected, payload, signature, ds, kbJwt)
-        }
-    }
 
-    private fun JWT.hashAlgorithmOrDefault(): HashAlgorithm {
-        return hashAlgorithm(this) ?: HashAlgorithm.SHA_256
+        private fun JWT.hashAlgorithmOrDefault(): HashAlgorithm = hashAlgorithm(this) ?: HashAlgorithm.SHA_256
     }
-}
 
 private suspend fun kbJwt(
     presentationSdJwt: String,
     hashAlgorithm: HashAlgorithm,
     buildKbJwt: BuildKbJwt,
-): Result<Jwt> = runCatchingCancellable {
-    val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
-    buildKbJwt(sdJwtDigest).getOrThrow()
-}
+): Result<Jwt> =
+    runCatchingCancellable {
+        val sdJwtDigest = SdJwtDigest.digest(hashAlgorithm, presentationSdJwt).getOrThrow()
+        buildKbJwt(sdJwtDigest).getOrThrow()
+    }
 
 enum class JwsSerializationOption {
-    General, Flattened
+    General,
+    Flattened,
 }
 
-internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> = runCatchingCancellable {
-    fun json(s: String): JsonObject {
-        val decoded = Base64UrlNoPadding.decode(s).decodeToString()
-        return Json.parseToJsonElement(decoded).jsonObject
+internal fun jwtClaims(jwt: Jwt): Result<Triple<JsonObject, JsonObject, String>> =
+    runCatchingCancellable {
+        fun json(s: String): JsonObject {
+            val decoded = Base64UrlNoPadding.decode(s).decodeToString()
+            return Json.parseToJsonElement(decoded).jsonObject
+        }
+        val (h, p, s) = splitJwt(jwt).getOrThrow()
+        Triple(json(h), json(p), s)
     }
-    val (h, p, s) = splitJwt(jwt).getOrThrow()
-    Triple(json(h), json(p), s)
-}
 
-private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> = runCatchingCancellable {
-    val ps = jwt.split(".")
-    if (ps.size != 3) throw VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts").asException()
-    val (h, p, s) = jwt.split(".")
-    Triple(h, p, s)
-}
+private fun splitJwt(jwt: Jwt): Result<Triple<String, String, String>> =
+    runCatchingCancellable {
+        val ps = jwt.split(".")
+        if (ps.size != 3) throw VerificationError.InvalidJwt("Serialized JWT must have exactly 3 parts").asException()
+        val (h, p, s) = jwt.split(".")
+        Triple(h, p, s)
+    }
 
 internal object StandardSerialization {
 
@@ -235,10 +238,11 @@ internal object StandardSerialization {
         if (parts.size <= 1) throw ParsingError.asException()
         val jwt = parts[0]
         val containsKeyBinding = !unverifiedSdJwt.endsWith(RFC9901.DISCLOSURE_SEPARATOR)
-        val ds = parts
-            .drop(1)
-            .run { if (containsKeyBinding) dropLast(1) else this }
-            .filter { it.isNotBlank() }
+        val ds =
+            parts
+                .drop(1)
+                .run { if (containsKeyBinding) dropLast(1) else this }
+                .filter { it.isNotBlank() }
         val kbJwt = if (containsKeyBinding) parts.last() else null
         return Triple(jwt, ds, kbJwt)
     }
@@ -273,12 +277,15 @@ internal object JwsJsonSupport {
         return buildJsonObject {
             put(RFC7515.JWS_JSON_PAYLOAD, payload)
             when (this@buildJwsJson) {
-                JwsSerializationOption.General ->
+                JwsSerializationOption.General -> {
                     putJsonArray(RFC7515.JWS_JSON_SIGNATURES) {
                         add(buildJsonObject { putHeadersAndSignature() })
                     }
+                }
 
-                JwsSerializationOption.Flattened -> putHeadersAndSignature()
+                JwsSerializationOption.Flattened -> {
+                    putHeadersAndSignature()
+                }
             }
         }
     }
@@ -297,35 +304,40 @@ internal object JwsJsonSupport {
         // selects the JsonObject that contains the pair of "protected" & "signature" claims
         // According to RFC7515 General format this could be in "signatures" json array or
         // in flatten format this could be the given root element itself
-        val signatureContainer = unverifiedSdJwt[RFC7515.JWS_JSON_SIGNATURES]
-            ?.takeIf { it is JsonArray }
-            ?.jsonArray
-            ?.firstOrNull()
-            ?.takeIf { it is JsonObject }
-            ?.jsonObject
-            ?: unverifiedSdJwt
+        val signatureContainer =
+            unverifiedSdJwt[RFC7515.JWS_JSON_SIGNATURES]
+                ?.takeIf { it is JsonArray }
+                ?.jsonArray
+                ?.firstOrNull()
+                ?.takeIf { it is JsonObject }
+                ?.jsonObject
+                ?: unverifiedSdJwt
 
-        val unverifiedJwt = run {
-            val protected = signatureContainer[RFC7515.JWS_JSON_PROTECTED]?.stringContentOrNull()
-            val signature = signatureContainer[RFC7515.JWS_JSON_SIGNATURE]?.stringContentOrNull()
-            val payload = unverifiedSdJwt[RFC7515.JWS_JSON_PAYLOAD]?.stringContentOrNull()
-            requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
-            requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
-            requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
-            "$protected.$payload.$signature"
-        }
+        val unverifiedJwt =
+            run {
+                val protected = signatureContainer[RFC7515.JWS_JSON_PROTECTED]?.stringContentOrNull()
+                val signature = signatureContainer[RFC7515.JWS_JSON_SIGNATURE]?.stringContentOrNull()
+                val payload = unverifiedSdJwt[RFC7515.JWS_JSON_PAYLOAD]?.stringContentOrNull()
+                requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
+                requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
+                requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
+                "$protected.$payload.$signature"
+            }
 
-        val unprotectedHeader = signatureContainer[RFC7515.JWS_JSON_HEADER]
-            ?.takeIf { element -> element is JsonObject }
-            ?.jsonObject
+        val unprotectedHeader =
+            signatureContainer[RFC7515.JWS_JSON_HEADER]
+                ?.takeIf { element -> element is JsonObject }
+                ?.jsonObject
 
         // SD-JWT specification extends RFC7515 with a "disclosures" top-level JSON array
-        val unverifiedDisclosures = unprotectedHeader?.get(RFC9901.JWS_JSON_DISCLOSURES)
-            ?.takeIf { element -> element is JsonArray }
-            ?.jsonArray
-            ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
-            ?.mapNotNull { element -> element.stringContentOrNull() }
-            ?: emptyList()
+        val unverifiedDisclosures =
+            unprotectedHeader
+                ?.get(RFC9901.JWS_JSON_DISCLOSURES)
+                ?.takeIf { element -> element is JsonArray }
+                ?.jsonArray
+                ?.takeIf { array -> array.all { element -> element is JsonPrimitive && element.isString } }
+                ?.mapNotNull { element -> element.stringContentOrNull() }
+                ?: emptyList()
 
         val unverifiedKBJwt = unprotectedHeader?.get("kb_jwt")?.stringContentOrNull()
         return Triple(unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt)

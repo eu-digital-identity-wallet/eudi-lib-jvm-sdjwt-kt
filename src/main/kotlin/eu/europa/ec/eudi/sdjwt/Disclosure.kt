@@ -36,10 +36,14 @@ sealed interface Disclosure {
     }
 
     @JvmInline
-    value class ArrayElement internal constructor(override val value: String) : Disclosure
+    value class ArrayElement internal constructor(
+        override val value: String,
+    ) : Disclosure
 
     @JvmInline
-    value class ObjectProperty internal constructor(override val value: String) : Disclosure
+    value class ObjectProperty internal constructor(
+        override val value: String,
+    ) : Disclosure
 
     companion object {
 
@@ -59,45 +63,52 @@ sealed interface Disclosure {
          */
         internal fun wrap(s: String): Result<Disclosure> =
             decode(s).map { (_, name, _) ->
-                if (name != null) ObjectProperty(s)
-                else ArrayElement(s)
+                if (name != null)
+                    ObjectProperty(s)
+                else
+                    ArrayElement(s)
             }
 
-        internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatchingCancellable {
-            val base64Decoded = Base64UrlNoPadding.decode(disclosure).decodeToString()
-            val array = Json.decodeFromString<JsonArray>(base64Decoded)
-            when (array.size) {
-                3 -> {
-                    val salt = array[0].jsonPrimitive.content
-                    val claimName = array[1].jsonPrimitive.content.also { it.ensureValidAttributeName() }
-                    val claimValue = array[2]
-                    Triple(salt, claimName, claimValue)
-                }
+        internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> =
+            runCatchingCancellable {
+                val base64Decoded = Base64UrlNoPadding.decode(disclosure).decodeToString()
+                val array = Json.decodeFromString<JsonArray>(base64Decoded)
+                when (array.size) {
+                    3 -> {
+                        val salt = array[0].jsonPrimitive.content
+                        val claimName = array[1].jsonPrimitive.content.also { it.ensureValidAttributeName() }
+                        val claimValue = array[2]
+                        Triple(salt, claimName, claimValue)
+                    }
 
-                2 -> {
-                    val salt = array[0].jsonPrimitive.content
-                    val claimValue = array[1]
-                    Triple(salt, null, claimValue)
-                }
+                    2 -> {
+                        val salt = array[0].jsonPrimitive.content
+                        val claimValue = array[1]
+                        Triple(salt, null, claimValue)
+                    }
 
-                else -> throw IllegalArgumentException("Was expecting an json array of 3 or 2 elements")
+                    else -> {
+                        throw IllegalArgumentException("Was expecting an json array of 3 or 2 elements")
+                    }
+                }
             }
-        }
 
         internal fun arrayElement(
             saltProvider: SaltProvider = SaltProvider.Default,
             element: JsonElement,
-        ): Result<ArrayElement> = runCatchingCancellable {
-            // Create a Json Array [salt, claimName, claimValue]
-            val jsonArray = buildJsonArray {
-                add(JsonPrimitive(saltProvider.salt())) // salt
-                add(element) // claim value
+        ): Result<ArrayElement> =
+            runCatchingCancellable {
+                // Create a Json Array [salt, claimName, claimValue]
+                val jsonArray =
+                    buildJsonArray {
+                        add(JsonPrimitive(saltProvider.salt())) // salt
+                        add(element) // claim value
+                    }
+                val jsonArrayStr = jsonArray.toString()
+                // Base64-url-encoded
+                val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
+                ArrayElement(encoded)
             }
-            val jsonArrayStr = jsonArray.toString()
-            // Base64-url-encoded
-            val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
-            ArrayElement(encoded)
-        }
 
         /**
          * Encodes a [Claim] into [Disclosure.ObjectProperty] using the provided [saltProvider]
@@ -109,21 +120,23 @@ sealed interface Disclosure {
         internal fun objectProperty(
             saltProvider: SaltProvider = SaltProvider.Default,
             claim: Claim,
-        ): Result<ObjectProperty> = runCatchingCancellable {
-            // Make sure that the claim name is valid
-            claim.name().ensureValidAttributeName()
+        ): Result<ObjectProperty> =
+            runCatchingCancellable {
+                // Make sure that the claim name is valid
+                claim.name().ensureValidAttributeName()
 
-            // Create a Json Array [salt, claimName, claimValue]
-            val jsonArray = buildJsonArray {
-                add(JsonPrimitive(saltProvider.salt())) // salt
-                add(claim.name()) // claim name
-                add(claim.value()) // claim value
+                // Create a Json Array [salt, claimName, claimValue]
+                val jsonArray =
+                    buildJsonArray {
+                        add(JsonPrimitive(saltProvider.salt())) // salt
+                        add(claim.name()) // claim name
+                        add(claim.value()) // claim value
+                    }
+                val jsonArrayStr = jsonArray.toString()
+                // Base64-url-encoded
+                val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
+                ObjectProperty(encoded)
             }
-            val jsonArrayStr = jsonArray.toString()
-            // Base64-url-encoded
-            val encoded = Base64UrlNoPadding.encode(jsonArrayStr.encodeToByteArray())
-            ObjectProperty(encoded)
-        }
     }
 }
 
