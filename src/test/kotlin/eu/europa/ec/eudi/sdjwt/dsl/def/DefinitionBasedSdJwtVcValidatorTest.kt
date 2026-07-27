@@ -44,6 +44,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                     // that requires some claims such as vct to be never selectively disclosable
                     // Yet current PidDefinition doesn't have this rule
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -53,6 +54,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 sdJwt {
                     sdClaim("family_name", "Foo")
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -62,6 +64,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 sdJwt {
                     sdClaim("family_name", "Foo")
                 },
+            isIssuance = true,
             disclosureFilter = { _ -> false },
         )
 
@@ -76,6 +79,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                         sdClaim("country", JsonNull)
                     }
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -96,7 +100,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 ClaimPath.claim("address").claim("country"),
             ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) }
 
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         assertEquals(expectedErrors, errors)
     }
 
@@ -120,7 +124,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 ClaimPath.claim("family_name"),
             ).map { DefinitionViolation.IncorrectlyDisclosedClaim(it) }
 
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, disclosureFilter = { _ -> false })
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true, disclosureFilter = { _ -> false })
         assertEquals(expectedErrors, errors)
     }
 
@@ -146,7 +150,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                     sdClaim("i_am_ok", true)
                 }
             }
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         val expectedErrors =
             listOf(
                 "unknownNeverSelectivelyDisclosed",
@@ -174,7 +178,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                     claim("foo", "bar")
                 }
             }
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         val expectedError =
             DefinitionViolation.UnknownClaim(
                 ClaimPath.claim("address").claim("foo"),
@@ -196,7 +200,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 ClaimPath.claim("place_of_birth"),
             ).map { DefinitionViolation.WrongClaimType(it) }
 
-        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = PidDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         errors.forEach { expectedError -> println(expectedError) }
 
         assertEquals(expectedErrors.size, errors.size)
@@ -220,6 +224,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                         sdObjClaim("country") {} // not an object
                     }
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -239,6 +244,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                         }
                     }
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -252,6 +258,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                         sdClaim(JsonNull)
                     }
                 },
+            isIssuance = true,
         )
 
     @Test
@@ -271,7 +278,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 }
             }
 
-        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         val expectedErrors =
             listOf(
                 ClaimPath.claim("addresses").arrayElement(0),
@@ -294,7 +301,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 }
             }
 
-        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         val expectedErrors =
             listOf(
                 ClaimPath.claim("addresses").arrayElement(0).claim("county"),
@@ -324,7 +331,7 @@ class DefinitionBasedSdJwtVcValidatorTest {
                 }
             }
 
-        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt)
+        val errors = AddressDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
         val expectedErrors =
             listOf(
                 ClaimPath.claim("addresses").arrayElement(0),
@@ -333,30 +340,118 @@ class DefinitionBasedSdJwtVcValidatorTest {
         assertContentEquals(expectedErrors, errors)
     }
 
+    @Test
+    fun `fails when missing mandatory claims during issuance`() {
+        val sdJwt = sdJwt { }
+        val errors = IbanDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("iban"),
+                ClaimPath.claim("holder"),
+                ClaimPath.claim("country"),
+            ).map { DefinitionViolation.MissingRequiredClaim(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun `fails when missing mandatory array elements during issuance`() {
+        val sdJwt =
+            sdJwt {
+                arrClaim("iban") {
+                }
+            }
+        val errors = IbanDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = true)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("holder"),
+                ClaimPath.claim("country"),
+                ClaimPath.claim("iban").allArrayElements(),
+            ).map { DefinitionViolation.MissingRequiredClaim(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun `succeeds when missing non-mandatory claim during issuance`() {
+        val sdJwt =
+            sdJwt {
+                arrClaim("iban") {
+                    sdClaim("GR123456789")
+                }
+                objClaim("holder") {
+                    sdClaim("name", "Foo Bar")
+                }
+                sdClaim("country", "GR")
+            }
+        IbanDefinition.shouldConsiderValid(sdJwtObject = sdJwt, isIssuance = true)
+    }
+
+    @Test
+    fun `fails when missing non-sd mandatory claims during presentation`() {
+        val sdJwt = sdJwt { }
+        val errors = IbanDefinition.shouldConsiderInvalid(sdJwtObject = sdJwt, isIssuance = false)
+        val expectedErrors =
+            listOf(
+                ClaimPath.claim("iban"),
+                ClaimPath.claim("holder"),
+            ).map { DefinitionViolation.MissingRequiredClaim(it) }
+        assertContentEquals(expectedErrors, errors)
+    }
+
+    @Test
+    fun `succeeds when missing sd mandatory claims during presentation`() {
+        val sdJwt =
+            sdJwt {
+                arrClaim("iban") {
+                }
+                objClaim("holder") {
+                }
+            }
+        IbanDefinition.shouldConsiderValid(sdJwtObject = sdJwt, isIssuance = false)
+    }
+
+    @Test
+    fun `succeeds when missing non-mandatory claim during presentation`() {
+        val sdJwt =
+            sdJwt {
+                arrClaim("iban") {
+                }
+                objClaim("holder") {
+                }
+            }
+        IbanDefinition.shouldConsiderValid(sdJwtObject = sdJwt, isIssuance = false)
+    }
+
     private fun SdJwtDefinition.shouldConsiderInvalid(
         sdJwtObject: SdJwtObject,
+        isIssuance: Boolean,
         disclosureFilter: (Disclosure) -> Boolean = { true },
     ): List<DefinitionViolation> {
-        val result = createAndValidate(this, sdJwtObject, disclosureFilter)
+        val result = createAndValidate(this, sdJwtObject, isIssuance, disclosureFilter)
         return assertIs<DefinitionBasedValidationResult.Invalid>(result).errors
     }
 
     private fun SdJwtDefinition.shouldConsiderValid(
         sdJwtObject: SdJwtObject,
+        isIssuance: Boolean,
         disclosureFilter: (Disclosure) -> Boolean = { true },
     ) {
-        val result = createAndValidate(this, sdJwtObject, disclosureFilter)
+        val result = createAndValidate(this, sdJwtObject, isIssuance, disclosureFilter)
         assertIs<DefinitionBasedValidationResult.Valid>(result)
     }
 
     private fun createAndValidate(
         sdJwtDefinition: SdJwtDefinition,
         sdJwtObject: SdJwtObject,
+        isIssuance: Boolean,
         disclosureFilter: (Disclosure) -> Boolean,
     ): DefinitionBasedValidationResult {
         val (payload, disclosures) = createSdJwt(sdJwtObject)
         return with(DefinitionBasedSdJwtVcValidator) {
-            sdJwtDefinition.validateIssuance(payload, disclosures.filter(disclosureFilter))
+            if (isIssuance) {
+                sdJwtDefinition.validateIssuance(payload, disclosures.filter(disclosureFilter))
+            } else {
+                sdJwtDefinition.validatePresentation(payload, disclosures.filter(disclosureFilter))
+            }
         }
     }
 

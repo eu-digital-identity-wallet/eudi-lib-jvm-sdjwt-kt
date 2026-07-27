@@ -519,6 +519,28 @@ internal val countriesMeta =
     }
     """.trimIndent()
 
+internal val ibanMeta =
+    """
+    {
+      "vct": "https://example.com/iban",
+      "name": "IBAN",
+      "display": [
+        {
+          "locale": "en",
+          "name": "IBAN"
+        }
+      ],
+      "claims": [
+        { "path": [ "iban" ], "sd": "never", "mandatory": true },
+        { "path": [ "iban", null ], "sd": "always", "mandatory": true },
+        { "path": [ "holder" ], "sd": "never", "mandatory": true },
+        { "path": [ "holder", "name" ], "sd": "always", "mandatory": true },
+        { "path": [ "holder", "address" ], "sd": "always", "mandatory": false },
+        { "path": [ "country" ], "sd": "always", "mandatory": true }
+      ]
+    }
+    """.trimIndent()
+
 internal val PidDefinition: SdJwtDefinition by lazy {
     val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta)
     val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
@@ -533,6 +555,12 @@ internal val AddressDefinition: SdJwtDefinition by lazy {
 
 internal val CountriesDefinition: SdJwtDefinition by lazy {
     val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(countriesMeta)
+    val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
+    SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
+}
+
+internal val IbanDefinition: SdJwtDefinition by lazy {
+    val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(ibanMeta)
     val resolvedTypeMetadata = sdJwtVcTypeMetadata.resolve()
     SdJwtDefinition.fromSdJwtVcMetadata(resolvedTypeMetadata)
 }
