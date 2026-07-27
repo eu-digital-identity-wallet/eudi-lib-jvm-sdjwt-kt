@@ -112,7 +112,7 @@ sealed interface SdJwtVcVerificationError {
         /**
          * Indicates the key verification methods is not supported.
          *
-         * @property method one of 'issuer-metadata', 'x5c', or 'did'
+         * @property method one of 'issuer-metadata', or 'x5c'
          */
         data class UnsupportedVerificationMethod(
             val method: String,
@@ -130,14 +130,6 @@ sealed interface SdJwtVcVerificationError {
          */
         data class UntrustedIssuerCertificate(
             val reason: String? = null,
-        ) : IssuerKeyVerificationError
-
-        /**
-         * DID resolution failed.
-         */
-        data class DIDLookupFailure(
-            val message: String,
-            val cause: Throwable? = null,
         ) : IssuerKeyVerificationError
 
         /**
