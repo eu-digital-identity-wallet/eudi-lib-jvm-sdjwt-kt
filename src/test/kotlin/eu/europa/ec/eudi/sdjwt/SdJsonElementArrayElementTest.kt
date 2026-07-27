@@ -22,33 +22,35 @@ import org.junit.jupiter.api.Test
 class SdJsonElementArrayElementTest {
     @Test
     fun simple() {
-        val sdJwtElements = sdJwt {
-            claim("sub", "user_42")
-            claim("iss", "https://example.com/issuer")
-            claim("iat", 1683000000)
-            claim("exp", 1883000000)
-            sdClaim("given_name", "John")
-            sdClaim("family_name", "Doe")
-            sdClaim("email", "johndoe@example.com")
-            sdClaim("phone_number", "+1-202-555-0101")
-            sdClaim("phone_number_verified", true)
-            sdObjClaim("address") {
-                claim("street_address", "123 Main St")
-                claim("locality", "Anytown")
-                claim("region", "Anystate")
-                claim("country", "US")
+        val sdJwtElements =
+            sdJwt {
+                claim("sub", "user_42")
+                claim("iss", "https://example.com/issuer")
+                claim("iat", 1683000000)
+                claim("exp", 1883000000)
+                sdClaim("given_name", "John")
+                sdClaim("family_name", "Doe")
+                sdClaim("email", "johndoe@example.com")
+                sdClaim("phone_number", "+1-202-555-0101")
+                sdClaim("phone_number_verified", true)
+                sdObjClaim("address") {
+                    claim("street_address", "123 Main St")
+                    claim("locality", "Anytown")
+                    claim("region", "Anystate")
+                    claim("country", "US")
+                }
+                sdClaim("birthdate", "1940-01-01")
+                sdClaim("updated_at", 1570000000)
+                arrClaim("nationalities") {
+                    claim("US")
+                    sdClaim("DE")
+                }
             }
-            sdClaim("birthdate", "1940-01-01")
-            sdClaim("updated_at", 1570000000)
-            arrClaim("nationalities") {
-                claim("US")
-                sdClaim("DE")
-            }
-        }
 
-        val sdJwt = SdJwtFactory().createSdJwt(sdJwtElements).getOrThrow().also {
-            println(json.encodeToString(it.jwtPayload))
-        }
+        val sdJwt =
+            SdJwtFactory().createSdJwt(sdJwtElements).getOrThrow().also {
+                println(json.encodeToString(it.jwtPayload))
+            }
 
         with(SdJwtRecreateClaimsOps { claims: JsonObject -> claims }) {
             sdJwt.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first
