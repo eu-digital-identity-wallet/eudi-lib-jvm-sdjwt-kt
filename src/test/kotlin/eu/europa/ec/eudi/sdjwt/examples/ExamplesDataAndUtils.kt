@@ -50,82 +50,92 @@ internal val issuerEcKeyPair: ECKey by lazy {
 
 internal val issuerRsaKeyPair: RSAKey by lazy { loadRsaKey("/examplesIssuerKey.json") }
 
-internal val serializedUnverifiedPresentationSdJwt: String = runBlocking {
-    val issuer = with(NimbusSdJwtOps) {
-        issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-    }
+internal val serializedUnverifiedPresentationSdJwt: String =
+    runBlocking {
+        val issuer =
+            with(NimbusSdJwtOps) {
+                issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+            }
 
-    val spec = sdJwt {
-        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        objClaim("address") {
-            sdClaim("locality", "Schulpforta")
-            sdClaim("region", "Sachsen-Anhalt")
+        val spec =
+            sdJwt {
+                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                objClaim("address") {
+                    sdClaim("locality", "Schulpforta")
+                    sdClaim("region", "Sachsen-Anhalt")
+                }
+                claim("iss", "https://example.com/issuer")
+                val now = Clock.System.now()
+                claim("iat", now.epochSeconds)
+                claim("exp", (now + 31.days).epochSeconds)
+            }
+
+        val sdJwt = issuer.issue(spec).getOrThrow()
+        with(NimbusSdJwtOps) {
+            sdJwt.serialize()
         }
-        claim("iss", "https://example.com/issuer")
-        val now = Clock.System.now()
-        claim("iat", now.epochSeconds)
-        claim("exp", (now + 31.days).epochSeconds)
     }
 
-    val sdJwt = issuer.issue(spec).getOrThrow()
-    with(NimbusSdJwtOps) {
-        sdJwt.serialize()
-    }
-}
+internal val serializedUnverifiedIssuanceSdJwt: String =
+    runBlocking {
+        val issuer =
+            with(NimbusSdJwtOps) {
+                issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+            }
 
-internal val serializedUnverifiedIssuanceSdJwt: String = runBlocking {
-    val issuer = with(NimbusSdJwtOps) {
-        issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-    }
+        val spec =
+            sdJwt {
+                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                objClaim("address") {
+                    sdClaim("locality", "Schulpforta")
+                    sdClaim("region", "Sachsen-Anhalt")
+                    sdClaim("region", "Sachsen-Anhalt")
+                    sdClaim("country", "DE")
+                }
+                claim("iss", "https://example.com/issuer")
+                val now = Clock.System.now()
+                claim("iat", now.epochSeconds)
+                claim("exp", (now + 31.days).epochSeconds)
+            }
 
-    val spec = sdJwt {
-        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        objClaim("address") {
-            sdClaim("locality", "Schulpforta")
-            sdClaim("region", "Sachsen-Anhalt")
-            sdClaim("region", "Sachsen-Anhalt")
-            sdClaim("country", "DE")
+        val sdJwt = issuer.issue(spec).getOrThrow()
+        with(NimbusSdJwtOps) {
+            sdJwt.serialize()
         }
-        claim("iss", "https://example.com/issuer")
-        val now = Clock.System.now()
-        claim("iat", now.epochSeconds)
-        claim("exp", (now + 31.days).epochSeconds)
     }
-
-    val sdJwt = issuer.issue(spec).getOrThrow()
-    with(NimbusSdJwtOps) {
-        sdJwt.serialize()
-    }
-}
 
 internal val issuerEcKeyPairWithCertificate: ECKey by lazy {
     val issuer = Url("https://issuer.example.com")
 
-    val key = ECKeyGenerator(Curve.P_521)
-        .algorithm(JWSAlgorithm.ES512)
-        .generate()
+    val key =
+        ECKeyGenerator(Curve.P_521)
+            .algorithm(JWSAlgorithm.ES512)
+            .generate()
 
-    val certificate = run {
-        val issuedAt = Clock.System.now()
-        val expiresAt = issuedAt.plus(365.days)
-        val subject = X500Principal("CN=${issuer.host}")
-        val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())
-        val holder = JcaX509v3CertificateBuilder(
-            subject,
-            BigInteger.ONE,
-            Date.from(issuedAt.toJavaInstant()),
-            Date.from(expiresAt.toJavaInstant()),
-            subject,
-            key.toECPublicKey(),
-        ).addExtension(
-            Extension.subjectAlternativeName,
-            true,
-            GeneralNames.getInstance(DERSequence(GeneralName(GeneralName.dNSName, issuer.host))),
-        ).build(signer)
-        X509CertUtils.parse(holder.encoded)
-    }
+    val certificate =
+        run {
+            val issuedAt = Clock.System.now()
+            val expiresAt = issuedAt.plus(365.days)
+            val subject = X500Principal("CN=${issuer.host}")
+            val signer = JcaContentSignerBuilder("SHA256withECDSA").build(key.toECPrivateKey())
+            val holder =
+                JcaX509v3CertificateBuilder(
+                    subject,
+                    BigInteger.ONE,
+                    Date.from(issuedAt.toJavaInstant()),
+                    Date.from(expiresAt.toJavaInstant()),
+                    subject,
+                    key.toECPublicKey(),
+                ).addExtension(
+                    Extension.subjectAlternativeName,
+                    true,
+                    GeneralNames.getInstance(DERSequence(GeneralName(GeneralName.dNSName, issuer.host))),
+                ).build(signer)
+            X509CertUtils.parse(holder.encoded)
+        }
 
-    ECKey.Builder(key)
+    ECKey
+        .Builder(key)
         .x509CertChain(listOf(Base64.encode(certificate.encoded)))
         .build()
 }
