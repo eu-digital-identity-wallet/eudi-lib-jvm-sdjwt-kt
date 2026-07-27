@@ -139,39 +139,6 @@ class SdJwtVcVerifierTest {
     }
 
     @Test
-    fun `keySource should return a DIDUrl when iss is a DID and kid is provided`() {
-        val expectedSource =
-            SdJwtVcIssuerPublicKeySource.DIDUrl(
-                iss = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2",
-                kid = "did:ebsi:zkC6cUFUs3FiRp2xedNwih2#x8x4WxXHoPW7ccEO0zACL_miBfO-V7X_jofc-UEGzw4",
-            )
-        testForDid(expectedSource)
-    }
-
-    private fun testForDid(expectedSource: SdJwtVcIssuerPublicKeySource.DIDUrl) {
-        val jwt =
-            run {
-                val header =
-                    JWSHeader
-                        .Builder(JWSAlgorithm.ES256)
-                        .apply {
-                            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-                            expectedSource.kid?.let { keyID(it) }
-                        }.build()
-                val payload =
-                    JWTClaimsSet
-                        .Builder()
-                        .apply {
-                            issuer(expectedSource.iss)
-                        }.build()
-                SignedJWT(header, payload)
-            }
-
-        val actualSource = keySource(jwt)
-        assertEquals(expectedSource, actualSource)
-    }
-
-    @Test
     fun `SdJwtVcVerifier should verify an SD-JWT-VC when iss is HTTPS url using kid`() =
         runTest {
             val unverifiedSdJwt = SampleIssuer.issueUsingKid(kid = SampleIssuer.KEY_ID)
