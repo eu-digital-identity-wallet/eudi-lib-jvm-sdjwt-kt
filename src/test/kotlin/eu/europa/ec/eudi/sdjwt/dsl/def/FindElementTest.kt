@@ -73,13 +73,16 @@ class FindElementTest {
 
     @Test
     fun testWithKnownPidAttributesDisplay() {
-        fun labelOf(path: ClaimPath, locale: String = "en") =
-            PidDefinition.findElement(path)
-                ?.value
-                ?.attributeMetadata()
-                ?.display
-                ?.first { it.locale.value == locale }
-                ?.label
+        fun labelOf(
+            path: ClaimPath,
+            locale: String = "en",
+        ) = PidDefinition
+            .findElement(path)
+            ?.value
+            ?.attributeMetadata()
+            ?.display
+            ?.first { it.locale.value == locale }
+            ?.label
 
         listOf(
             ClaimPath.claim("nationalities"),
@@ -113,7 +116,11 @@ class FindElementTest {
     fun testArraysWithUnknownAttributesOrArrayIndexes() {
         listOf(
             ClaimPath.claim("addresses").claim("country").allArrayElements(),
-            ClaimPath.claim("addresses").allArrayElements().claim("country").allArrayElements(),
+            ClaimPath
+                .claim("addresses")
+                .allArrayElements()
+                .claim("country")
+                .allArrayElements(),
         ).forEach {
             assertNull(AddressDefinition.findElement(it))
         }

@@ -37,18 +37,26 @@ interface SdJwtPresentationOps<JWT> : SdJwtRecreateClaimsOps<JWT> {
      * @return the presentation if possible to satisfy the [query]
      */
     fun SdJwt<JWT>.present(query: Set<ClaimPath>): SdJwt<JWT>? {
-        return if (query.isEmpty()) this
-        else {
+        return if (query.isEmpty()) {
+            this
+        } else {
             val (_, disclosuresPerClaim) = recreateClaimsAndDisclosuresPerClaim()
-            infix fun ClaimPath.matches(other: ClaimPath): Boolean =
-                (value.size == other.value.size) && (this in other)
 
-            val keys = disclosuresPerClaim.keys.filter { claimFound ->
-                query.any { requested -> claimFound matches requested }
-            }
-            return if (keys.isEmpty()) null
-            else {
-                val ds = disclosuresPerClaim.filterKeys { it in keys }.values.flatten().toSet()
+            infix fun ClaimPath.matches(other: ClaimPath): Boolean = (value.size == other.value.size) && (this in other)
+
+            val keys =
+                disclosuresPerClaim.keys.filter { claimFound ->
+                    query.any { requested -> claimFound matches requested }
+                }
+            return if (keys.isEmpty()) {
+                null
+            } else {
+                val ds =
+                    disclosuresPerClaim
+                        .filterKeys { it in keys }
+                        .values
+                        .flatten()
+                        .toSet()
                 SdJwt(jwt, ds.toList())
             }
         }

@@ -51,8 +51,7 @@ interface SdJwtVcVerifier<out JWT> {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
-        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> = verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -66,7 +65,10 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: String, challenge: ChallengePredicate?): Result<SdJwtAndKbJwt<JWT>>
+    suspend fun verify(
+        unverifiedSdJwt: String,
+        challenge: ChallengePredicate?,
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
@@ -80,22 +82,22 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: ChallengePredicate?): Result<SdJwtAndKbJwt<JWT>> =
-        verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
+    suspend fun verify(
+        unverifiedSdJwt: JsonObject,
+        challenge: ChallengePredicate?,
+    ): Result<SdJwtAndKbJwt<JWT>> = verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
 }
 
-fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
-    return object : SdJwtVcVerifier<JWT1> {
+fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> =
+    object : SdJwtVcVerifier<JWT1> {
         override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
             this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
 
         override suspend fun verify(
             unverifiedSdJwt: String,
             challenge: ChallengePredicate?,
-        ): Result<SdJwtAndKbJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
+        ): Result<SdJwtAndKbJwt<JWT1>> = this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
     }
-}
 
 /**
  * SD-JWT VC verification errors.
@@ -112,22 +114,31 @@ sealed interface SdJwtVcVerificationError {
          *
          * @property method one of 'issuer-metadata', 'x5c', or 'did'
          */
-        data class UnsupportedVerificationMethod(val method: String) : IssuerKeyVerificationError
+        data class UnsupportedVerificationMethod(
+            val method: String,
+        ) : IssuerKeyVerificationError
 
         /**
          * Indicates an error while trying to resolve the Issuer's metadata.
          */
-        data class IssuerMetadataResolutionFailure(val cause: Throwable? = null) : IssuerKeyVerificationError
+        data class IssuerMetadataResolutionFailure(
+            val cause: Throwable? = null,
+        ) : IssuerKeyVerificationError
 
         /**
          * Indicates the leaf certificate of the 'x5c' certificate chain is not trusted.
          */
-        data class UntrustedIssuerCertificate(val reason: String? = null) : IssuerKeyVerificationError
+        data class UntrustedIssuerCertificate(
+            val reason: String? = null,
+        ) : IssuerKeyVerificationError
 
         /**
          * DID resolution failed.
          */
-        data class DIDLookupFailure(val message: String, val cause: Throwable? = null) : IssuerKeyVerificationError
+        data class DIDLookupFailure(
+            val message: String,
+            val cause: Throwable? = null,
+        ) : IssuerKeyVerificationError
 
         /**
          * Indicates a key source for the Issuer could not be determined.
@@ -143,12 +154,16 @@ sealed interface SdJwtVcVerificationError {
         /**
          * Indicates that Type Metadata could not be resolved.
          */
-        data class TypeMetadataResolutionFailure(val cause: Throwable? = null) : TypeMetadataVerificationError
+        data class TypeMetadataResolutionFailure(
+            val cause: Throwable? = null,
+        ) : TypeMetadataVerificationError
 
         /**
          * Indicates violations were found when trying to validation an SD-JWT VC against its Type Metadata.
          */
-        data class TypeMetadataValidationFailure(val errors: List<DefinitionViolation>) : TypeMetadataVerificationError {
+        data class TypeMetadataValidationFailure(
+            val errors: List<DefinitionViolation>,
+        ) : TypeMetadataVerificationError {
             init {
                 require(errors.isNotEmpty()) { "errors must not be empty" }
             }
@@ -162,12 +177,17 @@ sealed interface SdJwtVcVerificationError {
         /**
          * Status could not be checked.
          */
-        class StatusCheckFailure(val message: String, val cause: Throwable) : StatusVerificationError
+        class StatusCheckFailure(
+            val message: String,
+            val cause: Throwable,
+        ) : StatusVerificationError
 
         /**
          * The Status of an SD-JWT VC is non-valid.
          */
-        data class NonValidStatus(val status: Status.NonValid) : StatusVerificationError
+        data class NonValidStatus(
+            val status: Status.NonValid,
+        ) : StatusVerificationError
     }
 }
 

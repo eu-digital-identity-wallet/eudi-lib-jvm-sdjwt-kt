@@ -58,27 +58,22 @@ class DisclosableArraySpecBuilder<K, A, DObj, DArr>(
 
     fun objClaim(element: DObj): Unit = addObj({ !it }, element)
 
-    fun objClaim(
-        action: DisclosableObjectSpecBuilder<K, A, DObj, DArr>.() -> Unit,
-    ): Unit = objClaim(buildDisclosableObject(factory, action))
+    fun objClaim(action: DisclosableObjectSpecBuilder<K, A, DObj, DArr>.() -> Unit): Unit =
+        objClaim(buildDisclosableObject(factory, action))
 
     fun sdObjClaim(element: DObj): Unit = addObj({ +it }, element)
 
-    fun sdObjClaim(
-        action: DisclosableObjectSpecBuilder<K, A, DObj, DArr>.() -> Unit,
-    ): Unit = sdObjClaim(buildDisclosableObject(factory, action))
+    fun sdObjClaim(action: DisclosableObjectSpecBuilder<K, A, DObj, DArr>.() -> Unit): Unit =
+        sdObjClaim(buildDisclosableObject(factory, action))
 
     fun arrClaim(element: DArr): Unit = addArr({ !it }, element)
 
-    fun arrClaim(
-        action: DisclosableArraySpecBuilder<K, A, DObj, DArr>.() -> Unit,
-    ): Unit = arrClaim(buildDisclosableArray(factory, action))
+    fun arrClaim(action: DisclosableArraySpecBuilder<K, A, DObj, DArr>.() -> Unit): Unit = arrClaim(buildDisclosableArray(factory, action))
 
     fun sdArrClaim(element: DArr) = addArr({ +it }, element)
 
-    fun sdArrClaim(
-        action: DisclosableArraySpecBuilder<K, A, DObj, DArr>.() -> Unit,
-    ): Unit = sdArrClaim(buildDisclosableArray(factory, action))
+    fun sdArrClaim(action: DisclosableArraySpecBuilder<K, A, DObj, DArr>.() -> Unit): Unit =
+        sdArrClaim(buildDisclosableArray(factory, action))
 }
 
 inline fun <K, A, DObj, DArr> buildDisclosableArray(
@@ -123,59 +118,63 @@ class DisclosableObjectSpecBuilder<K, P, DObj, DArr>(
         name: K,
         option: (DisclosableValue<K, P>) -> DisclosableElement<K, P>,
         element: DArr,
-
     ) {
         val dv = DisclosableValue.Arr(element)
         elements.put(name, option(dv))
     }
 
-    fun claim(name: K, element: P): Unit = addValue(name, { !it }, element)
-    fun sdClaim(name: K, element: P): Unit = addValue(name, { +it }, element)
+    fun claim(
+        name: K,
+        element: P,
+    ): Unit = addValue(name, { !it }, element)
+
+    fun sdClaim(
+        name: K,
+        element: P,
+    ): Unit = addValue(name, { +it }, element)
 
     fun objClaim(
         name: K,
         element: DObj,
-    ): Unit =
-        addObj(name, { !it }, element)
+    ): Unit = addObj(name, { !it }, element)
 
     fun objClaim(
         name: K,
         action: (DisclosableObjectSpecBuilder<K, P, DObj, DArr>).() -> Unit,
-    ): Unit =
-        objClaim(name, buildDisclosableObject(factory, action))
+    ): Unit = objClaim(name, buildDisclosableObject(factory, action))
 
     fun sdObjClaim(
         name: K,
         element: DObj,
-    ): Unit =
-        addObj(name, { +it }, element)
+    ): Unit = addObj(name, { +it }, element)
 
     fun sdObjClaim(
         name: K,
         action: (DisclosableObjectSpecBuilder<K, P, DObj, DArr>).() -> Unit,
-    ): Unit =
-        sdObjClaim(name, buildDisclosableObject(factory, action))
+    ): Unit = sdObjClaim(name, buildDisclosableObject(factory, action))
 
-    fun arrClaim(name: K, element: DArr): Unit =
-        addArr(name, { !it }, element)
+    fun arrClaim(
+        name: K,
+        element: DArr,
+    ): Unit = addArr(name, { !it }, element)
 
-    fun arrClaim(name: K, action: DisclosableArraySpecBuilder<K, P, DObj, DArr>.() -> Unit): Unit =
-        arrClaim(name, buildDisclosableArray(factory, action))
+    fun arrClaim(
+        name: K,
+        action: DisclosableArraySpecBuilder<K, P, DObj, DArr>.() -> Unit,
+    ): Unit = arrClaim(name, buildDisclosableArray(factory, action))
 
     fun sdArrClaim(
         name: K,
         element: DArr,
-    ): Unit =
-        addArr(name, { +it }, element)
+    ): Unit = addArr(name, { +it }, element)
 
     fun sdArrClaim(
         name: K,
         action: DisclosableArraySpecBuilder<K, P, DObj, DArr>.() -> Unit,
-    ): Unit =
-        sdArrClaim(name, buildDisclosableArray(factory, action))
+    ): Unit = sdArrClaim(name, buildDisclosableArray(factory, action))
 
     companion object {
-        operator fun <K, P>invoke(
+        operator fun <K, P> invoke(
             elements: MutableMap<K, DisclosableElement<K, P>> = mutableMapOf(),
         ): DisclosableObjectSpecBuilder<K, P, DisclosableObject<K, P>, DisclosableArray<K, P>> =
             DisclosableObjectSpecBuilder(DisclosableContainerFactory.default(), elements)

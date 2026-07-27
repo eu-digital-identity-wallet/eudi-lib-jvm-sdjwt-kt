@@ -22,21 +22,23 @@ import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.coroutines.runBlocking
 
-val issuedSdJwt: String = runBlocking {
-    val sdJwtSpec = sdJwt {
-        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        claim("iss", "https://example.com/issuer")
-        claim("iat", 1516239022)
-        claim("exp", 1735689661)
-        objClaim("address") {
-            sdClaim("street_address", "Schulstr. 12")
-            sdClaim("locality", "Schulpforta")
-            sdClaim("region", "Sachsen-Anhalt")
-            sdClaim("country", "DE")
+val issuedSdJwt: String =
+    runBlocking {
+        val sdJwtSpec =
+            sdJwt {
+                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                claim("iss", "https://example.com/issuer")
+                claim("iat", 1516239022)
+                claim("exp", 1735689661)
+                objClaim("address") {
+                    sdClaim("street_address", "Schulstr. 12")
+                    sdClaim("locality", "Schulpforta")
+                    sdClaim("region", "Sachsen-Anhalt")
+                    sdClaim("country", "DE")
+                }
+            }
+        with(NimbusSdJwtOps) {
+            val issuer = issuer(signer = ECDSASigner(issuerEcKeyPair), signAlgorithm = JWSAlgorithm.ES256)
+            issuer.issue(sdJwtSpec).getOrThrow().serialize()
         }
     }
-    with(NimbusSdJwtOps) {
-        val issuer = issuer(signer = ECDSASigner(issuerEcKeyPair), signAlgorithm = JWSAlgorithm.ES256)
-        issuer.issue(sdJwtSpec).getOrThrow().serialize()
-    }
-}

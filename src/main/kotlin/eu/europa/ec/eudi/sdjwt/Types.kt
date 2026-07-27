@@ -50,7 +50,9 @@ typealias Salt = String
 /**
  * Hashing algorithms, used to produce the [DisclosureDigest] of a [Disclosure]
  */
-enum class HashAlgorithm(val alias: String) {
+enum class HashAlgorithm(
+    val alias: String,
+) {
     SHA_256("sha-256"),
     SHA_384("sha-384"),
     SHA_512("sha-512"),
@@ -82,12 +84,10 @@ data class SdJwt<out JWT>(
      * The JWT part of the SD-JWT
      */
     val jwt: JWT,
-
     /**
      * The disclosures of the SD-JWT
      */
     val disclosures: List<Disclosure>,
-
 )
 
 inline fun <JWT, JWT1> SdJwt<JWT>.map(f: (JWT) -> JWT1): SdJwt<JWT1> {
@@ -105,7 +105,10 @@ inline fun <JWT, JWT1> SdJwt<JWT>.map(f: (JWT) -> JWT1): SdJwt<JWT1> {
  * @param keyBindingJwt a KB-JWT, associated with the [sdJwt]
  * @param JWT  the type representing the JWT
  */
-data class SdJwtAndKbJwt<out JWT>(val sdJwt: SdJwt<JWT>, val keyBindingJwt: JWT)
+data class SdJwtAndKbJwt<out JWT>(
+    val sdJwt: SdJwt<JWT>,
+    val keyBindingJwt: JWT,
+)
 
 inline fun <JWT, JWT1> SdJwtAndKbJwt<JWT>.map(f: (JWT) -> JWT1): SdJwtAndKbJwt<JWT1> {
     contract {
