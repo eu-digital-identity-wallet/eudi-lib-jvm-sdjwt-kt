@@ -29,7 +29,9 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Serializable(with = DisclosureDigestSerializer::class)
 @JvmInline
-value class DisclosureDigest private constructor(val value: String) {
+value class DisclosureDigest private constructor(
+    val value: String,
+) {
     companion object {
 
         /**
@@ -40,10 +42,11 @@ value class DisclosureDigest private constructor(val value: String) {
          * @param s the value to wrap
          * @return the [DisclosureDigest] if the given input represents a valid base64 encoded string
          */
-        internal fun wrap(s: String): Result<DisclosureDigest> = runCatchingCancellable {
-            Base64UrlNoPadding.decode(s)
-            DisclosureDigest(s)
-        }
+        internal fun wrap(s: String): Result<DisclosureDigest> =
+            runCatchingCancellable {
+                Base64UrlNoPadding.decode(s)
+                DisclosureDigest(s)
+            }
 
         /**
          * Calculates the hash of the given [disclosure][d] using the specified [hashing algorithm][hashingAlgorithm]
@@ -53,8 +56,10 @@ value class DisclosureDigest private constructor(val value: String) {
          *
          * @return the [DisclosureDigest] of the given [disclosure][d]
          */
-        fun digest(hashingAlgorithm: HashAlgorithm, d: Disclosure): Result<DisclosureDigest> =
-            digest(hashingAlgorithm, d.value)
+        fun digest(
+            hashingAlgorithm: HashAlgorithm,
+            d: Disclosure,
+        ): Result<DisclosureDigest> = digest(hashingAlgorithm, d.value)
 
         /**
          * Calculates the hash of the given [value] using the specified [hashing algorithm][hashingAlgorithm]
@@ -64,8 +69,10 @@ value class DisclosureDigest private constructor(val value: String) {
          *
          * @return the [DisclosureDigest] of the given [value]
          */
-        fun digest(hashingAlgorithm: HashAlgorithm, value: String): Result<DisclosureDigest> =
-            digestInternal(platform().hashes, hashingAlgorithm, value)
+        fun digest(
+            hashingAlgorithm: HashAlgorithm,
+            value: String,
+        ): Result<DisclosureDigest> = digestInternal(platform().hashes, hashingAlgorithm, value)
 
         /**
          * Internal version of digest that takes a Platform parameter
@@ -74,11 +81,12 @@ value class DisclosureDigest private constructor(val value: String) {
             hashes: Hashes,
             hashingAlgorithm: HashAlgorithm,
             value: String,
-        ): Result<DisclosureDigest> = runCatchingCancellable {
-            val input = value.encodeToByteArray()
-            val digest = hashes.digest(hashingAlgorithm, input)
-            DisclosureDigest(Base64UrlNoPadding.encode(digest))
-        }
+        ): Result<DisclosureDigest> =
+            runCatchingCancellable {
+                val input = value.encodeToByteArray()
+                val digest = hashes.digest(hashingAlgorithm, input)
+                DisclosureDigest(Base64UrlNoPadding.encode(digest))
+            }
     }
 }
 
@@ -86,7 +94,10 @@ object DisclosureDigestSerializer : KSerializer<DisclosureDigest> {
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor("DisclosureDigest", PrimitiveKind.STRING)
 
-    override fun serialize(encoder: Encoder, value: DisclosureDigest) {
+    override fun serialize(
+        encoder: Encoder,
+        value: DisclosureDigest,
+    ) {
         encoder.encodeString(value.value)
     }
 

@@ -20,26 +20,20 @@ import java.security.SecureRandom
 
 internal object JvmAndAndroidHashes : Hashes {
 
-    override fun sha256(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-256").digest(input)
+    override fun sha256(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(input)
 
-    override fun sha384(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-384").digest(input)
+    override fun sha384(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA-384").digest(input)
 
-    override fun sha512(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-512").digest(input)
+    override fun sha512(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA-512").digest(input)
 
     @Suppress("kotlin:S100")
-    override fun sha3_256(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA3-256").digest(input)
+    override fun sha3_256(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA3-256").digest(input)
 
     @Suppress("kotlin:S100")
-    override fun sha3_384(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA3-384").digest(input)
+    override fun sha3_384(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA3-384").digest(input)
 
     @Suppress("kotlin:S100")
-    override fun sha3_512(input: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA3-512").digest(input)
+    override fun sha3_512(input: ByteArray): ByteArray = MessageDigest.getInstance("SHA3-512").digest(input)
 }
 
 @Suppress("kotlin:S6516")

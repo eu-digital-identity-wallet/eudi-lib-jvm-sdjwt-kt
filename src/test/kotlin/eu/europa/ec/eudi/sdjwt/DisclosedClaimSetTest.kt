@@ -29,18 +29,20 @@ class StructuredDisclosure {
 
     @Test
     fun basic() {
-        val plainClaims = buildJsonObject {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("iss", "sample issuer")
-        }
-        val claimsToBeDisclosed = buildJsonObject {
-            putJsonObject("address") {
-                put("street_address", "Schulstr. 12")
-                put("locality", "Schulpforta")
-                put("region", "Sachsen-Anhalt")
-                put("country", "DE")
+        val plainClaims =
+            buildJsonObject {
+                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                put("iss", "sample issuer")
             }
-        }
+        val claimsToBeDisclosed =
+            buildJsonObject {
+                putJsonObject("address") {
+                    put("street_address", "Schulstr. 12")
+                    put("locality", "Schulpforta")
+                    put("region", "Sachsen-Anhalt")
+                    put("country", "DE")
+                }
+            }
 
         testStructured(plainClaims, claimsToBeDisclosed)
     }
@@ -59,17 +61,18 @@ class StructuredDisclosure {
         claimsToBeDisclosed: Map<String, JsonElement>,
     ) {
         val hashAlgorithm = HashAlgorithm.SHA_256
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-            claimsToBeDisclosed.forEach { objClaim(it.key) { sdClaim(it.key, it.value) } }
-        }
-        val disclosedJsonObject = SdJwtFactory(
-            hashAlgorithm,
-            SaltProvider.Default,
-            DecoyGen.Default,
-            null,
-
-        ).createSdJwt(sdJwtElements).getOrThrow()
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+                claimsToBeDisclosed.forEach { objClaim(it.key) { sdClaim(it.key, it.value) } }
+            }
+        val disclosedJsonObject =
+            SdJwtFactory(
+                hashAlgorithm,
+                SaltProvider.Default,
+                DecoyGen.Default,
+                null,
+            ).createSdJwt(sdJwtElements).getOrThrow()
 
         val (jwtClaimSet, disclosures) = disclosedJsonObject
 
@@ -94,10 +97,11 @@ class FlatDisclosure {
 
     @Test
     fun flatDisclosureOfJsonObjectClaim() {
-        val plainClaims = buildJsonObject {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("iss", "sample issuer")
-        }
+        val plainClaims =
+            buildJsonObject {
+                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                put("iss", "sample issuer")
+            }
         val claimsToBeDisclosed =
             buildJsonObject {
                 putJsonObject("address") {
@@ -112,10 +116,11 @@ class FlatDisclosure {
 
     @Test
     fun flatDisclosureOfJsonPrimitive() {
-        val plainClaims = buildJsonObject {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("iss", "sample issuer")
-        }
+        val plainClaims =
+            buildJsonObject {
+                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                put("iss", "sample issuer")
+            }
         val claimsToBeDisclosed =
             buildJsonObject {
                 put("street_address", "Schulstr. 12")
@@ -126,10 +131,11 @@ class FlatDisclosure {
     @OptIn(ExperimentalSerializationApi::class)
     @Test
     fun flatDisclosureOfJsonArrayOfPrimitives() {
-        val plainClaims = buildJsonObject {
-            put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            put("iss", "sample issuer")
-        }
+        val plainClaims =
+            buildJsonObject {
+                put("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                put("iss", "sample issuer")
+            }
         val claimsToBeDisclosed =
             buildJsonObject {
                 putJsonArray("countries") {
@@ -152,17 +158,19 @@ class FlatDisclosure {
         claimsToBeDisclosed: Map<String, JsonElement>,
     ): UnsignedSdJwt {
         val hashAlgorithm = HashAlgorithm.SHA_256
-        val sdJwtElements = sdJwt {
-            plainClaims.forEach { claim(it.key, it.value) }
-            claimsToBeDisclosed.forEach { sdClaim(it.key, it.value) }
-        }
+        val sdJwtElements =
+            sdJwt {
+                plainClaims.forEach { claim(it.key, it.value) }
+                claimsToBeDisclosed.forEach { sdClaim(it.key, it.value) }
+            }
 
-        val disclosedJsonObject = SdJwtFactory(
-            hashAlgorithm,
-            SaltProvider.Default,
-            DecoyGen.Default,
-            4.atLeastDigests(),
-        ).createSdJwt(sdJwtElements).getOrThrow()
+        val disclosedJsonObject =
+            SdJwtFactory(
+                hashAlgorithm,
+                SaltProvider.Default,
+                DecoyGen.Default,
+                4.atLeastDigests(),
+            ).createSdJwt(sdJwtElements).getOrThrow()
 
         val (jwtClaimSet, disclosures) = disclosedJsonObject
 
@@ -192,7 +200,9 @@ class FlatDisclosure {
                         assertEquals(claimsToBeDisclosed[claimName], claimValue)
                     }
 
-                    else -> TODO()
+                    else -> {
+                        TODO()
+                    }
                 }
             }
         }
@@ -208,7 +218,10 @@ class FlatDisclosure {
 
 private object DisclosedClaimSetTest {
 
-    fun assertContainsPlainClaims(sdEncoded: Map<String, JsonElement>, plainClaims: Map<String, JsonElement>) {
+    fun assertContainsPlainClaims(
+        sdEncoded: Map<String, JsonElement>,
+        plainClaims: Map<String, JsonElement>,
+    ) {
         for ((k, v) in plainClaims) {
             assertEquals(v, sdEncoded[k], "Make sure that non selectively disclosable elements are present")
         }
@@ -220,11 +233,12 @@ private object DisclosedClaimSetTest {
         disclosures: Collection<Disclosure>,
     ) {
         val sdAlgValue = jwtClaimSet["_sd_alg"]
-        val expectedSdAlgValue = if (disclosures.isNotEmpty()) {
-            JsonPrimitive(hashAlgorithm.alias)
-        } else {
-            null
-        }
+        val expectedSdAlgValue =
+            if (disclosures.isNotEmpty()) {
+                JsonPrimitive(hashAlgorithm.alias)
+            } else {
+                null
+            }
         assertEquals(expectedSdAlgValue, sdAlgValue)
     }
 
@@ -252,26 +266,39 @@ private val collectDigests: DeepRecursiveFunction<JsonObject, List<DisclosureDig
     DeepRecursiveFunction { claims ->
         claims.flatMap { (attribute, json) ->
             when {
-                attribute == RFC9901.CLAIM_SD && json is JsonArray ->
+                attribute == RFC9901.CLAIM_SD && json is JsonArray -> {
                     json.mapNotNull { element ->
-                        if (element is JsonPrimitive) DisclosureDigest.wrap(element.content).getOrNull()
-                        else null
+                        if (element is JsonPrimitive)
+                            DisclosureDigest.wrap(element.content).getOrNull()
+                        else
+                            null
                     }
+                }
 
-                attribute == RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive ->
-                    DisclosureDigest.wrap(json.content).getOrNull()
+                attribute == RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST && json is JsonPrimitive -> {
+                    DisclosureDigest
+                        .wrap(json.content)
+                        .getOrNull()
                         ?.let { listOf(it) }
                         ?: emptyList()
+                }
 
-                json is JsonObject -> callRecursive(json)
+                json is JsonObject -> {
+                    callRecursive(json)
+                }
 
-                json is JsonArray ->
+                json is JsonArray -> {
                     json.flatMap {
-                        if (it is JsonObject) callRecursive(it)
-                        else emptyList()
+                        if (it is JsonObject)
+                            callRecursive(it)
+                        else
+                            emptyList()
                     }
+                }
 
-                else -> emptyList()
+                else -> {
+                    emptyList()
+                }
             }
         }
     }

@@ -57,15 +57,16 @@ import kotlin.time.toJavaInstant
 class KeyBindingTest {
 
     private val issuer = IssuerActor(genKey("issuer"))
-    private val verifier = DefaultSdJwtOps.SdJwtVcVerifier(
-        IssuerVerificationMethod.usingCustom(
-            ECDSAVerifier(issuer.issuerKey)
-                .asJwtVerifier()
-                .map { nimbusToJwtAndClaims(it) },
-        ),
-        TypeMetadataPolicy.NotUsed,
-        null,
-    )
+    private val verifier =
+        DefaultSdJwtOps.SdJwtVcVerifier(
+            IssuerVerificationMethod.usingCustom(
+                ECDSAVerifier(issuer.issuerKey)
+                    .asJwtVerifier()
+                    .map { nimbusToJwtAndClaims(it) },
+            ),
+            TypeMetadataPolicy.NotUsed,
+            null,
+        )
     private val holder = HolderActor(genKey("holder"), verifier = verifier)
 
     /**
@@ -76,104 +77,117 @@ class KeyBindingTest {
      * that [eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.HolderPubKeyInConfirmationClaim] is indeed able to extract holder pub key from SD-JWT claims
      */
     @Test
-    fun testIssuance() = runTest {
-        val emailCredential = SampleCredential(
-            givenName = "John",
-            familyName = "Doe",
-            email = "john@foobar.com",
-            countries = listOf("GR", "DE"),
-        )
+    fun testIssuance() =
+        runTest {
+            val emailCredential =
+                SampleCredential(
+                    givenName = "John",
+                    familyName = "Doe",
+                    email = "john@foobar.com",
+                    countries = listOf("GR", "DE"),
+                )
 
-        val holderPubKey = holder.pubKey()
-        val issuedSdJwtStr = issuer.issue(holderPubKey, emailCredential).also {
-            println("Issued: $it")
+            val holderPubKey = holder.pubKey()
+            val issuedSdJwtStr =
+                issuer.issue(holderPubKey, emailCredential).also {
+                    println("Issued: $it")
+                }
+
+            val issuedSdJwt = DefaultSdJwtOps.unverifiedIssuanceFrom(issuedSdJwtStr).getOrThrow()
+            // Assert Disclosed claims
+            val selectivelyDisclosedClaims =
+                with(DefaultSdJwtOps) {
+                    val (claims, _) = issuedSdJwt.recreateClaimsAndDisclosuresPerClaim()
+                    claims["credentialSubject"]?.jsonObject ?: JsonObject(emptyMap())
+                }
+
+            assertEquals(5, selectivelyDisclosedClaims.size)
+            assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
+            assertEquals(emailCredential.familyName, selectivelyDisclosedClaims["family_name"]?.jsonPrimitive?.content)
+            assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
+
+            // Assert issuer verifier is able to verify JWT
+            val jwtClaims = assertNotNull(verifier.verify(issuedSdJwtStr).getOrNull())
+
+            // Extract and verify holder public key
+            assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
         }
-
-        val issuedSdJwt = DefaultSdJwtOps.unverifiedIssuanceFrom(issuedSdJwtStr).getOrThrow()
-        // Assert Disclosed claims
-        val selectivelyDisclosedClaims =
-            with(DefaultSdJwtOps) {
-                val (claims, _) = issuedSdJwt.recreateClaimsAndDisclosuresPerClaim()
-                claims["credentialSubject"]?.jsonObject ?: JsonObject(emptyMap())
-            }
-
-        assertEquals(5, selectivelyDisclosedClaims.size)
-        assertEquals(emailCredential.givenName, selectivelyDisclosedClaims["given_name"]?.jsonPrimitive?.content)
-        assertEquals(emailCredential.familyName, selectivelyDisclosedClaims["family_name"]?.jsonPrimitive?.content)
-        assertEquals(emailCredential.email, selectivelyDisclosedClaims["email"]?.jsonPrimitive?.content)
-
-        // Assert issuer verifier is able to verify JWT
-        val jwtClaims = assertNotNull(verifier.verify(issuedSdJwtStr).getOrNull())
-
-        // Extract and verify holder public key
-        assertEquals(holderPubKey, HolderPubKeyInConfirmationClaim(jwtClaims.jwt.second))
-    }
 
     @Test
-    fun holderBindingFullTest() = runTest {
-        suspend fun test(whatToDisclose: Set<ClaimPath>, expectedNumberOfDisclosures: Int) {
-            val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, expectedNumberOfDisclosures, verifier)
+    fun holderBindingFullTest() =
+        runTest {
+            suspend fun test(
+                whatToDisclose: Set<ClaimPath>,
+                expectedNumberOfDisclosures: Int,
+            ) {
+                val verifier = VerifierActor("Sample Verifier Actor", whatToDisclose, expectedNumberOfDisclosures, verifier)
 
-            val emailCredential = SampleCredential(
-                givenName = "John",
-                familyName = "Doe",
-                email = "john@foobar.com",
-                countries = listOf("GR", "DE"),
-            )
+                val emailCredential =
+                    SampleCredential(
+                        givenName = "John",
+                        familyName = "Doe",
+                        email = "john@foobar.com",
+                        countries = listOf("GR", "DE"),
+                    )
 
-            // Issuer should know holder's public key
-            val issuedSdJwt = issuer.issue(holder.pubKey(), emailCredential)
+                // Issuer should know holder's public key
+                val issuedSdJwt = issuer.issue(holder.pubKey(), emailCredential)
 
-            // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
-            // Holder expects to find algorithm inside SD-JWT, header
-            holder.storeCredential(issuedSdJwt)
+                // Holder should know, issuer pub key & signing algorithm to validate SD-JWT
+                // Holder expects to find algorithm inside SD-JWT, header
+                holder.storeCredential(issuedSdJwt)
 
-            // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
-            // Also Holder should know what verifier wants to be presented
-            val verifierQuery = verifier.query()
-            val presentedSdJwt: String = holder.present(verifierQuery)
+                // Holder must obtain a challenge from verifier to sign it as Key Binding JWT
+                // Also Holder should know what verifier wants to be presented
+                val verifierQuery = verifier.query()
+                val presentedSdJwt: String = holder.present(verifierQuery)
 
-            // Verifier should know/trust the issuer.
-            // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
-            verifier.acceptPresentation(presentedSdJwt)
+                // Verifier should know/trust the issuer.
+                // Also, Verifier should know how to obtain Holder Pub Key, from within SD-JWT
+                verifier.acceptPresentation(presentedSdJwt)
+            }
+
+            val testData: Map<Set<ClaimPath>, Int> =
+                mapOf(
+                    setOf(
+                        ClaimPath.claim("credentialSubject").claim("email"),
+                        ClaimPath.claim("credentialSubject").claim("countries"),
+                        ClaimPath.claim("credentialSubject").claim("addresses"),
+                    ) to 3,
+                    setOf(
+                        ClaimPath.claim("credentialSubject").claim("email"),
+                        ClaimPath.claim("credentialSubject").claim("countries"),
+                        ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0),
+                    ) to 4,
+                    setOf(
+                        ClaimPath.claim("credentialSubject").claim("email"),
+                        ClaimPath.claim("credentialSubject").claim("countries"),
+                        ClaimPath
+                            .claim("credentialSubject")
+                            .claim("addresses")
+                            .arrayElement(0)
+                            .claim("street"),
+                    ) to 5,
+                    setOf(
+                        ClaimPath.claim("credentialSubject").claim("email"),
+                        ClaimPath.claim("credentialSubject").claim("countries"),
+                        ClaimPath.claim("credentialSubject").claim("addresses").allArrayElements(),
+                    ) to 5,
+                    setOf(
+                        ClaimPath.claim("credentialSubject").claim("email"),
+                        ClaimPath.claim("credentialSubject").claim("countries"),
+                        ClaimPath
+                            .claim("credentialSubject")
+                            .claim("addresses")
+                            .allArrayElements()
+                            .claim("street"),
+                    ) to 7,
+                )
+
+            testData.forEach { (whatToDisclose, expectedNumberOfDisclosures) ->
+                test(whatToDisclose, expectedNumberOfDisclosures)
+            }
         }
-
-        val testData: Map<Set<ClaimPath>, Int> = mapOf(
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("email"),
-                ClaimPath.claim("credentialSubject").claim("countries"),
-                ClaimPath.claim("credentialSubject").claim("addresses"),
-            ) to 3,
-
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("email"),
-                ClaimPath.claim("credentialSubject").claim("countries"),
-                ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0),
-            ) to 4,
-
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("email"),
-                ClaimPath.claim("credentialSubject").claim("countries"),
-                ClaimPath.claim("credentialSubject").claim("addresses").arrayElement(0).claim("street"),
-            ) to 5,
-
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("email"),
-                ClaimPath.claim("credentialSubject").claim("countries"),
-                ClaimPath.claim("credentialSubject").claim("addresses").allArrayElements(),
-            ) to 5,
-
-            setOf(
-                ClaimPath.claim("credentialSubject").claim("email"),
-                ClaimPath.claim("credentialSubject").claim("countries"),
-                ClaimPath.claim("credentialSubject").claim("addresses").allArrayElements().claim("street"),
-            ) to 7,
-        )
-
-        testData.forEach { (whatToDisclose, expectedNumberOfDisclosures) ->
-            test(whatToDisclose, expectedNumberOfDisclosures)
-        }
-    }
 
     private fun genKey(kid: String) = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
 }
@@ -195,12 +209,17 @@ data class VerifierChallenge(
     val iat: Instant,
 )
 
-data class VerifierQuery(val challenge: VerifierChallenge, val whatToDisclose: Set<ClaimPath>)
+data class VerifierQuery(
+    val challenge: VerifierChallenge,
+    val whatToDisclose: Set<ClaimPath>,
+)
 
 /**
  * Sample issuer
  */
-class IssuerActor(val issuerKey: ECKey) {
+class IssuerActor(
+    val issuerKey: ECKey,
+) {
 
     private val signAlgorithm = JWSAlgorithm.ES256
     private val jwtType = JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT)
@@ -226,40 +245,44 @@ class IssuerActor(val issuerKey: ECKey) {
      * @param credential the credential
      * @return the issued SD-JWT
      */
-    suspend fun issue(holderPubKey: AsymmetricJWK, credential: SampleCredential): String = with(NimbusSdJwtOps) {
-        issuerDebug("Issuing new SD-JWT ...")
-        val iat = Clock.System.now()
-        val exp = iat + expirationPeriod
-        val sdJwtElements =
-            sdJwt {
-                claim(RFC7519.ISSUER, iss)
-                claim(RFC7519.ISSUED_AT, iat.epochSeconds)
-                claim(RFC7519.EXPIRATION_TIME, exp.epochSeconds)
-                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
-                cnf(holderPubKey as JWK)
-                objClaim("credentialSubject") {
-                    Json.encodeToJsonElement(credential).jsonObject.forEach { sdClaim(it.key, it.value) }
-                    sdArrClaim("addresses") {
-                        sdObjClaim {
-                            sdClaim("street", "street1")
-                        }
-                        sdObjClaim {
-                            sdClaim("street", "street2")
+    suspend fun issue(
+        holderPubKey: AsymmetricJWK,
+        credential: SampleCredential,
+    ): String =
+        with(NimbusSdJwtOps) {
+            issuerDebug("Issuing new SD-JWT ...")
+            val iat = Clock.System.now()
+            val exp = iat + expirationPeriod
+            val sdJwtElements =
+                sdJwt {
+                    claim(RFC7519.ISSUER, iss)
+                    claim(RFC7519.ISSUED_AT, iat.epochSeconds)
+                    claim(RFC7519.EXPIRATION_TIME, exp.epochSeconds)
+                    claim(SdJwtVcSpec.VCT, "urn:credential:sample")
+                    cnf(holderPubKey as JWK)
+                    objClaim("credentialSubject") {
+                        Json.encodeToJsonElement(credential).jsonObject.forEach { sdClaim(it.key, it.value) }
+                        sdArrClaim("addresses") {
+                            sdObjClaim {
+                                sdClaim("street", "street1")
+                            }
+                            sdObjClaim {
+                                sdClaim("street", "street2")
+                            }
                         }
                     }
                 }
-            }
-        sdJwtIssuer.issue(sdJwtSpec = sdJwtElements).fold(
-            onSuccess = { issued ->
-                issuerDebug("Issued new SD-JWT")
-                issued.serialize()
-            },
-            onFailure = { exception ->
-                issuerDebug("Failed to issue SD-JWT")
-                throw exception
-            },
-        )
-    }
+            sdJwtIssuer.issue(sdJwtSpec = sdJwtElements).fold(
+                onSuccess = { issued ->
+                    issuerDebug("Issued new SD-JWT")
+                    issued.serialize()
+                },
+                onFailure = { exception ->
+                    issuerDebug("Failed to issue SD-JWT")
+                    throw exception
+                },
+            )
+        }
 
     private fun issuerDebug(s: String) {
         println("Issuer: $s")
@@ -309,11 +332,12 @@ class HolderActor(
         checkNotNull(presentationSdJwt)
 
         return with(NimbusSdJwtOps) {
-            val buildKbJwt = kbJwtIssuer(ECDSASigner(holderKey), JWSAlgorithm.ES256, holderKey.toPublicJWK()) {
-                issueTime(Date.from(verifierQuery.challenge.iat.toJavaInstant()))
-                audience(verifierQuery.challenge.aud)
-                claim(RFC9901.CLAIM_NONCE, verifierQuery.challenge.nonce)
-            }
+            val buildKbJwt =
+                kbJwtIssuer(ECDSASigner(holderKey), JWSAlgorithm.ES256, holderKey.toPublicJWK()) {
+                    issueTime(Date.from(verifierQuery.challenge.iat.toJavaInstant()))
+                    audience(verifierQuery.challenge.aud)
+                    claim(RFC9901.CLAIM_NONCE, verifierQuery.challenge.nonce)
+                }
             presentationSdJwt.serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
     }
@@ -331,16 +355,19 @@ class VerifierActor(
 ) {
     private lateinit var lastChallenge: ChallengePredicate
     private var presentation: SdJwt<JwtAndClaims>? = null
-    fun query(): VerifierQuery = VerifierQuery(
-        VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
-        whatToDisclose,
-    ).also {
-        lastChallenge = ChallengePredicate(
-            issuedAt = it.challenge.iat,
-            audience = it.challenge.aud,
-            nonce = it.challenge.nonce,
-        )
-    }
+
+    fun query(): VerifierQuery =
+        VerifierQuery(
+            VerifierChallenge(Random.nextBytes(10).toString(), clientId, Clock.System.now()),
+            whatToDisclose,
+        ).also {
+            lastChallenge =
+                ChallengePredicate(
+                    issuedAt = it.challenge.iat,
+                    audience = it.challenge.aud,
+                    nonce = it.challenge.nonce,
+                )
+        }
 
     suspend fun acceptPresentation(unverifiedSdJwt: String) {
         val (presented, _) = verifier.verify(unverifiedSdJwt, lastChallenge).getOrThrow()
@@ -349,20 +376,21 @@ class VerifierActor(
         verifierDebug("Presentation accepted with SD Claims:")
     }
 
-    private fun SdJwt<JwtAndClaims>.ensureContainsWhatRequested() = apply {
-        val disclosedPaths =
-            with(DefaultSdJwtOps) { recreateClaimsAndDisclosuresPerClaim().second.keys }
-        whatToDisclose.forEach { requested ->
-            assertTrue("Requested $requested was not disclosed") {
-                disclosedPaths.any { disclosed -> disclosed in requested }
+    private fun SdJwt<JwtAndClaims>.ensureContainsWhatRequested() =
+        apply {
+            val disclosedPaths =
+                with(DefaultSdJwtOps) { recreateClaimsAndDisclosuresPerClaim().second.keys }
+            whatToDisclose.forEach { requested ->
+                assertTrue("Requested $requested was not disclosed") {
+                    disclosedPaths.any { disclosed -> disclosed in requested }
+                }
             }
+            assertEquals(
+                expectedNumberOfDisclosures,
+                disclosures.size,
+                "Expected $expectedNumberOfDisclosures but found ${disclosures.size}",
+            )
         }
-        assertEquals(
-            expectedNumberOfDisclosures,
-            disclosures.size,
-            "Expected $expectedNumberOfDisclosures but found ${disclosures.size}",
-        )
-    }
 
     private fun verifierDebug(s: String) {
         println("Verifier: $s")
