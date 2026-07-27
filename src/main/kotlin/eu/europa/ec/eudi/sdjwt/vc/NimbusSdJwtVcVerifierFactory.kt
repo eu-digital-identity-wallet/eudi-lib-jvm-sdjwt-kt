@@ -71,10 +71,6 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
                     sdJwtVcSignatureVerifier(trust = issuerVerificationMethod.x509CertificateTrust)
                 }
 
-                is IssuerVerificationMethod.UsingDID -> {
-                    sdJwtVcSignatureVerifier(lookup = issuerVerificationMethod.didLookup)
-                }
-
                 is IssuerVerificationMethod.UsingX5cOrIssuerMetadata -> {
                     sdJwtVcSignatureVerifier(
                         httpClient = issuerVerificationMethod.httpClient,
@@ -137,7 +133,6 @@ private class NimbusSdJwtVcVerifier(
  * In particular,
  * - If `iss` claim is an HTTPS URI and there is no `x5c` parameter in the header, SD-JWT-VC Issuer Metadata will be used;
  * - If `iss` claim is an HTTPS URI and there is a `x5c` parameter in the header, the key will be extracted from the leaf certificate, if the chain is trusted;
- * - If `iss` claim is a DID, the key will be extracted by resolving it;
  *
  * Additionally, the verifier will ensure that `typ` header parameter is equal to `dc+sd-jwt`.
  *
@@ -145,15 +140,12 @@ private class NimbusSdJwtVcVerifier(
  * A `null` value indicates that the holder doesn't support SD-JWT VC Issuer Metadata.
  * @param trust a function that accepts a chain of certificates (contents of `x5c` header parameter) and indicates whether is trusted or not.
  * A `null` value indicates that the holder doesn't support `x5c` certificate chain trust.
- * @param lookup a way of looking up public keys from DID Documents.
- * A `null` value indicates that the holder doesn't support DIDs.
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
 internal fun sdJwtVcSignatureVerifier(
     httpClient: HttpClient? = null,
     trust: X509CertificateTrust<List<X509Certificate>>? = null,
-    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
 ): JwtSignatureVerifier<NimbusSignedJWT> =
     JwtSignatureVerifier { unverifiedJwt ->
         withContext(Dispatchers.IO) {
@@ -164,7 +156,7 @@ internal fun sdJwtVcSignatureVerifier(
                     throw VerificationError.ParsingError.asException()
                 }
 
-            val (jwkSource, useKeyId) = issuerJwkSource(httpClient, trust, lookup, signedJwt)
+            val (jwkSource, useKeyId) = issuerJwkSource(httpClient, trust, signedJwt)
             yield()
 
             try {
@@ -181,7 +173,6 @@ internal fun sdJwtVcSignatureVerifier(
 private suspend fun issuerJwkSource(
     httpClient: HttpClient?,
     trust: X509CertificateTrust<List<X509Certificate>>?,
-    lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>?,
     signedJwt: NimbusSignedJWT,
 ): IssuerJwkSource {
     suspend fun fromMetadata(source: Metadata): IssuerJwkSource {
@@ -208,21 +199,9 @@ private suspend fun issuerJwkSource(
         return IssuerJwkSource(NimbusImmutableJWKSet(NimbusJWKSet(mutableListOf(jwk))), false)
     }
 
-    suspend fun fromDid(source: DIDUrl): IssuerJwkSource {
-        if (null == lookup) raise(UnsupportedVerificationMethod("did"))
-        val jwks =
-            runCatchingCancellable {
-                lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
-            }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
-        if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
-
-        return IssuerJwkSource(NimbusImmutableJWKSet(jwks), false)
-    }
-
     return when (val source = keySource(signedJwt)) {
         is Metadata -> fromMetadata(source)
         is X509CertChain -> fromX509CertChain(source)
-        is DIDUrl -> fromDid(source)
     }
 }
 
@@ -244,15 +223,9 @@ internal sealed interface SdJwtVcIssuerPublicKeySource {
     data class X509CertChain(
         val chain: List<X509Certificate>,
     ) : SdJwtVcIssuerPublicKeySource
-
-    data class DIDUrl(
-        val iss: String,
-        val kid: String?,
-    ) : SdJwtVcIssuerPublicKeySource
 }
 
 private const val HTTPS_URI_SCHEME = "https"
-private const val DID_URI_SCHEME = "did"
 
 internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     val kid = jwt.header?.keyID
@@ -268,7 +241,6 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     return when {
         certChain.isNotEmpty() -> X509CertChain(certChain)
         issScheme == HTTPS_URI_SCHEME -> Metadata(issUrl, kid)
-        issScheme == DID_URI_SCHEME -> DIDUrl(iss, kid)
         else -> raise(CannotDetermineIssuerVerificationMethod)
     }
 }
