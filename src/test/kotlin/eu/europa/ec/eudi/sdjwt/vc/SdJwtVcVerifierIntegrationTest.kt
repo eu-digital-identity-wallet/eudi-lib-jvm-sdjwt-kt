@@ -96,7 +96,7 @@ class SdJwtVcVerifierIntegrationTest {
                     }
                     sdClaim("age_in_years", 35)
                 }
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 
     @Test
@@ -108,7 +108,7 @@ class SdJwtVcVerifierIntegrationTest {
                     sdClaim(SdJwtVcSpec.VCT, "urn:eudi:pid:1")
                 }
             val exception =
-                assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+                assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val sdJwtVcVerificationError =
                 assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure>(sdJwtVcError.error)
@@ -132,7 +132,7 @@ class SdJwtVcVerifierIntegrationTest {
                     }
                 }
             val exception =
-                assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+                assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val sdJwtVcVerificationError =
                 assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure>(sdJwtVcError.error)
@@ -178,7 +178,7 @@ class SdJwtVcVerifierIntegrationTest {
                     null,
                 )
 
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
             assertTrue(documentIntegrityParsed)
         }
 
@@ -197,7 +197,7 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 
     @Test
@@ -216,7 +216,7 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.StatusCheckFailure>(error.error)
             assertEquals("'status' claim must be a JsonObject", reason.message)
@@ -243,7 +243,7 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.StatusCheckFailure>(error.error)
             assertEquals("'status' claim is malformed", reason.message)
@@ -275,7 +275,7 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.StatusCheckFailure>(error.error)
             assertIs<IllegalStateException>(reason.cause)
@@ -308,7 +308,7 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
+            val exception = assertFailsWith<SdJwtVerificationException> { verifier.verifyIssuance(serialized).getOrThrow() }
             val error = assertIs<VerificationError.SdJwtVcError>(exception.reason)
             val reason = assertIs<SdJwtVcVerificationError.StatusVerificationError.NonValidStatus>(error.error)
             assertEquals(0x01u, reason.status.status)
@@ -341,6 +341,6 @@ class SdJwtVcVerifierIntegrationTest {
                     TypeMetadataPolicy.NotUsed,
                     checkStatus,
                 )
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 }
