@@ -20,13 +20,14 @@ import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
 import kotlinx.coroutines.*
 
-val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
-    with(NimbusSdJwtOps) {
-        val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
-        verify(
-            jwtSignatureVerifier,
-            unverifiedPresentationSdJwt,
-        ).getOrThrow()
+val verifiedPresentationSdJwt: SdJwt<SignedJWT> =
+    runBlocking {
+        with(NimbusSdJwtOps) {
+            val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
+            val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
+            verify(
+                jwtSignatureVerifier,
+                unverifiedPresentationSdJwt,
+            ).getOrThrow()
+        }
     }
-}

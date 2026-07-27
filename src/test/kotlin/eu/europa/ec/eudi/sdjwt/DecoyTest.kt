@@ -32,8 +32,14 @@ import kotlin.test.assertTrue
 sealed interface Membership {
     val name: String
 
-    data class Simple(override val name: String) : Membership
-    data class Premium(override val name: String, val premiumMembershipNumber: String) : Membership
+    data class Simple(
+        override val name: String,
+    ) : Membership
+
+    data class Premium(
+        override val name: String,
+        val premiumMembershipNumber: String,
+    ) : Membership
 }
 
 internal class DecoyTest {
@@ -41,40 +47,45 @@ internal class DecoyTest {
     private val premiumMembership = Membership.Premium(name = "Markus", premiumMembershipNumber = "1234")
 
     @Test
-    fun `make sure that kind membership is not revealed via digests number using hint on the spec`() = runTest {
-        val minimumDigests = 5
-        val simpleMembershipSpec = simpleMembership.sdJwtSpec(minimumDigests)
-        val premiumMembershipSpec = premiumMembership.sdJwtSpec(minimumDigests)
-        val issuer = SampleIssuer()
-        val (simpleSdJwts, premiumSdJwts) =
-            (1..100)
-                .map { issuer.issue(simpleMembershipSpec) to issuer.issue(premiumMembershipSpec) }
-                .unzip()
+    fun `make sure that kind membership is not revealed via digests number using hint on the spec`() =
+        runTest {
+            val minimumDigests = 5
+            val simpleMembershipSpec = simpleMembership.sdJwtSpec(minimumDigests)
+            val premiumMembershipSpec = premiumMembership.sdJwtSpec(minimumDigests)
+            val issuer = SampleIssuer()
+            val (simpleSdJwts, premiumSdJwts) =
+                (1..100)
+                    .map { issuer.issue(simpleMembershipSpec) to issuer.issue(premiumMembershipSpec) }
+                    .unzip()
 
-        fun printFreq(s: String, f: Map<Int, Int>) {
-            println("$s\t(DigestNo/Occurrences) $f")
+            fun printFreq(
+                s: String,
+                f: Map<Int, Int>,
+            ) {
+                println("$s\t(DigestNo/Occurrences) $f")
+            }
+
+            val simpleFreq = simpleSdJwts.digestFrequency().also { printFreq("simple", it) }
+            val premiumFreq = premiumSdJwts.digestFrequency().also { printFreq("premium", it) }
+
+            assertEquals(1, simpleFreq.size)
+            assertEquals(1, premiumFreq.size)
+
+            assertTrue { simpleFreq.keys.first() == premiumFreq.keys.first() }
         }
 
-        val simpleFreq = simpleSdJwts.digestFrequency().also { printFreq("simple", it) }
-        val premiumFreq = premiumSdJwts.digestFrequency().also { printFreq("premium", it) }
-
-        assertEquals(1, simpleFreq.size)
-        assertEquals(1, premiumFreq.size)
-
-        assertTrue { simpleFreq.keys.first() == premiumFreq.keys.first() }
-    }
-
     @Test
-    fun `make sure that kind membership is not revealed via digests number using global hint`() = runTest {
-        val simpleMembershipSpec = simpleMembership.sdJwtSpec(null)
-        val premiumMembershipSpec = premiumMembership.sdJwtSpec(null)
+    fun `make sure that kind membership is not revealed via digests number using global hint`() =
+        runTest {
+            val simpleMembershipSpec = simpleMembership.sdJwtSpec(null)
+            val premiumMembershipSpec = premiumMembership.sdJwtSpec(null)
 
-        val minimumDigests = 5
-        val issuer = SampleIssuer(globalMinDigests = minimumDigests)
+            val minimumDigests = 5
+            val issuer = SampleIssuer(globalMinDigests = minimumDigests)
 
-        assertEquals(minimumDigests, issuer.issue(simpleMembershipSpec).countDigests())
-        assertEquals(minimumDigests, issuer.issue(premiumMembershipSpec).countDigests())
-    }
+            assertEquals(minimumDigests, issuer.issue(simpleMembershipSpec).countDigests())
+            assertEquals(minimumDigests, issuer.issue(premiumMembershipSpec).countDigests())
+        }
 
     private fun Iterable<SdJwt<SignedJWT>>.digestFrequency() =
         this
@@ -85,7 +96,11 @@ internal class DecoyTest {
 
     // That's not safe, but it will do for them example
     // counts only top-level digests
-    private fun SdJwt<SignedJWT>.countDigests() = jwt.jwtClaimsSet.jsonObject().directDigests().count()
+    private fun SdJwt<SignedJWT>.countDigests() =
+        jwt.jwtClaimsSet
+            .jsonObject()
+            .directDigests()
+            .count()
 
     private fun Membership.sdJwtSpec(minimumDigests: Int?) =
         sdJwt(minimumDigests) {
@@ -96,14 +111,17 @@ internal class DecoyTest {
         }
 }
 
-private class SampleIssuer(globalMinDigests: Int? = null) {
+private class SampleIssuer(
+    globalMinDigests: Int? = null,
+) {
     val keyId = "signing-key-01"
     private val alg = JWSAlgorithm.ES256
-    val key: ECKey = ECKeyGenerator(Curve.P_256)
-        .keyID(keyId)
-        .keyUse(KeyUse.SIGNATURE)
-        .algorithm(alg)
-        .generate()
+    val key: ECKey =
+        ECKeyGenerator(Curve.P_256)
+            .keyID(keyId)
+            .keyUse(KeyUse.SIGNATURE)
+            .algorithm(alg)
+            .generate()
 
     private val issuer: SdJwtIssuer<SignedJWT> =
         NimbusSdJwtOps.issuer(
@@ -112,6 +130,5 @@ private class SampleIssuer(globalMinDigests: Int? = null) {
             signAlgorithm = alg,
         )
 
-    suspend fun issue(sdElements: SdJwtObject): SdJwt<SignedJWT> =
-        issuer.issue(sdElements).getOrThrow()
+    suspend fun issue(sdElements: SdJwtObject): SdJwt<SignedJWT> = issuer.issue(sdElements).getOrThrow()
 }

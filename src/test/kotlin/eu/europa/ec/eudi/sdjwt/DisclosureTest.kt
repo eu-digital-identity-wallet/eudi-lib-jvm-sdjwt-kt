@@ -60,6 +60,5 @@ class DisclosureTest {
         test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 
-    private fun fixedSaltProvider(s: String): SaltProvider =
-        SaltProvider { s }
+    private fun fixedSaltProvider(s: String): SaltProvider = SaltProvider { s }
 }

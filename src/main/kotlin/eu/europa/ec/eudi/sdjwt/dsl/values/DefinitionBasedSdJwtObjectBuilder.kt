@@ -30,7 +30,9 @@ import kotlinx.serialization.json.*
  *
  * Actually, this builder uses the [sdJwtDefinition] as a template
  */
-class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefinition) {
+class DefinitionBasedSdJwtObjectBuilder(
+    private val sdJwtDefinition: SdJwtDefinition,
+) {
 
     /**
      * Builds the [SdJwtObject] that adheres to the [sdJwtDefinition] given the [data]
@@ -62,16 +64,20 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
 
                 if (JsonNull == dataValue) {
                     // null provided for claim
-                    if (isSd) sdClaim(claimName, dataValue)
-                    else claim(claimName, dataValue)
+                    if (isSd)
+                        sdClaim(claimName, dataValue)
+                    else
+                        claim(claimName, dataValue)
                     return@forEach
                 }
 
                 when (elementDef.value) {
                     is DisclosableDef.Id -> {
                         // Primitive claim
-                        if (isSd) sdClaim(claimName, dataValue)
-                        else claim(claimName, dataValue)
+                        if (isSd)
+                            sdClaim(claimName, dataValue)
+                        else
+                            claim(claimName, dataValue)
                     }
 
                     is DisclosableDef.Obj -> {
@@ -83,11 +89,13 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
 
                         val nestedDef = elementDef.value as DisclosableDef.Obj // Cast needed for content
                         if (isSd) {
-                            sdObjClaim(claimName) { // Pass minDigests if available
+                            sdObjClaim(claimName) {
+                                // Pass minDigests if available
                                 addAll(nestedDef.value.content, dataValue, warnings)
                             }
                         } else {
-                            objClaim(claimName) { // Pass minDigests if available
+                            objClaim(claimName) {
+                                // Pass minDigests if available
                                 addAll(nestedDef.value.content, dataValue, warnings)
                             }
                         }
@@ -103,11 +111,13 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
 
                         val nestedDef = elementDef.value as DisclosableDef.Arr
                         if (isSd) {
-                            sdArrClaim(claimName) { // Pass minDigests if available
+                            sdArrClaim(claimName) {
+                                // Pass minDigests if available
                                 addElements(nestedDef.value.content, dataValue, warnings)
                             }
                         } else {
-                            arrClaim(claimName) { // Pass minDigests if available
+                            arrClaim(claimName) {
+                                // Pass minDigests if available
                                 addElements(nestedDef.value.content, dataValue, warnings)
                             }
                         }
@@ -127,16 +137,20 @@ class DefinitionBasedSdJwtObjectBuilder(private val sdJwtDefinition: SdJwtDefini
         dataArray.forEach { arrayElement ->
             if (JsonNull == arrayElement) {
                 // null provided for claim
-                if (isSd) sdClaim(arrayElement)
-                else claim(arrayElement)
+                if (isSd)
+                    sdClaim(arrayElement)
+                else
+                    claim(arrayElement)
                 return@forEach
             }
 
             when (elementDefinition.value) {
                 is DisclosableDef.Id -> {
                     // Primitive array element
-                    if (isSd) sdClaim(arrayElement)
-                    else claim(arrayElement)
+                    if (isSd)
+                        sdClaim(arrayElement)
+                    else
+                        claim(arrayElement)
                 }
 
                 is DisclosableDef.Obj -> {
@@ -194,13 +208,14 @@ fun sdJwtVc(
     sdJwtDefinition: SdJwtDefinition,
     strict: Boolean = true,
     action: JsonObjectBuilder.() -> Unit,
-): Result<SdJwtObject> = runCatchingCancellable {
-    val data = buildJsonObject(action)
-    val builder = DefinitionBasedSdJwtObjectBuilder(sdJwtDefinition)
-    val (sdJwtObject, warnings) = builder.build(data)
-    if (strict && warnings.isNotEmpty()) {
-        error("Errors : " + warnings.joinToString(", "))
-    } else {
-        sdJwtObject
+): Result<SdJwtObject> =
+    runCatchingCancellable {
+        val data = buildJsonObject(action)
+        val builder = DefinitionBasedSdJwtObjectBuilder(sdJwtDefinition)
+        val (sdJwtObject, warnings) = builder.build(data)
+        if (strict && warnings.isNotEmpty()) {
+            error("Errors : " + warnings.joinToString(", "))
+        } else {
+            sdJwtObject
+        }
     }
-}

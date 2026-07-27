@@ -29,9 +29,10 @@ class DefaultSdJwtOpsTest {
         @Test
         fun `when sd-jwt contains disclosures with claims with reserved names, verification fails`() {
             fun test(disclosure: String) {
-                val exception = assertFailsWith<SdJwtVerificationException> {
-                    DefaultSdJwtOps.unverifiedIssuanceFrom("$jwt~$disclosure~").getOrThrow()
-                }
+                val exception =
+                    assertFailsWith<SdJwtVerificationException> {
+                        DefaultSdJwtOps.unverifiedIssuanceFrom("$jwt~$disclosure~").getOrThrow()
+                    }
                 val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
                 val invalidDisclosures = error.invalidDisclosures
                 assertEquals(1, invalidDisclosures.size)
@@ -49,9 +50,9 @@ class DefaultSdJwtOpsTest {
 
 private val jwt =
     """
-        eyJ0eXAiOiJzZCtqd3QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGU
-        uY29tL2lzc3VlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxODA0MjI5MDUzLCJzdWIiOiI
-        2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCJuYmYiOjE1MTYyMzkwMjI
-        sImF1ZCI6InRlc3QifQ.r1To6Mgu64GUuKdTngt0ElcqQOZS8tGIZ39BhyzM5xGF5TFVeuVr
-        yr46v-tnfBsSa9PX9bQDCmkEsPpzyQaLJA
+    eyJ0eXAiOiJzZCtqd3QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGU
+    uY29tL2lzc3VlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxODA0MjI5MDUzLCJzdWIiOiI
+    2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCJuYmYiOjE1MTYyMzkwMjI
+    sImF1ZCI6InRlc3QifQ.r1To6Mgu64GUuKdTngt0ElcqQOZS8tGIZ39BhyzM5xGF5TFVeuVr
+    yr46v-tnfBsSa9PX9bQDCmkEsPpzyQaLJA
     """.trimIndent().removeNewLine()

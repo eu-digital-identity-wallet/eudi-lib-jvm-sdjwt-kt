@@ -29,42 +29,46 @@ import kotlin.time.Instant
 class SdJwtVerifierTest {
 
     @Test
-    fun `when nbf and exp are valid, verification succeeds`() = runTest {
-        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
-        verifier.verifySuccess("$jwt~")
-    }
-
-    @Test
-    fun `when sd-jwt is not yet active, verification fails`() = runTest {
-        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1516239020L)))
-        verifier.verifyExpectingError(VerificationError.InvalidJwt("SD-JWT is not active yet"), "$jwt~")
-    }
-
-    @Test
-    fun `when sd-jwt is expired, verification fails`() = runTest {
-        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1804229054L)))
-        verifier.verifyExpectingError(VerificationError.InvalidJwt("SD-JWT is expired"), "$jwt~")
-    }
-
-    @Test
-    fun `when sd-jwt contains disclosures with claims with reserved names, verification fails`() = runTest {
-        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
-
-        suspend fun test(disclosure: String) {
-            val exception =
-                assertFailsWith<SdJwtVerificationException> { verifier.verify(NoSignatureValidation, "$jwt~$disclosure~").getOrThrow() }
-            val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
-            val invalidDisclosures = error.invalidDisclosures
-            assertEquals(1, invalidDisclosures.size)
-            assertEquals("Given claim should not contain an attribute named _sd_alg, or _sd, or ...", invalidDisclosures.keys.first())
+    fun `when nbf and exp are valid, verification succeeds`() =
+        runTest {
+            val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
+            verifier.verifySuccess("$jwt~")
         }
 
-        // _sd
-        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIl9zZCIsIk3DtmJpdXMiXQ")
+    @Test
+    fun `when sd-jwt is not yet active, verification fails`() =
+        runTest {
+            val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1516239020L)))
+            verifier.verifyExpectingError(VerificationError.InvalidJwt("SD-JWT is not active yet"), "$jwt~")
+        }
 
-        // ...
-        test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
-    }
+    @Test
+    fun `when sd-jwt is expired, verification fails`() =
+        runTest {
+            val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1804229054L)))
+            verifier.verifyExpectingError(VerificationError.InvalidJwt("SD-JWT is expired"), "$jwt~")
+        }
+
+    @Test
+    fun `when sd-jwt contains disclosures with claims with reserved names, verification fails`() =
+        runTest {
+            val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
+
+            suspend fun test(disclosure: String) {
+                val exception =
+                    assertFailsWith<SdJwtVerificationException> { verifier.verify(NoSignatureValidation, "$jwt~$disclosure~").getOrThrow() }
+                val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
+                val invalidDisclosures = error.invalidDisclosures
+                assertEquals(1, invalidDisclosures.size)
+                assertEquals("Given claim should not contain an attribute named _sd_alg, or _sd, or ...", invalidDisclosures.keys.first())
+            }
+
+            // _sd
+            test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIl9zZCIsIk3DtmJpdXMiXQ")
+
+            // ...
+            test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
+        }
 
     private suspend fun SdJwtVerifier<JwtAndClaims>.verifyExpectingError(
         expectedError: VerificationError,
@@ -84,11 +88,12 @@ class SdJwtVerifierTest {
         assertTrue { verification.isSuccess }
     }
 
-    private val jwt = """
+    private val jwt =
+        """
         eyJ0eXAiOiJzZCtqd3QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGU
         uY29tL2lzc3VlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxODA0MjI5MDUzLCJzdWIiOiI
         2YzVjMGE0OS1iNTg5LTQzMWQtYmFlNy0yMTkxMjJhOWVjMmMiLCJuYmYiOjE1MTYyMzkwMjI
         sImF1ZCI6InRlc3QifQ.r1To6Mgu64GUuKdTngt0ElcqQOZS8tGIZ39BhyzM5xGF5TFVeuVr
         yr46v-tnfBsSa9PX9bQDCmkEsPpzyQaLJA
-    """.trimIndent().removeNewLine()
+        """.trimIndent().removeNewLine()
 }
