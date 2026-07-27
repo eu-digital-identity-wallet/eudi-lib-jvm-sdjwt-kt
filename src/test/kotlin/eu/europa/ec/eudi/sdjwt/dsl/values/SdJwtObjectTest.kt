@@ -25,11 +25,12 @@ class SdJwtObjectTest {
     @Test
     fun `fails on usage of reserved claims for never selectively or always selectively disclosed claims`() {
         fun test(builder: SdJwtObjectBuilder.() -> Unit) {
-            val exception = assertFailsWith<IllegalArgumentException> {
-                sdJwt {
-                    builder()
+            val exception =
+                assertFailsWith<IllegalArgumentException> {
+                    sdJwt {
+                        builder()
+                    }
                 }
-            }
             assertEquals(
                 "Given claim should not contain an attribute named _sd_alg, or _sd, or ...",
                 exception.message,

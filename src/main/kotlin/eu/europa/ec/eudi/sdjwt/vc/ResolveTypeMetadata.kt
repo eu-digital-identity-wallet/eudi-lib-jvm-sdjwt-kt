@@ -24,10 +24,16 @@ import io.ktor.http.*
  */
 fun interface LookupTypeMetadata {
 
-    suspend operator fun invoke(vct: Vct, expectedIntegrity: DocumentIntegrity?): Result<SdJwtVcTypeMetadata?>
+    suspend operator fun invoke(
+        vct: Vct,
+        expectedIntegrity: DocumentIntegrity?,
+    ): Result<SdJwtVcTypeMetadata?>
 
     companion object {
-        fun firstNotNullOfOrNull(first: LookupTypeMetadata, vararg remaining: LookupTypeMetadata): LookupTypeMetadata {
+        fun firstNotNullOfOrNull(
+            first: LookupTypeMetadata,
+            vararg remaining: LookupTypeMetadata,
+        ): LookupTypeMetadata {
             val lookups = listOf(first, *remaining)
             return LookupTypeMetadata { vct, expectedIntegrity ->
                 runCatchingCancellable {
@@ -46,16 +52,22 @@ class LookupTypeMetadataUsingKtor(
     private val sriValidator: SRIValidator? = SRIValidator(),
 ) : LookupTypeMetadata {
 
-    override suspend fun invoke(vct: Vct, expectedIntegrity: DocumentIntegrity?): Result<SdJwtVcTypeMetadata?> {
+    override suspend fun invoke(
+        vct: Vct,
+        expectedIntegrity: DocumentIntegrity?,
+    ): Result<SdJwtVcTypeMetadata?> {
         val url = runCatching { Url(vct.value) }.getOrNull()
         return runCatchingCancellable {
             when (url) {
-                is Url ->
+                is Url -> {
                     with(GetSubResourceKtorOps(sriValidator)) {
                         httpClient.getJsonOrNull<SdJwtVcTypeMetadata>(url, expectedIntegrity)
                     }
+                }
 
-                else -> null
+                else -> {
+                    null
+                }
             }
         }
     }
@@ -127,6 +139,7 @@ interface ResolveTypeMetadata {
             require(limit > 0u) { "limit cannot be 0" }
             return object : ResolveTypeMetadata {
                 override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
+
                 override suspend fun invoke(
                     vct: Vct,
                     expectedIntegrity: DocumentIntegrity?,
@@ -154,8 +167,9 @@ private tailrec suspend fun LookupTypeMetadata.resolve(
 ): ResolvedTypeMetadata {
     require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
     require(resolved.size <= limit.toInt()) { "maximum number of parent lookups exceeded, limit: $limit" }
-    val current = this(vct, expectedIntegrity)
-        .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
+    val current =
+        this(vct, expectedIntegrity)
+            .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
     val updatedAccumulator = accumulator + current
     val parent = current.extends?.let { Vct(it) }
     val parentIntegrity = current.extendsIntegrity
@@ -222,7 +236,8 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
                         "The mandatory property of claim ${thisClaim.path} cannot be overridden"
                     }
 
-                if (parentClaim.selectivelyDisclosableOrDefault in setOf(
+                if (parentClaim.selectivelyDisclosableOrDefault in
+                    setOf(
                         ClaimSelectivelyDisclosable.Always,
                         ClaimSelectivelyDisclosable.Never,
                     )
@@ -237,7 +252,11 @@ private operator fun ResolvedTypeMetadata.plus(parent: SdJwtVcTypeMetadata): Res
         },
     )
 
-private fun <T, K> Iterable<T>.mergeWith(other: Iterable<T>, extractKey: (T) -> K, mergeValues: (T, T) -> T): List<T> {
+private fun <T, K> Iterable<T>.mergeWith(
+    other: Iterable<T>,
+    extractKey: (T) -> K,
+    mergeValues: (T, T) -> T,
+): List<T> {
     val thisValuesByKey = associateBy { extractKey(it) }
     val otherValuesByKey = other.associateBy { extractKey(it) }
     val allKeys = thisValuesByKey.keys + otherValuesByKey.keys

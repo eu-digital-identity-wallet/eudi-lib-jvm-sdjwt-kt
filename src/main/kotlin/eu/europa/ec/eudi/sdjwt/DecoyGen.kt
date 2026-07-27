@@ -33,10 +33,14 @@ internal fun interface DecoyGen {
      * @param numOfDecoys the number of decoys to produce
      * @return a series of decoy [DisclosureDigest]
      */
-    fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): List<DisclosureDigest> {
-        return if (numOfDecoys < 1) emptyList()
-        else (1..numOfDecoys).map { gen(hashingAlgorithm) }
-    }
+    fun gen(
+        hashingAlgorithm: HashAlgorithm,
+        numOfDecoys: Int,
+    ): List<DisclosureDigest> =
+        if (numOfDecoys < 1)
+            emptyList()
+        else
+            (1..numOfDecoys).map { gen(hashingAlgorithm) }
 
     companion object {
         const val MINIMUM_BYTES: Int = 16

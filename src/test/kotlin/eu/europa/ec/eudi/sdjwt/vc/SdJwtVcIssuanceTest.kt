@@ -42,14 +42,20 @@ private data class IssuerConfig(
     val vct: String,
 )
 
-private class SdJwtVCIssuer(val config: IssuerConfig) {
+private class SdJwtVCIssuer(
+    val config: IssuerConfig,
+) {
 
-    suspend fun issue(holderData: IdentityCredential, holderPubKey: JWK): SdJwt<SignedJWT> {
-        val sdJwtSpec = holderData.sdJwtSpec(
-            holderPubKey,
-            iat = Instant.fromEpochSeconds(1683000000),
-            exp = Instant.fromEpochSeconds(1883000000),
-        )
+    suspend fun issue(
+        holderData: IdentityCredential,
+        holderPubKey: JWK,
+    ): SdJwt<SignedJWT> {
+        val sdJwtSpec =
+            holderData.sdJwtSpec(
+                holderPubKey,
+                iat = Instant.fromEpochSeconds(1683000000),
+                exp = Instant.fromEpochSeconds(1883000000),
+            )
         return issuer.issue(sdJwtSpec).getOrThrow()
     }
 
@@ -97,8 +103,9 @@ private class SdJwtVCIssuer(val config: IssuerConfig) {
     }
 }
 
-private val HolderKey = ECKey.parse(
-    """
+private val HolderKey =
+    ECKey.parse(
+        """
         {
           "kty" : "EC",
           "crv" : "P-256",
@@ -106,121 +113,131 @@ private val HolderKey = ECKey.parse(
           "y"   : "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ",
           "d"   : "5K5SCos8zf9zRemGGUl6yfok-_NiiryNZsvANWMhF-I"
         }
-    """.trimIndent(),
-)
-
-private val JohnDoe = IdentityCredential(
-    givenName = "John",
-    familyName = "Doe",
-    email = "johndoe@example.com",
-    phoneNumber = "+1-202-555-0101",
-    address = Address(
-        streetAddress = "123 Main St",
-        locality = "Anytown",
-        region = "Anystate",
-        country = "US",
-    ),
-    birthDate = LocalDate(1940, 1, 1),
-    isOver18 = true,
-    isOver21 = true,
-    isOver65 = true,
-)
-
-private val IssuerSampleCfg = IssuerConfig(
-    issuer = Url("https://example.com/issuer"),
-    issuerKey = ECKey.parse(
-        """
-        {
-          "kty" : "EC",
-          "crv" : "P-256",
-          "x"   : "b28d4MwZMjw8-00CG4xfnn9SLMVMM19SlqZpVb_uNtQ",
-          "y"   : "Xv5zWwuoaTgdS6hV43yI6gBwTnjukmFQQnJ_kCxzqk8",
-          "d"   : "Ur2bNKuBPOrAaxsRnbSH6hIhmNTxSGXshDSUD1a1y7g",
-          "kid" : "doc-signer-05-25-2022"
-        }
         """.trimIndent(),
-    ),
+    )
 
-    hashAlgorithm = HashAlgorithm.SHA_256,
-    signAlg = JWSAlgorithm.ES256,
-    vct = "https://credentials.example.com/identity_credential",
-)
+private val JohnDoe =
+    IdentityCredential(
+        givenName = "John",
+        familyName = "Doe",
+        email = "johndoe@example.com",
+        phoneNumber = "+1-202-555-0101",
+        address =
+            Address(
+                streetAddress = "123 Main St",
+                locality = "Anytown",
+                region = "Anystate",
+                country = "US",
+            ),
+        birthDate = LocalDate(1940, 1, 1),
+        isOver18 = true,
+        isOver21 = true,
+        isOver65 = true,
+    )
+
+private val IssuerSampleCfg =
+    IssuerConfig(
+        issuer = Url("https://example.com/issuer"),
+        issuerKey =
+            ECKey.parse(
+                """
+                {
+                  "kty" : "EC",
+                  "crv" : "P-256",
+                  "x"   : "b28d4MwZMjw8-00CG4xfnn9SLMVMM19SlqZpVb_uNtQ",
+                  "y"   : "Xv5zWwuoaTgdS6hV43yI6gBwTnjukmFQQnJ_kCxzqk8",
+                  "d"   : "Ur2bNKuBPOrAaxsRnbSH6hIhmNTxSGXshDSUD1a1y7g",
+                  "kid" : "doc-signer-05-25-2022"
+                }
+                """.trimIndent(),
+            ),
+        hashAlgorithm = HashAlgorithm.SHA_256,
+        signAlg = JWSAlgorithm.ES256,
+        vct = "https://credentials.example.com/identity_credential",
+    )
 
 class SdJwtVcIssuanceTest {
 
     private val issuingService = SdJwtVCIssuer(IssuerSampleCfg)
 
-    val sdJwtVcVerifier = DefaultSdJwtOps.SdJwtVcVerifier(
-        IssuerVerificationMethod.usingIssuerMetadata(
-            run {
-                val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
-                val issuerMetadata = SdJwtVcIssuerMetadata(
-                    issuer = issuingService.config.issuer.toString(),
-                    jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
-                )
-                HttpMock.clientReturning(issuerMetadata)
-            },
-        ),
-        TypeMetadataPolicy.NotUsed,
-        null,
-    )
+    val sdJwtVcVerifier =
+        DefaultSdJwtOps.SdJwtVcVerifier(
+            IssuerVerificationMethod.usingIssuerMetadata(
+                run {
+                    val jwksAsJson = JWKSet(issuingService.config.issuerKey.toPublicJWK()).toString()
+                    val issuerMetadata =
+                        SdJwtVcIssuerMetadata(
+                            issuer = issuingService.config.issuer.toString(),
+                            jwks = Json.parseToJsonElement(jwksAsJson).jsonObject,
+                        )
+                    HttpMock.clientReturning(issuerMetadata)
+                },
+            ),
+            TypeMetadataPolicy.NotUsed,
+            null,
+        )
 
     @Test
-    fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() = runTest {
-        //
-        // Issue of SD-JWT according to SD-JWT VC
-        //
-        val issuedSdJwt: SdJwt<SignedJWT> = issuingService.issue(JohnDoe, HolderKey.toPublicJWK())
-        issuedSdJwt.print()
-        issuedSdJwt.printInJwsJson(JwsSerializationOption.Flattened)
-        val serialized = with(NimbusSdJwtOps) { issuedSdJwt.serialize() }
-        verify(serialized)
-    }
-
-    @Test
-    fun issued() = runTest {
-        val unverified = """
-            eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNp
-            Z25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9C
-            VkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9k
-            YXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9p
-            ZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNO
-            NndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQ
-            WWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJ
-            IiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAi
-            amRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5
-            eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAi
-            aHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4
-            cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxl
-            LmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJj
-            bmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRD
-            QUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJa
-            eGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ.cWT4V
-            Ms1G0iqUt-ajx98dCwq0I4djdqC9vX6ELCpjYBNrhRNK6u3wds9cSwB8REuA1RRCE9Bp
-            rDDyjOVDLgLvg~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImdpdmVuX25hbWUiLC
-            AiSm9obiJd~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgI
-            kRvZSJd~WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwgImVtYWlsIiwgImpvaG5kb2VA
-            ZXhhbXBsZS5jb20iXQ~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgInBob25lX251b
-            WJlciIsICIrMS0yMDItNTU1LTAxMDEiXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIi
-            wgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2
-            FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOi
-            AiVVMifV0~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImJpcnRoZGF0ZSIsICIxOT
-            QwLTAxLTAxIl0~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgImlzX292ZXJfMTgiLC
-            B0cnVlXQ~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImlzX292ZXJfMjEiLCB0cnV
-            lXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~
-        """.trimIndent().removeNewLine()
-
-        val sdJwt = sdJwtVcVerifier.verify(unverified).getOrThrow()
-        val jwsJson = with(DefaultSdJwtOps) {
-            sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+    fun `issued SD-JWT must contain JWT claims type, iat, iss, sub`() =
+        runTest {
+            //
+            // Issue of SD-JWT according to SD-JWT VC
+            //
+            val issuedSdJwt: SdJwt<SignedJWT> = issuingService.issue(JohnDoe, HolderKey.toPublicJWK())
+            issuedSdJwt.print()
+            issuedSdJwt.printInJwsJson(JwsSerializationOption.Flattened)
+            val serialized = with(NimbusSdJwtOps) { issuedSdJwt.serialize() }
+            verify(serialized)
         }
-        println(json.encodeToString(jwsJson))
-    }
 
     @Test
-    fun presented() = runTest {
-        val unverified =
-            """
+    fun issued() =
+        runTest {
+            val unverified =
+                """
+                eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNp
+                Z25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9C
+                VkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9k
+                YXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9p
+                ZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNO
+                NndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQ
+                WWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJ
+                IiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAi
+                amRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5
+                eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAi
+                aHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4
+                cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxl
+                LmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJj
+                bmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRD
+                QUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJa
+                eGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ.cWT4V
+                Ms1G0iqUt-ajx98dCwq0I4djdqC9vX6ELCpjYBNrhRNK6u3wds9cSwB8REuA1RRCE9Bp
+                rDDyjOVDLgLvg~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImdpdmVuX25hbWUiLC
+                AiSm9obiJd~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgI
+                kRvZSJd~WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwgImVtYWlsIiwgImpvaG5kb2VA
+                ZXhhbXBsZS5jb20iXQ~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgInBob25lX251b
+                WJlciIsICIrMS0yMDItNTU1LTAxMDEiXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIi
+                wgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2
+                FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOi
+                AiVVMifV0~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImJpcnRoZGF0ZSIsICIxOT
+                QwLTAxLTAxIl0~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgImlzX292ZXJfMTgiLC
+                B0cnVlXQ~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImlzX292ZXJfMjEiLCB0cnV
+                lXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~
+                """.trimIndent().removeNewLine()
+
+            val sdJwt = sdJwtVcVerifier.verify(unverified).getOrThrow()
+            val jwsJson =
+                with(DefaultSdJwtOps) {
+                    sdJwt.asJwsJsonObject(JwsSerializationOption.Flattened)
+                }
+            println(json.encodeToString(jwsJson))
+        }
+
+    @Test
+    fun presented() =
+        runTest {
+            val unverified =
+                """
                 eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNp
                 Z25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9C
                 VkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9k
@@ -247,25 +264,26 @@ class SdJwtVcIssuanceTest {
                 QsICJzZF9oYXNoIjogImNUNkRmMXRCODNxM3EtQVFjdGYxVXFncXBhaW5BOVFSNmVmS3
                 NQdFBFQ2cifQ.fp4Dgu3k1oU09BHnP7U2aU2v_z96JSi8T1T7f47qUW5ypQsh_39F1S4
                 EOtnT09YNGp9nZbETjor3nCzM0J0MvQ
-            """.trimIndent().removeNewLine()
+                """.trimIndent().removeNewLine()
 
-        val challenge = ChallengePredicate(
-            issuedAt = Instant.fromEpochSeconds(1731530704L),
-            audience = "https://example.com/verifier",
-            nonce = "1234567890",
-        )
-        val (sdJwt, kbJwtAndClaims) = sdJwtVcVerifier.verify(unverified, challenge).getOrThrow()
-        val (kbJwt, kbJwtClaims) = assertNotNull(kbJwtAndClaims)
+            val challenge =
+                ChallengePredicate(
+                    issuedAt = Instant.fromEpochSeconds(1731530704L),
+                    audience = "https://example.com/verifier",
+                    nonce = "1234567890",
+                )
+            val (sdJwt, kbJwtAndClaims) = sdJwtVcVerifier.verify(unverified, challenge).getOrThrow()
+            val (kbJwt, kbJwtClaims) = assertNotNull(kbJwtAndClaims)
 
-        println(json.encodeToString(JsonObject(kbJwtClaims)))
+            println(json.encodeToString(JsonObject(kbJwtClaims)))
 
-        with(DefaultSdJwtOps) {
-            val jwsJson =
-                sdJwt.asJwsJsonObjectWithKeyBinding(JwsSerializationOption.Flattened, kbJwt)
+            with(DefaultSdJwtOps) {
+                val jwsJson =
+                    sdJwt.asJwsJsonObjectWithKeyBinding(JwsSerializationOption.Flattened, kbJwt)
 
-            println(json.encodeToString(jwsJson))
+                println(json.encodeToString(jwsJson))
+            }
         }
-    }
 
     private fun SdJwt<SignedJWT>.print() {
         prettyPrint { it.jwtClaimsSet.jsonObject() }

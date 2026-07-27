@@ -35,13 +35,16 @@ object DefaultSdJwtOps :
         KeyBindingVerifier.mustBePresent(NoSignatureValidation)
 }
 
-private val DefaultSerializationOps = SdJwtSerializationOps<JwtAndClaims>(
-    serializeJwt = { (jwt, _) -> jwt },
-    hashAlgorithm = { (_, claims) ->
-        claims[RFC9901.CLAIM_SD_ALG]?.jsonPrimitive?.contentOrNull
-            ?.let { checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" } }
-    },
-)
+private val DefaultSerializationOps =
+    SdJwtSerializationOps<JwtAndClaims>(
+        serializeJwt = { (jwt, _) -> jwt },
+        hashAlgorithm = { (_, claims) ->
+            claims[RFC9901.CLAIM_SD_ALG]
+                ?.jsonPrimitive
+                ?.contentOrNull
+                ?.let { checkNotNull(HashAlgorithm.fromString(it)) { "Unknown hash algorithm $it" } }
+        },
+    )
 
 private val DefaultPresentationOps = SdJwtPresentationOps<JwtAndClaims> { (_, claims) -> claims }
 

@@ -62,10 +62,14 @@ class DisclosureTest {
 
     @Test
     fun `fails to decode disclosures with non string salt or claim name`() {
-        fun test(invalidDisclosure: String, expectedError: String) {
-            val exception = assertFailsWith<IllegalArgumentException> {
-                Disclosure.decode(invalidDisclosure).getOrThrow()
-            }
+        fun test(
+            invalidDisclosure: String,
+            expectedError: String,
+        ) {
+            val exception =
+                assertFailsWith<IllegalArgumentException> {
+                    Disclosure.decode(invalidDisclosure).getOrThrow()
+                }
             assertEquals(expectedError, exception.message)
         }
 
@@ -88,6 +92,5 @@ class DisclosureTest {
         test("W251bGwsImIiXQ", "salt must be a json string")
     }
 
-    private fun fixedSaltProvider(s: String): SaltProvider =
-        SaltProvider { s }
+    private fun fixedSaltProvider(s: String): SaltProvider = SaltProvider { s }
 }

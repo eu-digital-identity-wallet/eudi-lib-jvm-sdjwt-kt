@@ -143,13 +143,15 @@ private object NimbusSdJwtIssuerFactory {
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-    ): SdJwtIssuer<NimbusSignedJWT> = SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
-        val (claims, disclosures) = unsignedSdJwt
-        val signedJwt = withContext(Dispatchers.IO) {
-            sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
+    ): SdJwtIssuer<NimbusSignedJWT> =
+        SdJwtIssuer(sdJwtFactory) { unsignedSdJwt ->
+            val (claims, disclosures) = unsignedSdJwt
+            val signedJwt =
+                withContext(Dispatchers.IO) {
+                    sign(signer, signAlgorithm, jwsHeaderCustomization)(claims).getOrThrow()
+                }
+            SdJwt(signedJwt, disclosures)
         }
-        SdJwt(signedJwt, disclosures)
-    }
 }
 
 //
@@ -195,8 +197,10 @@ object NimbusSdJwtOps :
             withContext(Dispatchers.IO) {
                 try {
                     val signedJwt = NimbusSignedJWT.parse(unverifiedJwt)
-                    if (!signedJwt.verify(this@asJwtVerifier)) null
-                    else signedJwt
+                    if (!signedJwt.verify(this@asJwtVerifier))
+                        null
+                    else
+                        signedJwt
                 } catch (_: ParseException) {
                     null
                 } catch (_: NimbusJOSEException) {
@@ -263,33 +267,39 @@ object NimbusSdJwtOps :
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-    ): SdJwtIssuer<NimbusSignedJWT> =
-        NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
+    ): SdJwtIssuer<NimbusSignedJWT> = NimbusSdJwtIssuerFactory.createIssuer(sdJwtFactory, signer, signAlgorithm, jwsHeaderCustomization)
 
     fun kbJwtIssuer(
         signer: NimbusJWSSigner,
         signAlgorithm: NimbusJWSAlgorithm,
         publicKey: NimbusAsymmetricJWK,
         claimSetBuilderAction: NimbusJWTClaimsSet.Builder.() -> Unit = {},
-    ): BuildKbJwt = BuildKbJwt { sdJwtDigest ->
-        withContext(Dispatchers.IO) {
-            runCatchingCancellable {
-                val header = NimbusJWSHeader.Builder(signAlgorithm).apply {
-                    type(NimbusJOSEObjectType(RFC9901.MEDIA_SUBTYPE_KB_JWT))
-                    val pk = publicKey
-                    if (pk is NimbusJWK) {
-                        keyID(pk.keyID)
-                    }
-                }.build()
-                val claimSet = NimbusJWTClaimsSet.Builder().apply {
-                    claimSetBuilderAction()
-                    claim(RFC9901.CLAIM_SD_HASH, sdJwtDigest.value)
-                }.build()
+    ): BuildKbJwt =
+        BuildKbJwt { sdJwtDigest ->
+            withContext(Dispatchers.IO) {
+                runCatchingCancellable {
+                    val header =
+                        NimbusJWSHeader
+                            .Builder(signAlgorithm)
+                            .apply {
+                                type(NimbusJOSEObjectType(RFC9901.MEDIA_SUBTYPE_KB_JWT))
+                                val pk = publicKey
+                                if (pk is NimbusJWK) {
+                                    keyID(pk.keyID)
+                                }
+                            }.build()
+                    val claimSet =
+                        NimbusJWTClaimsSet
+                            .Builder()
+                            .apply {
+                                claimSetBuilderAction()
+                                claim(RFC9901.CLAIM_SD_HASH, sdJwtDigest.value)
+                            }.build()
 
-                NimbusSignedJWT(header, claimSet).apply { sign(signer) }.serialize()
+                    NimbusSignedJWT(header, claimSet).apply { sign(signer) }.serialize()
+                }
             }
         }
-    }
 
     val SdJwtVcVerifier: SdJwtVcVerifierFactory<NimbusSignedJWT, NimbusJWK, List<X509Certificate>> = NimbusSdJwtVcVerifierFactory
 }
@@ -326,16 +336,18 @@ private fun sign(
     signer: NimbusJWSSigner,
     signAlgorithm: NimbusJWSAlgorithm,
     jwsHeaderCustomization: NimbusJWSHeader.Builder.() -> Unit = {},
-): (JsonObject) -> Result<NimbusSignedJWT> = { claims ->
-    runCatchingCancellable {
-        val jwsHeader = with(NimbusJWSHeader.Builder(signAlgorithm)) {
-            jwsHeaderCustomization()
-            build()
+): (JsonObject) -> Result<NimbusSignedJWT> =
+    { claims ->
+        runCatchingCancellable {
+            val jwsHeader =
+                with(NimbusJWSHeader.Builder(signAlgorithm)) {
+                    jwsHeaderCustomization()
+                    build()
+                }
+            val jwtClaimSet = NimbusJWTClaimsSet.parse(claims.toString())
+            NimbusSignedJWT(jwsHeader, jwtClaimSet).apply { sign(signer) }
         }
-        val jwtClaimSet = NimbusJWTClaimsSet.parse(claims.toString())
-        NimbusSignedJWT(jwsHeader, jwtClaimSet).apply { sign(signer) }
     }
-}
 
 //
 // Presentation
@@ -353,25 +365,43 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
 ) : NimbusJWTProcessor<C> {
 
     private fun notSupported(): Nothing = throw NimbusBadJOSEException("Only Nimbus SignedJWTs are supported")
-    override fun process(plainJWT: NimbusPlainJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
-    override fun process(encryptedJWT: NimbusEncryptedJWT, context: C?): NimbusJWTClaimsSet? = notSupported()
 
-    override fun process(jwtString: String, context: C?): NimbusJWTClaimsSet? =
-        process(NimbusJWTParser.parse(jwtString), context)
+    override fun process(
+        plainJWT: NimbusPlainJWT,
+        context: C?,
+    ): NimbusJWTClaimsSet? = notSupported()
 
-    override fun process(jwt: NimbusJWT, context: C?): NimbusJWTClaimsSet? =
+    override fun process(
+        encryptedJWT: NimbusEncryptedJWT,
+        context: C?,
+    ): NimbusJWTClaimsSet? = notSupported()
+
+    override fun process(
+        jwtString: String,
+        context: C?,
+    ): NimbusJWTClaimsSet? = process(NimbusJWTParser.parse(jwtString), context)
+
+    override fun process(
+        jwt: NimbusJWT,
+        context: C?,
+    ): NimbusJWTClaimsSet? =
         when (jwt) {
             is NimbusSignedJWT -> process(jwt, context)
             else -> notSupported()
         }
 
-    override fun process(signedJWT: NimbusSignedJWT, context: C?): NimbusJWTClaimsSet {
+    override fun process(
+        signedJWT: NimbusSignedJWT,
+        context: C?,
+    ): NimbusJWTClaimsSet {
         typeVerifier?.verify(signedJWT.header.type, context)
 
         val claimsSet = signedJWT.jwtClaimSet()
         val jwkMatcher =
-            if (useKeyId) NimbusJWKMatcher.forJWSHeader(signedJWT.header)
-            else NimbusJWKMatcher.forJWSHeader(signedJWT.header).withoutKeyId()
+            if (useKeyId)
+                NimbusJWKMatcher.forJWSHeader(signedJWT.header)
+            else
+                NimbusJWKMatcher.forJWSHeader(signedJWT.header).withoutKeyId()
         val jwkSelector = NimbusJWKSelector(jwkMatcher)
 
         val jwks = jwkSource.get(jwkSelector, context)
@@ -401,7 +431,10 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
                 throw NimbusBadJWTException(e.message, e)
             }
 
-        private fun jwsVerifierFor(algorithm: NimbusJWSAlgorithm, jwk: NimbusJWK): NimbusJWSVerifier =
+        private fun jwsVerifierFor(
+            algorithm: NimbusJWSAlgorithm,
+            jwk: NimbusJWK,
+        ): NimbusJWSVerifier =
             when (algorithm) {
                 in NimbusJWSAlgorithm.Family.HMAC_SHA -> NimbusMACVerifier(jwk.expectIs<NimbusOctetSequenceKey>())
                 in NimbusJWSAlgorithm.Family.RSA -> NimbusRSASSAVerifier(jwk.expectIs<NimbusRSAKey>())
@@ -420,7 +453,8 @@ internal open class JwkSourceJWTProcessor<C : NimbusSecurityContext>(
 }
 
 private fun NimbusJWKMatcher.withoutKeyId(): NimbusJWKMatcher =
-    NimbusJWKMatcher.Builder(this)
+    NimbusJWKMatcher
+        .Builder(this)
         .keyID(null)
         .withKeyIDOnly(false)
         .build()

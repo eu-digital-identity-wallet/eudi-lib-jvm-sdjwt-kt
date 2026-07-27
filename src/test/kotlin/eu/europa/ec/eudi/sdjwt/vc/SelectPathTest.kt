@@ -25,7 +25,8 @@ import kotlin.test.assertIs
 
 class SelectPathTest {
     val jsonSupport = Json { ignoreUnknownKeys = false }
-    val sampleJson = """
+    val sampleJson =
+        """
         {
           "vct": "https://betelgeuse.example.com/education_credential",
           "name": "Arthur Dent",
@@ -46,9 +47,9 @@ class SelectPathTest {
           ],
           "nationalities": ["British", "Betelgeusian"]
         }
-    """.trimIndent().let {
-        jsonSupport.parseToJsonElement(it).jsonObject
-    }
+        """.trimIndent().let {
+            jsonSupport.parseToJsonElement(it).jsonObject
+        }
 
     @Test
     fun matchSingleEmpty() {
@@ -57,7 +58,6 @@ class SelectPathTest {
             ClaimPath.claim("foo").claim("bar"),
             ClaimPath.claim("address").claim("foo"),
             ClaimPath.claim("nationalities").arrayElement(100),
-
         ).forEach {
             assertSelectionEquals(Selection.SingleMatch(null), it)
         }
@@ -74,16 +74,22 @@ class SelectPathTest {
     }
 
     @Test
-    fun matchWildcardEmpty() = assertSelectionEquals(
-        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
-        ClaimPath.claim("nationalities").allArrayElements().allArrayElements().claim("foo"),
-    )
+    fun matchWildcardEmpty() =
+        assertSelectionEquals(
+            Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+            ClaimPath
+                .claim("nationalities")
+                .allArrayElements()
+                .allArrayElements()
+                .claim("foo"),
+        )
 
     @Test
-    fun detectStoppingOnKnownPaths() = assertSelectionEquals(
-        Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
-        ClaimPath.claim("nationalities").allArrayElements().claim("foo"),
-    )
+    fun detectStoppingOnKnownPaths() =
+        assertSelectionEquals(
+            Selection.WildcardMatches(emptyList(), ClaimPath.claim("nationalities").allArrayElements()),
+            ClaimPath.claim("nationalities").allArrayElements().claim("foo"),
+        )
 
     @Test
     fun matchTopLevel() {
@@ -92,57 +98,67 @@ class SelectPathTest {
         }
     }
 
-    private fun assertSelectionEquals(expected: Selection, path: ClaimPath) {
+    private fun assertSelectionEquals(
+        expected: Selection,
+        path: ClaimPath,
+    ) {
         val actual = with(SelectPath) { sampleJson.query(path) }.getOrThrow()
         assertEquals(expected, actual)
     }
 
     @Test
-    fun matchNestedAttribute() = assertSelectionEquals(
-        expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"])),
-        path = ClaimPath.claim("address").claim("street_address"),
-    )
+    fun matchNestedAttribute() =
+        assertSelectionEquals(
+            expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["address"]).jsonObject["street_address"])),
+            path = ClaimPath.claim("address").claim("street_address"),
+        )
 
     @Test
-    fun matchArray() = assertSelectionEquals(
-        expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)),
-        path = ClaimPath.claim("degrees"),
-    )
+    fun matchArray() =
+        assertSelectionEquals(
+            expected = Selection.SingleMatch(checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)),
+            path = ClaimPath.claim("degrees"),
+        )
 
     @Test
-    fun matchAll() = assertSelectionEquals(
-        expected = run {
-            val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
-            Selection.WildcardMatches(
-                path = ClaimPath.claim("degrees").allArrayElements(),
-                matches = degrees.mapIndexed { i, degree ->
-                    Selection.WildcardMatches.Match(
-                        index = i,
-                        value = degree,
-                        concretePath = ClaimPath.claim("degrees").arrayElement(i),
+    fun matchAll() =
+        assertSelectionEquals(
+            expected =
+                run {
+                    val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
+                    Selection.WildcardMatches(
+                        path = ClaimPath.claim("degrees").allArrayElements(),
+                        matches =
+                            degrees.mapIndexed { i, degree ->
+                                Selection.WildcardMatches.Match(
+                                    index = i,
+                                    value = degree,
+                                    concretePath = ClaimPath.claim("degrees").arrayElement(i),
+                                )
+                            },
                     )
                 },
-
-            )
-        },
-        path = ClaimPath.claim("degrees").allArrayElements(),
-    )
+            path = ClaimPath.claim("degrees").allArrayElements(),
+        )
 
     @Test
-    fun matchNestedOfArrayElement() = assertSelectionEquals(
-        expected = run {
-            val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
-            Selection.WildcardMatches(
-                path = ClaimPath.claim("degrees").allArrayElements(),
-                matches = degrees.mapIndexed { i, degree ->
-                    Selection.WildcardMatches.Match(
-                        index = i,
-                        value = degree.jsonObject["type"],
-                        concretePath = ClaimPath.claim("degrees").arrayElement(i).claim("type"),
+    fun matchNestedOfArrayElement() =
+        assertSelectionEquals(
+            expected =
+                run {
+                    val degrees = checkNotNull(checkNotNull(sampleJson["degrees"]).jsonArray)
+                    Selection.WildcardMatches(
+                        path = ClaimPath.claim("degrees").allArrayElements(),
+                        matches =
+                            degrees.mapIndexed { i, degree ->
+                                Selection.WildcardMatches.Match(
+                                    index = i,
+                                    value = degree.jsonObject["type"],
+                                    concretePath = ClaimPath.claim("degrees").arrayElement(i).claim("type"),
+                                )
+                            },
                     )
                 },
-            )
-        },
-        path = ClaimPath.claim("degrees").allArrayElements().claim("type"),
-    )
+            path = ClaimPath.claim("degrees").allArrayElements().claim("type"),
+        )
 }
