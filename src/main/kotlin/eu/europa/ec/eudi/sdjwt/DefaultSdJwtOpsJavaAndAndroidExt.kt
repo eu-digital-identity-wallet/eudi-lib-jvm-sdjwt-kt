@@ -24,15 +24,15 @@ import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jwt.SignedJWT as NimbusSignedJWT
 
 val DefaultSdJwtOps.SdJwtVcVerifier: SdJwtVcVerifierFactory<JwtAndClaims, NimbusJWK, List<X509Certificate>>
-    get() = NimbusSdJwtVcVerifierFactory.transform(
-        convertFromJwt = ::jwtAndClaimsToNimbus,
-        convertToJwt = ::nimbusToJwtAndClaims,
-        convertFromJwk = { it },
-        convertToX509Chain = { it },
-    )
+    get() =
+        NimbusSdJwtVcVerifierFactory.transform(
+            convertFromJwt = ::jwtAndClaimsToNimbus,
+            convertToJwt = ::nimbusToJwtAndClaims,
+            convertFromJwk = { it },
+            convertToX509Chain = { it },
+        )
 
-internal fun jwtAndClaimsToNimbus(jwtAndClaims: JwtAndClaims): NimbusSignedJWT =
-    NimbusSignedJWT.parse(jwtAndClaims.first)
+internal fun jwtAndClaimsToNimbus(jwtAndClaims: JwtAndClaims): NimbusSignedJWT = NimbusSignedJWT.parse(jwtAndClaims.first)
 
 internal fun nimbusToJwtAndClaims(signedJWT: NimbusSignedJWT): JwtAndClaims =
     checkNotNull(signedJWT.serialize()) to signedJWT.jwtClaimsSet.jsonObject()

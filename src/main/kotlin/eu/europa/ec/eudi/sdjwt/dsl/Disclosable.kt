@@ -30,10 +30,14 @@ sealed interface Disclosable<out A> {
     val value: A
 
     @JvmInline
-    value class NeverSelectively<out A>(override val value: A) : Disclosable<A>
+    value class NeverSelectively<out A>(
+        override val value: A,
+    ) : Disclosable<A>
 
     @JvmInline
-    value class AlwaysSelectively<out A>(override val value: A) : Disclosable<A>
+    value class AlwaysSelectively<out A>(
+        override val value: A,
+    ) : Disclosable<A>
 }
 
 /**

@@ -56,15 +56,16 @@ data class SdJwtDefinition(
 
     companion object {
         private val SdJwtVcNeverSelectivelyDisclosableClaims: Set<String>
-            get() = setOf(
-                RFC7519.ISSUER,
-                RFC7519.NOT_BEFORE,
-                RFC7519.EXPIRATION_TIME,
-                RFC7800.CNF,
-                SdJwtVcSpec.VCT,
-                SdJwtVcSpec.VCT_INTEGRITY,
-                TokenStatusListSpec.STATUS,
-            )
+            get() =
+                setOf(
+                    RFC7519.ISSUER,
+                    RFC7519.NOT_BEFORE,
+                    RFC7519.EXPIRATION_TIME,
+                    RFC7800.CNF,
+                    SdJwtVcSpec.VCT,
+                    SdJwtVcSpec.VCT_INTEGRITY,
+                    TokenStatusListSpec.STATUS,
+                )
     }
 }
 
@@ -119,7 +120,10 @@ data class AttributeMetadata(
  */
 fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMetadata =
     when (this) {
-        is DisclosableDef.Id<String, AttributeMetadata> -> value
+        is DisclosableDef.Id<String, AttributeMetadata> -> {
+            value
+        }
+
         is DisclosableDef.Arr<String, AttributeMetadata> -> {
             check(value is SdJwtArrayDefinition)
             value.metadata
@@ -137,9 +141,7 @@ fun DisclosableDef<String, AttributeMetadata>.attributeMetadata(): AttributeMeta
  * @param claimPath The path of the element to look for
  * @return the element, if found
  */
-fun DisclosableDefObject<String, AttributeMetadata>.findElement(
-    claimPath: ClaimPath,
-): SdJwtElementDefinition? {
+fun DisclosableDefObject<String, AttributeMetadata>.findElement(claimPath: ClaimPath): SdJwtElementDefinition? {
     require(claimPath.value.none { it is ClaimPathElement.ArrayElement }) {
         "ClaimPath cannot contain ArrayElements"
     }
@@ -147,8 +149,10 @@ fun DisclosableDefObject<String, AttributeMetadata>.findElement(
     val head = claimPath.head()
     val tail = claimPath.tail()?.value.orEmpty()
 
-    return if (head is ClaimPathElement.Claim) findElement(head, tail)
-    else null
+    return if (head is ClaimPathElement.Claim)
+        findElement(head, tail)
+    else
+        null
 }
 
 private fun DisclosableDefObject<String, AttributeMetadata>.findElement(
@@ -156,27 +160,33 @@ private fun DisclosableDefObject<String, AttributeMetadata>.findElement(
     tail: List<ClaimPathElement>,
 ): SdJwtElementDefinition? = content[head.name]?.findElement(tail)
 
-private fun DisclosableDefArray<String, AttributeMetadata>.findElement(
-    tail: List<ClaimPathElement>,
-): SdJwtElementDefinition? = content.findElement(tail)
+private fun DisclosableDefArray<String, AttributeMetadata>.findElement(tail: List<ClaimPathElement>): SdJwtElementDefinition? =
+    content.findElement(tail)
 
-private fun DisclosableElementDefinition<String, AttributeMetadata>.findElement(
-    tail: List<ClaimPathElement>,
-): SdJwtElementDefinition? =
-    if (tail.isEmpty()) this
-    else {
+private fun DisclosableElementDefinition<String, AttributeMetadata>.findElement(tail: List<ClaimPathElement>): SdJwtElementDefinition? =
+    if (tail.isEmpty()) {
+        this
+    } else {
         val headOfTail = tail.first()
         val tailOfTail = tail.drop(1)
 
         when (val elementDef = value) {
-            is DisclosableDef.Obj ->
-                if (headOfTail is ClaimPathElement.Claim) elementDef.value.findElement(headOfTail, tailOfTail)
-                else null
+            is DisclosableDef.Obj -> {
+                if (headOfTail is ClaimPathElement.Claim)
+                    elementDef.value.findElement(headOfTail, tailOfTail)
+                else
+                    null
+            }
 
-            is DisclosableDef.Arr ->
-                if (headOfTail is ClaimPathElement.AllArrayElements) elementDef.value.findElement(tailOfTail)
-                else null
+            is DisclosableDef.Arr -> {
+                if (headOfTail is ClaimPathElement.AllArrayElements)
+                    elementDef.value.findElement(tailOfTail)
+                else
+                    null
+            }
 
-            is DisclosableDef.Id -> null
+            is DisclosableDef.Id -> {
+                null
+            }
         }
     }

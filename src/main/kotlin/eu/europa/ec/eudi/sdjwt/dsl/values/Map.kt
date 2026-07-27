@@ -47,8 +47,7 @@ fun <K, K1, A, A1, DObj1, DArr1> DisclosableObject<K, A>.map(
 fun <K, K1, A, A1> DisclosableObject<K, A>.map(
     fK: (K) -> K1,
     fA: (A) -> A1,
-): DisclosableObject<K1, A1> =
-    map(DisclosableContainerFactory.default(), fK, fA)
+): DisclosableObject<K1, A1> = map(DisclosableContainerFactory.default(), fK, fA)
 
 /**
  * Transforms the current `DisclosableArray` into a new `DisclosableArray` using the given factory,
@@ -98,92 +97,100 @@ private class MapFoldContext<K, K1, A, A1, DObj1 : DisclosableObject<K1, A1>, DA
 
     val mapObject: DeepRecursiveFunction<DisclosableObject<K, A>, DObj1> =
         DeepRecursiveFunction { obj ->
-            val mappedEntries = obj.content.entries.associate { (key, disclosableElement) ->
-                val newKey = fK(key)
-                val newDisclosableValue = when (disclosableElement) {
-                    is Disclosable.AlwaysSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id -> {
-                                val newValue = fA(disclosableValue.value)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Id(newValue))
+            val mappedEntries =
+                obj.content.entries.associate { (key, disclosableElement) ->
+                    val newKey = fK(key)
+                    val newDisclosableValue =
+                        when (disclosableElement) {
+                            is Disclosable.AlwaysSelectively -> {
+                                when (val disclosableValue = disclosableElement.value) {
+                                    is DisclosableValue.Id -> {
+                                        val newValue = fA(disclosableValue.value)
+                                        Disclosable.AlwaysSelectively(DisclosableValue.Id(newValue))
+                                    }
+
+                                    is DisclosableValue.Arr -> {
+                                        val newArray = mapArray.callRecursive(disclosableValue.value)
+                                        Disclosable.AlwaysSelectively(DisclosableValue.Arr(newArray))
+                                    }
+
+                                    is DisclosableValue.Obj -> {
+                                        val newObject = callRecursive(disclosableValue.value) // Call itself (mapObject)
+                                        Disclosable.AlwaysSelectively(DisclosableValue.Obj(newObject))
+                                    }
+                                }
                             }
 
-                            is DisclosableValue.Arr -> {
-                                val newArray = mapArray.callRecursive(disclosableValue.value)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Arr(newArray))
-                            }
+                            is Disclosable.NeverSelectively -> {
+                                when (val disclosableValue = disclosableElement.value) {
+                                    is DisclosableValue.Id -> {
+                                        val newValue = fA(disclosableValue.value)
+                                        Disclosable.NeverSelectively(DisclosableValue.Id(newValue))
+                                    }
 
-                            is DisclosableValue.Obj -> {
-                                val newObject = callRecursive(disclosableValue.value) // Call itself (mapObject)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Obj(newObject))
+                                    is DisclosableValue.Arr -> {
+                                        val newArray = mapArray.callRecursive(disclosableValue.value)
+                                        Disclosable.NeverSelectively(DisclosableValue.Arr(newArray))
+                                    }
+
+                                    is DisclosableValue.Obj -> {
+                                        val newObject = callRecursive(disclosableValue.value) // Call itself (mapObject)
+                                        Disclosable.NeverSelectively(DisclosableValue.Obj(newObject))
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    is Disclosable.NeverSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id -> {
-                                val newValue = fA(disclosableValue.value)
-                                Disclosable.NeverSelectively(DisclosableValue.Id(newValue))
-                            }
-
-                            is DisclosableValue.Arr -> {
-                                val newArray = mapArray.callRecursive(disclosableValue.value)
-                                Disclosable.NeverSelectively(DisclosableValue.Arr(newArray))
-                            }
-
-                            is DisclosableValue.Obj -> {
-                                val newObject = callRecursive(disclosableValue.value) // Call itself (mapObject)
-                                Disclosable.NeverSelectively(DisclosableValue.Obj(newObject))
-                            }
-                        }
-                    }
+                    newKey to newDisclosableValue
                 }
-                newKey to newDisclosableValue
-            }
             factory.obj(mappedEntries)
         }
 
     val mapArray: DeepRecursiveFunction<DisclosableArray<K, A>, DArr1> =
         DeepRecursiveFunction { arr ->
-            val mappedElements = arr.content.map { disclosableElement ->
-                when (disclosableElement) {
-                    is Disclosable.AlwaysSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id -> {
-                                val newValue = fA(disclosableValue.value)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Id(newValue))
-                            }
-                            is DisclosableValue.Arr -> {
-                                // Call mapArray recursively for nested array
-                                val newArray = callRecursive(disclosableValue.value) // Call itself (mapArray)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Arr(newArray))
-                            }
-                            is DisclosableValue.Obj -> {
-                                // Call mapObject for nested object
-                                val newObject = mapObject.callRecursive(disclosableValue.value)
-                                Disclosable.AlwaysSelectively(DisclosableValue.Obj(newObject))
+            val mappedElements =
+                arr.content.map { disclosableElement ->
+                    when (disclosableElement) {
+                        is Disclosable.AlwaysSelectively -> {
+                            when (val disclosableValue = disclosableElement.value) {
+                                is DisclosableValue.Id -> {
+                                    val newValue = fA(disclosableValue.value)
+                                    Disclosable.AlwaysSelectively(DisclosableValue.Id(newValue))
+                                }
+
+                                is DisclosableValue.Arr -> {
+                                    // Call mapArray recursively for nested array
+                                    val newArray = callRecursive(disclosableValue.value) // Call itself (mapArray)
+                                    Disclosable.AlwaysSelectively(DisclosableValue.Arr(newArray))
+                                }
+
+                                is DisclosableValue.Obj -> {
+                                    // Call mapObject for nested object
+                                    val newObject = mapObject.callRecursive(disclosableValue.value)
+                                    Disclosable.AlwaysSelectively(DisclosableValue.Obj(newObject))
+                                }
                             }
                         }
-                    }
-                    is Disclosable.NeverSelectively -> {
-                        when (val disclosableValue = disclosableElement.value) {
-                            is DisclosableValue.Id -> {
-                                val newValue = fA(disclosableValue.value)
-                                Disclosable.NeverSelectively(DisclosableValue.Id(newValue))
-                            }
-                            is DisclosableValue.Arr -> {
-                                val newArray = callRecursive(disclosableValue.value) // Call itself (mapArray)
-                                Disclosable.NeverSelectively(DisclosableValue.Arr(newArray))
-                            }
-                            is DisclosableValue.Obj -> {
-                                val newObject = mapObject.callRecursive(disclosableValue.value)
-                                Disclosable.NeverSelectively(DisclosableValue.Obj(newObject))
+
+                        is Disclosable.NeverSelectively -> {
+                            when (val disclosableValue = disclosableElement.value) {
+                                is DisclosableValue.Id -> {
+                                    val newValue = fA(disclosableValue.value)
+                                    Disclosable.NeverSelectively(DisclosableValue.Id(newValue))
+                                }
+
+                                is DisclosableValue.Arr -> {
+                                    val newArray = callRecursive(disclosableValue.value) // Call itself (mapArray)
+                                    Disclosable.NeverSelectively(DisclosableValue.Arr(newArray))
+                                }
+
+                                is DisclosableValue.Obj -> {
+                                    val newObject = mapObject.callRecursive(disclosableValue.value)
+                                    Disclosable.NeverSelectively(DisclosableValue.Obj(newObject))
+                                }
                             }
                         }
                     }
                 }
-            }
             factory.arr(mappedElements)
         }
 }

@@ -59,18 +59,33 @@ internal object NimbusSdJwtVcVerifierFactory : SdJwtVcVerifierFactory<NimbusSign
         typeMetadataPolicy: TypeMetadataPolicy,
         checkStatus: CheckWithTokenStatusList?,
     ): SdJwtVcVerifier<SignedJWT> {
-        val jwtSignatureVerifier = when (issuerVerificationMethod) {
-            is IssuerVerificationMethod.UsingIssuerMetadata -> sdJwtVcSignatureVerifier(
-                httpClient = issuerVerificationMethod.httpClient,
-            )
-            is IssuerVerificationMethod.UsingX5c -> sdJwtVcSignatureVerifier(trust = issuerVerificationMethod.x509CertificateTrust)
-            is IssuerVerificationMethod.UsingDID -> sdJwtVcSignatureVerifier(lookup = issuerVerificationMethod.didLookup)
-            is IssuerVerificationMethod.UsingX5cOrIssuerMetadata -> sdJwtVcSignatureVerifier(
-                httpClient = issuerVerificationMethod.httpClient,
-                trust = issuerVerificationMethod.x509CertificateTrust,
-            )
-            is IssuerVerificationMethod.Custom -> issuerVerificationMethod.jwtSignatureVerifier
-        }
+        val jwtSignatureVerifier =
+            when (issuerVerificationMethod) {
+                is IssuerVerificationMethod.UsingIssuerMetadata -> {
+                    sdJwtVcSignatureVerifier(
+                        httpClient = issuerVerificationMethod.httpClient,
+                    )
+                }
+
+                is IssuerVerificationMethod.UsingX5c -> {
+                    sdJwtVcSignatureVerifier(trust = issuerVerificationMethod.x509CertificateTrust)
+                }
+
+                is IssuerVerificationMethod.UsingDID -> {
+                    sdJwtVcSignatureVerifier(lookup = issuerVerificationMethod.didLookup)
+                }
+
+                is IssuerVerificationMethod.UsingX5cOrIssuerMetadata -> {
+                    sdJwtVcSignatureVerifier(
+                        httpClient = issuerVerificationMethod.httpClient,
+                        trust = issuerVerificationMethod.x509CertificateTrust,
+                    )
+                }
+
+                is IssuerVerificationMethod.Custom -> {
+                    issuerVerificationMethod.jwtSignatureVerifier
+                }
+            }
 
         return NimbusSdJwtVcVerifier(jwtSignatureVerifier, typeMetadataPolicy, checkStatus)
     }
@@ -100,12 +115,14 @@ private class NimbusSdJwtVcVerifier(
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge?.exactMatchClaims)
-            val sdJwtAndKbJwt = NimbusSdJwtOps.verify(
-                jwtSignatureVerifier,
-                keyBindingVerifier,
-                challenge,
-                unverifiedSdJwt,
-            ).getOrThrow()
+            val sdJwtAndKbJwt =
+                NimbusSdJwtOps
+                    .verify(
+                        jwtSignatureVerifier,
+                        keyBindingVerifier,
+                        challenge,
+                        unverifiedSdJwt,
+                    ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
@@ -137,27 +154,29 @@ internal fun sdJwtVcSignatureVerifier(
     httpClient: HttpClient? = null,
     trust: X509CertificateTrust<List<X509Certificate>>? = null,
     lookup: LookupPublicKeysFromDIDDocument<NimbusJWK>? = null,
-): JwtSignatureVerifier<NimbusSignedJWT> = JwtSignatureVerifier { unverifiedJwt ->
-    withContext(Dispatchers.IO) {
-        val signedJwt = try {
-            NimbusSignedJWT.parse(unverifiedJwt)
-        } catch (_: ParseException) {
-            throw VerificationError.ParsingError.asException()
-        }
+): JwtSignatureVerifier<NimbusSignedJWT> =
+    JwtSignatureVerifier { unverifiedJwt ->
+        withContext(Dispatchers.IO) {
+            val signedJwt =
+                try {
+                    NimbusSignedJWT.parse(unverifiedJwt)
+                } catch (_: ParseException) {
+                    throw VerificationError.ParsingError.asException()
+                }
 
-        val (jwkSource, useKeyId) = issuerJwkSource(httpClient, trust, lookup, signedJwt)
-        yield()
-
-        try {
-            val jwtProcessor = SdJwtVcJwtProcessor(jwkSource, useKeyId)
-            jwtProcessor.process(signedJwt, null)
+            val (jwkSource, useKeyId) = issuerJwkSource(httpClient, trust, lookup, signedJwt)
             yield()
-            signedJwt
-        } catch (e: NimbusBadJOSEException) {
-            throw VerificationError.InvalidJwt(e).asException()
+
+            try {
+                val jwtProcessor = SdJwtVcJwtProcessor(jwkSource, useKeyId)
+                jwtProcessor.process(signedJwt, null)
+                yield()
+                signedJwt
+            } catch (e: NimbusBadJOSEException) {
+                throw VerificationError.InvalidJwt(e).asException()
+            }
         }
     }
-}
 
 private suspend fun issuerJwkSource(
     httpClient: HttpClient?,
@@ -167,13 +186,15 @@ private suspend fun issuerJwkSource(
 ): IssuerJwkSource {
     suspend fun fromMetadata(source: Metadata): IssuerJwkSource {
         if (httpClient == null) raise(UnsupportedVerificationMethod("issuer-metadata"))
-        val jwks = runCatchingCancellable {
-            val json = with(GetSdJwtVcIssuerJwkSetKtorOps) {
-                httpClient.getSdJwtIssuerKeySet(source.iss)
-            }
+        val jwks =
+            runCatchingCancellable {
+                val json =
+                    with(GetSdJwtVcIssuerJwkSetKtorOps) {
+                        httpClient.getSdJwtIssuerKeySet(source.iss)
+                    }
 
-            NimbusJWKSet.parse(Json.encodeToString(json))
-        }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
+                NimbusJWKSet.parse(Json.encodeToString(json))
+            }.getOrElse { raise(IssuerMetadataResolutionFailure(it)) }
         return IssuerJwkSource(NimbusImmutableJWKSet(jwks), true)
     }
 
@@ -189,9 +210,10 @@ private suspend fun issuerJwkSource(
 
     suspend fun fromDid(source: DIDUrl): IssuerJwkSource {
         if (null == lookup) raise(UnsupportedVerificationMethod("did"))
-        val jwks = runCatchingCancellable {
-            lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
-        }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
+        val jwks =
+            runCatchingCancellable {
+                lookup.lookup(source.iss, source.kid)?.let(::NimbusJWKSet)
+            }.getOrElse { raise(DIDLookupFailure("Failed to resolve $source", it)) }
         if (null == jwks) raise(DIDLookupFailure("Failed to resolve $source"))
 
         return IssuerJwkSource(NimbusImmutableJWKSet(jwks), false)
@@ -214,11 +236,19 @@ private data class IssuerJwkSource(
  */
 internal sealed interface SdJwtVcIssuerPublicKeySource {
 
-    data class Metadata(val iss: Url, val kid: String?) : SdJwtVcIssuerPublicKeySource
+    data class Metadata(
+        val iss: Url,
+        val kid: String?,
+    ) : SdJwtVcIssuerPublicKeySource
 
-    data class X509CertChain(val chain: List<X509Certificate>) : SdJwtVcIssuerPublicKeySource
+    data class X509CertChain(
+        val chain: List<X509Certificate>,
+    ) : SdJwtVcIssuerPublicKeySource
 
-    data class DIDUrl(val iss: String, val kid: String?) : SdJwtVcIssuerPublicKeySource
+    data class DIDUrl(
+        val iss: String,
+        val kid: String?,
+    ) : SdJwtVcIssuerPublicKeySource
 }
 
 private const val HTTPS_URI_SCHEME = "https"
@@ -226,7 +256,11 @@ private const val DID_URI_SCHEME = "did"
 
 internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     val kid = jwt.header?.keyID
-    val certChain = jwt.header?.x509CertChain.orEmpty().mapNotNull { NimbusX509CertUtils.parse(it.decode()) }
+    val certChain =
+        jwt.header
+            ?.x509CertChain
+            .orEmpty()
+            .mapNotNull { NimbusX509CertUtils.parse(it.decode()) }
     val iss = jwt.jwtClaimsSet?.issuer
     val issUrl = iss?.let { runCatchingCancellable { Url(it) }.getOrNull() }
     val issScheme = issUrl?.protocol?.name
@@ -247,16 +281,29 @@ private suspend fun TypeMetadataPolicy.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
 private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
     try {
         val vct = Vct(sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT))
-        val vctIntegrity = sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
-            Json.decodeFromJsonElement(DocumentIntegrity.serializer(), JsonPrimitive(it))
-        }
+        val vctIntegrity =
+            sdJwt.jwt.jwtClaimsSet.getStringClaim(SdJwtVcSpec.VCT_INTEGRITY)?.let {
+                Json.decodeFromJsonElement(DocumentIntegrity.serializer(), JsonPrimitive(it))
+            }
         when (this) {
-            TypeMetadataPolicy.NotUsed -> null
-            is TypeMetadataPolicy.Optional -> resolveTypeMetadata(vct, vctIntegrity).getOrNull()
-            is TypeMetadataPolicy.AlwaysRequired -> resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
-            is TypeMetadataPolicy.RequiredFor ->
-                if (vct in vcts) resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
-                else resolveTypeMetadata(vct, vctIntegrity).getOrNull()
+            TypeMetadataPolicy.NotUsed -> {
+                null
+            }
+
+            is TypeMetadataPolicy.Optional -> {
+                resolveTypeMetadata(vct, vctIntegrity).getOrNull()
+            }
+
+            is TypeMetadataPolicy.AlwaysRequired -> {
+                resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
+            }
+
+            is TypeMetadataPolicy.RequiredFor -> {
+                if (vct in vcts)
+                    resolveTypeMetadata(vct, vctIntegrity).getOrThrow()
+                else
+                    resolveTypeMetadata(vct, vctIntegrity).getOrNull()
+            }
         }
     } catch (error: Exception) {
         raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
@@ -270,24 +317,36 @@ private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonOb
         }
 
     return when (validationResult) {
-        is DefinitionBasedValidationResult.Valid -> validationResult.recreatedCredential
-        is DefinitionBasedValidationResult.Invalid -> raise(
-            SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
-        )
+        is DefinitionBasedValidationResult.Valid -> {
+            validationResult.recreatedCredential
+        }
+
+        is DefinitionBasedValidationResult.Invalid -> {
+            raise(
+                SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataValidationFailure(validationResult.errors),
+            )
+        }
     }
 }
 
 private suspend fun CheckWithTokenStatusList.ensureStatusIsValid(sdJwt: SdJwt<NimbusSignedJWT>) {
-    val statusListReference = sdJwt.jwt.jwtClaimsSet.jsonObjectClaim(TokenStatusListSpec.STATUS)
-        .getOrElse { raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim must be a JsonObject", it)) }
-        ?.decodeAs<StatusClaim>()
-        ?.getOrElse { raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim is malformed", it)) }
-        ?.statusListReference
+    val statusListReference =
+        sdJwt.jwt.jwtClaimsSet
+            .jsonObjectClaim(TokenStatusListSpec.STATUS)
+            .getOrElse {
+                raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim must be a JsonObject", it))
+            }?.decodeAs<StatusClaim>()
+            ?.getOrElse {
+                raise(StatusVerificationError.StatusCheckFailure("'${TokenStatusListSpec.STATUS}' claim is malformed", it))
+            }?.statusListReference
 
     if (null != statusListReference) {
-        val status = runCatchingCancellable {
-            invoke(statusListReference.uri, statusListReference.index)
-        }.getOrElse { raise(StatusVerificationError.StatusCheckFailure("Unable to check Status in Token Status List", it)) }
+        val status =
+            runCatchingCancellable {
+                invoke(statusListReference.uri, statusListReference.index)
+            }.getOrElse {
+                raise(StatusVerificationError.StatusCheckFailure("Unable to check Status in Token Status List", it))
+            }
 
         if (status is Status.NonValid) {
             raise(StatusVerificationError.NonValidStatus(status))
