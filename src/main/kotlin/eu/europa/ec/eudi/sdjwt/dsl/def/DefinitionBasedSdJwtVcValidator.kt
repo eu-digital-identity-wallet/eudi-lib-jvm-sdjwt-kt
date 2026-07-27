@@ -283,8 +283,8 @@ private class SdJwtVcDefinitionValidator private constructor(
                 },
             )
 
-            val mandatoryClaims = definition.content.filter { (_, childDefinition) -> childDefinition.isMandatory(isIssuance) }.keys
-            val missingClaims = mandatoryClaims - current.keys
+            val requiredClaims = definition.content.filter { (_, childDefinition) -> childDefinition.mustBePresent(isIssuance) }.keys
+            val missingClaims = requiredClaims - current.keys
             objErrors.addAll(
                 missingClaims.map {
                     val missingClaimPath = parent?.claim(it) ?: ClaimPath.claim(it)
@@ -308,8 +308,8 @@ private class SdJwtVcDefinitionValidator private constructor(
             val arrayErrors = mutableListOf<DefinitionViolation>()
             val elementDefinition = definition.content
 
-            val mandatory = elementDefinition.isMandatory(isIssuance)
-            if (mandatory && current.isEmpty()) {
+            val arrayElementsRequired = elementDefinition.mustBePresent(isIssuance)
+            if (arrayElementsRequired && current.isEmpty()) {
                 val missingClaimPath = parent.allArrayElements()
                 arrayErrors.add(DefinitionViolation.MissingRequiredClaim(missingClaimPath))
             }
@@ -422,14 +422,14 @@ private class SdJwtVcDefinitionValidator private constructor(
 }
 
 /**
- * Checks whether the claim to which this [DisclosableElementDefinition] corresponds to, is mandatory or not.
+ * Checks whether the claim to which this [DisclosableElementDefinition] corresponds to, must be present in the processed SD-JWT VC payload.
  *
- * This function considers whether the check is performed for an Issued or Presented SD-JWT/SD-JWT VC.
+ * This function considers whether the check is performed for an Issued or Presented SD-JWT VC.
  *
- * During Issuance, a claim is mandatory if [AttributeMetadata.mandatory] is `true`.
- * During Presentation, a claim is mandatory if it is **Never Selectively Disclosable** and [AttributeMetadata.mandatory] is `true`.
+ * During Issuance, a claim is must be present if [AttributeMetadata.mandatory] is `true`.
+ * During Presentation, a claim is must be present if it is **Never Selectively Disclosable** and [AttributeMetadata.mandatory] is `true`.
  */
-private fun DisclosableElementDefinition<*, AttributeMetadata>.isMandatory(isIssuance: Boolean): Boolean =
+private fun DisclosableElementDefinition<*, AttributeMetadata>.mustBePresent(isIssuance: Boolean): Boolean =
     if (isIssuance) {
         value.attributeMetadata().mandatory
     } else {
