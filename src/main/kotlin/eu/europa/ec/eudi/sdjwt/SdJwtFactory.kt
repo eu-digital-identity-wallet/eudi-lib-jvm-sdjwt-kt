@@ -185,14 +185,10 @@ class SdJwtFactory internal constructor(
                         JsonPrimitive(decoyDigest.value)
                     }
 
-                if (decoys.isNotEmpty()) {
-                    // Sort the combined list of digests and decoys to make the order unpredictable
-                    val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
-                    val foldedObjWithDecoys = JsonObject(result + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
-                    folded.copy(result = foldedObjWithDecoys)
-                } else {
-                    folded
-                }
+                // Sort the combined list of digests and decoys to make the order unpredictable
+                val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+                val foldedObjWithDecoys = JsonObject(result + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
+                folded.copy(result = foldedObjWithDecoys)
             }
 
             is JsonArray -> {
