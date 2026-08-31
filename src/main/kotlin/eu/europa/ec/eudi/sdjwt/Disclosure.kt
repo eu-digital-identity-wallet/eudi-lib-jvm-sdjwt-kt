@@ -126,10 +126,3 @@ sealed interface Disclosure {
         }
     }
 }
-
-private fun String.ensureValidAttributeName() {
-    val reserved = setOf(RFC9901.CLAIM_SD_ALG, RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
-    require(this !in reserved) {
-        "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or ")}"
-    }
-}
