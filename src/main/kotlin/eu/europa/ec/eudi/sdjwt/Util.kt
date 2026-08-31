@@ -26,3 +26,10 @@ internal inline fun <R> runCatchingCancellable(block: () -> R): Result<R> {
         Result.failure(e)
     }
 }
+
+internal fun String.ensureValidAttributeName() {
+    val reserved = setOf(RFC9901.CLAIM_SD_ALG, RFC9901.CLAIM_SD, RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST)
+    require(this !in reserved) {
+        "Given claim should not contain an attribute named ${reserved.joinToString(separator = ", or ")}"
+    }
+}

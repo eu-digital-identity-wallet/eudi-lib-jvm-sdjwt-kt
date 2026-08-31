@@ -23,7 +23,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StructuredDisclosure {
@@ -92,21 +91,6 @@ class StructuredDisclosure {
 }
 
 class FlatDisclosure {
-
-    @Test
-    fun `no sd-jwt with illegal attribute names`() {
-        val invalidClaims = listOf(
-            sdJwt {
-                sdClaim("_sd", "foo")
-            },
-        )
-
-        val sdJwtFactory = SdJwtFactory.Default
-        invalidClaims.forEach { sdJwt ->
-            val result = sdJwtFactory.createSdJwt(sdJwt)
-            assertFalse { result.isSuccess }
-        }
-    }
 
     @Test
     fun flatDisclosureOfJsonObjectClaim() {

@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.sdjwt.dsl.values
 
 import eu.europa.ec.eudi.sdjwt.MinimumDigests
 import eu.europa.ec.eudi.sdjwt.atLeastDigests
+import eu.europa.ec.eudi.sdjwt.ensureValidAttributeName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -39,7 +40,11 @@ import kotlinx.serialization.serializer
 data class SdJwtObject(
     override val content: Map<String, SdJwtElement>,
     val minimumDigests: MinimumDigests?,
-) : DisclosableObject<String, JsonElement>
+) : DisclosableObject<String, JsonElement> {
+    init {
+        content.keys.forEach { it.ensureValidAttributeName() }
+    }
+}
 
 /**
  * Represents the structure of an SD-JWT array (a JSON array)
