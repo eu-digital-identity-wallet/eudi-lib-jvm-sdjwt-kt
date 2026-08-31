@@ -118,11 +118,11 @@ private fun NimbusJWK.asJsonObject(): JsonObject = Json.parseToJsonElement(toJSO
 
 /**
  * Adds the confirmation claim (cnf) as a plain (always disclosable) which
- * contains the [jwk]
+ * contains the public parameters of [jwk]
  *
  * @param jwk the key to put in the confirmation claim
  */
-fun SdJwtObjectBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.asJsonObject()) })
+fun SdJwtObjectBuilder.cnf(jwk: NimbusJWK) = claim("cnf", buildJsonObject { put("jwk", jwk.toPublicJWK().asJsonObject()) })
 
 private object NimbusSdJwtIssuerFactory {
 
