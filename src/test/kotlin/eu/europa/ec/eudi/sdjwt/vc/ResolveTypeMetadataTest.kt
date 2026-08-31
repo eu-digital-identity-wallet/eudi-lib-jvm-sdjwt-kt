@@ -27,14 +27,16 @@ class ResolveTypeMetadataTest {
     companion object {
         val childVct = Vct("urn:test:child")
         val parentVct = Vct("urn:test:parent")
+        val grandfatherVct = Vct("urn:test:grandfather")
         val claimPath = ClaimPath.claim("testClaim")
     }
 
-    private fun resolver(typeMetadata: Map<Vct, SdJwtVcTypeMetadata>): ResolveTypeMetadata =
+    private fun resolver(typeMetadata: Map<Vct, SdJwtVcTypeMetadata>, limit: UInt? = null): ResolveTypeMetadata =
         ResolveTypeMetadata(
             lookupTypeMetadata = { vct, _ ->
                 Result.success(typeMetadata[vct])
             },
+            limit = limit,
         )
 
     @Test
@@ -283,5 +285,29 @@ class ResolveTypeMetadataTest {
             typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
         }
         assertContains("Selectively disclosable property of claim $claimPath cannot be overridden", error.message!!)
+    }
+
+    @Test
+    fun `resolution fails when parent lookup limit is exceeded`() = runTest {
+        val grandfather = SdJwtVcTypeMetadata(
+            vct = grandfatherVct,
+        )
+        val parent = SdJwtVcTypeMetadata(
+            vct = parentVct,
+            extends = grandfather.vct.value,
+        )
+        val child = SdJwtVcTypeMetadata(
+            vct = childVct,
+            extends = parent.vct.value,
+        )
+
+        val typeMetadataResolver = resolver(mapOf(childVct to child, parentVct to parent, grandfatherVct to grandfather), limit = 1u)
+        val exception = assertFailsWith<IllegalArgumentException> {
+            typeMetadataResolver(childVct, expectedIntegrity = null).getOrThrow()
+        }
+        assertEquals(
+            "maximum number of parent lookups exceeded, limit: 1",
+            exception.message,
+        )
     }
 }

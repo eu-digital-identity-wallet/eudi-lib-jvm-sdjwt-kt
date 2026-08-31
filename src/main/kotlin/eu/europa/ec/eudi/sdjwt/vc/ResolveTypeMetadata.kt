@@ -17,7 +17,6 @@ package eu.europa.ec.eudi.sdjwt.vc
 
 import eu.europa.ec.eudi.sdjwt.runCatchingCancellable
 import io.ktor.client.HttpClient
-import io.ktor.client.request.*
 import io.ktor.http.*
 
 /**
@@ -90,7 +89,15 @@ private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata
  */
 interface ResolveTypeMetadata {
 
+    /**
+     * Lookup function for the SD-JWT VC Type Metadata of a `vct`.
+     */
     val lookupTypeMetadata: LookupTypeMetadata
+
+    /**
+     * Maximum number of parent lookups allowed by this resolver.
+     */
+    val limit: UInt?
 
     /**
      * Resolves the [ResolvedTypeMetadata] for [vct].
@@ -107,6 +114,9 @@ interface ResolveTypeMetadata {
                 resolved: Set<Vct>,
             ): ResolvedTypeMetadata {
                 require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
+                limit?.let {
+                    require(resolved.size <= it.toInt()) { "maximum number of parent lookups exceeded, limit: $it" }
+                }
                 val current = lookupTypeMetadata(vct, expectedIntegrity)
                     .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
                 val updatedAccumulator = accumulator + current
@@ -123,10 +133,19 @@ interface ResolveTypeMetadata {
         }
 
     companion object {
-        operator fun invoke(lookupTypeMetadata: LookupTypeMetadata): ResolveTypeMetadata =
-            object : ResolveTypeMetadata {
-                override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
+        operator fun invoke(
+            lookupTypeMetadata: LookupTypeMetadata,
+            limit: UInt? = null,
+        ): ResolveTypeMetadata {
+            if (null != limit) {
+                require(limit > 0u) { "limit cannot be 0" }
             }
+
+            return object : ResolveTypeMetadata {
+                override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
+                override val limit: UInt? = limit
+            }
+        }
     }
 }
 
