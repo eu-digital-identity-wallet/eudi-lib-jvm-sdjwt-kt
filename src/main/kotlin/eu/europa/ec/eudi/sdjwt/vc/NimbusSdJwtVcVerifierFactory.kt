@@ -113,23 +113,23 @@ private class NimbusSdJwtVcVerifier(
 }
 
 /**
- * Factory method for producing a SD-JWT-VC specific signature verifier.
+ * Factory method for producing a SD-JWT VC specific signature verifier.
+ *
  * This verifier will get the Issuer's public key from the JWT part of the SD-JWT.
+ *
  * In particular,
- * - If `iss` claim is an HTTPS URI and there is no `x5c` in the header, SD-JWT-VC metadata will be used
- * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
- * if it is trusted & it contains a SAN DNS equal to `iss` FQDN
- * - If `iss` claim is an HTTPS URI and there is a `x5c` claim key will be extracted from the leaf certificate,
- *  if it is trusted & it contains a SAN URI equal to `iss`
- * - If `iss` claim is a DID the key will be extracted by resolving it.
+ * - If `iss` claim is an HTTPS URI and there is no `x5c` parameter in the header, SD-JWT-VC Issuer Metadata will be used;
+ * - If `iss` claim is an HTTPS URI and there is a `x5c` parameter in the header, the key will be extracted from the leaf certificate, if the chain is trusted;
+ * - If `iss` claim is a DID, the key will be extracted by resolving it;
  *
- *  In addition, the verifier will ensure that `typ` claim is equal to dc+sd-jwt
+ * Additionally, the verifier will ensure that `typ` header parameter is equal to `dc+sd-jwt`.
  *
- * @param httpClient an http client, used while interacting with issuer
- * @param trust a function that accepts a chain of certificates (contents of `x5c` claim) and
- * indicates whether is trusted or not. If it is not provided, defaults to [X509CertificateTrust.None]
- * @param lookup an optional way of looking up public keys from DID Documents. A `null` value indicates
- * that holder doesn't support DIDs
+ * @param httpClient an http client, used while interacting with the issuer.
+ * A `null` value indicates that the holder doesn't support SD-JWT VC Issuer Metadata.
+ * @param trust a function that accepts a chain of certificates (contents of `x5c` header parameter) and indicates whether is trusted or not.
+ * A `null` value indicates that the holder doesn't support `x5c` certificate chain trust.
+ * @param lookup a way of looking up public keys from DID Documents.
+ * A `null` value indicates that the holder doesn't support DIDs.
  *
  * @return a SD-JWT-VC specific signature verifier as described above
  */
