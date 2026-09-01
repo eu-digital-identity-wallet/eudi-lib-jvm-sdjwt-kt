@@ -31,7 +31,10 @@ class ResolveTypeMetadataTest {
         val claimPath = ClaimPath.claim("testClaim")
     }
 
-    private fun resolver(typeMetadata: Map<Vct, SdJwtVcTypeMetadata>, limit: UInt? = null): ResolveTypeMetadata =
+    private fun resolver(
+        typeMetadata: Map<Vct, SdJwtVcTypeMetadata>,
+        limit: UInt = ResolveTypeMetadata.DEFAULT_LIMIT,
+    ): ResolveTypeMetadata =
         ResolveTypeMetadata(
             lookupTypeMetadata = { vct, _ ->
                 Result.success(typeMetadata[vct])

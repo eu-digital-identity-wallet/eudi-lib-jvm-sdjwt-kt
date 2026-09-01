@@ -103,26 +103,28 @@ interface ResolveTypeMetadata {
                 expectedIntegrity,
                 ResolvedTypeMetadata.empty(vct),
                 emptySet(),
-                null,
+                DEFAULT_LIMIT,
             )
         }
 
     companion object {
 
         /**
+         * The default parent lookup limit.
+         */
+        const val DEFAULT_LIMIT: UInt = 4u
+
+        /**
          * Creates a new [ResolveTypeMetadata] instance.
          *
          * @param lookupTypeMetadata lookup function for the SD-JWT VC Type Metadata of a `vct`
-         * @param limit maximum number of parent lookups allowed by this resolver; when `null`, no limit is enforced
+         * @param limit maximum number of parent lookups allowed by this resolver; defaults to [DEFAULT_LIMIT].
          */
         operator fun invoke(
             lookupTypeMetadata: LookupTypeMetadata,
-            limit: UInt? = null,
+            limit: UInt = DEFAULT_LIMIT,
         ): ResolveTypeMetadata {
-            if (null != limit) {
-                require(limit > 0u) { "limit cannot be 0" }
-            }
-
+            require(limit > 0u) { "limit cannot be 0" }
             return object : ResolveTypeMetadata {
                 override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
                 override suspend fun invoke(
@@ -148,12 +150,10 @@ private tailrec suspend fun LookupTypeMetadata.resolve(
     expectedIntegrity: DocumentIntegrity?,
     accumulator: ResolvedTypeMetadata,
     resolved: Set<Vct>,
-    limit: UInt?,
+    limit: UInt,
 ): ResolvedTypeMetadata {
     require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
-    limit?.let {
-        require(resolved.size <= it.toInt()) { "maximum number of parent lookups exceeded, limit: $it" }
-    }
+    require(resolved.size <= limit.toInt()) { "maximum number of parent lookups exceeded, limit: $limit" }
     val current = this(vct, expectedIntegrity)
         .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
     val updatedAccumulator = accumulator + current
