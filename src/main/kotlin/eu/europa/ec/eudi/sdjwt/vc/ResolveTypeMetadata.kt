@@ -88,16 +88,7 @@ private fun ResolvedTypeMetadata.Companion.empty(vct: Vct): ResolvedTypeMetadata
  * Resolver for [ResolvedTypeMetadata].
  */
 interface ResolveTypeMetadata {
-
-    /**
-     * Lookup function for the SD-JWT VC Type Metadata of a `vct`.
-     */
     val lookupTypeMetadata: LookupTypeMetadata
-
-    /**
-     * Maximum number of parent lookups allowed by this resolver.
-     */
-    val limit: UInt?
 
     /**
      * Resolves the [ResolvedTypeMetadata] for [vct].
@@ -107,32 +98,23 @@ interface ResolveTypeMetadata {
         expectedIntegrity: DocumentIntegrity?,
     ): Result<ResolvedTypeMetadata> =
         runCatchingCancellable {
-            tailrec suspend fun resolve(
-                vct: Vct,
-                expectedIntegrity: DocumentIntegrity?,
-                accumulator: ResolvedTypeMetadata,
-                resolved: Set<Vct>,
-            ): ResolvedTypeMetadata {
-                require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
-                limit?.let {
-                    require(resolved.size <= it.toInt()) { "maximum number of parent lookups exceeded, limit: $it" }
-                }
-                val current = lookupTypeMetadata(vct, expectedIntegrity)
-                    .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
-                val updatedAccumulator = accumulator + current
-                val parent = current.extends?.let { Vct(it) }
-                val parentIntegrity = current.extendsIntegrity
-                return if (null != parent) {
-                    resolve(parent, parentIntegrity, updatedAccumulator, resolved + vct)
-                } else {
-                    updatedAccumulator
-                }
-            }
-
-            resolve(vct, expectedIntegrity, ResolvedTypeMetadata.empty(vct), emptySet())
+            lookupTypeMetadata.resolve(
+                vct,
+                expectedIntegrity,
+                ResolvedTypeMetadata.empty(vct),
+                emptySet(),
+                null,
+            )
         }
 
     companion object {
+
+        /**
+         * Creates a new [ResolveTypeMetadata] instance.
+         *
+         * @param lookupTypeMetadata lookup function for the SD-JWT VC Type Metadata of a `vct`
+         * @param limit maximum number of parent lookups allowed by this resolver; when `null`, no limit is enforced
+         */
         operator fun invoke(
             lookupTypeMetadata: LookupTypeMetadata,
             limit: UInt? = null,
@@ -143,9 +125,44 @@ interface ResolveTypeMetadata {
 
             return object : ResolveTypeMetadata {
                 override val lookupTypeMetadata: LookupTypeMetadata = lookupTypeMetadata
-                override val limit: UInt? = limit
+                override suspend fun invoke(
+                    vct: Vct,
+                    expectedIntegrity: DocumentIntegrity?,
+                ): Result<ResolvedTypeMetadata> =
+                    runCatchingCancellable {
+                        lookupTypeMetadata.resolve(
+                            vct,
+                            expectedIntegrity,
+                            ResolvedTypeMetadata.empty(vct),
+                            emptySet(),
+                            limit,
+                        )
+                    }
             }
         }
+    }
+}
+
+private tailrec suspend fun LookupTypeMetadata.resolve(
+    vct: Vct,
+    expectedIntegrity: DocumentIntegrity?,
+    accumulator: ResolvedTypeMetadata,
+    resolved: Set<Vct>,
+    limit: UInt?,
+): ResolvedTypeMetadata {
+    require(vct !in resolved) { "cyclical reference detected, vct $vct has been previously resolved" }
+    limit?.let {
+        require(resolved.size <= it.toInt()) { "maximum number of parent lookups exceeded, limit: $it" }
+    }
+    val current = this(vct, expectedIntegrity)
+        .getOrThrow() ?: error("unable to lookup Type Metadata for $vct")
+    val updatedAccumulator = accumulator + current
+    val parent = current.extends?.let { Vct(it) }
+    val parentIntegrity = current.extendsIntegrity
+    return if (null != parent) {
+        resolve(parent, parentIntegrity, updatedAccumulator, resolved + vct, limit)
+    } else {
+        updatedAccumulator
     }
 }
 
