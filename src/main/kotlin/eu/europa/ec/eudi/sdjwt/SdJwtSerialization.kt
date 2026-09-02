@@ -292,41 +292,51 @@ internal object JwsJsonSupport {
      * @throws IllegalArgumentException if the given JSON Object is not compliant
      * @throws IllegalStateException if the given JSON Object is not compliant
      */
-    fun parseJWSJson(unverifiedSdJwt: JsonObject): Triple<Jwt, List<String>, Jwt?> {
-        fun JsonElement.stringContent(): String {
-            check(this is JsonPrimitive && isString)
-            return content
+    fun parseJWSJson(unverifiedSdJwt: JsonObject): Triple<Jwt, List<String>, Jwt?> = tryParseJWSJson(unverifiedSdJwt).getOrThrow()
+
+    /**
+     * Extracts from [unverifiedSdJwt] the JWT and the disclosures
+     *
+     * @param unverifiedSdJwt a JSON Object that is expected to be in general or flatten form as defined in RFC7515 and
+     * extended by SD-JWT specification.
+     * @return the jwt and the disclosures (unverified).
+     */
+    fun tryParseJWSJson(unverifiedSdJwt: JsonObject): Result<Triple<Jwt, List<String>, Jwt?>> =
+        runCatchingCancellable {
+            fun JsonElement.stringContent(): String {
+                check(this is JsonPrimitive && isString)
+                return content
+            }
+
+            // selects the JsonObject that contains the pair of "protected" & "signature" claims
+            // According to RFC7515 General format this could be in "signatures" json array or
+            // in flattened format this could be the given root element itself
+            val signatureContainer = if (RFC7515.JWS_JSON_SIGNATURES in unverifiedSdJwt) {
+                val signatures = unverifiedSdJwt[RFC7515.JWS_JSON_SIGNATURES]!!.jsonArray
+                signatures.firstOrNull()?.jsonObject
+            } else {
+                unverifiedSdJwt
+            }
+
+            val unverifiedJwt = run {
+                val protected = signatureContainer?.get(RFC7515.JWS_JSON_PROTECTED)?.stringContent()
+                val signature = signatureContainer?.get(RFC7515.JWS_JSON_SIGNATURE)?.stringContent()
+                val payload = unverifiedSdJwt[RFC7515.JWS_JSON_PAYLOAD]?.stringContent()
+                requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
+                requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
+                requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
+                "$protected.$payload.$signature"
+            }
+
+            val unprotectedHeader = signatureContainer?.get(RFC7515.JWS_JSON_HEADER)?.jsonObject
+
+            // SD-JWT specification extends RFC7515 with a "disclosures" top-level JSON array
+            val unverifiedDisclosures = unprotectedHeader?.get(RFC9901.JWS_JSON_DISCLOSURES)
+                ?.jsonArray
+                ?.map { it.stringContent() }
+                .orEmpty()
+
+            val unverifiedKBJwt = unprotectedHeader?.get("kb_jwt")?.stringContent()
+            Triple(unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt)
         }
-
-        // selects the JsonObject that contains the pair of "protected" & "signature" claims
-        // According to RFC7515 General format this could be in "signatures" json array or
-        // in flattened format this could be the given root element itself
-        val signatureContainer = if (RFC7515.JWS_JSON_SIGNATURES in unverifiedSdJwt) {
-            val signatures = unverifiedSdJwt[RFC7515.JWS_JSON_SIGNATURES]!!.jsonArray
-            signatures.firstOrNull()?.jsonObject
-        } else {
-            unverifiedSdJwt
-        }
-
-        val unverifiedJwt = run {
-            val protected = signatureContainer?.get(RFC7515.JWS_JSON_PROTECTED)?.stringContent()
-            val signature = signatureContainer?.get(RFC7515.JWS_JSON_SIGNATURE)?.stringContent()
-            val payload = unverifiedSdJwt[RFC7515.JWS_JSON_PAYLOAD]?.stringContent()
-            requireNotNull(payload) { "Given JSON doesn't comply with RFC7515. Misses payload" }
-            requireNotNull(protected) { "Given JSON doesn't comply with RFC7515. Misses protected" }
-            requireNotNull(signature) { "Given JSON doesn't comply with RFC7515. Misses signature" }
-            "$protected.$payload.$signature"
-        }
-
-        val unprotectedHeader = signatureContainer?.get(RFC7515.JWS_JSON_HEADER)?.jsonObject
-
-        // SD-JWT specification extends RFC7515 with a "disclosures" top-level JSON array
-        val unverifiedDisclosures = unprotectedHeader?.get(RFC9901.JWS_JSON_DISCLOSURES)
-            ?.jsonArray
-            ?.map { it.stringContent() }
-            .orEmpty()
-
-        val unverifiedKBJwt = unprotectedHeader?.get("kb_jwt")?.stringContent()
-        return Triple(unverifiedJwt, unverifiedDisclosures, unverifiedKBJwt)
-    }
 }
