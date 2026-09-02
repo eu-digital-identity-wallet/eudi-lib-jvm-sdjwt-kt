@@ -36,10 +36,14 @@ sealed interface Disclosure {
     }
 
     @JvmInline
-    value class ArrayElement internal constructor(override val value: String) : Disclosure
+    value class ArrayElement internal constructor(override val value: String) : Disclosure {
+        override fun toString(): String = "ArrayElement Disclosure"
+    }
 
     @JvmInline
-    value class ObjectProperty internal constructor(override val value: String) : Disclosure
+    value class ObjectProperty internal constructor(override val value: String) : Disclosure {
+        override fun toString(): String = "ObjectProperty Disclosure"
+    }
 
     companion object {
 
