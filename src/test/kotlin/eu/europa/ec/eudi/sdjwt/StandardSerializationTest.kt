@@ -43,72 +43,80 @@ class StandardSerializationTest {
     }
 
     @Test
-    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() = runTest {
-        val sdJwtSpec = sdJwt {
-            claim("foo", "bar")
-        }
-        val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val expected =
-            buildString {
-                append(sdJwt.jwt.serialize())
-                append("~")
-            }
-        val actual = with(NimbusSdJwtOps) { sdJwt.serialize() }
-        assertEquals(expected, actual)
-    }
-
-    @Test
-    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() = runTest {
-        val sdJwtSpec = sdJwt {
-            sdClaim("foo", "bar")
-        }
-        val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-        val expected =
-            buildString {
-                append(sdJwt.jwt.serialize())
-                append("~")
-                for (d in sdJwt.disclosures) {
-                    append(d.value)
+    fun `An SD-JWT without disclosures or KBJWT should end in a single ~`() =
+        runTest {
+            val sdJwtSpec =
+                sdJwt {
+                    claim("foo", "bar")
+                }
+            val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+            val expected =
+                buildString {
+                    append(sdJwt.jwt.serialize())
                     append("~")
                 }
-            }
-        val actual = with(NimbusSdJwtOps) { sdJwt.serialize() }
-        assertEquals(expected, actual)
-    }
+            val actual = with(NimbusSdJwtOps) { sdJwt.serialize() }
+            assertEquals(expected, actual)
+        }
 
     @Test
-    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() = runTest {
-        with(NimbusSdJwtOps) {
-            val sdJwtSpec = sdJwt {
-                claim("foo", "bar")
-            }
-            val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-            val sdJwt = issuedSdJwt.present(emptySet())
-            assertNotNull(sdJwt)
-
-            val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
-            assertTrue { actual.count { it == '~' } == 1 }
-            val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
-            assertTrue { disclosures.isEmpty() }
-            assertNotNull(kbJwt1)
+    fun `An SD-JWT with disclosures and without KBJWT should end in a single ~`() =
+        runTest {
+            val sdJwtSpec =
+                sdJwt {
+                    sdClaim("foo", "bar")
+                }
+            val sdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+            val expected =
+                buildString {
+                    append(sdJwt.jwt.serialize())
+                    append("~")
+                    for (d in sdJwt.disclosures) {
+                        append(d.value)
+                        append("~")
+                    }
+                }
+            val actual = with(NimbusSdJwtOps) { sdJwt.serialize() }
+            assertEquals(expected, actual)
         }
-    }
 
     @Test
-    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() = runTest {
-        with(NimbusSdJwtOps) {
-            val sdJwtSpec = sdJwt {
-                sdClaim("foo", "bar")
-            }
-            val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
-            val sdJwt = issuedSdJwt.present(emptySet())
-            assertNotNull(sdJwt)
+    fun `An SD-JWT without disclosures with KBJWT should not end in ~`() =
+        runTest {
+            with(NimbusSdJwtOps) {
+                val sdJwtSpec =
+                    sdJwt {
+                        claim("foo", "bar")
+                    }
+                val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+                val sdJwt = issuedSdJwt.present(emptySet())
+                assertNotNull(sdJwt)
 
-            val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
-            assertTrue { actual.count { it == '~' } == 2 }
-            val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
-            assertEquals(1, disclosures.size)
-            assertNotNull(kbJwt1)
+                val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
+                assertTrue { actual.count { it == '~' } == 1 }
+                val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
+                assertTrue { disclosures.isEmpty() }
+                assertNotNull(kbJwt1)
+            }
         }
-    }
+
+    @Test
+    fun `An SD-JWT with disclosures and KBJWT should not end in ~`() =
+        runTest {
+            with(NimbusSdJwtOps) {
+                val sdJwtSpec =
+                    sdJwt {
+                        sdClaim("foo", "bar")
+                    }
+                val issuedSdJwt = issuer.issue(sdJwtSpec).getOrThrow()
+                val sdJwt = issuedSdJwt.present(emptySet())
+                assertNotNull(sdJwt)
+
+                val actual = sdJwt.serializeWithKeyBinding(keyBindingSigner).getOrThrow()
+                assertTrue { actual.count { it == '~' } == 2 }
+                val (_, disclosures, kbJwt1) = StandardSerialization.parse(actual)
+                assertEquals(1, disclosures.size)
+                assertNotNull(kbJwt1)
+            }
+        }
 }

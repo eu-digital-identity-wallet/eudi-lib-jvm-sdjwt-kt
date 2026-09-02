@@ -48,6 +48,7 @@ object RFC9901 {
     //
     //  Header parameters, for JWS JSON
     //
+
     /**
      * An array of strings where each element is an individual Disclosure
      */

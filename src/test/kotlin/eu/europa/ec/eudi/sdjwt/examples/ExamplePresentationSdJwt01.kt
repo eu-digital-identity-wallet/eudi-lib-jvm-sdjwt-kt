@@ -23,27 +23,30 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import kotlinx.coroutines.runBlocking
 
-val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
-    with(NimbusSdJwtOps) {
-        val issuedSdJwt = run {
-            val sdJwtSpec = sdJwt {
-                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                claim("iss", "https://example.com/issuer")
-                claim("iat", 1516239022)
-                claim("exp", 1735689661)
-                sdObjClaim("address") {
-                    sdClaim("street_address", "Schulstr. 12")
-                    sdClaim("locality", "Schulpforta")
-                    sdClaim("region", "Sachsen-Anhalt")
-                    sdClaim("country", "DE")
+val presentationSdJwt: SdJwt<SignedJWT> =
+    runBlocking {
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt =
+                run {
+                    val sdJwtSpec =
+                        sdJwt {
+                            claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                            claim("iss", "https://example.com/issuer")
+                            claim("iat", 1516239022)
+                            claim("exp", 1735689661)
+                            sdObjClaim("address") {
+                                sdClaim("street_address", "Schulstr. 12")
+                                sdClaim("locality", "Schulpforta")
+                                sdClaim("region", "Sachsen-Anhalt")
+                                sdClaim("country", "DE")
+                            }
+                        }
+                    val issuer = issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+                    issuer.issue(sdJwtSpec).getOrThrow()
                 }
-            }
-            val issuer = issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-            issuer.issue(sdJwtSpec).getOrThrow()
-        }
 
-        val addressPath = ClaimPath.claim("address")
-        val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
-        issuedSdJwt.present(claimsToInclude)!!
+            val addressPath = ClaimPath.claim("address")
+            val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
+            issuedSdJwt.present(claimsToInclude)!!
+        }
     }
-}

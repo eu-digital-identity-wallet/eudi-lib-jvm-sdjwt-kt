@@ -35,20 +35,22 @@ import kotlin.time.Instant
 
 fun JsonObject.extractClaim(attributeName: String): Pair<JsonObject, JsonObject> {
     val otherClaims = JsonObject(filterKeys { it != attributeName })
-    val claimToBeDisclosed: JsonObject = firstNotNullOfOrNull {
-        if (it.key == attributeName) {
-            it.value
-        } else {
-            null
-        }
-    }?.let { JsonObject(mapOf(attributeName to it)) } ?: JsonObject(emptyMap())
+    val claimToBeDisclosed: JsonObject =
+        firstNotNullOfOrNull {
+            if (it.key == attributeName) {
+                it.value
+            } else {
+                null
+            }
+        }?.let { JsonObject(mapOf(attributeName to it)) } ?: JsonObject(emptyMap())
     return otherClaims to claimToBeDisclosed
 }
 
-val json = Json {
-    prettyPrint = true
-    ignoreUnknownKeys = true
-}
+val json =
+    Json {
+        prettyPrint = true
+        ignoreUnknownKeys = true
+    }
 
 private fun JsonElement.pretty(): String = json.encodeToString(this)
 
@@ -59,34 +61,23 @@ fun SdJwt<SignedJWT>.prettyPrint() {
 fun UnsignedSdJwt.prettyPrint() {
     SdJwt(jwtPayload, disclosures).prettyPrint({ it })
 }
+
 fun <JWT> SdJwt<JWT>.prettyPrint(f: (JWT) -> JsonObject) {
     println("SD-JWT with ${disclosures.size} disclosures")
     disclosures.forEach { d ->
-        val kind = when (d) {
-            is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
-            is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
-        }
+        val kind =
+            when (d) {
+                is Disclosure.ArrayElement -> "\t - ArrayEntry ${d.claim().value().pretty()}"
+                is Disclosure.ObjectProperty -> "\t - ObjectProperty ${d.claim().first} = ${d.claim().second}"
+            }
         println(kind)
     }
     println("SD-JWT payload")
     f(jwt).also { println(json.encodeToString(it)) }
 
     println("SD-JWT disclosures")
-    disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
-        val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
-        buildJsonArray {
-            add(JsonPrimitive("...salt..."))
-            name?.let { add(JsonPrimitive(it)) }
-            add(value)
-        }.toString().prependIndent("\t")
-    }.run(::println)
-}
-
-fun DisclosuresPerClaimPath.prettyPrint() {
-    println("SD-JWT disclosures per claim")
-    forEach { (claim, disclosures) ->
-        println("$claim ->")
-        disclosures.joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
+    disclosures
+        .joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
             val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
             buildJsonArray {
                 add(JsonPrimitive("...salt..."))
@@ -94,17 +85,36 @@ fun DisclosuresPerClaimPath.prettyPrint() {
                 add(value)
             }.toString().prependIndent("\t")
         }.run(::println)
+}
+
+fun DisclosuresPerClaimPath.prettyPrint() {
+    println("SD-JWT disclosures per claim")
+    forEach { (claim, disclosures) ->
+        println("$claim ->")
+        disclosures
+            .joinToString(prefix = "[\n", postfix = "\n]", separator = ",\n") { disclosure ->
+                val (_, name, value) = Disclosure.decode(disclosure.value).getOrThrow()
+                buildJsonArray {
+                    add(JsonPrimitive("...salt..."))
+                    name?.let { add(JsonPrimitive(it)) }
+                    add(value)
+                }.toString().prependIndent("\t")
+            }.run(::println)
     }
 }
 
 fun String.removeNewLine(): String = replace("\n", "")
 
-internal fun SdJwtObject.assertThat(description: String = "", expectedDisclosuresNo: Int = 0) {
+internal fun SdJwtObject.assertThat(
+    description: String = "",
+    expectedDisclosuresNo: Int = 0,
+) {
     println(description)
     val sdJwtFactory = SdJwtFactory.Default
-    val sdJwt = assertNotNull(
-        sdJwtFactory.createSdJwt(this).map { SdJwt(it.jwtPayload, it.disclosures) }.getOrNull(),
-    ).apply { prettyPrint { it } }
+    val sdJwt =
+        assertNotNull(
+            sdJwtFactory.createSdJwt(this).map { SdJwt(it.jwtPayload, it.disclosures) }.getOrNull(),
+        ).apply { prettyPrint { it } }
     assertEquals(expectedDisclosuresNo, sdJwt.disclosures.size)
     println("=====================================")
 }

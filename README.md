@@ -83,24 +83,26 @@ import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val issuedSdJwt: String = runBlocking {
-    val sdJwtSpec = sdJwt {
-        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-        claim("iss", "https://example.com/issuer")
-        claim("iat", 1516239022)
-        claim("exp", 1735689661)
-        objClaim("address") {
-            sdClaim("street_address", "Schulstr. 12")
-            sdClaim("locality", "Schulpforta")
-            sdClaim("region", "Sachsen-Anhalt")
-            sdClaim("country", "DE")
+val issuedSdJwt: String =
+    runBlocking {
+        val sdJwtSpec =
+            sdJwt {
+                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                claim("iss", "https://example.com/issuer")
+                claim("iat", 1516239022)
+                claim("exp", 1735689661)
+                objClaim("address") {
+                    sdClaim("street_address", "Schulstr. 12")
+                    sdClaim("locality", "Schulpforta")
+                    sdClaim("region", "Sachsen-Anhalt")
+                    sdClaim("country", "DE")
+                }
+            }
+        with(NimbusSdJwtOps) {
+            val issuer = issuer(signer = ECDSASigner(issuerEcKeyPair), signAlgorithm = JWSAlgorithm.ES256)
+            issuer.issue(sdJwtSpec).getOrThrow().serialize()
         }
     }
-    with(NimbusSdJwtOps) {
-        val issuer = issuer(signer = ECDSASigner(issuerEcKeyPair), signAlgorithm = JWSAlgorithm.ES256)
-        issuer.issue(sdJwtSpec).getOrThrow().serialize()
-    }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssueSdJw01.kt).
@@ -125,13 +127,14 @@ import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val verifiedIssuanceSdJwt: SdJwt<SignedJWT> = runBlocking {
-    with(NimbusSdJwtOps) {
-        val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedIssuanceSdJwt = serializedUnverifiedIssuanceSdJwt
-        verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+val verifiedIssuanceSdJwt: SdJwt<SignedJWT> =
+    runBlocking {
+        with(NimbusSdJwtOps) {
+            val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
+            val unverifiedIssuanceSdJwt = serializedUnverifiedIssuanceSdJwt
+            verify(jwtSignatureVerifier, unverifiedIssuanceSdJwt).getOrThrow()
+        }
     }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleIssuanceSdJwtVerification01.kt).
@@ -156,30 +159,33 @@ import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val presentationSdJwt: SdJwt<SignedJWT> = runBlocking {
-    with(NimbusSdJwtOps) {
-        val issuedSdJwt = run {
-            val sdJwtSpec = sdJwt {
-                claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-                claim("iss", "https://example.com/issuer")
-                claim("iat", 1516239022)
-                claim("exp", 1735689661)
-                sdObjClaim("address") {
-                    sdClaim("street_address", "Schulstr. 12")
-                    sdClaim("locality", "Schulpforta")
-                    sdClaim("region", "Sachsen-Anhalt")
-                    sdClaim("country", "DE")
+val presentationSdJwt: SdJwt<SignedJWT> =
+    runBlocking {
+        with(NimbusSdJwtOps) {
+            val issuedSdJwt =
+                run {
+                    val sdJwtSpec =
+                        sdJwt {
+                            claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                            claim("iss", "https://example.com/issuer")
+                            claim("iat", 1516239022)
+                            claim("exp", 1735689661)
+                            sdObjClaim("address") {
+                                sdClaim("street_address", "Schulstr. 12")
+                                sdClaim("locality", "Schulpforta")
+                                sdClaim("region", "Sachsen-Anhalt")
+                                sdClaim("country", "DE")
+                            }
+                        }
+                    val issuer = issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+                    issuer.issue(sdJwtSpec).getOrThrow()
                 }
-            }
-            val issuer = issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-            issuer.issue(sdJwtSpec).getOrThrow()
-        }
 
-        val addressPath = ClaimPath.claim("address")
-        val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
-        issuedSdJwt.present(claimsToInclude)!!
+            val addressPath = ClaimPath.claim("address")
+            val claimsToInclude = setOf(addressPath.claim("region"), addressPath.claim("country"))
+            issuedSdJwt.present(claimsToInclude)!!
+        }
     }
-}
 ```
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwt01.kt).
 
@@ -213,16 +219,17 @@ import kotlinx.coroutines.*
 -->
 
 ```kotlin
-val verifiedPresentationSdJwt: SdJwt<SignedJWT> = runBlocking {
-    with(NimbusSdJwtOps) {
-        val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
-        val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
-        verify(
-            jwtSignatureVerifier,
-            unverifiedPresentationSdJwt,
-        ).getOrThrow()
+val verifiedPresentationSdJwt: SdJwt<SignedJWT> =
+    runBlocking {
+        with(NimbusSdJwtOps) {
+            val jwtSignatureVerifier = RSASSAVerifier(issuerRsaKeyPair).asJwtVerifier()
+            val unverifiedPresentationSdJwt = serializedUnverifiedPresentationSdJwt
+            verify(
+                jwtSignatureVerifier,
+                unverifiedPresentationSdJwt,
+            ).getOrThrow()
+        }
     }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExamplePresentationSdJwtVerification01.kt).
@@ -254,28 +261,31 @@ import kotlinx.serialization.json.JsonObject
 -->
 
 ```kotlin
-val claims: JsonObject = runBlocking {
-    val sdJwt: SdJwt<SignedJWT> = run {
-        val spec = sdJwt {
-            claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
-            claim("iss", "https://example.com/issuer")
-            claim("iat", 1516239022)
-            claim("exp", 1735689661)
-            objClaim("address") {
-                sdClaim("street_address", "Schulstr. 12")
-                sdClaim("locality", "Schulpforta")
-                sdClaim("region", "Sachsen-Anhalt")
-                sdClaim("country", "DE")
+val claims: JsonObject =
+    runBlocking {
+        val sdJwt: SdJwt<SignedJWT> =
+            run {
+                val spec =
+                    sdJwt {
+                        claim("sub", "6c5c0a49-b589-431d-bae7-219122a9ec2c")
+                        claim("iss", "https://example.com/issuer")
+                        claim("iat", 1516239022)
+                        claim("exp", 1735689661)
+                        objClaim("address") {
+                            sdClaim("street_address", "Schulstr. 12")
+                            sdClaim("locality", "Schulpforta")
+                            sdClaim("region", "Sachsen-Anhalt")
+                            sdClaim("country", "DE")
+                        }
+                    }
+                val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+                issuer.issue(spec).getOrThrow()
             }
-        }
-        val issuer = NimbusSdJwtOps.issuer(signer = RSASSASigner(issuerRsaKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-        issuer.issue(spec).getOrThrow()
-    }
 
-    with(NimbusSdJwtOps) {
-        sdJwt.recreateClaimsAndDisclosuresPerClaim().first
+        with(NimbusSdJwtOps) {
+            sdJwt.recreateClaimsAndDisclosuresPerClaim().first
+        }
     }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleRecreateClaims01.kt).
@@ -321,33 +331,34 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 -->
 
 ```kotlin
-val sdJwtWithMinimumDigests = sdJwt(minimumDigests = 5) {
-    // This 5 guarantees that at least 5 digests will be found
-    // to the digest array, regardless of the content of the SD-JWT
-    objClaim("address", minimumDigests = 10) {
-        // This affects the nested array of the digests that will
-        // have at list 10 digests.
-    }
+val sdJwtWithMinimumDigests =
+    sdJwt(minimumDigests = 5) {
+        // This 5 guarantees that at least 5 digests will be found
+        // to the digest array, regardless of the content of the SD-JWT
+        objClaim("address", minimumDigests = 10) {
+            // This affects the nested array of the digests that will
+            // have at list 10 digests.
+        }
 
-    sdObjClaim("address1", minimumDigests = 8) {
-        // This will affect the digests array that will be found
-        // in the disclosure of this recursively disclosable item
-        // the whole object will be embedded in its parent
-        // as a single digest
-    }
+        sdObjClaim("address1", minimumDigests = 8) {
+            // This will affect the digests array that will be found
+            // in the disclosure of this recursively disclosable item
+            // the whole object will be embedded in its parent
+            // as a single digest
+        }
 
-    arrClaim("evidence", minimumDigests = 2) {
-        // Array will have at least 2 digests
-        // regardless of its elements
-    }
+        arrClaim("evidence", minimumDigests = 2) {
+            // Array will have at least 2 digests
+            // regardless of its elements
+        }
 
-    sdArrClaim("evidence1", minimumDigests = 2) {
-        // Array will have at least 2 digests
-        // regardless of its elements
-        // the whole array will be embedded in its parent
-        // as a single digest
+        sdArrClaim("evidence1", minimumDigests = 2) {
+            // Array will have at least 2 digests
+            // regardless of its elements
+            // the whole array will be embedded in its parent
+            // as a single digest
+        }
     }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtWithMinimumDigest01.kt).
@@ -412,33 +423,39 @@ import kotlinx.coroutines.runBlocking
 -->
 
 ```kotlin
-val sdJwtVcVerification = runBlocking {
-    val issuer = Url("https://issuer.example.com")
+val sdJwtVcVerification =
+    runBlocking {
+        val issuer = Url("https://issuer.example.com")
 
-    with(NimbusSdJwtOps) {
-        val sdJwt = run {
-            val spec = sdJwt {
-                claim(RFC7519.ISSUER, issuer.toString())
-                claim(SdJwtVcSpec.VCT, "urn:credential:sample")
-            }
+        with(NimbusSdJwtOps) {
+            val sdJwt =
+                run {
+                    val spec =
+                        sdJwt {
+                            claim(RFC7519.ISSUER, issuer.toString())
+                            claim(SdJwtVcSpec.VCT, "urn:credential:sample")
+                        }
 
-            val signer = issuer(signer = ECDSASigner(issuerEcKeyPairWithCertificate), signAlgorithm = JWSAlgorithm.ES512) {
-                type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
-                x509CertChain(issuerEcKeyPairWithCertificate.x509CertChain)
-            }
-            signer.issue(spec).getOrThrow().serialize()
+                    val signer =
+                        issuer(signer = ECDSASigner(issuerEcKeyPairWithCertificate), signAlgorithm = JWSAlgorithm.ES512) {
+                            type(JOSEObjectType(SdJwtVcSpec.MEDIA_SUBTYPE_DC_SD_JWT))
+                            x509CertChain(issuerEcKeyPairWithCertificate.x509CertChain)
+                        }
+                    signer.issue(spec).getOrThrow().serialize()
+                }
+
+            val verifier =
+                SdJwtVcVerifier(
+                    issuerVerificationMethod =
+                        IssuerVerificationMethod.usingX5c { chain, _ ->
+                            chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
+                        },
+                    typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
+                    null,
+                )
+            verifier.verify(sdJwt)
         }
-
-        val verifier = SdJwtVcVerifier(
-            issuerVerificationMethod = IssuerVerificationMethod.usingX5c { chain, _ ->
-                chain.first().base64 == issuerEcKeyPairWithCertificate.x509CertChain.first()
-            },
-            typeMetadataPolicy = TypeMetadataPolicy.NotUsed,
-            null,
-        )
-        verifier.verify(sdJwt)
     }
-}
 ```
 
 > You can get the full code [here](src/test/kotlin/eu/europa/ec/eudi/sdjwt/examples/ExampleSdJwtVcVerification01.kt).
