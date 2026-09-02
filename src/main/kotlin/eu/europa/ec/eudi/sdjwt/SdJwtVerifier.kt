@@ -78,7 +78,7 @@ sealed interface VerificationError {
             require(nonUniqueDisclosures.isNotEmpty())
         }
 
-        override fun toString(): String = "SD-JWT contains non-unique disclosures"
+        override fun toString(): String = "SD-JWT contains ${nonUniqueDisclosures.size} non-unique disclosures"
     }
 
     /**
@@ -95,7 +95,7 @@ sealed interface VerificationError {
             require(disclosures.isNotEmpty())
         }
 
-        override fun toString(): String = "SD-JWT doesn't contain digests for every disclosure"
+        override fun toString(): String = "SD-JWT doesn't contain digests for ${disclosures.size} disclosures"
     }
 
     /**
