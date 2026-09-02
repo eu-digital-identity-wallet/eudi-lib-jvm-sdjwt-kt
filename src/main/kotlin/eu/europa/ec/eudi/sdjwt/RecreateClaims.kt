@@ -219,7 +219,7 @@ private class DiscloseObject(
 
             disclosuresPerDigest.remove(digest)?.let { disclosure ->
                 check(disclosure is Disclosure.ObjectProperty) {
-                    "Found array element disclosure ${disclosure.value} within ${RFC9901.CLAIM_SD} claim"
+                    "Found array element disclosure within ${RFC9901.CLAIM_SD} claim"
                 }
                 val (name, value) = disclosure.claim()
                 require(!jsonObject.containsKey(name)) {
@@ -286,7 +286,7 @@ private class DiscloseObject(
 
         return disclosuresPerDigest.remove(digest)?.let { disclosure ->
             check(disclosure is Disclosure.ArrayElement) {
-                "Found an $disclosure within an selectively disclosed array element"
+                "Found an ${disclosure::class} within a selectively disclosed array element"
             }
             visited(current, disclosure)
             disclosure.claim().value()

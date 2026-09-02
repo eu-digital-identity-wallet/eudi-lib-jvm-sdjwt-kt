@@ -61,6 +61,8 @@ sealed interface VerificationError {
             require(invalidDisclosures.isNotEmpty())
             require(invalidDisclosures.values.all { it.isNotEmpty() })
         }
+
+        override fun toString(): String = "SD-JWT contains invalid disclosures"
     }
 
     /**
@@ -75,6 +77,8 @@ sealed interface VerificationError {
         init {
             require(nonUniqueDisclosures.isNotEmpty())
         }
+
+        override fun toString(): String = "SD-JWT contains ${nonUniqueDisclosures.size} non-unique disclosures"
     }
 
     /**
@@ -86,7 +90,13 @@ sealed interface VerificationError {
      * SD-JWT doesn't contain digests for the [disclosures]
      * @param disclosures The disclosures for which there are no digests
      */
-    data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError
+    data class MissingDigests(val disclosures: List<Disclosure>) : VerificationError {
+        init {
+            require(disclosures.isNotEmpty())
+        }
+
+        override fun toString(): String = "SD-JWT doesn't contain digests for ${disclosures.size} disclosures"
+    }
 
     /**
      * Failed to verify an SD-JWT VC.
