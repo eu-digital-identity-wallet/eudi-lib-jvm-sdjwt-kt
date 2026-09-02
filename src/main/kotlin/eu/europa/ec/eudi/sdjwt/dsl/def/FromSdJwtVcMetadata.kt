@@ -163,6 +163,7 @@ private fun buildNestedDisclosableValue(
             AttributeMetadata(
                 display = currentClaimMetadata.display?.toList(),
                 svgId = currentClaimMetadata.svgId,
+                mandatory = currentClaimMetadata.mandatoryOrDefault,
             )
         return DisclosableDef.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
     }
@@ -176,6 +177,7 @@ private fun buildNestedDisclosableValue(
         AttributeMetadata(
             display = currentClaimMetadata.display?.toList(),
             svgId = currentClaimMetadata.svgId,
+            mandatory = currentClaimMetadata.mandatoryOrDefault,
         )
 
     val disclosableValue: DisclosableDef<String, AttributeMetadata> =
