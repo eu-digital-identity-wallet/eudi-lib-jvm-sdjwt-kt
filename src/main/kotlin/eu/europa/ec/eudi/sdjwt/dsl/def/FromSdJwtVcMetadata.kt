@@ -65,9 +65,7 @@ private typealias SdJwtObjectDefinitionContent = Map<String, SdJwtElementDefinit
 
 private val processObjectDefinition: DeepRecursiveFunction<SdJwtObjectDefinitionContext, SdJwtObjectDefinitionContent> =
     DeepRecursiveFunction { (childClaimsMetadatas, allClaimsGroupedByParentPath, selectivelyDiscloseWhenAllowed) ->
-        suspend fun DeepRecursiveScope<*, *>.metaOf(
-            childMeta: ClaimMetadata,
-        ): Pair<String, SdJwtElementDefinition> {
+        childClaimsMetadatas.associate { childMeta ->
             // The last element of the child's path should be the name of the attribute in the object.
             val lastPathElement = childMeta.path.value.last()
 
@@ -82,10 +80,8 @@ private val processObjectDefinition: DeepRecursiveFunction<SdJwtObjectDefinition
                 allClaimsGroupedByParentPath,
                 selectivelyDiscloseWhenAllowed,
             )
-            return claimName to disclosableElement
+            claimName to disclosableElement
         }
-
-        childClaimsMetadatas.associate { metaOf(it) }
     }
 
 private data class SdJwtArrayDefinitionContext(
@@ -97,22 +93,16 @@ private data class SdJwtArrayDefinitionContext(
 
 private val processArrayDefinition: DeepRecursiveFunction<SdJwtArrayDefinitionContext, SdJwtArrayDefinition> =
     DeepRecursiveFunction { (arrayMetadata, childClaimsMetadatas, allClaimsGroupedByParentPath, selectivelyDiscloseWhenAllowed) ->
-        val distinctArrayChildElements =
-            childClaimsMetadatas.map { it.path.value.last() }.distinct()
-
-        suspend fun DeepRecursiveScope<*, *>.metaOf(
-            e: ClaimPathElement,
-        ): SdJwtElementDefinition {
-            val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == e }
+        val distinctArrayChildElements = childClaimsMetadatas.map { it.path.value.last() }.distinct()
+        val contentList = distinctArrayChildElements.map { element ->
+            val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == element }
             val disclosableElement = toDisclosableElementMetadata(
                 elementClaimMetadata,
                 allClaimsGroupedByParentPath,
                 selectivelyDiscloseWhenAllowed,
             )
-            return disclosableElement
-        }
-
-        val contentList = distinctArrayChildElements.map { metaOf(it) }.toSet()
+            disclosableElement
+        }.toSet()
         val content: SdJwtElementDefinition = when (contentList.size) {
             0 -> error("No content definitions for array definition: $arrayMetadata")
             1 -> contentList.first()
