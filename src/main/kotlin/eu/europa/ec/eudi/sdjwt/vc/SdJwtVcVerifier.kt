@@ -110,7 +110,7 @@ sealed interface SdJwtVcVerificationError {
         /**
          * Indicates the key verification methods is not supported.
          *
-         * @property method one of 'issuer-metadata', 'x5c', or 'did'
+         * @property method one of 'issuer-metadata', 'x5c'.
          */
         data class UnsupportedVerificationMethod(val method: String) : IssuerKeyVerificationError
 
@@ -123,11 +123,6 @@ sealed interface SdJwtVcVerificationError {
          * Indicates the leaf certificate of the 'x5c' certificate chain is not trusted.
          */
         data class UntrustedIssuerCertificate(val reason: String? = null) : IssuerKeyVerificationError
-
-        /**
-         * DID resolution failed.
-         */
-        data class DIDLookupFailure(val message: String, val cause: Throwable? = null) : IssuerKeyVerificationError
 
         /**
          * Indicates a key source for the Issuer could not be determined.
