@@ -470,9 +470,17 @@ Example usage:
 ```kotlin
 val resolver = ResolveTypeMetadata(
     lookupTypeMetadata = LookupTypeMetadataUsingKtor(),
+    limit = 4u,
 )
 val typeMetadata = resolver(Vct("https://example.com/credentials/sample")).getOrThrow()
 ```
+
+> [!WARNING]
+>
+> By default `ResolveTypeMetadata` enforces a limit of `4` on the number of parent SD-JWT VC Type Metadata documents resolved,
+> to avoid potential resource exhaustion.
+>
+> Integrators are free/advised to select an appropriate limit based on their use-case/needs.
 
 When constructing an `SdJwtVcVerifier`, a Verifier can provide a `TypeMetadataPolicy` that describes his policy concerning Type Metadata.
 Currently, the library provides the following policies:
