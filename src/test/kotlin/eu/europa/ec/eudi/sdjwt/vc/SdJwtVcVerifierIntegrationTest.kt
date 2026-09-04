@@ -100,7 +100,7 @@ class SdJwtVcVerifierIntegrationTest {
         }
 
     @Test
-    fun verificationFailureWithTypeMetadataResolutionFailureDueSelectivelyDisclosedVct() =
+    fun verificationFailureDueToSelectivelyDisclosedVct() =
         runTest {
             val serialized =
                 issue {
@@ -108,11 +108,31 @@ class SdJwtVcVerifierIntegrationTest {
                     sdClaim(SdJwtVcSpec.VCT, "urn:eudi:pid:1")
                 }
             val exception =
-                assertFailsWith<SdJwtVerificationException> { verifier.verify(serialized).getOrThrow() }
-            val sdJwtVcError = assertIs<VerificationError.SdJwtVcError>(exception.reason)
-            val sdJwtVcVerificationError =
-                assertIs<SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure>(sdJwtVcError.error)
-            assertIs<NullPointerException>(sdJwtVcVerificationError.cause)
+                assertFailsWith<SdJwtVerificationException> {
+                    verifier.verify(serialized).getOrThrow()
+                }
+            val cause = assertIs<VerificationError.IncorrectlyDisclosedClaim>(exception.reason)
+            assertEquals(listOf(ClaimPath.claim("vct")), cause.claims)
+        }
+
+    @Test
+    fun verificationFailureDueToImproperlyDisclosedSdJwtVcClaims() =
+        runTest {
+            val serialized =
+                issue {
+                    SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.forEach { claim ->
+                        sdClaim(claim, "value")
+                    }
+                }
+            val exception =
+                assertFailsWith<SdJwtVerificationException> {
+                    verifier.verify(serialized).getOrThrow()
+                }
+            val cause = assertIs<VerificationError.IncorrectlyDisclosedClaim>(exception.reason)
+            assertContentEquals(
+                SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+                cause.claims,
+            )
         }
 
     @Test
