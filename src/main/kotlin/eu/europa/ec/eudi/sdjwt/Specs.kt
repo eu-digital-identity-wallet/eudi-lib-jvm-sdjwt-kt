@@ -174,6 +174,17 @@ object SdJwtVcSpec {
     const val SVG_CONTRAST: String = "contrast"
     const val SVG_CONTRAST_NORMAL: String = "normal"
     const val SVG_CONTRAST_HIGH: String = "high"
+
+    val NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS: Set<String>
+        get() = setOf(
+            RFC7519.ISSUER,
+            RFC7519.NOT_BEFORE,
+            RFC7519.EXPIRATION_TIME,
+            RFC7800.CNF,
+            VCT,
+            VCT_INTEGRITY,
+            TokenStatusListSpec.STATUS,
+        )
 }
 
 /**

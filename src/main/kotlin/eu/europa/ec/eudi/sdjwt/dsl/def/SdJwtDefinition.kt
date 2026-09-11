@@ -15,10 +15,7 @@
  */
 package eu.europa.ec.eudi.sdjwt.dsl.def
 
-import eu.europa.ec.eudi.sdjwt.RFC7519
-import eu.europa.ec.eudi.sdjwt.RFC7800
 import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
-import eu.europa.ec.eudi.sdjwt.TokenStatusListSpec
 import eu.europa.ec.eudi.sdjwt.dsl.not
 import eu.europa.ec.eudi.sdjwt.dsl.values.DisclosableElement
 import eu.europa.ec.eudi.sdjwt.vc.*
@@ -47,25 +44,14 @@ data class SdJwtDefinition(
      */
     fun plusSdJwtVcNeverSelectivelyDisclosableClaims(): SdJwtDefinition {
         val newContents = content.toMutableMap()
-        SdJwtVcNeverSelectivelyDisclosableClaims.forEach { claim ->
+        SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.forEach { claim ->
             val definition = newContents[claim]?.value ?: DisclosableDef.Id(AttributeMetadata())
             newContents[claim] = !definition
         }
         return SdJwtDefinition(newContents, metadata)
     }
 
-    companion object {
-        private val SdJwtVcNeverSelectivelyDisclosableClaims: Set<String>
-            get() = setOf(
-                RFC7519.ISSUER,
-                RFC7519.NOT_BEFORE,
-                RFC7519.EXPIRATION_TIME,
-                RFC7800.CNF,
-                SdJwtVcSpec.VCT,
-                SdJwtVcSpec.VCT_INTEGRITY,
-                TokenStatusListSpec.STATUS,
-            )
-    }
+    companion object
 }
 
 /**

@@ -32,10 +32,15 @@ interface SdJwtVcVerifier<out JWT> {
      * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
+     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
+     * present in the unprocessed payload
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT>>
+    suspend fun verify(
+        unverifiedSdJwt: String,
+        neverSelectivelyDisclosable: List<ClaimPath> = SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+    ): Result<SdJwt<JWT>>
 
     /**
      * Verifies an SD-JWT serialized using JWS JSON serialization (either general or flattened format) as defined by RFC7515
@@ -45,13 +50,18 @@ interface SdJwtVcVerifier<out JWT> {
      * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
      *
      * @param unverifiedSdJwt the SD-JWT to be verified.
+     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
+     * present in the unprocessed payload
      * A JSON Object that is expected to be in general
      * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
      * @return the verified SD-JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
+    suspend fun verify(
+        unverifiedSdJwt: JsonObject,
+        neverSelectivelyDisclosable: List<ClaimPath> = SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+    ): Result<SdJwt<JWT>> =
         verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
@@ -60,13 +70,19 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
+     * present in the unprocessed payload
      * @return the verified SD-JWT and the KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: String, challenge: ChallengePredicate?): Result<SdJwtAndKbJwt<JWT>>
+    suspend fun verify(
+        unverifiedSdJwt: String,
+        challenge: ChallengePredicate?,
+        neverSelectivelyDisclosable: List<ClaimPath> = SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+    ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
@@ -74,26 +90,36 @@ interface SdJwtVcVerifier<out JWT> {
      *
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
+     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
+     * present in the unprocessed payload
      * @return the verified SD-JWT and KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject, challenge: ChallengePredicate?): Result<SdJwtAndKbJwt<JWT>> =
+    suspend fun verify(
+        unverifiedSdJwt: JsonObject,
+        challenge: ChallengePredicate?,
+        neverSelectivelyDisclosable: List<ClaimPath> = SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+    ): Result<SdJwtAndKbJwt<JWT>> =
         verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> {
     return object : SdJwtVcVerifier<JWT1> {
-        override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
+        override suspend fun verify(
+            unverifiedSdJwt: String,
+            neverSelectivelyDisclosable: List<ClaimPath>,
+        ): Result<SdJwt<JWT1>> =
+            this@map.verify(unverifiedSdJwt, neverSelectivelyDisclosable).map { sdJwt -> sdJwt.map(f) }
 
         override suspend fun verify(
             unverifiedSdJwt: String,
             challenge: ChallengePredicate?,
+            neverSelectivelyDisclosable: List<ClaimPath>,
         ): Result<SdJwtAndKbJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
+            this@map.verify(unverifiedSdJwt, challenge, neverSelectivelyDisclosable).map { it.map(f) }
     }
 }
 
