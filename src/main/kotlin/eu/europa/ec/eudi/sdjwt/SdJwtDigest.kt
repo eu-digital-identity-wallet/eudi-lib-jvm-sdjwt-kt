@@ -30,7 +30,9 @@ import kotlinx.serialization.encoding.Encoder
  */
 @Serializable(with = SdJwtDigestSerializer::class)
 @JvmInline
-value class SdJwtDigest private constructor(val value: String) {
+value class SdJwtDigest private constructor(
+    val value: String,
+) {
 
     companion object {
 
@@ -41,10 +43,11 @@ value class SdJwtDigest private constructor(val value: String) {
          * @param value the base64-url encoded without padding digest value to wrap
          * @return the wrapped value
          */
-        fun wrap(value: String): Result<SdJwtDigest> = runCatchingCancellable {
-            Base64UrlNoPadding.decode(value)
-            SdJwtDigest(value)
-        }
+        fun wrap(value: String): Result<SdJwtDigest> =
+            runCatchingCancellable {
+                Base64UrlNoPadding.decode(value)
+                SdJwtDigest(value)
+            }
 
         /**
          * Calculates the [integrity][SdJwtDigest] of serialized presentation
@@ -53,8 +56,10 @@ value class SdJwtDigest private constructor(val value: String) {
          * @param value the serialized SD-JWT to calculate the digest for
          * @return the calculated digest
          */
-        fun digest(hashAlgorithm: HashAlgorithm, value: String): Result<SdJwtDigest> =
-            digestInternal(platform().hashes, hashAlgorithm, value)
+        fun digest(
+            hashAlgorithm: HashAlgorithm,
+            value: String,
+        ): Result<SdJwtDigest> = digestInternal(platform().hashes, hashAlgorithm, value)
 
         /**
          * Internal version of digest that takes a Platform parameter
@@ -63,19 +68,21 @@ value class SdJwtDigest private constructor(val value: String) {
             hashes: Hashes,
             hashAlgorithm: HashAlgorithm,
             value: String,
-        ): Result<SdJwtDigest> = runCatchingCancellable {
-            require(value.contains(RFC9901.DISCLOSURE_SEPARATOR))
-            fun String.noKeyBinding() =
-                if (endsWith(RFC9901.DISCLOSURE_SEPARATOR)) {
-                    this
-                } else {
-                    removeRange(lastIndexOf(RFC9901.DISCLOSURE_SEPARATOR) + 1, length)
-                }
+        ): Result<SdJwtDigest> =
+            runCatchingCancellable {
+                require(value.contains(RFC9901.DISCLOSURE_SEPARATOR))
 
-            val input = value.noKeyBinding().encodeToByteArray()
-            val digest = hashes.digest(hashAlgorithm, input)
-            SdJwtDigest(Base64UrlNoPadding.encode(digest))
-        }
+                fun String.noKeyBinding() =
+                    if (endsWith(RFC9901.DISCLOSURE_SEPARATOR)) {
+                        this
+                    } else {
+                        removeRange(lastIndexOf(RFC9901.DISCLOSURE_SEPARATOR) + 1, length)
+                    }
+
+                val input = value.noKeyBinding().encodeToByteArray()
+                val digest = hashes.digest(hashAlgorithm, input)
+                SdJwtDigest(Base64UrlNoPadding.encode(digest))
+            }
     }
 }
 
@@ -83,7 +90,10 @@ object SdJwtDigestSerializer : KSerializer<SdJwtDigest> {
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor("SdJwtDigest", PrimitiveKind.STRING)
 
-    override fun serialize(encoder: Encoder, value: SdJwtDigest) {
+    override fun serialize(
+        encoder: Encoder,
+        value: SdJwtDigest,
+    ) {
         encoder.encodeString(value.value)
     }
 

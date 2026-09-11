@@ -36,7 +36,9 @@ import kotlin.contracts.contract
  */
 @Serializable(with = ClaimPathSerializer::class)
 @JvmInline
-value class ClaimPath internal constructor(val value: List<ClaimPathElement>) {
+value class ClaimPath internal constructor(
+    val value: List<ClaimPathElement>,
+) {
 
     init {
         require(value.isNotEmpty())
@@ -44,16 +46,13 @@ value class ClaimPath internal constructor(val value: List<ClaimPathElement>) {
 
     override fun toString(): String = value.toString()
 
-    operator fun plus(other: ClaimPathElement): ClaimPath =
-        ClaimPath(this.value + other)
+    operator fun plus(other: ClaimPathElement): ClaimPath = ClaimPath(this.value + other)
 
-    operator fun plus(other: ClaimPath): ClaimPath =
-        ClaimPath(this.value + other.value)
+    operator fun plus(other: ClaimPath): ClaimPath = ClaimPath(this.value + other.value)
 
     operator fun contains(that: ClaimPath): Boolean =
         value.foldIndexed(this.value.size <= that.value.size) { index, acc, thisElement ->
-            fun comp() =
-                that.value.getOrNull(index)?.let { thatElement -> thatElement in thisElement } == true
+            fun comp() = that.value.getOrNull(index)?.let { thatElement -> thatElement in thisElement } == true
             acc and comp()
         }
 
@@ -76,16 +75,21 @@ value class ClaimPath internal constructor(val value: List<ClaimPathElement>) {
      * Gets the ClaimPath of the parent element. Returns `null` to indicate the root element.
      */
     fun parent(): ClaimPath? =
-        value.dropLast(1)
+        value
+            .dropLast(1)
             .takeIf { it.isNotEmpty() }
             ?.let { ClaimPath(it) }
 
     fun head(): ClaimPathElement = value.first()
+
     fun tail(): ClaimPath? {
         val tailElements = value.drop(1)
-        return if (tailElements.isEmpty()) return null
-        else ClaimPath(tailElements)
+        return if (tailElements.isEmpty())
+            return null
+        else
+            ClaimPath(tailElements)
     }
+
     fun last(): ClaimPathElement = value.last()
 
     /**
@@ -100,9 +104,13 @@ value class ClaimPath internal constructor(val value: List<ClaimPathElement>) {
 
     companion object {
 
-        operator fun invoke(head: ClaimPathElement, vararg tail: ClaimPathElement): ClaimPath =
-            ClaimPath(listOf(head, *tail))
+        operator fun invoke(
+            head: ClaimPathElement,
+            vararg tail: ClaimPathElement,
+        ): ClaimPath = ClaimPath(listOf(head, *tail))
+
         fun claim(name: String): ClaimPath = ClaimPath(listOf(ClaimPathElement.Claim(name)))
+
         fun ensureObjectAttributes(claims: List<ClaimPath>) {
             val objAttributePaths = claims.filter { it.head() is ClaimPathElement.Claim }
             val notObjAttributePaths = claims - objAttributePaths.toSet()
@@ -135,7 +143,9 @@ sealed interface ClaimPathElement {
      * @param index Non-negative index
      */
     @JvmInline
-    value class ArrayElement(val index: Int) : ClaimPathElement {
+    value class ArrayElement(
+        val index: Int,
+    ) : ClaimPathElement {
         init {
             require(index >= 0) { "Index should be non-negative" }
         }
@@ -149,7 +159,9 @@ sealed interface ClaimPathElement {
      * @param name the attribute name
      */
     @JvmInline
-    value class Claim(val name: String) : ClaimPathElement {
+    value class Claim(
+        val name: String,
+    ) : ClaimPathElement {
         override fun toString() = name
     }
 
@@ -162,14 +174,21 @@ sealed interface ClaimPathElement {
      */
     operator fun contains(that: ClaimPathElement): Boolean =
         when (this) {
-            AllArrayElements -> when (that) {
-                AllArrayElements -> true
-                is ArrayElement -> true
-                is Claim -> false
+            AllArrayElements -> {
+                when (that) {
+                    AllArrayElements -> true
+                    is ArrayElement -> true
+                    is Claim -> false
+                }
             }
 
-            is ArrayElement -> this == that
-            is Claim -> this == that
+            is ArrayElement -> {
+                this == that
+            }
+
+            is Claim -> {
+                this == that
+            }
         }
 }
 
@@ -203,32 +222,36 @@ object ClaimPathSerializer : KSerializer<ClaimPath> {
             else -> throw IllegalArgumentException("Only string, null, int can be used")
         }
 
-    private fun claimPath(array: JsonArray): ClaimPath {
-        return try {
-            val elements = array.map {
-                require(it is JsonPrimitive)
-                claimPathElement(it)
-            }
+    private fun claimPath(array: JsonArray): ClaimPath =
+        try {
+            val elements =
+                array.map {
+                    require(it is JsonPrimitive)
+                    claimPathElement(it)
+                }
             require(elements.isNotEmpty()) { "ClaimPath must not be empty" }
             ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
         } catch (e: IllegalArgumentException) {
             throw SerializationException("Failed to deserialize ClaimPath", e)
         }
-    }
 
     private fun ClaimPath.toJson(): JsonArray = JsonArray(value.map { it.toJson() })
 
-    private fun ClaimPathElement.toJson(): JsonPrimitive = when (this) {
-        is ClaimPathElement.Claim -> JsonPrimitive(name)
-        is ClaimPathElement.ArrayElement -> JsonPrimitive(index)
-        ClaimPathElement.AllArrayElements -> JsonNull
-    }
+    private fun ClaimPathElement.toJson(): JsonPrimitive =
+        when (this) {
+            is ClaimPathElement.Claim -> JsonPrimitive(name)
+            is ClaimPathElement.ArrayElement -> JsonPrimitive(index)
+            ClaimPathElement.AllArrayElements -> JsonNull
+        }
 
     val arraySerializer = serializer<JsonArray>()
 
     override val descriptor: SerialDescriptor = arraySerializer.descriptor
 
-    override fun serialize(encoder: Encoder, value: ClaimPath) {
+    override fun serialize(
+        encoder: Encoder,
+        value: ClaimPath,
+    ) {
         val array = value.toJson()
         arraySerializer.serialize(encoder, array)
     }

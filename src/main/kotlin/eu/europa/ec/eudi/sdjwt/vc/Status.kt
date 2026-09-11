@@ -20,12 +20,19 @@ package eu.europa.ec.eudi.sdjwt.vc
  */
 sealed interface Status {
     data object Valid : Status
-    data class NonValid(val status: UByte, val explanation: String) : Status
+
+    data class NonValid(
+        val status: UByte,
+        val explanation: String,
+    ) : Status
 }
 
 /**
  * Checks the status of an SD-JWT VC in a Token Status List.
  */
 fun interface CheckWithTokenStatusList {
-    suspend operator fun invoke(uri: String, index: UInt): Status
+    suspend operator fun invoke(
+        uri: String,
+        index: UInt,
+    ): Status
 }

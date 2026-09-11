@@ -24,7 +24,10 @@ import java.io.ByteArrayInputStream
 internal class GetSubResourceKtorOps(
     private val sriValidator: SRIValidator?,
 ) {
-    suspend inline fun <reified T> HttpClient.getJsonOrNull(url: Url, expectedIntegrity: DocumentIntegrity?): T? =
+    suspend inline fun <reified T> HttpClient.getJsonOrNull(
+        url: Url,
+        expectedIntegrity: DocumentIntegrity?,
+    ): T? =
         if (sriValidator == null || expectedIntegrity == null) {
             getJsonOrNull<T>(url)
         } else {

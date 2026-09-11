@@ -30,6 +30,7 @@ interface DisclosableArray<K, out A> {
 interface DisclosableContainerFactory<K, A, out DObj, out DArr>
     where DObj : DisclosableObject<K, A>, DArr : DisclosableArray<K, A> {
     fun obj(elements: Map<K, DisclosableElement<K, A>>): DObj
+
     fun arr(elements: List<DisclosableElement<K, A>>): DArr
 
     companion object {
@@ -61,7 +62,9 @@ sealed interface DisclosableValue<K, out A> {
      * This means that [A] doesn't contain any information that can be selectively disclosed
      */
     @JvmInline
-    value class Id<K, out A>(val value: A) : DisclosableValue<K, A>
+    value class Id<K, out A>(
+        val value: A,
+    ) : DisclosableValue<K, A>
 
     /**
      * A map-like or dictionary-like container of [DisclosableElement]s.
@@ -71,7 +74,9 @@ sealed interface DisclosableValue<K, out A> {
      * @see DisclosableObject for more details about the container and its contents.
      */
     @JvmInline
-    value class Obj<K, out A>(val value: DisclosableObject<K, A>) : DisclosableValue<K, A>
+    value class Obj<K, out A>(
+        val value: DisclosableObject<K, A>,
+    ) : DisclosableValue<K, A>
 
     /**
      * An array-like container of [DisclosableElement]s.
@@ -79,7 +84,9 @@ sealed interface DisclosableValue<K, out A> {
      * @see DisclosableArray for more details about the container and its contents.
      */
     @JvmInline
-    value class Arr<K, out A>(val value: DisclosableArray<K, A>) : DisclosableValue<K, A>
+    value class Arr<K, out A>(
+        val value: DisclosableArray<K, A>,
+    ) : DisclosableValue<K, A>
 
     companion object {
         operator fun <K, A> invoke(value: A): Id<K, A> = Id(value)

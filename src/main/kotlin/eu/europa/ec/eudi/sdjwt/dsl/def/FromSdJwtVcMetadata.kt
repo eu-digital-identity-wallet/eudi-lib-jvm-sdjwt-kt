@@ -37,13 +37,14 @@ fun SdJwtDefinition.Companion.fromSdJwtVcMetadata(
 ): SdJwtDefinition {
     val allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>> = sdJwtVcMetadata.claims.groupBy { it.path.parent() }
     val topLevelClaims = allClaimsGroupedByParentPath[null] ?: emptyList()
-    val content = processObjectDefinition(
-        SdJwtObjectDefinitionContext(
-            topLevelClaims,
-            allClaimsGroupedByParentPath,
-            selectivelyDiscloseWhenAllowed,
-        ),
-    )
+    val content =
+        processObjectDefinition(
+            SdJwtObjectDefinitionContext(
+                topLevelClaims,
+                allClaimsGroupedByParentPath,
+                selectivelyDiscloseWhenAllowed,
+            ),
+        )
 
     val vctMetadata =
         VctMetadata(
@@ -75,11 +76,12 @@ private val processObjectDefinition: DeepRecursiveFunction<SdJwtObjectDefinition
             }
             val claimName = lastPathElement.name
 
-            val disclosableElement = toDisclosableElementMetadata(
-                childMeta,
-                allClaimsGroupedByParentPath,
-                selectivelyDiscloseWhenAllowed,
-            )
+            val disclosableElement =
+                toDisclosableElementMetadata(
+                    childMeta,
+                    allClaimsGroupedByParentPath,
+                    selectivelyDiscloseWhenAllowed,
+                )
             claimName to disclosableElement
         }
     }
@@ -94,20 +96,24 @@ private data class SdJwtArrayDefinitionContext(
 private val processArrayDefinition: DeepRecursiveFunction<SdJwtArrayDefinitionContext, SdJwtArrayDefinition> =
     DeepRecursiveFunction { (arrayMetadata, childClaimsMetadatas, allClaimsGroupedByParentPath, selectivelyDiscloseWhenAllowed) ->
         val distinctArrayChildElements = childClaimsMetadatas.map { it.path.value.last() }.distinct()
-        val contentList = distinctArrayChildElements.map { element ->
-            val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == element }
-            val disclosableElement = toDisclosableElementMetadata(
-                elementClaimMetadata,
-                allClaimsGroupedByParentPath,
-                selectivelyDiscloseWhenAllowed,
-            )
-            disclosableElement
-        }.toSet()
-        val content: SdJwtElementDefinition = when (contentList.size) {
-            0 -> error("No content definitions for array definition: $arrayMetadata")
-            1 -> contentList.first()
-            else -> error("Multiple content definitions for array definition: $arrayMetadata")
-        }
+        val contentList =
+            distinctArrayChildElements
+                .map { element ->
+                    val elementClaimMetadata = childClaimsMetadatas.first { it.path.value.last() == element }
+                    val disclosableElement =
+                        toDisclosableElementMetadata(
+                            elementClaimMetadata,
+                            allClaimsGroupedByParentPath,
+                            selectivelyDiscloseWhenAllowed,
+                        )
+                    disclosableElement
+                }.toSet()
+        val content: SdJwtElementDefinition =
+            when (contentList.size) {
+                0 -> error("No content definitions for array definition: $arrayMetadata")
+                1 -> contentList.first()
+                else -> error("Multiple content definitions for array definition: $arrayMetadata")
+            }
         SdJwtArrayDefinition(content, arrayMetadata)
     }
 
@@ -116,11 +122,12 @@ private suspend fun DeepRecursiveScope<*, *>.toDisclosableElementMetadata(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
 ): SdJwtElementDefinition {
-    val (nestedDisclosableValue, isSelectivelyDisclosable) = buildNestedDisclosableValue(
-        currentClaimPath = claimMetadata.path, // The claim path this metadata belongs to
-        allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
-        selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
-    )
+    val (nestedDisclosableValue, isSelectivelyDisclosable) =
+        buildNestedDisclosableValue(
+            currentClaimPath = claimMetadata.path, // The claim path this metadata belongs to
+            allClaimsGroupedByParentPath = allClaimsGroupedByParentPath,
+            selectivelyDiscloseWhenAllowed = selectivelyDiscloseWhenAllowed,
+        )
     return if (isSelectivelyDisclosable) +nestedDisclosableValue else !nestedDisclosableValue
 }
 
@@ -129,58 +136,66 @@ private suspend fun DeepRecursiveScope<*, *>.buildNestedDisclosableValue(
     allClaimsGroupedByParentPath: Map<ClaimPath?, List<ClaimMetadata>>,
     selectivelyDiscloseWhenAllowed: Boolean,
 ): Pair<DisclosableDef<String, AttributeMetadata>, Boolean> {
-    val currentClaimMetadata = allClaimsGroupedByParentPath[currentClaimPath.parent()]
-        ?.firstOrNull { it.path == currentClaimPath }
+    val currentClaimMetadata =
+        allClaimsGroupedByParentPath[currentClaimPath.parent()]
+            ?.firstOrNull { it.path == currentClaimPath }
 
     checkNotNull(currentClaimMetadata) {
         "ClaimMetadata not found for current path: $currentClaimPath. All intermediate paths must have a corresponding ClaimMetadata entry."
     }
-    val isCurrentNodeSelectivelyDisclosable = when (currentClaimMetadata.selectivelyDisclosableOrDefault) {
-        ClaimSelectivelyDisclosable.Always -> true
-        ClaimSelectivelyDisclosable.Never -> false
-        ClaimSelectivelyDisclosable.Allowed -> selectivelyDiscloseWhenAllowed
-    }
+    val isCurrentNodeSelectivelyDisclosable =
+        when (currentClaimMetadata.selectivelyDisclosableOrDefault) {
+            ClaimSelectivelyDisclosable.Always -> true
+            ClaimSelectivelyDisclosable.Never -> false
+            ClaimSelectivelyDisclosable.Allowed -> selectivelyDiscloseWhenAllowed
+        }
 
     val directChildrenClaims = allClaimsGroupedByParentPath[currentClaimPath] ?: emptyList()
 
     if (directChildrenClaims.isEmpty()) {
-        val attributeMetadata = AttributeMetadata(
-            display = currentClaimMetadata.display?.toList(),
-            svgId = currentClaimMetadata.svgId,
-        )
+        val attributeMetadata =
+            AttributeMetadata(
+                display = currentClaimMetadata.display?.toList(),
+                svgId = currentClaimMetadata.svgId,
+            )
         return DisclosableDef.Id<String, AttributeMetadata>(attributeMetadata) to isCurrentNodeSelectivelyDisclosable
     }
 
-    val isNextLevelArray = directChildrenClaims.all { childCm ->
-        childCm.path.value.last() is ClaimPathElement.AllArrayElements || childCm.path.value.last() is ClaimPathElement.ArrayElement
-    }
+    val isNextLevelArray =
+        directChildrenClaims.all { childCm ->
+            childCm.path.value.last() is ClaimPathElement.AllArrayElements || childCm.path.value.last() is ClaimPathElement.ArrayElement
+        }
 
-    val containerAttributeMetadata = AttributeMetadata(
-        display = currentClaimMetadata.display?.toList(),
-        svgId = currentClaimMetadata.svgId,
-    )
+    val containerAttributeMetadata =
+        AttributeMetadata(
+            display = currentClaimMetadata.display?.toList(),
+            svgId = currentClaimMetadata.svgId,
+        )
 
-    val disclosableValue: DisclosableDef<String, AttributeMetadata> = if (isNextLevelArray) {
-        val arrayDefinition = processArrayDefinition.callRecursive(
-            SdJwtArrayDefinitionContext(
-                containerAttributeMetadata,
-                directChildrenClaims, // Pass the direct children
-                allClaimsGroupedByParentPath,
-                selectivelyDiscloseWhenAllowed,
-            ),
-        )
-        DisclosableDef.Arr(arrayDefinition)
-    } else {
-        val content = processObjectDefinition.callRecursive(
-            SdJwtObjectDefinitionContext(
-                directChildrenClaims, // Pass the direct children
-                allClaimsGroupedByParentPath,
-                selectivelyDiscloseWhenAllowed,
-            ),
-        )
-        val objectDefinition = SdJwtObjectDefinition(content, containerAttributeMetadata)
-        DisclosableDef.Obj(objectDefinition)
-    }
+    val disclosableValue: DisclosableDef<String, AttributeMetadata> =
+        if (isNextLevelArray) {
+            val arrayDefinition =
+                processArrayDefinition.callRecursive(
+                    SdJwtArrayDefinitionContext(
+                        containerAttributeMetadata,
+                        directChildrenClaims, // Pass the direct children
+                        allClaimsGroupedByParentPath,
+                        selectivelyDiscloseWhenAllowed,
+                    ),
+                )
+            DisclosableDef.Arr(arrayDefinition)
+        } else {
+            val content =
+                processObjectDefinition.callRecursive(
+                    SdJwtObjectDefinitionContext(
+                        directChildrenClaims, // Pass the direct children
+                        allClaimsGroupedByParentPath,
+                        selectivelyDiscloseWhenAllowed,
+                    ),
+                )
+            val objectDefinition = SdJwtObjectDefinition(content, containerAttributeMetadata)
+            DisclosableDef.Obj(objectDefinition)
+        }
 
     return disclosableValue to isCurrentNodeSelectivelyDisclosable
 }

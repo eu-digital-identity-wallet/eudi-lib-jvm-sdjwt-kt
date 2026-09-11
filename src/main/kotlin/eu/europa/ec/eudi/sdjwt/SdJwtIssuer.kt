@@ -48,11 +48,12 @@ fun interface SdJwtIssuer<out SIGNED_JWT> {
         operator fun <SIGNED_JWT> invoke(
             sdJwtFactory: SdJwtFactory,
             signSdJwt: SignSdJwt<SIGNED_JWT>,
-        ): SdJwtIssuer<SIGNED_JWT> = SdJwtIssuer { sdJwtObject ->
-            runCatchingCancellable {
-                val unsignedSdJwt = sdJwtFactory.createSdJwt(sdJwtObject).getOrThrow()
-                signSdJwt(unsignedSdJwt)
+        ): SdJwtIssuer<SIGNED_JWT> =
+            SdJwtIssuer { sdJwtObject ->
+                runCatchingCancellable {
+                    val unsignedSdJwt = sdJwtFactory.createSdJwt(sdJwtObject).getOrThrow()
+                    signSdJwt(unsignedSdJwt)
+                }
             }
-        }
     }
 }
