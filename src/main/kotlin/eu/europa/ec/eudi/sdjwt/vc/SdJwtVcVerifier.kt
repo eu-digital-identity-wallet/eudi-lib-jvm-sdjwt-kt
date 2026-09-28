@@ -28,21 +28,19 @@ interface SdJwtVcVerifier<out JWT> {
     /**
      * Verifies an SD-JWT serialized using compact serialization.
      *
-     * Typically, this is useful to Holder that wants to verify an issued SD-JWT, or to Verifier that wants to verify
-     * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT.
      *
      * @param unverifiedSdJwt the SD-JWT to be verified
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT>>
+    suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<JWT>>
 
     /**
      * Verifies an SD-JWT serialized using JWS JSON serialization (either general or flattened format) as defined by RFC7515
      * and extended by SD-JWT specification.
      *
-     * Typically, this is useful to Holder that wants to verify an issued SD-JWT, or to Verifier that wants to verify
-     * a presented SD-JWT in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
+     * Typically, this is useful to Holder that wants to verify an issued SD-JWT.
      *
      * @param unverifiedSdJwt the SD-JWT to be verified.
      * A JSON Object that is expected to be in general
@@ -51,7 +49,37 @@ interface SdJwtVcVerifier<out JWT> {
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
-    suspend fun verify(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> = verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+    suspend fun verifyIssuance(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
+        verifyIssuance(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
+
+    /**
+     * Verifies a SD-JWT serialized using compact serialization.
+     * Typically, this is useful to Verifiers that want to verify presentation SD-JWT communicated by Holders
+     * in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
+     *
+     * @param unverifiedSdJwt the SD-JWT to be verified
+     * @return the verified SD-JWT, if valid.
+     * Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
+     * are representing in both string and decoded payload.
+     * Expected errors are reported via a [SdJwtVerificationException]
+     */
+    suspend fun verifyPresentation(unverifiedSdJwt: String): Result<SdJwt<JWT>>
+
+    /**
+     * Verifies a SD-JWT in JWS JSON serialization.
+     * Typically, this is useful to Verifiers that want to verify presentation SD-JWT communicated by Holders
+     * in case the KB-JWT [must not be present][KeyBindingVerifier.MustNotBePresent].
+     *
+     * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
+     * @return the verified SD-JWT and KeyBinding JWT, if valid.
+     * Otherwise, method could raise a [SdJwtVerificationException]
+     * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
+     * are representing in both string and decoded payload.
+     * Expected errors are reported via a [SdJwtVerificationException]
+     */
+    suspend fun verifyPresentation(unverifiedSdJwt: JsonObject): Result<SdJwt<JWT>> =
+        verifyPresentation(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -65,14 +93,14 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(
+    suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: ChallengePredicate?,
     ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
      * Verifies a SD-JWT+KB in JWS JSON serialization.
-     * Typically, this is useful to Verifier that want to verify presentation SD-JWT communicated by Holders
+     * Typically, this is useful to Verifiers that want to verify presentation SD-JWT communicated by Holders
      *
      * @param unverifiedSdJwt the SD-JWT to be verified in JWS JSON
      * @param challenge verifier's challenge, expected to be found in KB-JWT (signed by wallet)
@@ -82,21 +110,24 @@ interface SdJwtVcVerifier<out JWT> {
      * are representing in both string and decoded payload.
      * Expected errors are reported via a [SdJwtVerificationException]
      */
-    suspend fun verify(
+    suspend fun verifyPresentation(
         unverifiedSdJwt: JsonObject,
         challenge: ChallengePredicate?,
-    ): Result<SdJwtAndKbJwt<JWT>> = verify(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
+    ): Result<SdJwtAndKbJwt<JWT>> = verifyPresentation(JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), challenge)
 }
 
 fun <JWT, JWT1> SdJwtVcVerifier<JWT>.map(f: (JWT) -> JWT1): SdJwtVcVerifier<JWT1> =
     object : SdJwtVcVerifier<JWT1> {
-        override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
-            this@map.verify(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
+        override suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
+            this@map.verifyIssuance(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
 
-        override suspend fun verify(
+        override suspend fun verifyPresentation(unverifiedSdJwt: String): Result<SdJwt<JWT1>> =
+            this@map.verifyPresentation(unverifiedSdJwt).map { sdJwt -> sdJwt.map(f) }
+
+        override suspend fun verifyPresentation(
             unverifiedSdJwt: String,
             challenge: ChallengePredicate?,
-        ): Result<SdJwtAndKbJwt<JWT1>> = this@map.verify(unverifiedSdJwt, challenge).map { it.map(f) }
+        ): Result<SdJwtAndKbJwt<JWT1>> = this@map.verifyPresentation(unverifiedSdJwt, challenge).map { it.map(f) }
     }
 
 /**

@@ -148,7 +148,7 @@ class SdJwtVcVerifierTest {
                     TypeMetadataPolicy.NotUsed,
                     null,
                 )
-            verifier.verify(unverifiedSdJwt).getOrThrow()
+            verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
         }
 
     @Test
@@ -161,7 +161,7 @@ class SdJwtVcVerifierTest {
                     TypeMetadataPolicy.NotUsed,
                     null,
                 )
-            verifier.verify(unverifiedSdJwt).getOrThrow()
+            verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
         }
 
     @Test
@@ -176,7 +176,7 @@ class SdJwtVcVerifierTest {
                     null,
                 )
             try {
-                verifier.verify(unverifiedSdJwt).getOrThrow()
+                verifier.verifyIssuance(unverifiedSdJwt).getOrThrow()
             } catch (exception: SdJwtVerificationException) {
                 val invalidJwt = assertIs<VerificationError.InvalidJwt>(exception.reason)
                 val badJoseException = assertIs<BadJOSEException>(invalidJwt.cause)
@@ -249,7 +249,7 @@ class SdJwtVcVerifierTest {
                 )
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 
     @Test
@@ -322,7 +322,7 @@ class SdJwtVcVerifierTest {
                 }
 
             val serialized = with(NimbusSdJwtOps) { sdJwt.serialize() }
-            verifier.verify(serialized).getOrThrow()
+            verifier.verifyIssuance(serialized).getOrThrow()
         }
 
     @Test
@@ -339,7 +339,7 @@ class SdJwtVcVerifierTest {
             suspend fun test(disclosure: String) {
                 val exception =
                     assertFailsWith<SdJwtVerificationException> {
-                        verifier.verify("$unverifiedSdJwt~$disclosure~").getOrThrow()
+                        verifier.verifyIssuance("$unverifiedSdJwt~$disclosure~").getOrThrow()
                     }
                 val error = assertIs<VerificationError.InvalidDisclosures>(exception.reason)
                 val invalidDisclosures = error.invalidDisclosures

@@ -63,7 +63,7 @@ class PidDevVerificationTest : Printer {
 
         val issuedSdJwt =
             try {
-                verifier.verify(unverifiedSdJwtVc).getOrThrow()
+                verifier.verifyIssuance(unverifiedSdJwtVc).getOrThrow()
             } catch (e: Throwable) {
                 printError(unverifiedSdJwtVc, e)
                 throw e
