@@ -23,7 +23,8 @@ class TypeMetadataTest {
 
     @Test
     fun `simple parsing`() {
-        val json = """
+        val json =
+            """
             {
               "vct":"https://betelgeuse.example.com/education_credential",
               "name":"Betelgeuse Education Credential - Preliminary Version",
@@ -31,36 +32,38 @@ class TypeMetadataTest {
               "extends":"https://galaxy.example.com/galactic-education-credential-0.9",
               "extends#integrity":"sha256-9cLlJNXNTsMkPmKjZ5t0WRL5caxGgX3c1VLmXfhWRL5"
             }
-        """.trimIndent()
+            """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json)
     }
 
     @Test
     fun `claim metadata`() {
-        val json = """
-            {
-      "path": ["name"],
-      "display": [
-        {
-          "locale": "de-DE",
-          "label": "Vor- und Nachname",
-          "description": "Der Name des Studenten"
-        },
-        {
-          "locale": "en-US",
-          "label": "Name",
-          "description": "The name of the student"
-        }
-      ],
-      "sd": "allowed"
-    }
-        """.trimIndent()
+        val json =
+            """
+                    {
+              "path": ["name"],
+              "display": [
+                {
+                  "locale": "de-DE",
+                  "label": "Vor- und Nachname",
+                  "description": "Der Name des Studenten"
+                },
+                {
+                  "locale": "en-US",
+                  "label": "Name",
+                  "description": "The name of the student"
+                }
+              ],
+              "sd": "allowed"
+            }
+            """.trimIndent()
         jsonSupport.decodeFromString<ClaimMetadata>(json)
     }
 
     @Test
     fun `extended example`() {
-        val json = """
+        val json =
+            """
             {
               "vct": "https://betelgeuse.example.com/education_credential",
               "name": "Betelgeuse Education Credential - Preliminary Version",
@@ -192,7 +195,7 @@ class TypeMetadataTest {
                 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
         jsonSupport.decodeFromString<SdJwtVcTypeMetadata>(json).also(::println)
     }
 }

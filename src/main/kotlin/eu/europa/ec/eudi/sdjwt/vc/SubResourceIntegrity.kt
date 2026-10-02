@@ -21,23 +21,29 @@ import kotlin.io.encoding.Base64
 
 @Serializable
 @JvmInline
-value class DocumentIntegrity(val value: String) {
+value class DocumentIntegrity(
+    val value: String,
+) {
     init {
         require(value.matches(SRIPattern)) { "not a valid sub-resource integrity value" }
     }
 
     val hashes: List<DocumentHash>
         get() {
-            val hashesWithOptions = value.replace("\\s+".toRegex(), " ")
-                .trim()
-                .split(" ")
+            val hashesWithOptions =
+                value
+                    .replace("\\s+".toRegex(), " ")
+                    .trim()
+                    .split(" ")
 
             return hashesWithOptions.map {
                 val (algorithmAndEncodedHash, options) =
                     if ("?" in it) {
                         val split = it.split("?", limit = 2)
                         split[0] to split[1]
-                    } else it to null
+                    } else {
+                        it to null
+                    }
 
                 val (algorithm, encodedHash) = algorithmAndEncodedHash.split("-")
                 val integrityAlgorithm = IntegrityAlgorithm.fromString(algorithm)!!
@@ -47,11 +53,12 @@ value class DocumentIntegrity(val value: String) {
         }
 
     companion object {
-        val SRIPattern: Regex = Regex(
-            """
+        val SRIPattern: Regex =
+            Regex(
+                """
                 ^\s*(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?)(?:\s+(sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}(?:\?[\x21-\x7E]*)?))*\s*$
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
     }
 }
 
@@ -61,7 +68,9 @@ data class DocumentHash internal constructor(
     val options: String?,
 )
 
-enum class IntegrityAlgorithm(val alias: String) {
+enum class IntegrityAlgorithm(
+    val alias: String,
+) {
     SHA256("sha256"),
     SHA384("sha384"),
     SHA512("sha512"),
@@ -81,30 +90,38 @@ enum class IntegrityAlgorithm(val alias: String) {
  *
  * @param allowedAlgorithms Hash algorithms that are allowed for integrity validation. Defaults to [IntegrityAlgorithm.entries].
  */
-class SRIValidator(private val allowedAlgorithms: Set<IntegrityAlgorithm> = IntegrityAlgorithm.entries.toSet()) {
+class SRIValidator(
+    private val allowedAlgorithms: Set<IntegrityAlgorithm> = IntegrityAlgorithm.entries.toSet(),
+) {
     private val base64Padding = Base64.withPadding(Base64.PaddingOption.PRESENT)
 
     init {
         require(allowedAlgorithms.isNotEmpty()) { "At least one integrity algorithm must be provided" }
     }
 
-    fun isValid(expectedIntegrity: DocumentIntegrity, contentToValidate: ByteArray): Boolean {
+    fun isValid(
+        expectedIntegrity: DocumentIntegrity,
+        contentToValidate: ByteArray,
+    ): Boolean {
         val expectedHashesByAlgorithm = expectedIntegrity.hashes.groupBy { it.algorithm }
-        val maybeStrongestAlgorithm = expectedHashesByAlgorithm.keys
-            .filter { it in allowedAlgorithms }
-            .maxByOrNull { it.strength }
+        val maybeStrongestAlgorithm =
+            expectedHashesByAlgorithm.keys
+                .filter { it in allowedAlgorithms }
+                .maxByOrNull { it.strength }
 
         return maybeStrongestAlgorithm?.let { strongestAlgorithm ->
             val strongestExpectedHashes = checkNotNull(expectedHashesByAlgorithm[strongestAlgorithm])
 
-            val actualEncodedHash = run {
-                val digest = when (strongestAlgorithm) {
-                    IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(contentToValidate)
-                    IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(contentToValidate)
-                    IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(contentToValidate)
+            val actualEncodedHash =
+                run {
+                    val digest =
+                        when (strongestAlgorithm) {
+                            IntegrityAlgorithm.SHA256 -> platform().hashes.sha256(contentToValidate)
+                            IntegrityAlgorithm.SHA384 -> platform().hashes.sha384(contentToValidate)
+                            IntegrityAlgorithm.SHA512 -> platform().hashes.sha512(contentToValidate)
+                        }
+                    base64Padding.encode(digest)
                 }
-                base64Padding.encode(digest)
-            }
 
             strongestExpectedHashes.any { actualEncodedHash == it.encodedHash }
         } ?: false
@@ -112,8 +129,9 @@ class SRIValidator(private val allowedAlgorithms: Set<IntegrityAlgorithm> = Inte
 }
 
 private val IntegrityAlgorithm.strength: Int
-    get() = when (this) {
-        IntegrityAlgorithm.SHA256 -> 1
-        IntegrityAlgorithm.SHA384 -> 2
-        IntegrityAlgorithm.SHA512 -> 3
-    }
+    get() =
+        when (this) {
+            IntegrityAlgorithm.SHA256 -> 1
+            IntegrityAlgorithm.SHA384 -> 2
+            IntegrityAlgorithm.SHA512 -> 3
+        }

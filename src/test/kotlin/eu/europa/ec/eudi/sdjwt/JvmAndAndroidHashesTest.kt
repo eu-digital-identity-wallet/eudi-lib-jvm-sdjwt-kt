@@ -23,7 +23,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha256() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA-256").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA-256")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha256(input))
         assertEquals(expected, actual)
     }
@@ -31,7 +36,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha384() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA-384").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA-384")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha384(input))
         assertEquals(expected, actual)
     }
@@ -39,7 +49,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha512() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA-512").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA-512")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha512(input))
         assertEquals(expected, actual)
     }
@@ -47,7 +62,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha3_256() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA3-256").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA3-256")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha3_256(input))
         assertEquals(expected, actual)
     }
@@ -55,7 +75,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha3_384() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA3-384").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA3-384")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha3_384(input))
         assertEquals(expected, actual)
     }
@@ -63,7 +88,12 @@ class JvmAndAndroidHashesTest {
     @Test
     fun testSha3_512() {
         val input = "test".encodeToByteArray()
-        val expected = Base64UrlNoPadding.encode(java.security.MessageDigest.getInstance("SHA3-512").digest(input))
+        val expected =
+            Base64UrlNoPadding.encode(
+                java.security.MessageDigest
+                    .getInstance("SHA3-512")
+                    .digest(input),
+            )
         val actual = Base64UrlNoPadding.encode(JvmAndAndroidHashes.sha3_512(input))
         assertEquals(expected, actual)
     }

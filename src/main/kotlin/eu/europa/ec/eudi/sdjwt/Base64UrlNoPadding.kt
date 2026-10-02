@@ -21,8 +21,11 @@ object Base64UrlNoPadding {
 
     private fun base64UrlNoPadding() = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
-    fun encode(source: ByteArray, startIndex: Int = 0, endIndex: Int = source.size): String =
-        base64UrlNoPadding().encode(source, startIndex, endIndex)
+    fun encode(
+        source: ByteArray,
+        startIndex: Int = 0,
+        endIndex: Int = source.size,
+    ): String = base64UrlNoPadding().encode(source, startIndex, endIndex)
 
     fun decode(source: CharSequence): ByteArray = base64UrlNoPadding().decode(source)
 }

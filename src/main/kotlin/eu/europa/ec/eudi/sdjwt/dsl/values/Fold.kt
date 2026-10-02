@@ -49,7 +49,10 @@ interface ObjectFoldHandlers<K, in A, M, R> {
      * @param obj The object being folded
      * @return The empty fold context
      */
-    fun empty(path: List<K?>, obj: DisclosableObject<K, A>): Folded<K, M, R>
+    fun empty(
+        path: List<K?>,
+        obj: DisclosableObject<K, A>,
+    ): Folded<K, M, R>
 
     /**
      * Handles a selectively disclosable primitive value
@@ -106,7 +109,10 @@ interface ArrayFoldHandlers<K, in A, M, R> {
      * @param path The current path in the structure
      * @return The empty fold context
      */
-    fun empty(path: List<K?>, array: DisclosableArray<K, A>): Folded<K, M, R>
+    fun empty(
+        path: List<K?>,
+        array: DisclosableArray<K, A>,
+    ): Folded<K, M, R>
 
     /**
      * Wraps a list of individual element results into the final result type for an array.
@@ -186,12 +192,13 @@ fun <K, A, R, M> DisclosableObject<K, A>.fold(
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     postProcess: (Folded<K, M, R>) -> Folded<K, M, R> = { it },
 ): Folded<K, M, R> {
-    val context = Fold(
-        objectHandlers,
-        arrayHandlers,
-        combine,
-        postProcess,
-    )
+    val context =
+        Fold(
+            objectHandlers,
+            arrayHandlers,
+            combine,
+            postProcess,
+        )
     return context.foldObject(this to emptyList())
 }
 
@@ -210,12 +217,13 @@ fun <K, A, R, M> DisclosableArray<K, A>.fold(
     combine: (Folded<K, M, R>, Folded<K, M, R>) -> Folded<K, M, R>,
     postProcess: (Folded<K, M, R>) -> Folded<K, M, R> = { it },
 ): Folded<K, M, R> {
-    val context = Fold(
-        objectHandlers,
-        arrayHandlers,
-        combine,
-        postProcess,
-    )
+    val context =
+        Fold(
+            objectHandlers,
+            arrayHandlers,
+            combine,
+            postProcess,
+        )
     return context.foldArray(this to emptyList())
 }
 
@@ -245,29 +253,33 @@ private class Fold<K, A, R, M>(
     val foldObject: DeepRecursiveFunction<Pair<DisclosableObject<K, A>, List<K?>>, Folded<K, M, R>> =
         DeepRecursiveFunction { (obj, currentPath) ->
             val emptyFolded = objectHandlers.empty(currentPath, obj)
-            val result = obj.content.entries.fold(emptyFolded) { acc, (key, disclosableElement) ->
-                val keyPath = currentPath + key
-                val folded = when (val disclosableValue = disclosableElement.value) {
-                    is DisclosableValue.Id<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
-                        objectHandlers.ifId(currentPath, key, id)
-                    }
-                    is DisclosableValue.Arr<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
-                        val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
-                        objectHandlers.ifArray(currentPath, key, array, foldedArray)
-                    }
-                    is DisclosableValue.Obj<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
-                        val foldedObj = callRecursive(disclosableValue.value to keyPath)
-                        objectHandlers.ifObject(currentPath, key, obj, foldedObj)
-                    }
+            val result =
+                obj.content.entries.fold(emptyFolded) { acc, (key, disclosableElement) ->
+                    val keyPath = currentPath + key
+                    val folded =
+                        when (val disclosableValue = disclosableElement.value) {
+                            is DisclosableValue.Id<K, A> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
+                                objectHandlers.ifId(currentPath, key, id)
+                            }
+
+                            is DisclosableValue.Arr<K, A> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
+                                val foldedArray = foldArray.callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifArray(currentPath, key, array, foldedArray)
+                            }
+
+                            is DisclosableValue.Obj<K, A> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
+                                val foldedObj = callRecursive(disclosableValue.value to keyPath)
+                                objectHandlers.ifObject(currentPath, key, obj, foldedObj)
+                            }
+                        }
+                    combine(acc, folded)
                 }
-                combine(acc, folded)
-            }
             postProcess(result)
         }
 
@@ -282,25 +294,28 @@ private class Fold<K, A, R, M>(
             elementMetadata.add(emptyFolded.metadata)
 
             arr.content.forEachIndexed { index, disclosableElement ->
-                val folded = when (val disclosableValue = disclosableElement.value) {
-                    is DisclosableValue.Id<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
-                        arrayHandlers.ifId(arrayContentPathPrefix, index, id)
+                val folded =
+                    when (val disclosableValue = disclosableElement.value) {
+                        is DisclosableValue.Id<K, A> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val id = disclosableElement as Disclosable<DisclosableValue.Id<K, A>>
+                            arrayHandlers.ifId(arrayContentPathPrefix, index, id)
+                        }
+
+                        is DisclosableValue.Arr<K, A> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
+                            val foldedArray = callRecursive(disclosableValue.value to (arrayContentPathPrefix + null))
+                            arrayHandlers.ifArray(arrayContentPathPrefix, index, array, foldedArray)
+                        }
+
+                        is DisclosableValue.Obj<K, A> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
+                            val foldedObj = foldObject.callRecursive(disclosableValue.value to arrayContentPathPrefix)
+                            arrayHandlers.ifObject(arrayContentPathPrefix, index, obj, foldedObj)
+                        }
                     }
-                    is DisclosableValue.Arr<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val array = disclosableElement as Disclosable<DisclosableValue.Arr<K, A>>
-                        val foldedArray = callRecursive(disclosableValue.value to (arrayContentPathPrefix + null))
-                        arrayHandlers.ifArray(arrayContentPathPrefix, index, array, foldedArray)
-                    }
-                    is DisclosableValue.Obj<K, A> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val obj = disclosableElement as Disclosable<DisclosableValue.Obj<K, A>>
-                        val foldedObj = foldObject.callRecursive(disclosableValue.value to arrayContentPathPrefix)
-                        arrayHandlers.ifObject(arrayContentPathPrefix, index, obj, foldedObj)
-                    }
-                }
                 elementResults.add(folded.result)
                 elementMetadata.add(folded.metadata)
             }
@@ -309,11 +324,12 @@ private class Fold<K, A, R, M>(
             val finalArrayResult = arrayHandlers.wrapResult(elementResults)
             val finalArrayMetadata = arrayHandlers.combineMetadata(elementMetadata)
 
-            val result = Folded(
-                path = arrayContentPathPrefix,
-                metadata = finalArrayMetadata,
-                result = finalArrayResult,
-            )
+            val result =
+                Folded(
+                    path = arrayContentPathPrefix,
+                    metadata = finalArrayMetadata,
+                    result = finalArrayResult,
+                )
             postProcess(result)
         }
 }

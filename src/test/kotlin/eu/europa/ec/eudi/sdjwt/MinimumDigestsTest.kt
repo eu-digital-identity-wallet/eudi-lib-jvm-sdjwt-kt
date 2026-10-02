@@ -29,15 +29,14 @@ import kotlin.test.assertTrue
 
 class MinimumDigestsTest {
 
-    private fun JsonObject.digests(): List<String> =
-        this[RFC9901.CLAIM_SD]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+    private fun JsonObject.digests(): List<String> = this[RFC9901.CLAIM_SD]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
 
     private fun JsonArray.arrayDigests(): List<String> =
-        this.filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
+        this
+            .filter { it is JsonObject && it.containsKey(RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST) }
             .map { it.jsonObject[RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST]!!.jsonPrimitive.content }
 
-    private fun SdJwt<SignedJWT>.topLevelDigests(): List<String> =
-        jwt.jwtClaimsSet.jsonObject().digests()
+    private fun SdJwt<SignedJWT>.topLevelDigests(): List<String> = jwt.jwtClaimsSet.jsonObject().digests()
 
     private fun SdJwt<SignedJWT>.digestsOf(name: String): List<String> =
         disclosures.firstNotNullOf {
@@ -48,7 +47,9 @@ class MinimumDigestsTest {
                     is JsonArray -> value.arrayDigests()
                     else -> null
                 }
-            } else null
+            } else {
+                null
+            }
         }
 
     private val key = ECKeyGenerator(Curve.P_521).generate()
@@ -103,119 +104,133 @@ class MinimumDigestsTest {
     }
 
     @Test
-    fun checkFallbackMinimumDigestsAtNestedSdObj() = runTest {
-        // This spec contains a nested object with no explicitly defined minimum digests
-        // fallback defined minimum digest should appear
-        val spec = sdJwt {
-            sdObjClaim("someObj") {
-                sdClaim("foo", "bar")
-                sdClaim("baz", "qux")
-                sdClaim("quux", "corge")
-            }
-        }
-        checkDigestsForNestedElement(
-            spec = spec,
-            elementName = "someObj",
-            fallbackMinimumDigests = 6,
-            nestedElementMinimumDigests = null,
-        )
-    }
-
-    @Test
-    fun checkExplicitMinimumDigestsAtNestedSdObj() = runTest {
-        // This spec contains a nested object claim which explicitly defines minimum digests
-        // fallback minimum digests should be ignored, for the object
-        val nestedElementMinimumDigests = 6
-        val spec = sdJwt {
-            sdObjClaim("someObj", nestedElementMinimumDigests) {
-                sdClaim("foo", "bar")
-                sdClaim("baz", "qux")
-                sdClaim("quux", "corge")
-            }
-        }
-        checkDigestsForNestedElement(
-            spec = spec,
-            elementName = "someObj",
-            fallbackMinimumDigests = nestedElementMinimumDigests + 1,
-            nestedElementMinimumDigests = nestedElementMinimumDigests,
-        )
-    }
-
-    @Test
-    fun checkExplicitMinimumDigestsAtNestedSdArray() = runTest {
-        // This spec contains a nested array claim which explicitly defines minimum digests
-        // fallback minimum digests should be ignored, for the array
-        val nestedElementMinimumDigests = 6
-        val spec = sdJwt {
-            sdArrClaim("someArr", nestedElementMinimumDigests) {
-                sdClaim("foo")
-                claim(1213)
-                sdClaim("bar")
-                sdClaim("baz")
-            }
-        }
-        checkDigestsForNestedElement(
-            spec = spec,
-            elementName = "someArr",
-            fallbackMinimumDigests = nestedElementMinimumDigests + 2,
-            nestedElementMinimumDigests = nestedElementMinimumDigests,
-        )
-    }
-
-    @Test
-    fun checkFallbackMinimumDigestsAtNestedSdArray() = runTest {
-        // This spec contains a nested array claim which doesn't explicitly define minimum digests
-        // it should inherit the implicit minimum digests from the parent SD-JWT
-        val spec = sdJwt {
-            sdArrClaim("someArr") {
-                sdClaim("foo")
-                claim(1213)
-                sdClaim("bar")
-                sdClaim("baz")
-            }
-        }
-        checkDigestsForNestedElement(
-            spec = spec,
-            elementName = "someArr",
-            fallbackMinimumDigests = 10,
-            nestedElementMinimumDigests = null,
-        )
-    }
-
-    @Test
-    fun moreComplexExample() = runTest {
-        val topLevelMinimumDigests = 10
-        val arrayMinDigests = 8
-        val objMinDigests = 6
-        val spec = sdJwt(topLevelMinimumDigests) {
-            sdArrClaim("someArr", arrayMinDigests) {
-                sdClaim("foo")
-                sdObjClaim(objMinDigests) {
-                    claim(
-                        "marker",
-                        buildJsonObject {
-                            put("a", "value")
-                        },
-                    )
-                    sdClaim("foo", "bar")
-                    sdClaim("baz", "qux")
-                    sdClaim("quux", "corge")
+    fun checkFallbackMinimumDigestsAtNestedSdObj() =
+        runTest {
+            // This spec contains a nested object with no explicitly defined minimum digests
+            // fallback defined minimum digest should appear
+            val spec =
+                sdJwt {
+                    sdObjClaim("someObj") {
+                        sdClaim("foo", "bar")
+                        sdClaim("baz", "qux")
+                        sdClaim("quux", "corge")
+                    }
                 }
-                sdClaim("bar")
-                sdClaim("baz")
-            }
+            checkDigestsForNestedElement(
+                spec = spec,
+                elementName = "someObj",
+                fallbackMinimumDigests = 6,
+                nestedElementMinimumDigests = null,
+            )
         }
-        val sdJwt = run {
-            val issuer = issuerWithFallbackMinimumDigests(null)
-            testMinimumDigestsAtTopLevel(issuer, topLevelMinimumDigests, spec)
+
+    @Test
+    fun checkExplicitMinimumDigestsAtNestedSdObj() =
+        runTest {
+            // This spec contains a nested object claim which explicitly defines minimum digests
+            // fallback minimum digests should be ignored, for the object
+            val nestedElementMinimumDigests = 6
+            val spec =
+                sdJwt {
+                    sdObjClaim("someObj", nestedElementMinimumDigests) {
+                        sdClaim("foo", "bar")
+                        sdClaim("baz", "qux")
+                        sdClaim("quux", "corge")
+                    }
+                }
+            checkDigestsForNestedElement(
+                spec = spec,
+                elementName = "someObj",
+                fallbackMinimumDigests = nestedElementMinimumDigests + 1,
+                nestedElementMinimumDigests = nestedElementMinimumDigests,
+            )
         }
-        checkDigestsForNestedElement(sdJwt, "someArr", topLevelMinimumDigests, arrayMinDigests)
-        val obj = sdJwt.disclosures.firstNotNullOf {
-            if (it is Disclosure.ArrayElement) {
-                val (_, v) = it.claim()
-                if (v is JsonObject && "marker" in v.keys) v else null
-            } else null
+
+    @Test
+    fun checkExplicitMinimumDigestsAtNestedSdArray() =
+        runTest {
+            // This spec contains a nested array claim which explicitly defines minimum digests
+            // fallback minimum digests should be ignored, for the array
+            val nestedElementMinimumDigests = 6
+            val spec =
+                sdJwt {
+                    sdArrClaim("someArr", nestedElementMinimumDigests) {
+                        sdClaim("foo")
+                        claim(1213)
+                        sdClaim("bar")
+                        sdClaim("baz")
+                    }
+                }
+            checkDigestsForNestedElement(
+                spec = spec,
+                elementName = "someArr",
+                fallbackMinimumDigests = nestedElementMinimumDigests + 2,
+                nestedElementMinimumDigests = nestedElementMinimumDigests,
+            )
         }
-        assertMinimumDigests(objMinDigests, obj.digests().size)
-    }
+
+    @Test
+    fun checkFallbackMinimumDigestsAtNestedSdArray() =
+        runTest {
+            // This spec contains a nested array claim which doesn't explicitly define minimum digests
+            // it should inherit the implicit minimum digests from the parent SD-JWT
+            val spec =
+                sdJwt {
+                    sdArrClaim("someArr") {
+                        sdClaim("foo")
+                        claim(1213)
+                        sdClaim("bar")
+                        sdClaim("baz")
+                    }
+                }
+            checkDigestsForNestedElement(
+                spec = spec,
+                elementName = "someArr",
+                fallbackMinimumDigests = 10,
+                nestedElementMinimumDigests = null,
+            )
+        }
+
+    @Test
+    fun moreComplexExample() =
+        runTest {
+            val topLevelMinimumDigests = 10
+            val arrayMinDigests = 8
+            val objMinDigests = 6
+            val spec =
+                sdJwt(topLevelMinimumDigests) {
+                    sdArrClaim("someArr", arrayMinDigests) {
+                        sdClaim("foo")
+                        sdObjClaim(objMinDigests) {
+                            claim(
+                                "marker",
+                                buildJsonObject {
+                                    put("a", "value")
+                                },
+                            )
+                            sdClaim("foo", "bar")
+                            sdClaim("baz", "qux")
+                            sdClaim("quux", "corge")
+                        }
+                        sdClaim("bar")
+                        sdClaim("baz")
+                    }
+                }
+            val sdJwt =
+                run {
+                    val issuer = issuerWithFallbackMinimumDigests(null)
+                    testMinimumDigestsAtTopLevel(issuer, topLevelMinimumDigests, spec)
+                }
+            checkDigestsForNestedElement(sdJwt, "someArr", topLevelMinimumDigests, arrayMinDigests)
+            val obj =
+                sdJwt.disclosures.firstNotNullOf {
+                    if (it is Disclosure.ArrayElement) {
+                        val (_, v) = it.claim()
+                        if (v is JsonObject && "marker" in v.keys) v else null
+                    } else {
+                        null
+                    }
+                }
+            assertMinimumDigests(objMinDigests, obj.digests().size)
+        }
 }

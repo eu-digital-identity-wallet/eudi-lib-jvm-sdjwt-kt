@@ -19,20 +19,20 @@ import eu.europa.ec.eudi.sdjwt.vc.ResolvedTypeMetadata
 import eu.europa.ec.eudi.sdjwt.vc.SdJwtVcTypeMetadata
 import kotlinx.serialization.json.Json
 
-internal fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata {
-    return ResolvedTypeMetadata(
+internal fun SdJwtVcTypeMetadata.resolve(): ResolvedTypeMetadata =
+    ResolvedTypeMetadata(
         vct = vct,
         name = name,
         description = description,
         display = checkNotNull(display).value,
         claims = checkNotNull(claims),
     )
-}
 
 @Suppress("SameParameterValue")
 fun sdJwtVcTypeMetadata(json: String): SdJwtVcTypeMetadata = Json.decodeFromString(json)
 
-internal val addressMeta = """
+internal val addressMeta =
+    """
     {
       "vct": "https://example.com/addresses",
       "name": "Addresses",
@@ -54,9 +54,10 @@ internal val addressMeta = """
         { "path": [ "addresses", null, "formatted" ], "sd": "always" }
       ]
     }
-""".trimIndent()
+    """.trimIndent()
 
-internal val pidMeta = """
+internal val pidMeta =
+    """
     {
       "vct": "urn:eudi:pid:1",
       "name": "Type Metadata for Person Identification Data",
@@ -497,9 +498,10 @@ internal val pidMeta = """
       ]
       
     }
-""".trimIndent()
+    """.trimIndent()
 
-internal val countriesMeta = """
+internal val countriesMeta =
+    """
     {
       "vct": "https://example.com/countries",
       "name": "Countries",
@@ -515,7 +517,7 @@ internal val countriesMeta = """
         { "path": [ "countries", null, null ], "sd": "always" }
       ]
     }
-""".trimIndent()
+    """.trimIndent()
 
 internal val PidDefinition: SdJwtDefinition by lazy {
     val sdJwtVcTypeMetadata = sdJwtVcTypeMetadata(pidMeta)

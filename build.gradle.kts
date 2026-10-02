@@ -59,25 +59,27 @@ kotlin {
         languageVersion = JavaLanguageVersion.of(libs.versions.java.get())
         compilerOptions {
             apiVersion = KotlinVersion.DEFAULT
-            optIn = listOf(
-                "kotlin.io.encoding.ExperimentalEncodingApi",
-                "kotlin.contracts.ExperimentalContracts",
-                "kotlin.time.ExperimentalTime",
-                "kotlinx.serialization.ExperimentalSerializationApi",
-            )
-            freeCompilerArgs = listOf(
-                "-Xconsistent-data-class-copy-visibility",
-            )
+            optIn =
+                listOf(
+                    "kotlin.io.encoding.ExperimentalEncodingApi",
+                    "kotlin.contracts.ExperimentalContracts",
+                    "kotlin.time.ExperimentalTime",
+                    "kotlinx.serialization.ExperimentalSerializationApi",
+                )
+            freeCompilerArgs =
+                listOf(
+                    "-Xconsistent-data-class-copy-visibility",
+                )
         }
     }
 }
 
 knit {
-    rootDir = project.rootDir
-    files = fileTree(project.rootDir) {
-        include("docs/examples/**/*.md")
-        include("README.md")
-    }
+    files =
+        fileTree(project.rootDir) {
+            include("docs/examples/**/*.md")
+            include("README.md")
+        }
     defaultLineSeparator = "\n"
 }
 
@@ -151,6 +153,8 @@ dependencyCheck {
     formats = mutableListOf("XML", "HTML")
 
     nvd {
-        apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
+        apiKey = System.getenv("NVD_API_KEY") ?: findProperty("nvdApiKey")?.toString() ?: ""
+        delay = 10000
+        maxRetryCount = 2
     }
 }

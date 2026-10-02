@@ -26,19 +26,22 @@ class TemplateTest {
 
     @Test
     fun test() {
-        val sdJwtFactory = SdJwtFactory(
-            hashAlgorithm = HashAlgorithm.SHA_256,
-            saltProvider = { "salt" },
-            decoyGen = object : DecoyGen {
-                override fun gen(hashingAlgorithm: HashAlgorithm): DisclosureDigest {
-                    throw UnsupportedOperationException("Decoy generation not supported for this test")
-                }
+        val sdJwtFactory =
+            SdJwtFactory(
+                hashAlgorithm = HashAlgorithm.SHA_256,
+                saltProvider = { "salt" },
+                decoyGen =
+                    object : DecoyGen {
+                        override fun gen(hashingAlgorithm: HashAlgorithm): DisclosureDigest =
+                            throw UnsupportedOperationException("Decoy generation not supported for this test")
 
-                override fun gen(hashingAlgorithm: HashAlgorithm, numOfDecoys: Int): List<DisclosureDigest> =
-                    emptyList()
-            },
-            fallbackMinimumDigests = null,
-        )
+                        override fun gen(
+                            hashingAlgorithm: HashAlgorithm,
+                            numOfDecoys: Int,
+                        ): List<DisclosureDigest> = emptyList()
+                    },
+                fallbackMinimumDigests = null,
+            )
 
         val spec =
             sdJwtVc(PidDefinition) {
@@ -54,21 +57,22 @@ class TemplateTest {
                 }
             }.getOrThrow()
 
-        val expectedSpec = sdJwt {
-            claim(SdJwtVcSpec.VCT, PidDefinition.metadata.vct)
-            sdClaim("given_name", "Foo")
-            sdClaim("family_name", "Bar")
-            sdArrClaim("nationalities") {
-                sdClaim("GR")
+        val expectedSpec =
+            sdJwt {
+                claim(SdJwtVcSpec.VCT, PidDefinition.metadata.vct)
+                sdClaim("given_name", "Foo")
+                sdClaim("family_name", "Bar")
+                sdArrClaim("nationalities") {
+                    sdClaim("GR")
+                }
+                sdObjClaim("age_equal_or_over") {
+                    sdClaim("18", true)
+                }
+                sdObjClaim("address") {
+                    sdClaim("country", "GR")
+                    sdClaim("street_address", "12345 Main Street")
+                }
             }
-            sdObjClaim("age_equal_or_over") {
-                sdClaim("18", true)
-            }
-            sdObjClaim("address") {
-                sdClaim("country", "GR")
-                sdClaim("street_address", "12345 Main Street")
-            }
-        }
 
         val expectedUnsigned = sdJwtFactory.createSdJwt(expectedSpec).getOrThrow()
         val expectedRecreated = expectedUnsigned.recreateClaimsAndDisclosuresPerClaim().getOrThrow().first
@@ -81,14 +85,15 @@ class TemplateTest {
 
     @Test
     fun useJsonFile() {
-        val addressesJsonStr = """
+        val addressesJsonStr =
+            """
             {
                 "addresses": [
                     { "street_address": "12345 Main Street", "country": "GR" },
                     { "locality": "Athens", "country": "GR" }
                 ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val addresses = Json.parseToJsonElement(addressesJsonStr).jsonObject
         val spec =

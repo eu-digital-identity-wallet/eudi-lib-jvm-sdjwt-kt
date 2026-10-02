@@ -23,7 +23,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 fun interface X509CertificateTrust<in X509Chain> {
-    suspend fun isTrusted(chain: X509Chain, claimSet: JsonObject): Boolean
+    suspend fun isTrusted(
+        chain: X509Chain,
+        claimSet: JsonObject,
+    ): Boolean
 
     fun <X509Chain1> contraMap(convert: (X509Chain1) -> X509Chain): X509CertificateTrust<X509Chain1> =
         X509CertificateTrust { chain, claimSet -> isTrusted(convert(chain), claimSet) }
@@ -39,31 +42,6 @@ fun interface X509CertificateTrust<in X509Chain> {
     }
 }
 
-@Deprecated(
-    message = "Deprecated in SD-JWT-VC draft 11 to be removed in future version",
-    level = DeprecationLevel.WARNING,
-)
-/**
- * Deprecated in SD-JWT-VC draft 11 to be removed in future version
- * A function to look up public keys from DIDs/DID URLs.
- */
-fun interface LookupPublicKeysFromDIDDocument<out JWK> {
-
-    /**
-     * Lookup the public keys from a DID document.
-     *
-     * @param did the identifier of the DID document
-     * @param didUrl optional DID URL, that is either absolute or relative to [did], indicating the exact public key
-     * to lookup from the DID document
-     *
-     * @return the matching public keys or null in case lookup fails for any reason
-     */
-    suspend fun lookup(did: String, didUrl: String?): List<JWK>?
-
-    fun <JWK1> map(convert: (JWK) -> JWK1): LookupPublicKeysFromDIDDocument<JWK1> =
-        LookupPublicKeysFromDIDDocument { did, didUrl -> lookup(did, didUrl)?.map(convert) }
-}
-
 /**
  * How the Issuer of the Issuer-signed JWT of an SD-JWT VC will be verified.
  */
@@ -72,7 +50,9 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
     /**
      * Using SD-JWT VC Issuer Metadata
      */
-    data class UsingIssuerMetadata(val httpClient: HttpClient) : IssuerVerificationMethod<Nothing, Nothing, Any?>
+    data class UsingIssuerMetadata(
+        val httpClient: HttpClient,
+    ) : IssuerVerificationMethod<Nothing, Nothing, Any?>
 
     /**
      * Using X509 Certificate trust
@@ -80,15 +60,6 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
     data class UsingX5c<X509Chain>(
         val x509CertificateTrust: X509CertificateTrust<X509Chain>,
     ) : IssuerVerificationMethod<Nothing, Nothing, X509Chain>
-
-    @Deprecated(
-        message = "Deprecated in SD-JWT-VC draft 11 to be removed in future version",
-        level = DeprecationLevel.WARNING,
-    )
-    /**
-     * Using DID resolution
-     */
-    data class UsingDID<JWK>(val didLookup: LookupPublicKeysFromDIDDocument<JWK>) : IssuerVerificationMethod<Nothing, JWK, Any?>
 
     /**
      * Using X509 Certificate trust or SD-JWT VC Issuer Metadata
@@ -101,7 +72,9 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
     /**
      * Using a custom [JwtSignatureVerifier]
      */
-    data class Custom<JWT>(val jwtSignatureVerifier: JwtSignatureVerifier<JWT>) : IssuerVerificationMethod<JWT, Nothing, Any?>
+    data class Custom<JWT>(
+        val jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
+    ) : IssuerVerificationMethod<JWT, Nothing, Any?>
 
     fun <JWT1, JWK1, X509Chain1> transform(
         convertToJwt: (JWT) -> JWT1,
@@ -111,23 +84,21 @@ sealed interface IssuerVerificationMethod<out JWT, out JWK, in X509Chain> {
         when (this) {
             is UsingIssuerMetadata -> UsingIssuerMetadata(httpClient)
             is UsingX5c -> UsingX5c(x509CertificateTrust.contraMap(convertFromX509Chain))
-            is UsingDID -> UsingDID(didLookup.map(convertToJwk))
             is UsingX5cOrIssuerMetadata -> UsingX5cOrIssuerMetadata(x509CertificateTrust.contraMap(convertFromX509Chain), httpClient)
             is Custom -> Custom(jwtSignatureVerifier.map(convertToJwt))
         }
 
     companion object {
         fun usingIssuerMetadata(httpClient: HttpClient): UsingIssuerMetadata = UsingIssuerMetadata(httpClient)
-        fun <X509Chain> usingX5c(
-            x509CertificateTrust: X509CertificateTrust<X509Chain>,
-        ): UsingX5c<X509Chain> = UsingX5c(x509CertificateTrust)
 
-        @Deprecated("Deprecated in SD-JWT-VC draft 11 to be removed in future version", level = DeprecationLevel.WARNING)
-        fun <JWK> usingDID(didLookup: LookupPublicKeysFromDIDDocument<JWK>): UsingDID<JWK> = UsingDID(didLookup)
+        fun <X509Chain> usingX5c(x509CertificateTrust: X509CertificateTrust<X509Chain>): UsingX5c<X509Chain> =
+            UsingX5c(x509CertificateTrust)
+
         fun <X509Chain> usingX5cOrIssuerMetadata(
             x509CertificateTrust: X509CertificateTrust<X509Chain>,
             httpClient: HttpClient,
         ): UsingX5cOrIssuerMetadata<X509Chain> = UsingX5cOrIssuerMetadata(x509CertificateTrust, httpClient)
+
         fun <JWT> usingCustom(jwtSignatureVerifier: JwtSignatureVerifier<JWT>): Custom<JWT> = Custom(jwtSignatureVerifier)
     }
 }
@@ -192,10 +163,11 @@ interface SdJwtVcVerifierFactory<JWT, in JWK, out X509Chain> {
                 typeMetadataPolicy: TypeMetadataPolicy,
                 checkStatus: CheckWithTokenStatusList?,
             ): SdJwtVcVerifier<JWT1> =
-                this@SdJwtVcVerifierFactory.invoke(
-                    issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
-                    typeMetadataPolicy,
-                    checkStatus,
-                ).map(convertToJwt)
+                this@SdJwtVcVerifierFactory
+                    .invoke(
+                        issuerVerificationMethod.transform(convertFromJwt, convertFromJwk, convertToX509Chain),
+                        typeMetadataPolicy,
+                        checkStatus,
+                    ).map(convertToJwt)
         }
 }
