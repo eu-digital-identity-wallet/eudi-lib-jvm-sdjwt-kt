@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.kotlinx.knit)
     alias(libs.plugins.dokka)
     alias(libs.plugins.maven.publish)
-    alias(libs.plugins.dependency.check)
 }
 
 repositories {
@@ -147,10 +146,3 @@ mavenPublishing {
     }
 }
 
-dependencyCheck {
-    formats = mutableListOf("XML", "HTML")
-
-    nvd {
-        apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
-    }
-}
