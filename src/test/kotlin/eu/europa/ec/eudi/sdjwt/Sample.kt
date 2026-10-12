@@ -26,7 +26,9 @@ import eu.europa.ec.eudi.sdjwt.dsl.values.sdJwt
 import kotlinx.serialization.json.Json
 import java.util.*
 
-val jwtVcPayload = """{
+val jwtVcPayload =
+    """
+    {
   "iss": "https://example.com",
   "jti": "http://example.com/credentials/3732",
   "nbf": 1541493724,
@@ -56,7 +58,7 @@ val jwtVcPayload = """{
     "is_over_65": true
   }
 }
-""".trimIndent()
+    """.trimIndent()
 
 val format = Json { prettyPrint = true }
 
@@ -72,33 +74,35 @@ suspend fun main() {
     val issuerKeyPair = genRSAKeyPair()
     val issuerPubKey = issuerKeyPair.toPublicJWK().also { println("\npublic key\n================\n$it") }
 
-    val sdJwt: String = with(NimbusSdJwtOps) {
-        val spec = sdJwt {
-            claim("iss", "https://example.com")
-            claim("jti", "http://example.com/credentials/3732")
-            claim("nbf", 1541493724)
-            claim("iat", 1541493724)
-            claim("type", "IdentityCredential")
-            objClaim("credentialSubject") {
-                sdClaim("given_name", "John")
-                sdClaim("family_name", "Doe")
-                sdClaim("email", "johndoe@example.com")
-                sdClaim("phone_number", "+1-202-555-0101")
-                sdObjClaim("address") {
-                    claim("street_address", "123 Main St")
-                    claim("locality", "Anytown")
-                    claim("region", "Anystate")
-                    claim("country", "US")
+    val sdJwt: String =
+        with(NimbusSdJwtOps) {
+            val spec =
+                sdJwt {
+                    claim("iss", "https://example.com")
+                    claim("jti", "http://example.com/credentials/3732")
+                    claim("nbf", 1541493724)
+                    claim("iat", 1541493724)
+                    claim("type", "IdentityCredential")
+                    objClaim("credentialSubject") {
+                        sdClaim("given_name", "John")
+                        sdClaim("family_name", "Doe")
+                        sdClaim("email", "johndoe@example.com")
+                        sdClaim("phone_number", "+1-202-555-0101")
+                        sdObjClaim("address") {
+                            claim("street_address", "123 Main St")
+                            claim("locality", "Anytown")
+                            claim("region", "Anystate")
+                            claim("country", "US")
+                        }
+                        sdClaim("birthdate", "1940-01-01")
+                        sdClaim("is_over_18", true)
+                        sdClaim("is_over_21", true)
+                        sdClaim("is_over_65", true)
+                    }
                 }
-                sdClaim("birthdate", "1940-01-01")
-                sdClaim("is_over_18", true)
-                sdClaim("is_over_21", true)
-                sdClaim("is_over_65", true)
-            }
+            val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
+            issuer.issue(spec).map { it.serialize() }.getOrThrow()
         }
-        val issuer = issuer(signer = RSASSASigner(issuerKeyPair), signAlgorithm = JWSAlgorithm.RS256)
-        issuer.issue(spec).map { it.serialize() }.getOrThrow()
-    }
 
     val verification = verifyIssuance(sdJwt, issuerPubKey).map { sdJwt -> sdJwt.map { nimbusToJwtAndClaims(it) } }
 
@@ -117,11 +121,14 @@ suspend fun main() {
         onFailure = {
             println("Error: $it")
         },
-
     )
 }
 
-suspend fun verifyIssuance(sdJwt: String, issuerPubKey: RSAKey): Result<SdJwt<SignedJWT>> = with(NimbusSdJwtOps) {
-    val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
-    return verify(jwtVer, sdJwt)
-}
+suspend fun verifyIssuance(
+    sdJwt: String,
+    issuerPubKey: RSAKey,
+): Result<SdJwt<SignedJWT>> =
+    with(NimbusSdJwtOps) {
+        val jwtVer = RSASSAVerifier(issuerPubKey).asJwtVerifier()
+        return verify(jwtVer, sdJwt)
+    }

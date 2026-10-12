@@ -51,14 +51,16 @@ fun interface SdJwtRecreateClaimsOps<in JWT> {
         fun recreateClaimsAndDisclosuresPerClaim(
             jwtPayload: JsonObject,
             disclosures: List<Disclosure>,
-        ): Result<Pair<JsonObject, DisclosuresPerClaimPath>> = runCatchingCancellable {
-            val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
-            val claims = run {
-                val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
-                RecreateClaims(visitor).recreateClaims(jwtPayload, disclosures)
+        ): Result<Pair<JsonObject, DisclosuresPerClaimPath>> =
+            runCatchingCancellable {
+                val disclosuresPerClaim = mutableMapOf<ClaimPath, List<Disclosure>>()
+                val claims =
+                    run {
+                        val visitor = disclosuresPerClaimVisitor(disclosuresPerClaim)
+                        RecreateClaims(visitor).recreateClaims(jwtPayload, disclosures)
+                    }
+                claims to disclosuresPerClaim.toMap()
             }
-            claims to disclosuresPerClaim.toMap()
-        }
     }
 }
 
@@ -73,32 +75,42 @@ private typealias DisclosurePerDigest = MutableMap<DisclosureDigest, Disclosure>
 
 private fun interface ClaimVisitor {
 
-    operator fun invoke(path: ClaimPath, disclosure: Disclosure?)
+    operator fun invoke(
+        path: ClaimPath,
+        disclosure: Disclosure?,
+    )
 
     companion object {
         /**
          * Creates a visitor that will keep the list of disclosures for an attribute
          * @param disclosuresPerClaim the map to populate
          */
-        fun disclosuresPerClaimVisitor(disclosuresPerClaim: MutableMap<ClaimPath, List<Disclosure>>) = ClaimVisitor { path, disclosure ->
-            if (disclosure != null) {
-                require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
+        fun disclosuresPerClaimVisitor(disclosuresPerClaim: MutableMap<ClaimPath, List<Disclosure>>) =
+            ClaimVisitor { path, disclosure ->
+                if (disclosure != null) {
+                    require(path !in disclosuresPerClaim.keys) { "Disclosures for $path have already been calculated." }
+                }
+                val claimDisclosures =
+                    run {
+                        val containerPath = path.parent()
+                        val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
+                        disclosure
+                            ?.let { containerDisclosures + it }
+                            ?: containerDisclosures
+                    }
+                disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
             }
-            val claimDisclosures = run {
-                val containerPath = path.parent()
-                val containerDisclosures = containerPath?.let { disclosuresPerClaim[it] }.orEmpty()
-                disclosure
-                    ?.let { containerDisclosures + it }
-                    ?: containerDisclosures
-            }
-            disclosuresPerClaim.putIfAbsent(path, claimDisclosures)
-        }
     }
 }
 
-private class RecreateClaims(private val visitor: ClaimVisitor?) {
+private class RecreateClaims(
+    private val visitor: ClaimVisitor?,
+) {
 
-    fun recreateClaims(jwtClaims: JsonObject, disclosures: List<Disclosure>): JsonObject {
+    fun recreateClaims(
+        jwtClaims: JsonObject,
+        disclosures: List<Disclosure>,
+    ): JsonObject {
         val hashAlgorithm = jwtClaims.hashAlgorithm()
         return discloseJwt(
             hashAlgorithm,
@@ -125,9 +137,10 @@ private class RecreateClaims(private val visitor: ClaimVisitor?) {
         disclosures: List<Disclosure>,
     ): JsonObject {
         // Recalculate digests using the hash algorithm
-        val disclosuresByDigest = disclosures.groupBy {
-            DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
-        }
+        val disclosuresByDigest =
+            disclosures.groupBy {
+                DisclosureDigest.digest(hashAlgorithm, it.value).getOrThrow()
+            }
 
         // Verify we have unique disclosures
         val nonUniqueDisclosures = disclosuresByDigest.filterValues { it.size > 1 }.values.map { it.first() }
@@ -195,8 +208,7 @@ private class DiscloseObject(
                 .mapValues { (name, element) ->
                     val nestedPath = currentPath?.claim(name) ?: ClaimPath.claim(name)
                     discloseElement.callRecursive(nestedPath to element)
-                }
-                .let { obj -> JsonObject(obj) }
+                }.let { obj -> JsonObject(obj) }
         }
 
     /**
@@ -250,7 +262,8 @@ private class DiscloseObject(
             buildJsonArray {
                 var index = 0
                 jsonArray.forEach { element ->
-                    discloseArrayElement.callRecursive(Triple(currentPath, element, index))
+                    discloseArrayElement
+                        .callRecursive(Triple(currentPath, element, index))
                         ?.let {
                             add(it)
                             index++
@@ -273,7 +286,9 @@ private class DiscloseObject(
                         arrayElement
                     }
 
-                    DisclosedArrayElement.NotAnObject -> arrayElement
+                    DisclosedArrayElement.NotAnObject -> {
+                        arrayElement
+                    }
                 }
             disclosedElement?.let { discloseElement.callRecursive(elementPath to it) }
         }
@@ -300,27 +315,37 @@ private class DiscloseObject(
         digestsInPayload.add(digest)
     }
 
-    private fun visited(path: ClaimPath, disclosure: Disclosure?) {
+    private fun visited(
+        path: ClaimPath,
+        disclosure: Disclosure?,
+    ) {
         visitor?.invoke(path, disclosure)
     }
 }
 
 private sealed interface DisclosedArrayElement {
     @JvmInline
-    value class Digest(val digest: DisclosureDigest) : DisclosedArrayElement
+    value class Digest(
+        val digest: DisclosureDigest,
+    ) : DisclosedArrayElement
+
     data object Object : DisclosedArrayElement
+
     data object NotAnObject : DisclosedArrayElement
 
     companion object {
         fun of(jsonElement: JsonElement): DisclosedArrayElement =
             when (jsonElement) {
-                is JsonObject ->
+                is JsonObject -> {
                     when (val digest = arrayElementDigest(jsonElement)) {
                         null -> Object
                         else -> Digest(digest)
                     }
+                }
 
-                else -> NotAnObject
+                else -> {
+                    NotAnObject
+                }
             }
 
         private fun arrayElementDigest(obj: JsonObject): DisclosureDigest? =
@@ -328,7 +353,8 @@ private sealed interface DisclosedArrayElement {
                 obj[RFC9901.CLAIM_ARRAY_ELEMENT_DIGEST]
                     ?.takeIf { element -> element is JsonPrimitive }
                     ?.let { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrNull() }
-            else null
+            else
+                null
     }
 }
 
@@ -342,7 +368,8 @@ private sealed interface DisclosedArrayElement {
  *  @return the digests found. Method may raise an exception in case the digests cannot be base64 decoded
  */
 internal fun JsonObject.directDigests(): List<DisclosureDigest> =
-    this[RFC9901.CLAIM_SD]?.jsonArray
+    this[RFC9901.CLAIM_SD]
+        ?.jsonArray
         ?.map { DisclosureDigest.wrap(it.jsonPrimitive.content).getOrThrow() }
         ?: emptyList()
 
@@ -358,5 +385,7 @@ internal fun JsonObject.hashAlgorithm(): HashAlgorithm {
     val element = get(RFC9901.CLAIM_SD_ALG) ?: JsonPrimitive(RFC9901.DEFAULT_SD_ALG)
     return if (element is JsonPrimitive && element.isString) {
         HashAlgorithm.fromString(element.content) ?: throw UnsupportedHashingAlgorithm(element.content).asException()
-    } else throw InvalidJwt("'${RFC9901.CLAIM_SD_ALG}' claim is not a string").asException()
+    } else {
+        throw InvalidJwt("'${RFC9901.CLAIM_SD_ALG}' claim is not a string").asException()
+    }
 }
