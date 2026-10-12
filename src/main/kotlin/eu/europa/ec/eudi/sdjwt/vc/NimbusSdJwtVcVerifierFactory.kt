@@ -97,9 +97,20 @@ private class NimbusSdJwtVcVerifier(
             KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
         }
 
-    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
+    override suspend fun verify(
+        unverifiedSdJwt: String,
+        neverSelectivelyDisclosable: List<ClaimPath>,
+    ): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            val neverSelectivelyDisclosable =
+                (neverSelectivelyDisclosable + SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) }).distinct()
+            val sdJwt =
+                NimbusSdJwtOps
+                    .verify(
+                        jwtSignatureVerifier,
+                        unverifiedSdJwt,
+                        neverSelectivelyDisclosable,
+                    ).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwt)
             sdJwt
@@ -108,9 +119,12 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: ChallengePredicate?,
+        neverSelectivelyDisclosable: List<ClaimPath>,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge?.exactMatchClaims)
+            val neverSelectivelyDisclosable =
+                (neverSelectivelyDisclosable + SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) }).distinct()
             val sdJwtAndKbJwt =
                 NimbusSdJwtOps
                     .verify(
@@ -118,6 +132,7 @@ private class NimbusSdJwtVcVerifier(
                         keyBindingVerifier,
                         challenge,
                         unverifiedSdJwt,
+                        neverSelectivelyDisclosable,
                     ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwtAndKbJwt.sdJwt)
