@@ -66,6 +66,36 @@ class SdJwtVerifierTest {
         test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 
+    @Test
+    fun `rejects sdjwt with disclosures that contain non string salt or claim names`() = runTest {
+        val verifier = SdJwtVerifier(Clock.fixed(Instant.fromEpochSeconds(1772703040L)))
+
+        suspend fun test(invalidDisclosure: String, expectedError: String) {
+            verifier.verifyExpectingError(
+                VerificationError.InvalidDisclosures(mapOf(expectedError to listOf(invalidDisclosure))),
+                "$jwt~$invalidDisclosure~",
+            )
+        }
+
+        // [1,"name","Alice"]
+        test("WzEsIm5hbWUiLCJBbGljZSJd", "salt must be a json string")
+
+        // [null,"name","Alice"]
+        test("W251bGwsIm5hbWUiLCJBbGljZSJd", "salt must be a json string")
+
+        // ["salt",5,"Alice"]
+        test("WyJzYWx0Iiw1LCJBbGljZSJd", "claim name must be a json string")
+
+        // ["salt",null,"Alice"]
+        test("WyJzYWx0IixudWxsLCJBbGljZSJd", "claim name must be a json string")
+
+        // [7,"b"]
+        test("WzcsImIiXQ", "salt must be a json string")
+
+        // [null,"b"]
+        test("W251bGwsImIiXQ", "salt must be a json string")
+    }
+
     private suspend fun SdJwtVerifier<JwtAndClaims>.verifyExpectingError(
         expectedError: VerificationError,
         unverifiedSdJwt: String,

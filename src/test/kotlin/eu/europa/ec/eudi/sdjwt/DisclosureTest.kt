@@ -60,6 +60,34 @@ class DisclosureTest {
         test("WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsIi4uLiIsIk3DtmJpdXMiXQ")
     }
 
+    @Test
+    fun `fails to decode disclosures with non string salt or claim name`() {
+        fun test(invalidDisclosure: String, expectedError: String) {
+            val exception = assertFailsWith<IllegalArgumentException> {
+                Disclosure.decode(invalidDisclosure).getOrThrow()
+            }
+            assertEquals(expectedError, exception.message)
+        }
+
+        // [1,"name","Alice"]
+        test("WzEsIm5hbWUiLCJBbGljZSJd", "salt must be a json string")
+
+        // [null,"name","Alice"]
+        test("W251bGwsIm5hbWUiLCJBbGljZSJd", "salt must be a json string")
+
+        // ["salt",5,"Alice"]
+        test("WyJzYWx0Iiw1LCJBbGljZSJd", "claim name must be a json string")
+
+        // ["salt",null,"Alice"]
+        test("WyJzYWx0IixudWxsLCJBbGljZSJd", "claim name must be a json string")
+
+        // [7,"b"]
+        test("WzcsImIiXQ", "salt must be a json string")
+
+        // [null,"b"]
+        test("W251bGwsImIiXQ", "salt must be a json string")
+    }
+
     private fun fixedSaltProvider(s: String): SaltProvider =
         SaltProvider { s }
 }

@@ -70,16 +70,22 @@ sealed interface Disclosure {
         internal fun decode(disclosure: String): Result<Triple<Salt, String?, JsonElement>> = runCatchingCancellable {
             val base64Decoded = Base64UrlNoPadding.decode(disclosure).decodeToString()
             val array = Json.decodeFromString<JsonArray>(base64Decoded)
+
+            fun JsonElement.stringContentOrError(error: String): String {
+                require(this is JsonPrimitive && isString) { error }
+                return content
+            }
+
             when (array.size) {
                 3 -> {
-                    val salt = array[0].jsonPrimitive.content
-                    val claimName = array[1].jsonPrimitive.content.also { it.ensureValidAttributeName() }
+                    val salt = array[0].stringContentOrError("salt must be a json string")
+                    val claimName = array[1].stringContentOrError("claim name must be a json string").also { it.ensureValidAttributeName() }
                     val claimValue = array[2]
                     Triple(salt, claimName, claimValue)
                 }
 
                 2 -> {
-                    val salt = array[0].jsonPrimitive.content
+                    val salt = array[0].stringContentOrError("salt must be a json string")
                     val claimValue = array[1]
                     Triple(salt, null, claimValue)
                 }
