@@ -27,9 +27,10 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder claim method`() {
-        val array = buildDisclosableArray<String, String> {
-            claim("test")
-        }
+        val array =
+            buildDisclosableArray<String, String> {
+                claim("test")
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -40,9 +41,10 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder sdClaim method`() {
-        val array = buildDisclosableArray<String, String> {
-            sdClaim("test")
-        }
+        val array =
+            buildDisclosableArray<String, String> {
+                sdClaim("test")
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -53,13 +55,15 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder objClaim method with object`() {
-        val innerObj = buildDisclosableObject {
-            claim("key", "value")
-        }
+        val innerObj =
+            buildDisclosableObject {
+                claim("key", "value")
+            }
 
-        val array = buildDisclosableArray {
-            objClaim(innerObj)
-        }
+        val array =
+            buildDisclosableArray {
+                objClaim(innerObj)
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -75,11 +79,12 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder objClaim method with action`() {
-        val array = buildDisclosableArray {
-            objClaim {
-                claim("key", "value")
+        val array =
+            buildDisclosableArray {
+                objClaim {
+                    claim("key", "value")
+                }
             }
-        }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -95,13 +100,15 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder sdObjClaim method with object`() {
-        val innerObj = buildDisclosableObject {
-            claim("key", "value")
-        }
+        val innerObj =
+            buildDisclosableObject {
+                claim("key", "value")
+            }
 
-        val array = buildDisclosableArray {
-            sdObjClaim(innerObj)
-        }
+        val array =
+            buildDisclosableArray {
+                sdObjClaim(innerObj)
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -117,11 +124,12 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder sdObjClaim method with action`() {
-        val array = buildDisclosableArray {
-            sdObjClaim {
-                claim("key", "value")
+        val array =
+            buildDisclosableArray {
+                sdObjClaim {
+                    claim("key", "value")
+                }
             }
-        }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -137,13 +145,15 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder arrClaim method with array`() {
-        val innerArr = buildDisclosableArray<String, String> {
-            claim("value")
-        }
+        val innerArr =
+            buildDisclosableArray<String, String> {
+                claim("value")
+            }
 
-        val array = buildDisclosableArray {
-            arrClaim(innerArr)
-        }
+        val array =
+            buildDisclosableArray {
+                arrClaim(innerArr)
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -158,11 +168,12 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder arrClaim method with action`() {
-        val array = buildDisclosableArray<String, String> {
-            arrClaim {
-                claim("value")
+        val array =
+            buildDisclosableArray<String, String> {
+                arrClaim {
+                    claim("value")
+                }
             }
-        }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -177,13 +188,15 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder sdArrClaim method with array`() {
-        val innerArr = buildDisclosableArray<String, String> {
-            claim("value")
-        }
+        val innerArr =
+            buildDisclosableArray<String, String> {
+                claim("value")
+            }
 
-        val array = buildDisclosableArray {
-            sdArrClaim(innerArr)
-        }
+        val array =
+            buildDisclosableArray {
+                sdArrClaim(innerArr)
+            }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -198,11 +211,12 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableArraySpecBuilder sdArrClaim method with action`() {
-        val array = buildDisclosableArray<String, String> {
-            sdArrClaim {
-                claim("value")
+        val array =
+            buildDisclosableArray<String, String> {
+                sdArrClaim {
+                    claim("value")
+                }
             }
-        }
 
         assertEquals(1, array.content.size)
         val element = array.content[0]
@@ -217,9 +231,10 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableObjectSpecBuilder claim method`() {
-        val obj = buildDisclosableObject {
-            claim("key", "value")
-        }
+        val obj =
+            buildDisclosableObject {
+                claim("key", "value")
+            }
 
         assertEquals(1, obj.content.size)
         val element = obj.content["key"]
@@ -231,9 +246,10 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableObjectSpecBuilder sdClaim method`() {
-        val obj = buildDisclosableObject {
-            sdClaim("key", "value")
-        }
+        val obj =
+            buildDisclosableObject {
+                sdClaim("key", "value")
+            }
 
         assertEquals(1, obj.content.size)
         val element = obj.content["key"]
@@ -245,13 +261,15 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableObjectSpecBuilder objClaim method with object`() {
-        val innerObj = buildDisclosableObject {
-            claim("innerKey", "innerValue")
-        }
+        val innerObj =
+            buildDisclosableObject {
+                claim("innerKey", "innerValue")
+            }
 
-        val obj = buildDisclosableObject {
-            objClaim("key", innerObj)
-        }
+        val obj =
+            buildDisclosableObject {
+                objClaim("key", innerObj)
+            }
 
         assertEquals(1, obj.content.size)
         val element = obj.content["key"]
@@ -268,11 +286,12 @@ class DisclosableDslTest {
 
     @Test
     fun `test DisclosableObjectSpecBuilder objClaim method with action`() {
-        val obj = buildDisclosableObject {
-            objClaim("key") {
-                claim("innerKey", "innerValue")
+        val obj =
+            buildDisclosableObject {
+                objClaim("key") {
+                    claim("innerKey", "innerValue")
+                }
             }
-        }
 
         assertEquals(1, obj.content.size)
         val element = obj.content["key"]
@@ -289,16 +308,17 @@ class DisclosableDslTest {
 
     @Test
     fun `test buildDisclosableObject function`() {
-        val obj = buildDisclosableObject {
-            claim("key1", 1)
-            sdClaim("key2", 2)
-            objClaim("key3") {
-                claim("innerKey", 3)
+        val obj =
+            buildDisclosableObject {
+                claim("key1", 1)
+                sdClaim("key2", 2)
+                objClaim("key3") {
+                    claim("innerKey", 3)
+                }
+                sdObjClaim("key4") {
+                    claim("innerKey", 4)
+                }
             }
-            sdObjClaim("key4") {
-                claim("innerKey", 4)
-            }
-        }
 
         assertEquals(4, obj.content.size)
 
@@ -339,16 +359,17 @@ class DisclosableDslTest {
 
     @Test
     fun `test buildDisclosableArray function`() {
-        val array = buildDisclosableArray {
-            claim(1)
-            sdClaim(2)
-            objClaim {
-                claim("key", 3)
+        val array =
+            buildDisclosableArray {
+                claim(1)
+                sdClaim(2)
+                objClaim {
+                    claim("key", 3)
+                }
+                sdObjClaim {
+                    claim("key", 4)
+                }
             }
-            sdObjClaim {
-                claim("key", 4)
-            }
-        }
 
         assertEquals(4, array.content.size)
 
