@@ -41,7 +41,7 @@ jobs:
           java-version: '17'
       - name: Setup Gradle
         if: matrix.language == 'java-kotlin'
-        uses: gradle/actions/setup-gradle@v6.4.0
+        uses: gradle/actions/setup-gradle@v6.4.1
         with:
           cache-provider: basic
       - name: Initialize CodeQL
