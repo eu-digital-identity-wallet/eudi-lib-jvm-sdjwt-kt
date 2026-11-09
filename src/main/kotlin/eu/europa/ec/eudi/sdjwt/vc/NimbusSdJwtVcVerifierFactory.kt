@@ -97,15 +97,23 @@ private class NimbusSdJwtVcVerifier(
             KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
         }
 
-    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
+    override suspend fun verifyIssuance(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
-            typeMetadataPolicy.validate(sdJwt)
+            typeMetadataPolicy.validate(sdJwt, isIssuance = true)
             checkStatus?.ensureStatusIsValid(sdJwt)
             sdJwt
         }
 
-    override suspend fun verify(
+    override suspend fun verifyPresentation(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
+        runCatchingCancellable {
+            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            typeMetadataPolicy.validate(sdJwt, isIssuance = false)
+            checkStatus?.ensureStatusIsValid(sdJwt)
+            sdJwt
+        }
+
+    override suspend fun verifyPresentation(
         unverifiedSdJwt: String,
         challenge: ChallengePredicate?,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
@@ -119,7 +127,7 @@ private class NimbusSdJwtVcVerifier(
                         challenge,
                         unverifiedSdJwt,
                     ).getOrThrow()
-            typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
+            typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt, isIssuance = false)
             checkStatus?.ensureStatusIsValid(sdJwtAndKbJwt.sdJwt)
             sdJwtAndKbJwt
         }
@@ -245,9 +253,12 @@ internal fun keySource(jwt: NimbusSignedJWT): SdJwtVcIssuerPublicKeySource {
     }
 }
 
-private suspend fun TypeMetadataPolicy.validate(sdJwt: SdJwt<NimbusSignedJWT>) {
+private suspend fun TypeMetadataPolicy.validate(
+    sdJwt: SdJwt<NimbusSignedJWT>,
+    isIssuance: Boolean,
+) {
     val typeMetadata = resolveTypeMetadataOf(sdJwt)
-    typeMetadata?.validate(sdJwt)
+    typeMetadata?.validate(sdJwt, isIssuance)
 }
 
 private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<NimbusSignedJWT>): ResolvedTypeMetadata? =
@@ -281,11 +292,18 @@ private suspend fun TypeMetadataPolicy.resolveTypeMetadataOf(sdJwt: SdJwt<Nimbus
         raise(SdJwtVcVerificationError.TypeMetadataVerificationError.TypeMetadataResolutionFailure(error))
     }
 
-private fun ResolvedTypeMetadata.validate(sdJwt: SdJwt<NimbusSignedJWT>): JsonObject {
+private fun ResolvedTypeMetadata.validate(
+    sdJwt: SdJwt<NimbusSignedJWT>,
+    isIssuance: Boolean,
+): JsonObject {
     val definition = SdJwtDefinition.fromSdJwtVcMetadata(this, true)
     val validationResult =
         with(DefinitionBasedSdJwtVcValidator) {
-            definition.validateSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
+            if (isIssuance) {
+                definition.validateIssuanceSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
+            } else {
+                definition.validatePresentationSdJwtVc(sdJwt.jwt.jwtClaimsSet.jsonObject(), sdJwt.disclosures)
+            }
         }
 
     return when (validationResult) {
