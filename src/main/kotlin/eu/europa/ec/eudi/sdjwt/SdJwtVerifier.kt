@@ -290,6 +290,13 @@ private fun interface KeyBindingVerifierOps<JWT> {
                             }
                         }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
 
+                    val keyBindingJwtHeader = jwtClaims(unverifiedKbJwt).getOrThrow().first
+                    if (keyBindingJwtHeader[RFC7515.TYPE_HEADER_PARAMETER] != JsonPrimitive(RFC9901.MEDIA_SUBTYPE_KB_JWT)) {
+                        throw InvalidKeyBindingJwt(
+                            "${RFC7515.TYPE_HEADER_PARAMETER} header parameter contains an invalid value",
+                        ).asException()
+                    }
+
                     val keyBindingJwtClaims = KeyBindingJwtClaims(claimsOf(keyBindingJwt))
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
                         throw InvalidKeyBindingJwt("${RFC9901.CLAIM_SD_HASH} claim contains an invalid value").asException()

@@ -102,6 +102,7 @@ object RFC7515 {
     const val JWS_JSON_SIGNATURE = "signature"
     const val JWS_JSON_SIGNATURES = "signatures"
     const val JWS_JSON_PAYLOAD = "payload"
+    const val TYPE_HEADER_PARAMETER = "typ"
 }
 
 /**

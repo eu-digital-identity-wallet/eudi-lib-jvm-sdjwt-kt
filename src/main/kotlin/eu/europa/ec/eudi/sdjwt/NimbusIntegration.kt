@@ -83,7 +83,7 @@ internal fun <PubKey> keyBindingJWTProcessor(
 where PubKey : NimbusJWK,
       PubKey : NimbusAsymmetricJWK =
     JwkSourceJWTProcessor(
-        NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
+        null,
         null,
         NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
         true,
