@@ -71,7 +71,6 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
 /**
  * Creates a [NimbusJWTProcessor] suitable for verifying the Key Binding JWT
  * Enforces the following rules:
- * - The header contains typ claim equal to `kb+jwt`
  * - The header contains the signing algorithm claim
  * - The JWT must be signed by the given [holderPubKey]
  *
@@ -154,6 +153,27 @@ object NimbusSdJwtOps :
     SdJwtSerializationOps<NimbusSignedJWT> by NimbusSerializationOps,
     SdJwtPresentationOps<NimbusSignedJWT> by NimbusPresentationOps,
     SdJwtVerifier<NimbusSignedJWT> by NimbusVerifier {
+
+    /**
+     * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcessor].
+     *
+     * @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
+     * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
+     *
+     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
+     * If provided, Key Binding JWT payload should contain the challenge as is.
+     *
+     * @see keyBindingJWTProcessor
+     */
+    @Deprecated(
+        message = "This extension function is deprecated. The parameter challenge is no longer used.",
+        replaceWith = ReplaceWith("KeyBindingVerifier.mustBePresentAndValid(holderPubKeyExtractor)"),
+        level = DeprecationLevel.WARNING,
+    )
+    fun KeyBindingVerifier.Companion.mustBePresentAndValid(
+        holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
+        challenge: JsonObject?,
+    ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> = mustBePresentAndValid(holderPubKeyExtractor)
 
     /**
      * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcessor].
