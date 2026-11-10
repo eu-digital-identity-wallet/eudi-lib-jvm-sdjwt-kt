@@ -650,7 +650,7 @@ private suspend fun <JWT> doVerify(
         val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
         val kbJwt =
             with(KeyBindingVerifierOps(claimsOf)) {
-                keyBindingVerifier.verify(jwtClaims, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
+                keyBindingVerifier.verify(recreated, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
             }
 
         // Assemble it
