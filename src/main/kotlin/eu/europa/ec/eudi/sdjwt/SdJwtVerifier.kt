@@ -688,7 +688,7 @@ private suspend fun <JWT> doVerify(
         if (neverSelectivelyDisclosable.isNotEmpty()) {
             val incorrectlyDisclosedClaims =
                 neverSelectivelyDisclosable.filter {
-                    it in disclosuresPerClaim && disclosuresPerClaim[it].orEmpty().isNotEmpty()
+                    !disclosuresPerClaim[it].isNullOrEmpty()
                 }
             if (incorrectlyDisclosedClaims.isNotEmpty()) {
                 throw IncorrectlyDisclosedClaim(incorrectlyDisclosedClaims).asException()
