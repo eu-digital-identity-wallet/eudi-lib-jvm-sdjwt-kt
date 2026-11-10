@@ -459,15 +459,12 @@ interface SdJwtVerifier<JWT> {
      * Holder should be aware of the public key and the signing algorithm that the Issuer
      * used to sign the SD-JWT
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
-     * present in the unprocessed payload
      * @return the verified SD-JWT, if valid. Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
      */
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: String,
-        neverSelectivelyDisclosable: List<ClaimPath> = emptyList(),
     ): Result<SdJwt<JWT>>
 
     /**
@@ -484,8 +481,6 @@ interface SdJwtVerifier<JWT> {
      * @param unverifiedSdJwt the SD-JWT to be verified.
      * A JSON Object that is expected to be in general
      * or flatten form as defined in RFC7515 and extended by SD-JWT specification.
-     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
-     * present in the unprocessed payload
      * @return the verified SD-JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will contain a [JWT][SdJwt.jwt] as both string and decoded payload
@@ -493,8 +488,7 @@ interface SdJwtVerifier<JWT> {
     suspend fun verify(
         jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
         unverifiedSdJwt: JsonObject,
-        neverSelectivelyDisclosable: List<ClaimPath> = emptyList(),
-    ): Result<SdJwt<JWT>> = verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt), neverSelectivelyDisclosable)
+    ): Result<SdJwt<JWT>> = verify(jwtSignatureVerifier, JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt))
 
     /**
      * Verifies a SD-JWT+KB serialized using compact serialization.
@@ -510,8 +504,6 @@ interface SdJwtVerifier<JWT> {
      * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param challenge Challenge for verifying the validity of the Key-Binding JWT.
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
-     * present in the unprocessed payload
      * @return the verified SD-JWT and the KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
@@ -523,7 +515,6 @@ interface SdJwtVerifier<JWT> {
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         challenge: ChallengePredicate?,
         unverifiedSdJwt: String,
-        neverSelectivelyDisclosable: List<ClaimPath> = emptyList(),
     ): Result<SdJwtAndKbJwt<JWT>>
 
     /**
@@ -540,8 +531,6 @@ interface SdJwtVerifier<JWT> {
      * Holder public key into the SD-JWT and which algorithm the Holder used to sign the challenge of the Verifier.
      * @param challenge Challenge for verifying the validity of the Key-Binding JWT.
      * @param unverifiedSdJwt the SD-JWT to be verified
-     * @param neverSelectivelyDisclosable claims that must be never selectively disclosable, i.e. must be
-     * present in the unprocessed payload
      * @return the verified SD-JWT and KeyBinding JWT, if valid.
      * Otherwise, method could raise a [SdJwtVerificationException]
      * The verified SD-JWT will the [JWT][SdJwt.jwt] and KeyBinding JWT
@@ -553,14 +542,12 @@ interface SdJwtVerifier<JWT> {
         keyBindingVerifier: MustBePresentAndValid<JWT>,
         challenge: ChallengePredicate?,
         unverifiedSdJwt: JsonObject,
-        neverSelectivelyDisclosable: List<ClaimPath> = emptyList(),
     ): Result<SdJwtAndKbJwt<JWT>> =
         verify(
             jwtSignatureVerifier,
             keyBindingVerifier,
             challenge,
             JwsJsonSupport.parseIntoStandardForm(unverifiedSdJwt),
-            neverSelectivelyDisclosable,
         )
 
     companion object {
@@ -568,6 +555,13 @@ interface SdJwtVerifier<JWT> {
         operator fun <JWT> invoke(
             clock: Clock,
             skew: Duration?,
+            claimsOf: (JWT) -> JsonObject,
+        ): SdJwtVerifier<JWT> = invoke(clock, skew, emptyList(), claimsOf)
+
+        internal operator fun <JWT> invoke(
+            clock: Clock,
+            skew: Duration?,
+            neverSelectivelyDisclosable: List<ClaimPath>,
             claimsOf: (JWT) -> JsonObject,
         ): SdJwtVerifier<JWT> {
             if (null != skew) {
@@ -578,7 +572,6 @@ interface SdJwtVerifier<JWT> {
                 override suspend fun verify(
                     jwtSignatureVerifier: JwtSignatureVerifier<JWT>,
                     unverifiedSdJwt: String,
-                    neverSelectivelyDisclosable: List<ClaimPath>,
                 ): Result<SdJwt<JWT>> =
                     doVerify(
                         claimsOf,
@@ -587,8 +580,8 @@ interface SdJwtVerifier<JWT> {
                         clock,
                         skew ?: Duration.ZERO,
                         null,
-                        unverifiedSdJwt,
                         neverSelectivelyDisclosable,
+                        unverifiedSdJwt,
                     ).map { (sdJwt, kbJwt) ->
                         check(kbJwt == null) { "KeyBinding JWT is not expected" }
                         sdJwt
@@ -599,7 +592,6 @@ interface SdJwtVerifier<JWT> {
                     keyBindingVerifier: MustBePresentAndValid<JWT>,
                     challenge: ChallengePredicate?,
                     unverifiedSdJwt: String,
-                    neverSelectivelyDisclosable: List<ClaimPath>,
                 ): Result<SdJwtAndKbJwt<JWT>> =
                     doVerify(
                         claimsOf,
@@ -608,8 +600,8 @@ interface SdJwtVerifier<JWT> {
                         clock,
                         skew ?: Duration.ZERO,
                         challenge,
-                        unverifiedSdJwt,
                         neverSelectivelyDisclosable,
+                        unverifiedSdJwt,
                     ).map { (sdJwt, kbJwt) ->
                         checkNotNull(kbJwt) { "KeyBinding JWT is expected" }
                         SdJwtAndKbJwt(sdJwt, kbJwt)
@@ -674,8 +666,8 @@ private suspend fun <JWT> doVerify(
     clock: Clock,
     skew: Duration,
     challenge: ChallengePredicate?,
-    unverifiedSdJwt: String,
     neverSelectivelyDisclosable: List<ClaimPath>,
+    unverifiedSdJwt: String,
 ): Result<Pair<SdJwt<JWT>, JWT?>> =
     runCatchingCancellable {
         // Parse

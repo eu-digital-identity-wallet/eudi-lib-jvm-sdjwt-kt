@@ -46,6 +46,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.serializer
 import java.security.cert.X509Certificate
 import java.text.ParseException
+import kotlin.time.Clock
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet as NimbusImmutableJWKSet
@@ -95,19 +96,21 @@ private class NimbusSdJwtVcVerifier(
     private val checkStatus: CheckWithTokenStatusList?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
 
-    override suspend fun verify(
-        unverifiedSdJwt: String,
-        neverSelectivelyDisclosable: List<ClaimPath>,
-    ): Result<SdJwt<NimbusSignedJWT>> =
+    private val verifier: SdJwtVerifier<NimbusSignedJWT> by lazy {
+        SdJwtVerifier(
+            Clock.System,
+            null,
+            SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+        ) { jwt -> jwt.jwtClaimsSet.jsonObject() }
+    }
+
+    override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val neverSelectivelyDisclosable =
-                (neverSelectivelyDisclosable + SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) }).distinct()
             val sdJwt =
-                NimbusSdJwtOps
+                verifier
                     .verify(
                         jwtSignatureVerifier,
                         unverifiedSdJwt,
-                        neverSelectivelyDisclosable,
                     ).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwt)
@@ -117,23 +120,19 @@ private class NimbusSdJwtVcVerifier(
     override suspend fun verify(
         unverifiedSdJwt: String,
         challenge: ChallengePredicate?,
-        neverSelectivelyDisclosable: List<ClaimPath>,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
             val keyBindingVerifier =
                 with(NimbusSdJwtOps) {
                     KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim)
                 }
-            val neverSelectivelyDisclosable =
-                (neverSelectivelyDisclosable + SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) }).distinct()
             val sdJwtAndKbJwt =
-                NimbusSdJwtOps
+                verifier
                     .verify(
                         jwtSignatureVerifier,
                         keyBindingVerifier,
                         challenge,
                         unverifiedSdJwt,
-                        neverSelectivelyDisclosable,
                     ).getOrThrow()
             typeMetadataPolicy.validate(sdJwtAndKbJwt.sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwtAndKbJwt.sdJwt)
