@@ -74,24 +74,17 @@ import com.nimbusds.jwt.proc.JWTProcessor as NimbusJWTProcessor
  * - The header contains typ claim equal to `kb+jwt`
  * - The header contains the signing algorithm claim
  * - The JWT must be signed by the given [holderPubKey]
- * - If the challenge is provided it should present in JWT payload
- * - Claims `aud`, `iat` and `nonce`must be present to the JWT payload
  *
  * @param holderPubKey the public key of the holder
- * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
- * If provided, Key Binding JWT payload should contain the challenge as is.
- * @return
  */
-internal fun <PubKey> keyBindingJWTProcess(
+internal fun <PubKey> keyBindingJWTProcessor(
     holderPubKey: PubKey,
-    challenge: NimbusJWTClaimsSet? = null,
-): NimbusJWTProcessor<NimbusSecurityContext> where PubKey : NimbusJWK, PubKey : NimbusAsymmetricJWK =
+): NimbusJWTProcessor<NimbusSecurityContext>
+where PubKey : NimbusJWK,
+      PubKey : NimbusAsymmetricJWK =
     JwkSourceJWTProcessor(
         NimbusDefaultJOSEObjectTypeVerifier(NimbusJOSEObjectType("kb+jwt")),
-        NimbusDefaultJWTClaimsVerifier(
-            challenge ?: NimbusJWTClaimsSet.Builder().build(),
-            setOf(RFC7519.ISSUED_AT, RFC7519.AUDIENCE, RFC9901.CLAIM_NONCE, RFC9901.CLAIM_SD_HASH),
-        ),
+        null,
         NimbusImmutableJWKSet(NimbusJWKSet(listOf(holderPubKey))),
         true,
     )
@@ -163,25 +156,20 @@ object NimbusSdJwtOps :
     SdJwtVerifier<NimbusSignedJWT> by NimbusVerifier {
 
     /**
-     * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcess].
+     * Factory method for creating a [KeyBindingVerifier] which applies the rules described in [keyBindingJWTProcessor].
      *
      *  @param holderPubKeyExtractor a function that extracts the holder's public key from the payload of the SD-JWT.
      * If not provided, it is assumed that the SD-JWT issuer used the confirmation claim (see [cnf]) for this purpose.
-
-     * @param challenge an optional challenge provided by the verifier, to be signed by the holder as the Key-binding JWT.
-     * If provided, Key Binding JWT payload should contain the challenge as is.
-
-     * @see keyBindingJWTProcess
+     *
+     * @see keyBindingJWTProcessor
      */
     fun KeyBindingVerifier.Companion.mustBePresentAndValid(
         holderPubKeyExtractor: (JsonObject) -> NimbusAsymmetricJWK? = HolderPubKeyInConfirmationClaim,
-        challenge: JsonObject?,
     ): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> {
         val keyBindingVerifierProvider: (JsonObject) -> JwtSignatureVerifier<NimbusSignedJWT> = { sdJwtClaims ->
             val holderPublicKey = holderPubKeyExtractor(sdJwtClaims) ?: throw KeyBindingError.MissingHolderPublicKey.asException()
             if (holderPublicKey !is NimbusJWK) throw KeyBindingError.UnsupportedHolderPublicKey.asException()
-            val challengeClaimSet: NimbusJWTClaimsSet? = challenge?.let { NimbusJWTClaimsSet.parse(Json.encodeToString(it)) }
-            keyBindingJWTProcess(holderPublicKey, challengeClaimSet).asJwtVerifier()
+            keyBindingJWTProcessor(holderPublicKey).asJwtVerifier()
         }
         return KeyBindingVerifier.MustBePresentAndValid(keyBindingVerifierProvider)
     }

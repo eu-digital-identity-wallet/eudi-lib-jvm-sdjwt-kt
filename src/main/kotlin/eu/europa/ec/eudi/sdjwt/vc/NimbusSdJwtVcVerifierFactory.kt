@@ -20,6 +20,8 @@ import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.sdjwt.*
+import eu.europa.ec.eudi.sdjwt.KeyBindingVerifier
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedSdJwtVcValidator
 import eu.europa.ec.eudi.sdjwt.dsl.def.DefinitionBasedValidationResult
 import eu.europa.ec.eudi.sdjwt.dsl.def.SdJwtDefinition
@@ -92,10 +94,6 @@ private class NimbusSdJwtVcVerifier(
     private val typeMetadataPolicy: TypeMetadataPolicy,
     private val checkStatus: CheckWithTokenStatusList?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
-    private fun keyBindingVerifierForSdJwtVc(challenge: JsonObject?): KeyBindingVerifier.MustBePresentAndValid<NimbusSignedJWT> =
-        with(NimbusSdJwtOps) {
-            KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim, challenge)
-        }
 
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
@@ -110,7 +108,10 @@ private class NimbusSdJwtVcVerifier(
         challenge: ChallengePredicate?,
     ): Result<SdJwtAndKbJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val keyBindingVerifier = keyBindingVerifierForSdJwtVc(challenge?.exactMatchClaims)
+            val keyBindingVerifier =
+                with(NimbusSdJwtOps) {
+                    KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim)
+                }
             val sdJwtAndKbJwt =
                 NimbusSdJwtOps
                     .verify(

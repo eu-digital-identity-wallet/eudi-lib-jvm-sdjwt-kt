@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.NoSignatureValidation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -192,6 +193,26 @@ class SdJwtVerifierVerifyPresentationTest {
         }
 
     @Test
+    fun `when sd-jwt has an valid jwt and disclosures, keyBinding with missing mismatched claims verify fails with InvalidKeyBindingJwt`() =
+        runTest {
+            verifyPresentationExpectingError(
+                VerificationError.KeyBindingFailed(
+                    KeyBindingError.InvalidKeyBindingJwt("The claims 'custom', 'aud', 'nonce' are missing or do match the expected value"),
+                ),
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
+                "$jwt~$d1~$kbWithD1",
+                ChallengePredicate(
+                    issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
+                    audience = "https://verifier.org",
+                    nonce = "nonce2",
+                ) {
+                    put("custom", JsonPrimitive(true))
+                },
+            )
+        }
+
+    @Test
     fun `happy path with sd-jwt with kb-jwt in JWS JSON`() =
         runTest {
             verifySuccess(
@@ -220,6 +241,7 @@ class SdJwtVerifierVerifyPresentationTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
+        challenge: ChallengePredicate? = challengeWithoutD1,
     ) {
         try {
             val verification =
@@ -235,7 +257,7 @@ class SdJwtVerifierVerifyPresentationTest {
                         sdJwtVerifier.verify(
                             jwtSignatureVerifier,
                             holderBindingVerifier,
-                            challengeWithoutD1,
+                            challenge,
                             unverifiedSdJwt,
                         )
                     }

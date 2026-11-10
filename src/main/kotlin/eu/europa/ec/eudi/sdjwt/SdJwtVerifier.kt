@@ -294,8 +294,22 @@ private fun interface KeyBindingVerifierOps<JWT> {
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
                         throw InvalidKeyBindingJwt("${RFC9901.CLAIM_SD_HASH} claim contains an invalid value").asException()
                     }
-                    if (null != challenge && (keyBindingJwtClaims.iat !in challenge.issuedAt)) {
-                        throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
+                    if (null != challenge) {
+                        if (keyBindingJwtClaims.iat !in challenge.issuedAt) {
+                            throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
+                        }
+
+                        val missingOrMismatchedClaims =
+                            challenge.exactMatchClaims
+                                .filter { (claimName, claimValue) -> keyBindingJwtClaims[claimName] != claimValue }
+                                .keys
+                        if (missingOrMismatchedClaims.isNotEmpty()) {
+                            throw InvalidKeyBindingJwt(
+                                "The claims " +
+                                    "${missingOrMismatchedClaims.joinToString(separator = ", ") { "'$it'" } } " +
+                                    "are missing or do match the expected value",
+                            ).asException()
+                        }
                     }
 
                     return keyBindingJwt
