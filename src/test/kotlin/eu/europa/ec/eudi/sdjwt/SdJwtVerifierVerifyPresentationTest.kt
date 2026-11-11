@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.NoSignatureValidation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -119,7 +120,7 @@ class SdJwtVerifierVerifyPresentationTest {
                 VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("'sd_hash' claim is missing")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
-                "$jwt~$jwt",
+                "$jwt~$kbWithoutSdHash",
             )
         }
 
@@ -176,7 +177,7 @@ class SdJwtVerifierVerifyPresentationTest {
                 VerificationError.KeyBindingFailed(KeyBindingError.InvalidKeyBindingJwt("'sd_hash' claim is missing")),
                 NoSignatureValidation,
                 KeyBindingVerifierMustBePresent,
-                "$jwt~$d1~$jwt",
+                "$jwt~$d1~$kbWithoutSdHash",
             )
         }
 
@@ -188,6 +189,26 @@ class SdJwtVerifierVerifyPresentationTest {
                 KeyBindingVerifierMustBePresent,
                 challengeWithD1,
                 "$jwt~$d1~$kbWithD1",
+            )
+        }
+
+    @Test
+    fun `when sd-jwt has an valid jwt and disclosures, keyBinding with missing mismatched claims verify fails with InvalidKeyBindingJwt`() =
+        runTest {
+            verifyPresentationExpectingError(
+                VerificationError.KeyBindingFailed(
+                    KeyBindingError.InvalidKeyBindingJwt("The claims 'custom', 'aud', 'nonce' are missing or do match the expected value"),
+                ),
+                NoSignatureValidation,
+                KeyBindingVerifierMustBePresent,
+                "$jwt~$d1~$kbWithD1",
+                ChallengePredicate(
+                    issuedAt = Instant.fromEpochSeconds(1772715149L, 0),
+                    audience = "https://verifier.org",
+                    nonce = "nonce2",
+                ) {
+                    put("custom", JsonPrimitive(true))
+                },
             )
         }
 
@@ -220,6 +241,7 @@ class SdJwtVerifierVerifyPresentationTest {
         jwtSignatureVerifier: JwtSignatureVerifier<JwtAndClaims>,
         holderBindingVerifier: KeyBindingVerifier<JwtAndClaims>,
         unverifiedSdJwt: String,
+        challenge: ChallengePredicate? = challengeWithoutD1,
     ) {
         try {
             val verification =
@@ -235,7 +257,7 @@ class SdJwtVerifierVerifyPresentationTest {
                         sdJwtVerifier.verify(
                             jwtSignatureVerifier,
                             holderBindingVerifier,
-                            challengeWithoutD1,
+                            challenge,
                             unverifiedSdJwt,
                         )
                     }
@@ -348,20 +370,28 @@ class SdJwtVerifierVerifyPresentationTest {
 
     private val kbWithoutD1 =
         """
-        eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoiT2tRZGtDVFNxRFpua2hrLTNWSVNZbEc
-        0aW1NQ3FTc09fdVFfaXZxQjJ4ayIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
-        sZS5vcmciLCJpYXQiOjE3NzI3MTUwODIsIm5vbmNlIjoibm9uY2UifQ.u3to8ttbbYCF
-        ds3QqhI9D3Hmfygz4-0PG3KjTGKhROlpl5WuylBButnJWN6D2iVyYmLvfZCwgXLiQV0D
-        dO1nOA    
+        eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJzZF9oYXNoIjoiT2tRZGt
+        DVFNxRFpua2hrLTNWSVNZbEc0aW1NQ3FTc09fdVFfaXZxQjJ4ayIsImF1ZCI6Imh0dHB
+        zOi8vdmVyaWZpZXIuZXhhbXBsZS5vcmciLCJpYXQiOjE3NzI3MTUwODIsIm5vbmNlIjo
+        ibm9uY2UifQ.u3to8ttbbYCFds3QqhI9D3Hmfygz4-0PG3KjTGKhROlpl5WuylBButnJ
+        WN6D2iVyYmLvfZCwgXLiQV0DdO1nOA    
         """.trimIndent().removeNewLine()
 
     private val kbWithD1 =
         """
-        eyJhbGciOiJFUzI1NiJ9.eyJzZF9oYXNoIjoidlFEb0laSlhLWXBCbEZsSF9YM0psTFA
-        4Sm02ODBqNHJnbWdUd3JjX2lMcyIsImF1ZCI6Imh0dHBzOi8vdmVyaWZpZXIuZXhhbXB
-        sZS5vcmciLCJpYXQiOjE3NzI3MTUxNDksIm5vbmNlIjoibm9uY2UifQ.rkN3lEPVuXaL
-        U3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v5Ygh4gRL4zCR6QVm6VqzxdiZ
-        67m0Hg
+        eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJzZF9oYXNoIjoidlFEb0l
+        aSlhLWXBCbEZsSF9YM0psTFA4Sm02ODBqNHJnbWdUd3JjX2lMcyIsImF1ZCI6Imh0dHB
+        zOi8vdmVyaWZpZXIuZXhhbXBsZS5vcmciLCJpYXQiOjE3NzI3MTUxNDksIm5vbmNlIjo
+        ibm9uY2UifQ.rkN3lEPVuXaLU3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v
+        5Ygh4gRL4zCR6QVm6VqzxdiZ67m0Hg
+        """.trimIndent().removeNewLine()
+
+    private val kbWithoutSdHash =
+        """
+        eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJhdWQiOiJodHRwczovL3Z
+        lcmlmaWVyLmV4YW1wbGUub3JnIiwiaWF0IjoxNzcyNzE1MTQ5LCJub25jZSI6Im5vbmN
+        lIn0.rkN3lEPVuXaLU3wrL0a5xGQjj8vBsHxWEGh5IQdZVrKEsvpb1Pe3fK7v5Ygh4gR
+        L4zCR6QVm6VqzxdiZ67m0Hg
         """.trimIndent().removeNewLine()
 }
 

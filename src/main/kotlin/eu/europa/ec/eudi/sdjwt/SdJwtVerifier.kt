@@ -290,12 +290,33 @@ private fun interface KeyBindingVerifierOps<JWT> {
                             }
                         }.getOrElse { error -> throw InvalidKeyBindingJwt("Could not verify KeyBinding JWT", error).asException() }
 
+                    val keyBindingJwtHeader = jwtClaims(unverifiedKbJwt).getOrThrow().first
+                    if (keyBindingJwtHeader[RFC7515.TYPE_HEADER_PARAMETER] != JsonPrimitive(RFC9901.MEDIA_SUBTYPE_KB_JWT)) {
+                        throw InvalidKeyBindingJwt(
+                            "${RFC7515.TYPE_HEADER_PARAMETER} header parameter contains an invalid value",
+                        ).asException()
+                    }
+
                     val keyBindingJwtClaims = KeyBindingJwtClaims(claimsOf(keyBindingJwt))
                     if (expectedDigest.value != keyBindingJwtClaims.sdHash) {
                         throw InvalidKeyBindingJwt("${RFC9901.CLAIM_SD_HASH} claim contains an invalid value").asException()
                     }
-                    if (null != challenge && (keyBindingJwtClaims.iat !in challenge.issuedAt)) {
-                        throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
+                    if (null != challenge) {
+                        if (keyBindingJwtClaims.iat !in challenge.issuedAt) {
+                            throw InvalidKeyBindingJwt("'${RFC7519.ISSUED_AT}' is not withing the acceptable time window").asException()
+                        }
+
+                        val missingOrMismatchedClaims =
+                            challenge.exactMatchClaims
+                                .filter { (claimName, claimValue) -> keyBindingJwtClaims[claimName] != claimValue }
+                                .keys
+                        if (missingOrMismatchedClaims.isNotEmpty()) {
+                            throw InvalidKeyBindingJwt(
+                                "The claims " +
+                                    "${missingOrMismatchedClaims.joinToString(separator = ", ") { "'$it'" } } " +
+                                    "are missing or do match the expected value",
+                            ).asException()
+                        }
                     }
 
                     return keyBindingJwt
@@ -629,7 +650,7 @@ private suspend fun <JWT> doVerify(
         val expectedDigest = SdJwtDigest.digest(hashAlgorithm, unverifiedSdJwt).getOrThrow()
         val kbJwt =
             with(KeyBindingVerifierOps(claimsOf)) {
-                keyBindingVerifier.verify(jwtClaims, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
+                keyBindingVerifier.verify(recreated, expectedDigest, challenge, unverifiedKBJwt).getOrThrow()
             }
 
         // Assemble it
