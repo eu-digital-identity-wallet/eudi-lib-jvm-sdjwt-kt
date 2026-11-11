@@ -21,7 +21,6 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * An SD-JWT-VC specific verifier
- *
  */
 interface SdJwtVcVerifier<out JWT> {
 

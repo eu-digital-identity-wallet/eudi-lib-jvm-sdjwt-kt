@@ -46,6 +46,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.serializer
 import java.security.cert.X509Certificate
 import java.text.ParseException
+import kotlin.time.Clock
 import com.nimbusds.jose.jwk.JWK as NimbusJWK
 import com.nimbusds.jose.jwk.JWKSet as NimbusJWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet as NimbusImmutableJWKSet
@@ -95,9 +96,22 @@ private class NimbusSdJwtVcVerifier(
     private val checkStatus: CheckWithTokenStatusList?,
 ) : SdJwtVcVerifier<NimbusSignedJWT> {
 
+    private val verifier: SdJwtVerifier<NimbusSignedJWT> by lazy {
+        SdJwtVerifier(
+            Clock.System,
+            null,
+            SdJwtVcSpec.NEVER_SELECTIVELY_DISCLOSABLE_CLAIMS.map { ClaimPath.claim(it) },
+        ) { jwt -> jwt.jwtClaimsSet.jsonObject() }
+    }
+
     override suspend fun verify(unverifiedSdJwt: String): Result<SdJwt<NimbusSignedJWT>> =
         runCatchingCancellable {
-            val sdJwt = NimbusSdJwtOps.verify(jwtSignatureVerifier, unverifiedSdJwt).getOrThrow()
+            val sdJwt =
+                verifier
+                    .verify(
+                        jwtSignatureVerifier,
+                        unverifiedSdJwt,
+                    ).getOrThrow()
             typeMetadataPolicy.validate(sdJwt)
             checkStatus?.ensureStatusIsValid(sdJwt)
             sdJwt
@@ -113,7 +127,7 @@ private class NimbusSdJwtVcVerifier(
                     KeyBindingVerifier.mustBePresentAndValid(HolderPubKeyInConfirmationClaim)
                 }
             val sdJwtAndKbJwt =
-                NimbusSdJwtOps
+                verifier
                     .verify(
                         jwtSignatureVerifier,
                         keyBindingVerifier,
