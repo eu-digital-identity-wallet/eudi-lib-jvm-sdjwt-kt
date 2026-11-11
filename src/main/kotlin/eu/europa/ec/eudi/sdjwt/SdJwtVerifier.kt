@@ -558,7 +558,7 @@ interface SdJwtVerifier<JWT> {
             claimsOf: (JWT) -> JsonObject,
         ): SdJwtVerifier<JWT> = invoke(clock, skew, emptyList(), claimsOf)
 
-        operator fun <JWT> invoke(
+        internal operator fun <JWT> invoke(
             clock: Clock,
             skew: Duration?,
             neverSelectivelyDisclosable: List<ClaimPath>,
