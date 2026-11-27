@@ -173,7 +173,7 @@ class SdJwtFactory internal constructor(
                     objectHandlers = objectHandlers,
                     arrayHandlers = arrayHandlers,
                     combine = Disclosed::plus,
-                    postProcess = ::addDecoyDigests,
+                    postProcess = { addDecoyDigests(it).sortDigests() },
                 )
 
             val (jwtPayload, disclosures) = disclosed.result.jsonObject to disclosed.metadata.disclosures
@@ -205,8 +205,7 @@ class SdJwtFactory internal constructor(
                             JsonPrimitive(decoyDigest.value)
                         }
 
-                // Sort the combined list of digests and decoys to make the order unpredictable
-                val digestsAndDecoys = (sdClaims + decoys).sortedBy { it.jsonPrimitive.contentOrNull }
+                val digestsAndDecoys = (sdClaims + decoys)
                 val foldedObjWithDecoys = JsonObject(result + (RFC9901.CLAIM_SD to JsonArray(digestsAndDecoys)))
                 folded.copy(result = foldedObjWithDecoys)
             }
@@ -234,6 +233,34 @@ class SdJwtFactory internal constructor(
             }
         }
     }
+
+    /**
+     * Post-processes the fold result to sort digests in the _sd claim.
+     * Makes their order unpredictable.
+     *
+     * @receiver The context resulting from the fold operation
+     * @return A new context with sorted digests in the _sd claim.
+     */
+    private fun Disclosed.sortDigests(): Disclosed =
+        when (result) {
+            !is JsonObject -> {
+                this
+            }
+
+            else -> {
+                when (val digests = result[RFC9901.CLAIM_SD]?.jsonArray) {
+                    null -> {
+                        this
+                    }
+
+                    else -> {
+                        val sortedDigests = JsonArray(digests.sortedBy { it.jsonPrimitive.content })
+                        val newResult = JsonObject(result + (RFC9901.CLAIM_SD to sortedDigests))
+                        copy(result = newResult)
+                    }
+                }
+            }
+        }
 
     private val objectHandlers =
         object : ObjectFoldHandlers<String, JsonElement, Disclosures, JsonElement> {
